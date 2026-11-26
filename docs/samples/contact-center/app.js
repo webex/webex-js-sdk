@@ -162,6 +162,7 @@ const saveElm = document.querySelector('#access-token-save');
 const authStatusElm = document.querySelector('#access-token-status');
 const oauthFormElm = document.querySelector('#oauth');
 const oauthStatusElm = document.querySelector('#oauth-status');
+const oauthLoginBtn = document.querySelector('#oauth-login-btn');
 const registerBtn = document.querySelector('#webexcc-register');
 const deregisterBtn = document.querySelector('#webexcc-deregister');
 const teamsDropdown = document.querySelector('#teamsDropdown');
@@ -171,6 +172,7 @@ const dialNumber = document.querySelector('#dialNumber');
 const registerStatus = document.querySelector('#ws-connection-status');
 const regionRecoveryStatus = document.querySelector('#region-recovery-status');
 const regionRecoveryReloadBtn = document.querySelector('#region-recovery-reload');
+const regionRecoveryDialog = document.querySelector('#region-recovery-dialog');
 const idleCodesDropdown = document.querySelector('#idleCodesDropdown')
 const setAgentStatusButton = document.querySelector('#setAgentStatus');
 const logoutAgentElm = document.querySelector('#logoutAgent');
@@ -282,11 +284,24 @@ const multiLoginCheckbox = document.querySelector('#multiLoginFlag');
 const disableWebRTCRegistrationCheckbox = document.querySelector('#disableWebRTCRegistrationFlag');
 const enableWxBetterTogetherCheckbox = document.querySelector('#enableWxBetterTogetherFlag');
 deregisterBtn.style.backgroundColor = 'red';
-let enableProd = true;
+const SAMPLE_ENVIRONMENT_KEY = 'cc-sample-environment';
+const SAMPLE_AUTH_TYPE_KEY = 'cc-sample-auth-type';
+const SAMPLE_TOKEN_ENVIRONMENT_KEY = 'cc-sample-token-environment';
+let sampleEnvironment = sessionStorage.getItem(SAMPLE_ENVIRONMENT_KEY) === 'integration'
+  ? 'integration'
+  : 'production';
+changeEnvBtn.textContent = sampleEnvironment === 'integration' ? 'In Integration' : 'In Production';
 
 function changeEnv() {
-  enableProd = !enableProd;
-  changeEnvBtn.innerHTML = enableProd ? 'In Production' : 'In Integration';
+  sampleEnvironment = sampleEnvironment === 'integration' ? 'production' : 'integration';
+  sessionStorage.setItem(SAMPLE_ENVIRONMENT_KEY, sampleEnvironment);
+  if (webex) {
+    window.location.reload();
+    return;
+  }
+
+  changeEnvBtn.textContent = sampleEnvironment === 'integration' ? 'In Integration' : 'In Production';
+  tokenElm.value = getSavedSampleCredentials()?.access_token ?? '';
 }
 
 let isMultiLoginEnabled = localStorage.getItem('isMultiLoginEnabled') === 'true';
@@ -641,18 +656,14 @@ function isIncomingTask(task, agentId) {
   );
 };
 
-// Store and Grab `access-token` from sessionStorage
-if (sessionStorage.getItem('date') > new Date().getTime()) {
-  tokenElm.value = sessionStorage.getItem('access-token');
-}
-else {
-  sessionStorage.removeItem('access-token');
-}
+function getSavedSampleCredentials() {
+  const expires = Number(sessionStorage.getItem('date'));
+  const accessToken = sessionStorage.getItem('access-token');
+  if (sessionStorage.getItem(SAMPLE_TOKEN_ENVIRONMENT_KEY) !== sampleEnvironment ||
+    !accessToken || !Number.isFinite(expires) || expires <= Date.now()) return undefined;
 
-tokenElm.addEventListener('change', (event) => {
-  sessionStorage.setItem('access-token', event.target.value);
-  sessionStorage.setItem('date', new Date().getTime() + (12 * 60 * 60 * 1000));
-});
+  return {access_token: accessToken, expires};
+}
 
 setAgentStateButton.addEventListener('click', () => {
   agentStatus = agentStateSelect.options[agentStateSelect.selectedIndex].text;
@@ -675,19 +686,21 @@ async function uploadLogs() {
   }
 }
 
-function changeAuthType() {
-  switch (authTypeElm.value) {
-    case 'accessToken':
-      toggleDisplay('credentials', true);
-      toggleDisplay('oauth', false);
-      break;
-    case 'oauth':
-      initOauth();
-      toggleDisplay('credentials', false);
-      toggleDisplay('oauth', true);
-      break;
-    default:
-      break;
+function changeAuthType(regionResume) {
+  sessionStorage.setItem(SAMPLE_AUTH_TYPE_KEY, authTypeElm.value);
+  if (webex) {
+    window.location.reload();
+    return;
+  }
+
+  const useOAuth = authTypeElm.value === 'oauth';
+  toggleDisplay('credentials', !useOAuth);
+  toggleDisplay('oauth', useOAuth);
+  if (useOAuth) {
+    initOauth(regionResume);
+  } else {
+    tokenElm.value = getSavedSampleCredentials()?.access_token ?? '';
+    if (regionResume) initAccessToken(regionResume.credentials, regionResume.orgId);
   }
 }
 
@@ -702,12 +715,10 @@ function toggleDisplay(elementId, status) {
   }
 }
 
-function initOauth() {
-  let redirectUri = `${window.location.protocol}//${window.location.host}`;
-
-  if (window.location.pathname) {
-    redirectUri += window.location.pathname;
-  }
+function initOauth(regionResume) {
+  const redirectUri = `${window.location.origin}${window.location.pathname}`;
+  const isIntegration = sampleEnvironment === 'integration';
+  oauthLoginBtn.disabled = true;
 
   // Reference: https://developer.webex-cx.com/documentation/integrations
   const ccMandatoryScopes = [
@@ -737,40 +748,43 @@ function initOauth() {
 
   const webexConfig = generateWebexConfig({
     credentials: {
-      ...(!enableProd && {authorizeUrl: 'https://idbrokerbts.webex.com/idb/oauth2/v1/authorize'}),
-      client_id: enableProd ? 'C04ef08ffce356c3161bb66b15dbdd98d26b6c683c5ce1a1a89efad545fdadd74' : 'Cd0dd53db1f470a5a9941e5eee31575bd0889d7006e3a80a1443ad12a42049da1',
+      ...(isIntegration && {authorizeUrl: 'https://idbrokerbts.webex.com/idb/oauth2/v1/authorize'}),
+      client_id: isIntegration ? 'Cd0dd53db1f470a5a9941e5eee31575bd0889d7006e3a80a1443ad12a42049da1' : 'C04ef08ffce356c3161bb66b15dbdd98d26b6c683c5ce1a1a89efad545fdadd74',
       redirect_uri: redirectUri,
       scope: requestedScopes,
     }
   });
 
-  if (!enableProd) {
-    webexConfig.services = {
-      discovery: {
-        u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
-      },
-    };
+  try {
+    webex = window.webex = Webex.init({
+      config: webexConfig,
+      ...(regionResume && {credentials: regionResume.credentials}),
+    });
+  } catch {
+    setRegionRecoveryDialog(false);
+    window.history.replaceState(null, '', redirectUri);
+    oauthStatusElm.textContent = 'Sign-in failed. Reload the sample to try again.';
+    return;
   }
 
-  detachRegionRecoveryListener();
-  webex = window.webex = Webex.init({
-    config: webexConfig
-  });
-
-  localStorage.setItem('OAuth', true);
-
   webex.once('ready', () => {
-    oauthFormElm.addEventListener('submit', (event) => {
-      event.preventDefault();
-      // initiate the login sequence if not authenticated.
-      webex.authorization.initiateLogin();
-    });
-
+    oauthLoginBtn.disabled = false;
     if (webex.canAuthorize) {
-      oauthStatusElm.innerText = 'Authenticated';
+      oauthStatusElm.textContent = 'Authenticated';
+      completeSampleSignIn(0, regionResume?.orgId);
+    } else if (regionResume) {
+      setRegionRecoveryDialog(false);
     }
   });
 }
+
+oauthFormElm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  if (oauthLoginBtn.disabled) return;
+  webex.authorization.initiateLogin().catch(() => {
+    oauthStatusElm.textContent = 'Sign-in could not start. Try again.';
+  });
+});
 
 const taskEvents = new CustomEvent('task:incoming', {
   detail: {
@@ -3775,6 +3789,10 @@ function generateWebexConfig({credentials}) {
     appName: 'sdk-samples',
     appPlatform: 'testClient',
     fedramp: false,
+    environment: sampleEnvironment,
+    ...(sampleEnvironment === 'integration' && {
+      services: {discovery: {u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1'}},
+    }),
     logger: {
       level: 'info',
       bufferLogLevel: 'log',
@@ -3788,51 +3806,69 @@ function generateWebexConfig({credentials}) {
   };
 }
 
-if(localStorage.getItem('OAuth')) {
-  setTimeout(() => {
-    initOauth();
-    localStorage.removeItem('OAuth');
-  }, 500);
-}
-
 function initWebex(e) {
   e.preventDefault();
+  initAccessToken({access_token: tokenElm.value});
+}
+
+function initAccessToken(credentials, resumeOrgId) {
   console.log('Authentication#initWebex()');
 
   tokenElm.disabled = true;
   saveElm.disabled = true;
   authStatusElm.innerText = 'initializing...';
 
-  const webexConfig = generateWebexConfig({})
-
-  if (!enableProd) {
-     webexConfig.services = {
-      discovery: {
-        u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
-      },
-    };
+  if (!resumeOrgId) detachRegionRecoveryListener();
+  try {
+    webex = window.webex = Webex.init({
+      config: generateWebexConfig({}),
+      credentials,
+    });
+  } catch {
+    setRegionRecoveryDialog(false);
+    authStatusElm.textContent = 'Initialization failed. Check your access token and try again.';
+    tokenElm.disabled = false;
+    saveElm.disabled = false;
+    return;
   }
 
-  detachRegionRecoveryListener();
-  webex = window.webex = Webex.init({
-    config: webexConfig,
-    credentials: {
-      access_token: tokenElm.value
+  webex.once('ready', () => {
+    if (!webex.canAuthorize) {
+      setRegionRecoveryDialog(false);
+      authStatusElm.textContent = 'Enter a valid access token and try again.';
+      tokenElm.disabled = false;
+      saveElm.disabled = false;
+      return;
     }
+
+    authStatusElm.textContent = 'Saved access token!';
+    completeSampleSignIn(Date.now() + 12 * 60 * 60 * 1000, resumeOrgId);
   });
+}
 
-  webex.once('ready', async () => {
-    console.log('Authentication#initWebex() :: Webex Ready');
-    attachVoiceConnectionStateLogging();
+function completeSampleSignIn(fallbackExpiry = 0, resumeOrgId) {
+  const {access_token: accessToken, expires} = webex.credentials.supertoken ?? {};
+  attachVoiceConnectionStateLogging();
+  registerStatus.textContent = 'Not Subscribed';
+  registerBtn.disabled = false;
 
-    authStatusElm.innerText = 'Saved access token!';
-    registerStatus.innerHTML = 'Not Subscribed';
-    registerBtn.disabled = false;
-    // Dynamically add the IMI Engage controller bundle script
-    initializeEngageWidget();
-  });
+  if (accessToken) {
+    sessionStorage.setItem('access-token', accessToken);
+    sessionStorage.setItem('date', String(expires ?? fallbackExpiry));
+    sessionStorage.setItem(SAMPLE_TOKEN_ENVIRONMENT_KEY, sampleEnvironment);
+    initializeEngageWidget(accessToken);
+  }
 
-  return false;
+  if (resumeOrgId) {
+    let authenticatedOrg;
+    try {
+      authenticatedOrg = webex.credentials.getOrgId()?.trim();
+    } catch {
+      // Leave the restored session available for manual registration.
+    }
+    if (authenticatedOrg === resumeOrgId) register(true);
+    else setRegionRecoveryDialog(false);
+  }
 }
 
 function attachVoiceConnectionStateLogging() {
@@ -4758,14 +4794,97 @@ const regionRecoveryMessages = {
   recovering: 'Reconnecting to Contact Center. Please wait.',
   ready: 'Station connected.',
   stationLoginRequired: 'Use Agent Station Login/Logout to sign in to your station again.',
-  reloadRequired: 'Reload the sample, then authenticate and register again.',
+  reloadRequired: 'The active region changed. Reload the sample to reconnect.',
   unavailable: 'Recovery unavailable. Reload the sample, then authenticate and register again.',
 };
 
-function showRegionRecoveryState(state) {
+const REGION_RESTART_WINDOW_MS = 120000;
+const REGION_RESUME_KEY = 'cc-sample-region-resume';
+let regionRestartTimer;
+
+function setRegionRecoveryDialog(open) {
+  if (open && !regionRecoveryDialog.open) regionRecoveryDialog.showModal();
+  if (!open && regionRecoveryDialog.open) regionRecoveryDialog.close();
+}
+
+function takeRegionRecoveryResume() {
+  try {
+    const saved = sessionStorage.getItem(REGION_RESUME_KEY);
+    if (!saved) return undefined;
+    sessionStorage.removeItem(REGION_RESUME_KEY);
+    const resume = JSON.parse(saved);
+    const elapsed = Date.now() - resume.requestedAt;
+    if (resume.environment !== sampleEnvironment || resume.authType !== authTypeElm.value ||
+      typeof resume.orgId !== 'string' || !resume.orgId || window.location.hash ||
+      !Number.isFinite(resume.requestedAt) || elapsed < 0 || elapsed >= REGION_RESTART_WINDOW_MS) {
+      return undefined;
+    }
+
+    const credentials = getSavedSampleCredentials();
+    return credentials && {orgId: resume.orgId, credentials};
+  } catch {
+    return undefined;
+  }
+}
+
+function restartSampleForRegion(automatic = true) {
+  if (regionRestartTimer !== undefined) return true;
+  try {
+    const orgId = webex.credentials.getOrgId()?.trim();
+    if (!orgId) return false;
+
+    const now = Date.now();
+    const guardKey = `cc-sample-region-reload:${sampleEnvironment}:${orgId}`;
+    if (automatic) {
+      const previous = sessionStorage.getItem(guardKey);
+      if (previous !== null) {
+        const last = JSON.parse(previous);
+        if (!Number.isFinite(last) || last < 0 || last > now ||
+          now - last < REGION_RESTART_WINDOW_MS) return false;
+      }
+    }
+
+    sessionStorage.setItem(guardKey, String(now));
+    const saved = getSavedSampleCredentials();
+    if (saved && saved.access_token === webex.credentials.supertoken?.access_token) {
+      // The token stays in the sample's existing auth cache. Only resume metadata goes here.
+      sessionStorage.setItem(REGION_RESUME_KEY, JSON.stringify({
+        orgId,
+        environment: sampleEnvironment,
+        authType: authTypeElm.value,
+        requestedAt: now,
+      }));
+    }
+  } catch {
+    return false;
+  }
+
+  const showManualRestart = () => {
+    clearTimeout(regionRestartTimer);
+    regionRestartTimer = undefined;
+    setRegionRecoveryDialog(false);
+    regionRecoveryReloadBtn.hidden = false;
+    regionRecoveryStatus.textContent = regionRecoveryMessages.reloadRequired;
+  };
+
+  setRegionRecoveryDialog(true);
+  regionRecoveryReloadBtn.hidden = true;
+  regionRestartTimer = setTimeout(showManualRestart, 15000);
+  try {
+    window.location.reload();
+  } catch {
+    showManualRestart();
+  }
+  return true;
+}
+
+function showRegionRecoveryState(state, keepDialogOpen = false) {
   const status = state?.status;
+  const mismatchAlreadyShown = regionRecoveryStatus.dataset.status === 'reloadRequired';
   regionRecoveryStatus.dataset.status = status ?? '';
   regionRecoveryReloadBtn.hidden = status !== 'reloadRequired' && status !== 'unavailable';
+  setRegionRecoveryDialog(status === 'recovering' || keepDialogOpen === true || regionRestartTimer !== undefined);
+  if (regionRestartTimer !== undefined) regionRecoveryReloadBtn.hidden = true;
   if (!state) {
     regionRecoveryStatus.textContent = '';
     return;
@@ -4798,6 +4917,7 @@ function showRegionRecoveryState(state) {
     updateAgentProfileElm.classList.add('hidden');
     updateUnregisterButtonState();
   }
+  if (status === 'reloadRequired' && !mismatchAlreadyShown) restartSampleForRegion();
 }
 
 function detachRegionRecoveryListener() {
@@ -4805,16 +4925,20 @@ function detachRegionRecoveryListener() {
   showRegionRecoveryState();
 }
 
-regionRecoveryReloadBtn.addEventListener('click', () => window.location.reload());
+regionRecoveryDialog.addEventListener('cancel', (event) => event.preventDefault());
+regionRecoveryReloadBtn.addEventListener('click', () => {
+  if (regionRecoveryStatus.dataset.status === 'reloadRequired' && restartSampleForRegion(false)) return;
+  window.location.reload();
+});
 
-function register() {
+function register(resumingRegion = false) {
     registerBtn.disabled = true;
     attachWellnessSdkListeners();
     const cc = webex.cc;
     cc.off('region:stateChange', showRegionRecoveryState);
     cc.on('region:stateChange', showRegionRecoveryState);
+    showRegionRecoveryState(undefined, resumingRegion);
     const registration = cc.register();
-    showRegionRecoveryState();
     registration.then((agentProfile) => {
         if (cc !== webex.cc) return;
         registerStatus.innerHTML = 'Subscribed';
@@ -4981,6 +5105,7 @@ function register() {
     });
 
         updateTaskList();
+        if (resumingRegion && !regionRecoveryStatus.dataset.status) setRegionRecoveryDialog(false);
     }).catch((error) => {
         cc.off('region:stateChange', showRegionRecoveryState);
         if (cc !== webex.cc) return;
@@ -4988,6 +5113,8 @@ function register() {
         registerBtn.disabled = reloadRequired;
         if (reloadRequired && regionRecoveryStatus.dataset.status !== 'reloadRequired') {
           showRegionRecoveryState({status: 'reloadRequired'});
+        } else if (!reloadRequired && resumingRegion && !regionRecoveryStatus.dataset.status) {
+          showRegionRecoveryState({status: 'unavailable'});
         }
         detachWellnessSdkListeners();
         resetWellnessSession({clearEnablement: true});
@@ -5467,28 +5594,6 @@ allCollapsibleElements.forEach((el) => {
   });
 });
 
-// Get Access Token from URL and put in access token field
-if (window.location.hash) {
-  // hacky way to get access token from hash
-  const urlParams = new URLSearchParams(window.location.hash.replace('#', '?'));
-
-  const accessToken = urlParams.get('access_token');
-  const expiresIn = urlParams.get('expires_in');
-
-  if (accessToken) {
-    sessionStorage.setItem('access-token', accessToken);
-    sessionStorage.setItem('date', new Date().getTime() + parseInt(expiresIn, 10));
-    tokenElm.disabled = true;
-    saveElm.disabled = true;
-    authStatusElm.innerText = 'Saved access token!';
-    registerStatus.innerHTML = 'Not Subscribed';
-    registerBtn.disabled = false;
-    // Dynamically add the IMI Engage controller bundle script
-    initializeEngageWidget();
-    tokenElm.value = accessToken;
-  }
-}
-
 const allSectionContentElements = document.querySelectorAll('.section-content');
 const allArrowElements = document.querySelectorAll('.arrow');
 
@@ -5693,7 +5798,7 @@ const handleBundleLoaded = () => {
   isBundleLoaded = true;
 };
 
-const initializeEngageWidget = () => {
+const initializeEngageWidget = (accessToken) => {
   if (isBundleLoaded) {
     const config = {
       logger: console,
@@ -5706,7 +5811,7 @@ const initializeEngageWidget = () => {
     };
     const imiEngageWC = new window.ImiEngageWC(config);
     imiEngageWC.setParam("data", {
-      jwt: tokenElm.value,
+      jwt: accessToken,
       lang: "en-US",
       source: "wxcc",
     });
@@ -6211,3 +6316,8 @@ async function deleteUserPreference() {
     console.error('deleteUserPreference error:', error);
   }
 }
+
+authTypeElm.value = sessionStorage.getItem(SAMPLE_AUTH_TYPE_KEY) === 'oauth' ? 'oauth' : 'accessToken';
+const regionRecoveryResume = takeRegionRecoveryResume();
+if (regionRecoveryResume) setRegionRecoveryDialog(true);
+changeAuthType(regionRecoveryResume);
