@@ -1947,10 +1947,10 @@ describe('Get endpoint by CALLING_BACKEND tests', () => {
   });
 
   it('uses services.get for the ucm vg endpoint when _serviceUrls is absent (services v2)', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Deliberately omit v1-only fields required by WebexSDK to exercise the minimal v2 contract.
-    const v2Webex: any = {
-      internal: {services: {get: jest.fn().mockReturnValue('https://ucmgmt.example.com')}},
-    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Remove the shared v1 fixture's required _serviceUrls field to model services v2.
+    const v2Webex: any = getTestUtilsWebex();
+    delete v2Webex.internal.services._serviceUrls;
+    v2Webex.internal.services.get = jest.fn().mockReturnValue('https://ucmgmt.example.com');
 
     expect(getVgActionEndpoint(v2Webex, CALLING_BACKEND.UCM)).toBe('https://ucmgmt.example.com');
     expect(v2Webex.internal.services.get).toHaveBeenCalledWith('ucmgmt-gateway');
@@ -2103,19 +2103,15 @@ describe('Get XSI Action Endpoint tests', () => {
   });
 
   it('should use services.get("wdm") for BWRKS backend when _serviceUrls is absent (services v2)', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Deliberately omit v1-only fields required by WebexSDK to exercise the minimal v2 contract.
-    const v2Webex: any = {
-      request: jest.fn().mockResolvedValue({
-        body: {
-          devices: [{settings: {broadworksXsiActionsUrl: 'https://fake-broadworks-url.com'}}],
-        },
-      }),
-      internal: {
-        services: {
-          get: jest.fn().mockReturnValue('https://wdm-v2.example.com'),
-        },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Remove the shared v1 fixture's required _serviceUrls field to model services v2.
+    const v2Webex: any = getTestUtilsWebex();
+    delete v2Webex.internal.services._serviceUrls;
+    v2Webex.internal.services.get = jest.fn().mockReturnValue('https://wdm-v2.example.com');
+    v2Webex.request.mockResolvedValue({
+      body: {
+        devices: [{settings: {broadworksXsiActionsUrl: 'https://fake-broadworks-url.com'}}],
       },
-    };
+    });
 
     const xsiEndpoint = await getXsiActionEndpoint(v2Webex, loggerContext, CALLING_BACKEND.BWRKS);
 
