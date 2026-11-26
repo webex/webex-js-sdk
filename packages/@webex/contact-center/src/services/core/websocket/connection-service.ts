@@ -1,7 +1,6 @@
 import {EventEmitter} from 'events';
 import type {WebSocketManager} from './WebSocketManager';
 import type {
-  ConnectionServiceOptions,
   ConnectionLostDetails,
   ConnectionResetOptions,
   RegionRecoveryOptions,
@@ -40,6 +39,7 @@ type Invocation = RegionRecoveryOptions & {
   onAbort: () => void;
 };
 
+const REGION_RETRY_DELAYS = [100000, 60000, 30000, 15000];
 const SAFE_REASONS = new Set([
   ...Object.values(REGION_RECOVERY_ERROR_CODES),
   ...SUBSCRIPTION_MISMATCH_REASONS,
@@ -67,9 +67,9 @@ const terminalError = (
 
 /** Single-flight transport scheduler; station/session policy stays with ContactCenter. */
 export class ConnectionService extends EventEmitter {
-  private mode: 'ordinary' | 'paused' | 'region' | 'stopped' = 'ordinary';
+  private mode: 'ordinary' | 'paused' | 'region' | 'stopped' = 'stopped';
   private retryTimer?: ReturnType<typeof setTimeout>;
-  private reconnectingTimer?: ReturnType<typeof setTimeout>;
+  private heartbeatLossTimer?: ReturnType<typeof setTimeout>;
   private restoreTimer?: ReturnType<typeof setTimeout>;
   private isConnectionLost = false;
   private isRestoreFailed = false;
@@ -80,15 +80,11 @@ export class ConnectionService extends EventEmitter {
   private invocation?: Invocation;
   private registrationSignal?: AbortSignal;
   private onTerminalFailure?: ConnectionResetOptions['onTerminalFailure'];
-  private webSocketManager: WebSocketManager;
   private subscribeRequest: SubscribeRequest;
   private readonly onRegistrationAbort = () => this.stop();
 
-  constructor(options: ConnectionServiceOptions) {
+  constructor(private readonly webSocketManager: WebSocketManager) {
     super();
-    this.webSocketManager = options.webSocketManager;
-    this.subscribeRequest = options.subscribeRequest;
-    this.setupEventListeners();
   }
 
   public reset(options: ConnectionResetOptions): void {
@@ -96,23 +92,22 @@ export class ConnectionService extends EventEmitter {
       !this.flight && this.webSocketManager.hasUsableSocket() ? this.socketOwner : undefined;
     if (retained) this.socketOwner = undefined;
     this.stop();
-    this.subscribeRequest = options.subscribeRequest;
-    this.registrationSignal = options.signal;
-    this.onTerminalFailure = options.onTerminalFailure;
     if (options.signal.aborted) {
       this.disposeFlight(retained);
 
       return;
     }
+    this.subscribeRequest = options.subscribeRequest;
+    this.registrationSignal = options.signal;
+    this.onTerminalFailure = options.onTerminalFailure;
     this.socketOwner = retained;
     this.mode = 'ordinary';
     this.webSocketManager.shouldReconnect = true;
     this.updateConnectionData();
     options.signal.addEventListener('abort', this.onRegistrationAbort, {once: true});
     this.setupEventListeners();
-    if (options.recoverIfDisconnected && !this.webSocketManager.hasUsableSocket())
-      this.onSocketClose();
-    else if (this.webSocketManager.hasUsableSocket()) this.monitorOrdinary();
+    if (this.webSocketManager.hasUsableSocket()) this.monitorOrdinary();
+    else this.onSocketClose();
   }
 
   public pause(): void {
@@ -160,10 +155,10 @@ export class ConnectionService extends EventEmitter {
 
   private clearTimers(): void {
     clearTimeout(this.retryTimer);
-    clearTimeout(this.reconnectingTimer);
+    clearTimeout(this.heartbeatLossTimer);
     clearTimeout(this.restoreTimer);
     this.retryTimer = undefined;
-    this.reconnectingTimer = undefined;
+    this.heartbeatLossTimer = undefined;
     this.restoreTimer = undefined;
     this.lossEpisode = undefined;
   }
@@ -177,15 +172,19 @@ export class ConnectionService extends EventEmitter {
 
   private cancelWork(preserveSocket = false): void {
     this.clearTimers();
-    const invocation = this.invocation;
-    this.invocation = undefined;
+    const invocation = this.detachInvocation();
     this.disposeFlight(this.flight);
     if (!preserveSocket) this.disposeFlight(this.socketOwner);
     this.webSocketManager.cancelPending(terminalError('cancelled'));
-    if (invocation) {
-      invocation.signal.removeEventListener('abort', invocation.onAbort);
-      invocation.reject(terminalError('cancelled'));
-    }
+    invocation?.reject(terminalError('cancelled'));
+  }
+
+  private detachInvocation(): Invocation | undefined {
+    const invocation = this.invocation;
+    this.invocation = undefined;
+    invocation?.signal.removeEventListener('abort', invocation.onAbort);
+
+    return invocation;
   }
 
   private createFlight(): Flight {
@@ -194,6 +193,13 @@ export class ConnectionService extends EventEmitter {
     this.flight = flight;
 
     return flight;
+  }
+
+  private adoptFlight(flight: Flight): void {
+    this.flight = undefined;
+    this.socketOwner = flight;
+    this.updateConnectionData();
+    this.monitorOrdinary();
   }
 
   private subscribePrimary(signal: AbortSignal): Promise<WelcomeResponse> {
@@ -218,7 +224,7 @@ export class ConnectionService extends EventEmitter {
     if (!this.ownsInvocation(invocation)) return;
     invocation.attempt += 1;
     const attempt = invocation.attempt;
-    const base = [100000, 60000, 30000, 15000][Math.min(attempt - 1, 3)];
+    const base = REGION_RETRY_DELAYS[Math.min(attempt, REGION_RETRY_DELAYS.length) - 1];
     const wait = base * (1 + 0.5 * Math.random());
     try {
       invocation.onScheduled(attempt, wait);
@@ -265,13 +271,9 @@ export class ConnectionService extends EventEmitter {
       );
       if (!this.ownsInvocation(invocation) || this.flight !== flight) return;
       if (signal.aborted) throw terminalError('cancelled');
-      this.flight = undefined;
-      this.socketOwner = flight;
-      this.invocation = undefined;
-      invocation.signal.removeEventListener('abort', invocation.onAbort);
+      this.detachInvocation();
       this.mode = 'ordinary';
-      this.updateConnectionData();
-      this.monitorOrdinary();
+      this.adoptFlight(flight);
       invocation.resolve();
       if (publishOutcome) publishOutcome();
     } catch (error) {
@@ -299,7 +301,7 @@ export class ConnectionService extends EventEmitter {
       } catch {
         /* Best-effort diagnostic seam. */
       }
-      if (this.ownsInvocation(invocation)) this.scheduleRegion(invocation);
+      this.scheduleRegion(invocation);
     }
   }
 
@@ -307,8 +309,7 @@ export class ConnectionService extends EventEmitter {
     if (this.invocation !== invocation) return;
     const {kind, ...failure} = error.data;
     // Commit old-owner cleanup before observers can cancel or replace the registration.
-    this.invocation = undefined;
-    invocation.signal.removeEventListener('abort', invocation.onAbort);
+    this.detachInvocation();
     this.stop();
     this.webSocketManager.close(false, 'Terminal recovery');
     if (kind !== 'cancelled') {
@@ -346,10 +347,9 @@ export class ConnectionService extends EventEmitter {
   }
 
   private monitorOrdinary(): void {
-    if (this.mode !== 'ordinary') return;
-    clearTimeout(this.reconnectingTimer);
+    clearTimeout(this.heartbeatLossTimer);
     clearTimeout(this.restoreTimer);
-    this.reconnectingTimer = setTimeout(this.handleConnectionLost, WS_DISCONNECT_ALLOWED);
+    this.heartbeatLossTimer = setTimeout(this.handleConnectionLost, WS_DISCONNECT_ALLOWED);
     this.restoreTimer = setTimeout(this.handleRestoreFailed, LOST_CONNECTION_RECOVERY_TIMEOUT);
   }
 
@@ -444,13 +444,8 @@ export class ConnectionService extends EventEmitter {
       diagnose('succeeded');
       if (this.mode !== 'ordinary' || this.flight !== flight || this.lossEpisode !== episode)
         return;
-      this.flight = undefined;
-      this.socketOwner = flight;
-      clearTimeout(this.retryTimer);
-      this.retryTimer = undefined;
       this.lossEpisode = undefined;
-      this.updateConnectionData();
-      this.monitorOrdinary();
+      this.adoptFlight(flight);
       this.dispatchConnectionEvent(true);
     } catch (error) {
       if (this.mode !== 'ordinary' || this.flight !== flight) return;
@@ -521,7 +516,7 @@ export class ConnectionService extends EventEmitter {
     // Aborting the adopted socket and emitting loss can synchronously reset the scheduler.
     const episode = this.lossEpisode ?? {startedAt: Date.now(), attempt: 0};
     this.lossEpisode = episode;
-    clearTimeout(this.reconnectingTimer);
+    clearTimeout(this.heartbeatLossTimer);
     this.isConnectionLost = true;
     if (!this.restoreTimer)
       this.restoreTimer = setTimeout(this.handleRestoreFailed, LOST_CONNECTION_RECOVERY_TIMEOUT);

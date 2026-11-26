@@ -156,7 +156,7 @@ changes there.
 
 | Contract ID | Surface | Consumer | Compatibility commitment | Source |
 | --- | --- | --- | --- | --- |
-| `contact-center-services` | `Services.getInstance({webex, connectionConfig})` and its readonly collaborator fields (`agent`, `config`, `contact`, `dialer`, `webSocketManager`, `rtdWebSocketManager`, `connectionService`) | `ContactCenter` only (`@private`, `@ignore`) | Internal; one instance per process | `src/services/index.ts` |
+| `contact-center-services` | `Services.getInstance({webex})` and its readonly collaborator fields (`agent`, `config`, `contact`, `dialer`, `webSocketManager`, `rtdWebSocketManager`, `connectionService`) | `ContactCenter` only (`@private`, `@ignore`) | Internal; one instance per process | `src/services/index.ts` |
 | `contact-center-services` | WebCallingService, WebexCrossClientService, AnswerCallOnWebexService, WxAppTelephonyMercurySync | `ContactCenter` and the task sub-module | Internal | `src/services/WebCallingService.ts`, `src/services/WebexCrossClientService.ts`, `src/services/AnswerCallOnWebexService.ts`, `src/services/WxAppTelephonyMercurySync.ts` |
 | `contact-center-sdk` | `AddressBook.getEntries(params?)` through `cc.addressBook` | Applications | Semver-public: `AddressBook` is exported by `src/index.ts`; returns `AddressBookEntriesResponse` | `src/services/AddressBook.ts`, `src/index.ts` |
 | `contact-center-sdk` | Existing `Queue.getQueues(ContactServiceQueueSearchParams)` and `EntryPoint.getEntryPoints(EntryPointSearchParams)` with paginated responses, through `cc.queue`, `cc.getQueues()`, and `cc.getEntryPoints()`; they apply consult/transfer telephony eligibility, profile views, and backend name ordering as overridable defaults, and EntryPoint returns the dial-number mapping projection | Applications | The defaults live on the existing methods and signatures; there is no specialized method or replacement signature | `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/types.ts` |
@@ -220,10 +220,7 @@ Use [`constants.ts`](../constants.ts) as the canonical source for service-level 
 The `Services` class is the central composition root. It uses a singleton pattern:
 
 ```typescript
-const services = Services.getInstance({
-  webex: this.$webex,
-  connectionConfig: this.getConnectionConfig(),
-});
+const services = Services.getInstance({webex: this.$webex});
 ```
 
 What Services creates in its constructor:
@@ -237,7 +234,7 @@ What Services creates in its constructor:
 | `agent` | `routingAgent(aqmReq)` | Agent operations factory |
 | `contact` | `routingContact(aqmReq)` | Task/contact operations factory |
 | `dialer` | `aqmDialer(aqmReq)` | Outbound dialing factory |
-| `connectionService` | `new ConnectionService({webSocketManager, subscribeRequest})` | WebSocket lifecycle management |
+| `connectionService` | `new ConnectionService(webSocketManager)` | Manages primary WebSocket recovery once registration supplies the subscription settings |
 
 Understanding the instantiation order is essential — getting it wrong causes runtime errors. Services does not create `WebexRequest`, which is initialized by `cc.ts` before `Services.getInstance()`, nor `MetricsManager`, an independent singleton initialized by `cc.ts`. ContactCenter owns the broader READY-time graph: in its READY callback it creates WebCallingService, the three wxApp services, ApiAIAssistant, MetricsManager, TaskManager (through `TaskManager.getTaskManager`, receiving ApiAIAssistant, contact routing, calling, and both WebSocket managers, and then AnswerCallOnWebexService), EntryPoint, AddressBook, Queue, and UserPreference, in the order of the READY composition diagram. None of these collaborators is created by `register()`; registration attaches runtime listeners and connects the primary socket after READY initialization, and line registration is conditional on a `BROWSER` login with WebRTC enabled.
 
@@ -329,7 +326,7 @@ sequenceDiagram
   participant TM as TaskManager
   Host-->>CC: READY
   CC->>CC: initialize WebexRequest
-  CC->>S: getInstance(webex, connectionConfig)
+  CC->>S: getInstance(webex)
   S->>S: primary WS + RTD WS + AqmReqs + config/agent/contact/dialer + ConnectionService
   CC->>CC: create calling + wxApp services + AI assistant + metrics
   CC->>TM: getTaskManager(AI, contact, calling, primary WS, RTD WS)

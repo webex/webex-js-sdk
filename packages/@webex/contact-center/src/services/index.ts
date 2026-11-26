@@ -4,7 +4,7 @@ import AgentConfigService from './config';
 import AqmReqs from './core/aqm-reqs';
 import {WebSocketManager} from './core/websocket/WebSocketManager';
 import {ConnectionService} from './core/websocket/connection-service';
-import {WebexSDK, SubscribeRequest} from '../types';
+import type {WebexSDK} from '../types';
 import aqmDialer from './task/dialer';
 
 /**
@@ -38,10 +38,8 @@ export default class Services {
    * Creates a new Services instance
    * @param options - Configuration options
    * @param options.webex - WebexSDK instance
-   * @param options.connectionConfig - Subscription configuration for websocket connection
    */
-  constructor(options: {webex: WebexSDK; connectionConfig: SubscribeRequest}) {
-    const {webex, connectionConfig} = options;
+  constructor({webex}: {webex: WebexSDK}) {
     this.webSocketManager = new WebSocketManager({webex});
     // TODO: Implement reconnection logic for this websocket in upcoming PR
     this.rtdWebSocketManager = new WebSocketManager({webex});
@@ -51,10 +49,7 @@ export default class Services {
     this.agent = routingAgent(aqmReq);
     this.contact = routingContact(aqmReq);
     this.dialer = aqmDialer(aqmReq);
-    this.connectionService = new ConnectionService({
-      webSocketManager: this.webSocketManager,
-      subscribeRequest: connectionConfig,
-    });
+    this.connectionService = new ConnectionService(this.webSocketManager);
   }
 
   /**
@@ -62,13 +57,9 @@ export default class Services {
    * Creates a new instance if one doesn't exist
    * @param options - Configuration options
    * @param options.webex - WebexSDK instance
-   * @param options.connectionConfig - Subscription configuration for websocket connection
    * @returns The singleton Services instance
    */
-  public static getInstance(options: {
-    webex: WebexSDK;
-    connectionConfig: SubscribeRequest;
-  }): Services {
+  public static getInstance(options: {webex: WebexSDK}): Services {
     if (!this.instance) {
       this.instance = new Services(options);
     }

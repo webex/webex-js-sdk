@@ -217,7 +217,7 @@ export class WebSocketManager extends EventEmitter {
           if (!this.ownsAttempt(attempt)) return;
           if (event.data?.type === 'keepalive' && socket.readyState === 1)
             socket.send(JSON.stringify({keepalive: 'true'}));
-          if (event.data?.type === 'closeSocket' && this.isConnectionLost) {
+          if (event.data?.type === 'closeSocket' && this.isConnectionLost && this.shouldReconnect) {
             this.close(true, 'WebSocket did not auto close within 16 secs');
           }
         };

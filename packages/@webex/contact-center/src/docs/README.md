@@ -274,7 +274,7 @@ sequenceDiagram
   CC->>CC: validatePluginConfig()
   alt configuration valid
     CC->>CC: WebexRequest.getInstance(webex)
-    CC->>S: Services.getInstance(webex, connectionConfig)
+    CC->>S: Services.getInstance(webex)
     CC->>CC: create WebCallingService + wxApp services + ApiAIAssistant + MetricsManager
     CC->>TM: getTaskManager(aiAssistant, contact, calling, primaryWS, rtdWS)
     CC->>CC: listen to TaskManager task events

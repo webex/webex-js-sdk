@@ -1,5 +1,4 @@
 import type {SubscribeRequest} from '../../../types';
-import type {WebSocketManager} from './WebSocketManager';
 import type {RecoveryFailure} from '../types';
 import type {WelcomeResponse} from '../../config/types';
 
@@ -20,7 +19,6 @@ export type ConnectionResetOptions = {
   subscribeRequest: SubscribeRequest;
   signal: AbortSignal;
   onTerminalFailure: (error: ConnectionRecoveryError) => void;
-  recoverIfDisconnected?: boolean;
 };
 
 /** Regional policy is opaque to the transport scheduler. */
@@ -35,18 +33,6 @@ export type RegionRecoveryOptions = {
     failure?: RecoveryFailure
   ) => void;
   afterWelcome: (welcome: WelcomeResponse, signal: AbortSignal) => Promise<void | (() => void)>;
-};
-
-/**
- * Options for initializing a connection service.
- * @typedef ConnectionServiceOptions
- * @property {WebSocketManager} webSocketManager - The WebSocket manager instance.
- * @property {SubscribeRequest} subscribeRequest - The subscribe request payload.
- * @ignore
- */
-export type ConnectionServiceOptions = {
-  webSocketManager: WebSocketManager;
-  subscribeRequest: SubscribeRequest;
 };
 
 /**

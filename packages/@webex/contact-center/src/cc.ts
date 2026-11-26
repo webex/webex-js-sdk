@@ -1047,7 +1047,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.services.connectionService.reset({
       subscribeRequest: this.getConnectionConfig(),
       signal,
-      recoverIfDisconnected: true,
       onTerminalFailure: (error) => {
         if (!this.isCurrentRegistration(registration, orgId, signal, agentId)) return;
         const pending = this.pendingRegistration;
@@ -1932,7 +1931,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.services = Services.getInstance({
         webex: this.$webex,
-        connectionConfig: this.getConnectionConfig(),
       });
 
       this.webCallingService = new WebCallingService(this.$webex);

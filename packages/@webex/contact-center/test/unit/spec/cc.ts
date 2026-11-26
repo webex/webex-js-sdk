@@ -2782,7 +2782,7 @@ describe('webex.cc', () => {
           else await expect(promise).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
           expectHistoryAndStation(['switch'], outcome === 'success' ? undefined : accepted);
           expect(webex.cc['lastPublishedRegionState']).toBeUndefined();
-          expect(webex.cc.services.connectionService.reset).toHaveBeenLastCalledWith(expect.objectContaining({recoverIfDisconnected: true}));
+          expect(webex.cc.services.connectionService.reset).toHaveBeenLastCalledWith(expect.objectContaining({signal: webex.cc['registrationAbortController'].signal}));
           expect(webex.cc['suppressAutomaticRelogin']).toBe(outcome === 'success');
           const owner = captureSwitchOwner(); const actions = switchActions();
           const states = jest.fn(); webex.cc.on('region:stateChange', states);
@@ -2826,7 +2826,7 @@ describe('webex.cc', () => {
         expect(webex.cc['acceptedStation']).toBeDefined();
         expect(webex.cc['registrationAbortController'].signal.aborted).toBe(false);
         expect(webex.cc['recoveryPhase']).toBe('idle');
-        expect(webex.cc.services.connectionService.reset).toHaveBeenLastCalledWith(expect.objectContaining({recoverIfDisconnected: true}));
+        expect(webex.cc.services.connectionService.reset).toHaveBeenLastCalledWith(expect.objectContaining({signal: webex.cc['registrationAbortController'].signal}));
         mockWebSocketManager.hasUsableSocket.mockReturnValue(true);
         await webex.cc['handleConnectionLost']({isSocketReconnected: true});
         expect(webex.cc.services.agent.reload).toHaveBeenCalledTimes(1);
@@ -14503,7 +14503,7 @@ describe('realRecoveryWiring', () => {
       expect(cc['registrationGeneration']).toBe(generation);
       expect(registration.signal.aborted).toBe(false);
       if (old) {
-        expect(reset).toHaveBeenCalledWith(expect.objectContaining({recoverIfDisconnected: true, signal: registration.signal}));
+        expect(reset).toHaveBeenCalledWith(expect.objectContaining({signal: registration.signal}));
         if (phase === 'wait') expect((await old.observed).error.data.kind).toBe('cancelled');
         const owner = lifecycleOwner(cc);
         await old.release(false);
