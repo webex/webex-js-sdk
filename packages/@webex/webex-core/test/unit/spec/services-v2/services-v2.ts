@@ -129,6 +129,39 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#get override precedence', () => {
+      const name = 'conversation';
+      const override = 'https://override.example.com/conversation/api/v1';
+
+      beforeEach(() => {
+        webex.config.services = {discovery: {}, allowedDomains: [], override: {[name]: override}};
+        services.initConfig();
+        const hostMap = services._formatReceivedHostmap(serviceHostmapV2);
+        catalog.updateServiceGroups('postauth', hostMap.services, hostMap.timestamp);
+      });
+
+      it.each([undefined, true, false])(
+        'prefers the configured service override with unscoped group %p',
+        (group) => {
+          assert.strictEqual(services.get(name, group), override);
+        }
+      );
+
+      it('preserves explicit catalog-group selection', () => {
+        const clusterId = serviceHostmapV2.activeServices[name];
+
+        assert.strictEqual(services.get(name, 'override'), override);
+        assert.strictEqual(services.get(name, 'postauth'), catalog.get(clusterId, 'postauth'));
+        assert.isUndefined(services.get(name, 'signin'));
+      });
+
+      it('still resolves an explicit cluster ID', () => {
+        const clusterId = serviceHostmapV2.activeServices[name];
+
+        assert.strictEqual(services.get(clusterId), catalog.get(clusterId, 'postauth'));
+      });
+    });
+
     describe('#initialize', () => {
       it('initFailed is false when initialization succeeds and credentials are available', async () => {
         services.listenToOnce = sinon.stub();
@@ -1710,6 +1743,7 @@ describe('webex-core', () => {
         // default current env
         services.webex.config = services.webex.config || {};
         services.webex.config.services = services.webex.config.services || {discovery: {}};
+        services.webex.config.services.servicesNotNeedValidation = [];
         services.webex.config.services.discovery.u2c =
           services.webex.config.services.discovery.u2c || 'https://u2c.svc.webex.com/u2c/api/v1';
         services.webex.config.fedramp =
@@ -1729,6 +1763,53 @@ describe('webex-core', () => {
         if (services._getLocalStorageSafe && services._getLocalStorageSafe.restore) {
           services._getLocalStorageSafe.restore();
         }
+      });
+
+      [false, true].forEach((wrapped) => {
+        it(`restores service lookups and host metadata from a ${
+          wrapped ? 'wrapped' : 'legacy'
+        } cached hostmap`, async () => {
+          const hostMap = JSON.parse(JSON.stringify(serviceHostmapV2));
+          const clusterId = hostMap.activeServices.conversation;
+          const service = hostMap.services.find(({id}) => id === clusterId);
+          const expectedUrl = service.serviceUrls[0].baseUrl;
+          window.localStorage.setItem(
+            CATALOG_CACHE_KEY_V2,
+            JSON.stringify({
+              cachedAt: Date.now(),
+              postauth: wrapped ? {hostMap} : hostMap,
+            })
+          );
+
+          assert.isTrue(await services._loadCatalogFromCache());
+          catalog.isReady = true;
+
+          assert.strictEqual(services.get('conversation'), expectedUrl);
+          assert.strictEqual(await services.waitForService({name: 'conversation'}), expectedUrl);
+          assert.deepEqual(services._activeServices, hostMap.activeServices);
+          assert.deepEqual(services._services, hostMap.services);
+          assert.isTrue(services.isValidHost(new URL(expectedUrl).host));
+        });
+      });
+
+      it('does not restore service mappings from a rejected preauth selection', async () => {
+        const hostMap = JSON.parse(JSON.stringify(serviceHostmapV2));
+        window.localStorage.setItem(
+          CATALOG_CACHE_KEY_V2,
+          JSON.stringify({
+            cachedAt: Date.now(),
+            preauth: {
+              hostMap,
+              meta: {selectionType: 'mode', selectionValue: 'DEFAULT_BY_PROXIMITY'},
+            },
+          })
+        );
+
+        await services._loadCatalogFromCache();
+
+        assert.deepEqual(services._activeServices, {});
+        assert.deepEqual(services._services, []);
+        assert.isUndefined(services.get('conversation'));
       });
 
       it('stores selection metadata and env on cache write for preauth', async () => {

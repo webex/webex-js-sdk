@@ -22,6 +22,7 @@ import testUsers from '@webex/test-helper-test-users';
 import uuid from 'uuid';
 import sinon from 'sinon';
 import {createActivationEmail} from '../../../fixtures/activation-email';
+import describeServicesContract from '../../../fixtures/services-contract';
 
 /* eslint-disable no-underscore-dangle */
 describe('webex-core', () => {
@@ -89,6 +90,8 @@ describe('webex-core', () => {
         })
       );
     });
+
+    describeServicesContract(() => services);
 
     describe('#_getCatalog()', () => {
       it('returns a catalog', () => {

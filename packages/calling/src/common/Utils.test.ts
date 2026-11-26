@@ -1947,6 +1947,7 @@ describe('Get endpoint by CALLING_BACKEND tests', () => {
   });
 
   it('uses services.get for the ucm vg endpoint when _serviceUrls is absent (services v2)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Deliberately omit v1-only fields required by WebexSDK to exercise the minimal v2 contract.
     const v2Webex: any = {
       internal: {services: {get: jest.fn().mockReturnValue('https://ucmgmt.example.com')}},
     };
@@ -2102,6 +2103,7 @@ describe('Get XSI Action Endpoint tests', () => {
   });
 
   it('should use services.get("wdm") for BWRKS backend when _serviceUrls is absent (services v2)', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Deliberately omit v1-only fields required by WebexSDK to exercise the minimal v2 contract.
     const v2Webex: any = {
       request: jest.fn().mockResolvedValue({
         body: {

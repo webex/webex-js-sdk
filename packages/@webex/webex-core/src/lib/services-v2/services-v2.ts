@@ -1,6 +1,6 @@
 import sha256 from 'crypto-js/sha256';
 
-import {toNumber, union, unionBy} from 'lodash';
+import {isString, toNumber, union, unionBy} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 
 import METRICS from '../metrics';
@@ -163,6 +163,15 @@ const Services = WebexPlugin.extend({
    */
   get(name: string, serviceGroup?: ServiceGroup): string | undefined {
     const catalog = this._getCatalog();
+
+    // Overrides use the service name as their ID, rather than an active cluster ID.
+    // Check them first for an unscoped lookup, preserving explicit group selection.
+    if (!isString(serviceGroup) || serviceGroup === 'override') {
+      const override = catalog.get(name, 'override');
+      if (override) {
+        return override;
+      }
+    }
 
     const clusterId = this._activeServices[name];
 
@@ -1243,7 +1252,14 @@ const Services = WebexPlugin.extend({
         }
 
         if (hostMap) {
-          catalog.updateServiceGroups(serviceGroup, hostMap?.services, hostMap?.timestamp);
+          // Hydrate the same plugin maps and service list as a network response before
+          // initialization treats this catalog as ready and skips collection.
+          const formattedHostMap = this._formatReceivedHostmap(hostMap);
+          catalog.updateServiceGroups(
+            serviceGroup,
+            formattedHostMap.services,
+            formattedHostMap.timestamp
+          );
         }
       });
 
