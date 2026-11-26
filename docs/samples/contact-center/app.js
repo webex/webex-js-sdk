@@ -169,6 +169,8 @@ const agentLogin = document.querySelector('#AgentLogin');
 const loginAgentElm = document.querySelector('#loginAgent');
 const dialNumber = document.querySelector('#dialNumber');
 const registerStatus = document.querySelector('#ws-connection-status');
+const regionRecoveryStatus = document.querySelector('#region-recovery-status');
+const regionRecoveryReloadBtn = document.querySelector('#region-recovery-reload');
 const idleCodesDropdown = document.querySelector('#idleCodesDropdown')
 const setAgentStatusButton = document.querySelector('#setAgentStatus');
 const logoutAgentElm = document.querySelector('#logoutAgent');
@@ -750,6 +752,7 @@ function initOauth() {
     };
   }
 
+  detachRegionRecoveryListener();
   webex = window.webex = Webex.init({
     config: webexConfig
   });
@@ -3810,6 +3813,7 @@ function initWebex(e) {
     };
   }
 
+  detachRegionRecoveryListener();
   webex = window.webex = Webex.init({
     config: webexConfig,
     credentials: {
@@ -4750,12 +4754,71 @@ wellnessNoResponseBtn.addEventListener('click', () =>
 wellnessRestoreBtn.addEventListener('click', restoreWellnessState);
 renderWellnessState();
 
+const regionRecoveryMessages = {
+  recovering: 'Reconnecting to Contact Center. Please wait.',
+  ready: 'Station connected.',
+  stationLoginRequired: 'Use Agent Station Login/Logout to sign in to your station again.',
+  reloadRequired: 'Reload the sample, then authenticate and register again.',
+  unavailable: 'Recovery unavailable. Reload the sample, then authenticate and register again.',
+};
+
+function showRegionRecoveryState(state) {
+  const status = state?.status;
+  regionRecoveryStatus.dataset.status = status ?? '';
+  regionRecoveryReloadBtn.hidden = status !== 'reloadRequired' && status !== 'unavailable';
+  if (!state) {
+    regionRecoveryStatus.textContent = '';
+    return;
+  }
+
+  const details = [
+    state.operation,
+    state.homeRegion && `Home: ${state.homeRegion}`,
+    state.servingRegion && `Serving: ${state.servingRegion}`,
+    state.limitedService && 'Limited service',
+    state.retryAfterMs > 0 && `Retry in ${Math.ceil(state.retryAfterMs / 1000)}s`,
+    state.autoAvailable && `Automatic availability: ${state.autoAvailable}`,
+    status === 'unavailable' && state.reason,
+  ].filter(Boolean);
+  const prefix = details.length ? ` (${details.join(', ')})` : '';
+  regionRecoveryStatus.textContent = `Regional recovery${prefix}. ${regionRecoveryMessages[status]}`;
+
+  if (status === 'ready') {
+    setAgentStatusButton.disabled = !idleCodesDropdown.options.length;
+    if (state.reason === 'region-switch') updateTaskList();
+    return;
+  }
+
+  renderTaskList({});
+  setAgentStatusButton.disabled = true;
+  loginAgentElm.disabled = status !== 'stationLoginRequired';
+  updateFieldsContainer.classList.add('hidden');
+  if (status === 'stationLoginRequired') {
+    logoutAgentElm.classList.add('hidden');
+    updateAgentProfileElm.classList.add('hidden');
+    updateUnregisterButtonState();
+  }
+}
+
+function detachRegionRecoveryListener() {
+  webex?.cc?.off('region:stateChange', showRegionRecoveryState);
+  showRegionRecoveryState();
+}
+
+regionRecoveryReloadBtn.addEventListener('click', () => window.location.reload());
+
 function register() {
+    registerBtn.disabled = true;
     attachWellnessSdkListeners();
-    webex.cc.register().then((agentProfile) => {
+    const cc = webex.cc;
+    cc.off('region:stateChange', showRegionRecoveryState);
+    cc.on('region:stateChange', showRegionRecoveryState);
+    const registration = cc.register();
+    showRegionRecoveryState();
+    registration.then((agentProfile) => {
+        if (cc !== webex.cc) return;
         registerStatus.innerHTML = 'Subscribed';
         // Update button states upon successful registration
-        registerBtn.disabled = true;
         deregisterBtn.disabled = false;
         uploadLogsButton.disabled = false;
         enableUserPreferenceButtons(true);
@@ -4865,6 +4928,7 @@ function register() {
     });
 
     webex.cc.on('agent:multiLogin', (data) => {
+      showRegionRecoveryState();
       if (data && typeof data === 'object' && data.type === 'AgentMultiLoginCloseSession') {
         if (shouldResetForSessionEvent(data.agentSessionId, wellnessState.agentSessionId)) {
           resetWellnessSession();
@@ -4918,6 +4982,13 @@ function register() {
 
         updateTaskList();
     }).catch((error) => {
+        cc.off('region:stateChange', showRegionRecoveryState);
+        if (cc !== webex.cc) return;
+        const reloadRequired = error?.data?.reason === 'REGION_RELOAD_REQUIRED';
+        registerBtn.disabled = reloadRequired;
+        if (reloadRequired && regionRecoveryStatus.dataset.status !== 'reloadRequired') {
+          showRegionRecoveryState({status: 'reloadRequired'});
+        }
         detachWellnessSdkListeners();
         resetWellnessSession({clearEnablement: true});
         console.error('Event subscription failed', error);
@@ -4925,6 +4996,7 @@ function register() {
 }
 
 function resetDeregisteredSampleState() {
+    detachRegionRecoveryListener();
     detachWellnessSdkListeners();
     resetWellnessSession({clearEnablement: true});
     registerStatus.innerHTML = 'Unregistered';
@@ -5086,6 +5158,7 @@ function logoutAgent() {
   webex.cc.stationLogout({logoutReason: 'logout'})
     .then((response) => {
       console.log('Agent logged out successfully', response);
+      showRegionRecoveryState();
       resetWellnessSession();
       loginAgentElm.disabled = false;
       updateAgentProfileElm.classList.add('hidden');
