@@ -55,6 +55,7 @@ export interface ParticipantDevice {
   mediaSessions: Array<MediaSession>;
   mediaSessionsExternal: boolean;
   state: string; // probably one of MEETING_STATE.STATES
+  url: string; // device (WDM) URL; present at runtime, used to match against the MLS roster
 }
 
 // this is not a complete type, Locus may send more fields

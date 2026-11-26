@@ -548,7 +548,7 @@ export default class MLS {
    */
   private static toRosterMember(member: RosterMember): E2eeRosterMember {
     return {
-      url: member.url,
+      deviceUrl: member.url,
       displayName: member.display_name,
       deviceType: member.device_type,
       validationResult: member.validation_result,

@@ -411,7 +411,7 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(addedSpy, [
           {
-            url: 'd1',
+            deviceUrl: 'd1',
             displayName: 'Bob',
             deviceType: 'WEB',
             validationResult: 0,
@@ -798,7 +798,7 @@ describe('plugin-meetings', () => {
         assert.equal(session.getSecurityCode(), 'SEC');
         assert.isTrue(session.isLeader());
         assert.deepEqual(session.getRoster(), [
-          {url: 'd1', displayName: 'Bob', deviceType: 'WEB', validationResult: 1},
+          {deviceUrl: 'd1', displayName: 'Bob', deviceType: 'WEB', validationResult: 1},
         ]);
       });
     });

@@ -9,6 +9,7 @@ import MLS from '@webex/plugin-meetings/src/e2ee/mls';
 import * as MLSModule from '@webex/plugin-meetings/src/e2ee/mls';
 import E2eeSignaling from '@webex/plugin-meetings/src/e2ee/E2eeSignaling';
 import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
+import * as MemberMLSReconcilerModule from '@webex/plugin-meetings/src/e2ee/MemberMLSReconciler';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
@@ -19,6 +20,8 @@ describe('plugin-meetings', () => {
   describe('E2eeController', () => {
     let webex;
     let meeting;
+    let reconcilerCtorStub;
+    let reconciler;
     let wasmLoader;
     let identityProvider;
     let getLlmChannel;
@@ -46,15 +49,15 @@ describe('plugin-meetings', () => {
 
     const emitSession = (event, payload?) => sessionHandlers[event]?.(payload);
 
-    const makeRosterEntry = ({url, deviceType = 'WEB'}) => ({
-      url,
+    const makeRosterEntry = ({deviceUrl, deviceType = 'WEB'}) => ({
+      deviceUrl,
       deviceType,
       displayName: '',
       validationResult: E2eeValidationResult.Success,
     });
 
     const MEDIA_SERVICE = makeRosterEntry({
-      url: 'https://ms.webex.com/1',
+      deviceUrl: 'https://ms.webex.com/1',
       deviceType: 'MEDIA_SERVICE',
     });
 
@@ -85,6 +88,8 @@ describe('plugin-meetings', () => {
 
     beforeEach(() => {
       sessionHandlers = {};
+      reconciler = sinon.createStubInstance(MemberMLSReconcilerModule.default);
+      reconcilerCtorStub = sinon.stub(MemberMLSReconcilerModule, 'default').returns(reconciler);
       initializeStub = sinon.stub(MLS.prototype, 'initialize');
       joinStub = sinon.stub(MLS.prototype, 'join');
       leaveStub = sinon.stub(MLS.prototype, 'leave');
@@ -126,6 +131,8 @@ describe('plugin-meetings', () => {
           membersCollection: {
             get: (id) => (id === 's1' ? {name: 'Alice'} : undefined),
           },
+          setMembersUpdateProcessor: sinon.stub(),
+          reportMembersUpdated: sinon.stub(),
         },
       };
       createController = () =>
@@ -157,6 +164,46 @@ describe('plugin-meetings', () => {
 
     afterEach(() => {
       sinon.restore();
+    });
+
+    describe('constructor', () => {
+      it('creates a reconciler over the members collection and registers it as the members-update processor', () => {
+        assert.calledOnceWithExactly(reconcilerCtorStub, {
+          membersCollection: meeting.members.membersCollection,
+          reportMembersUpdated: sinon.match.func,
+        });
+        assert.isTrue(reconcilerCtorStub.calledWithNew());
+        assert.calledOnceWithExactly(meeting.members.setMembersUpdateProcessor, sinon.match.func);
+      });
+
+      it('forwards Locus member updates to the reconciler', () => {
+        const payload = {delta: {added: [{id: 'm1'}], updated: []}, isReplace: false};
+        const [processor] = meeting.members.setMembersUpdateProcessor.firstCall.args;
+
+        processor(payload);
+
+        assert.calledOnceWithExactly(reconciler.processMembersUpdate, payload);
+      });
+
+      it('forwards members reported by the reconciler to Members', () => {
+        const updatedMembers = [{id: 'm1'}, {id: 'm2'}];
+        const [{reportMembersUpdated}] = reconcilerCtorStub.firstCall.args;
+
+        reportMembersUpdated(updatedMembers);
+
+        assert.calledOnceWithExactly(meeting.members.reportMembersUpdated, updatedMembers);
+      });
+
+      it('does not create a reconciler nor register a members-update processor when E2EE is disabled', () => {
+        webex.config.meetings.enableE2ee = false;
+        reconcilerCtorStub.resetHistory();
+        meeting.members.setMembersUpdateProcessor.resetHistory();
+
+        createController();
+
+        assert.notCalled(reconcilerCtorStub);
+        assert.notCalled(meeting.members.setMembersUpdateProcessor);
+      });
     });
 
     describe('start', () => {
@@ -468,10 +515,10 @@ describe('plugin-meetings', () => {
       });
 
       it('marks joined only once our own device url is in the roster', () => {
-        emitSession('rosterAdded', [makeRosterEntry({url: 'https://wdm.webex.com/other'})]);
+        emitSession('rosterAdded', [makeRosterEntry({deviceUrl: 'https://wdm.webex.com/other'})]);
         assert.equal(e2ee.state, E2eeState.Joining);
 
-        emitSession('rosterAdded', [makeRosterEntry({url: OWN_DEVICE_URL})]);
+        emitSession('rosterAdded', [makeRosterEntry({deviceUrl: OWN_DEVICE_URL})]);
         assert.equal(e2ee.state, E2eeState.Joined);
         assert.calledOnceWithExactly(events.state, {state: E2eeState.Joined});
       });
@@ -480,7 +527,7 @@ describe('plugin-meetings', () => {
         await e2ee.start();
         emitSession('rosterAdded', [
           MEDIA_SERVICE,
-          makeRosterEntry({url: OWN_DEVICE_URL}),
+          makeRosterEntry({deviceUrl: OWN_DEVICE_URL}),
         ]);
 
         assert.equal(e2ee.state, E2eeState.Joined);
@@ -492,17 +539,17 @@ describe('plugin-meetings', () => {
         assert.isFalse(e2ee.hasUntrustedMediaServices);
 
         const anotherMediaService = makeRosterEntry({
-          url: 'https://ms.webex.com/2',
+          deviceUrl: 'https://ms.webex.com/2',
           deviceType: 'MEDIA_SERVICE',
         });
 
         emitSession('rosterAdded', [MEDIA_SERVICE, anotherMediaService]);
         assert.isTrue(e2ee.hasUntrustedMediaServices);
 
-        emitSession('rosterRemoved', {urls: [MEDIA_SERVICE.url]});
+        emitSession('rosterRemoved', {urls: [MEDIA_SERVICE.deviceUrl]});
         assert.isTrue(e2ee.hasUntrustedMediaServices);
 
-        emitSession('rosterRemoved', {urls: [anotherMediaService.url]});
+        emitSession('rosterRemoved', {urls: [anotherMediaService.deviceUrl]});
         assert.isFalse(e2ee.hasUntrustedMediaServices);
 
         assert.deepEqual(events.mediaServices.args, [
@@ -536,6 +583,7 @@ describe('plugin-meetings', () => {
           await Promise.resolve();
 
           assertSessionTornDown();
+          assert.calledOnce(reconciler.reset);
           assert.equal(e2ee.state, state);
           assert.isUndefined(e2ee.getSecurityCode());
           assert.calledOnceWithExactly(events.securityCode, {securityCode: undefined});
@@ -569,12 +617,50 @@ describe('plugin-meetings', () => {
 
       it('ignores start once joined', async () => {
         await e2ee.start();
-        emitSession('rosterAdded', [makeRosterEntry({url: OWN_DEVICE_URL})]);
+        emitSession('rosterAdded', [makeRosterEntry({deviceUrl: OWN_DEVICE_URL})]);
 
         await e2ee.start();
 
         assert.calledOnce(initializeStub);
         assert.equal(e2ee.state, E2eeState.Joined);
+      });
+    });
+
+    describe('roster reconciliation', () => {
+      const entry = makeRosterEntry({deviceUrl: OWN_DEVICE_URL});
+
+      beforeEach(async () => {
+        await e2ee.start();
+      });
+
+      it('applies roster additions and removals to the reconciler', () => {
+        emitSession('rosterAdded', [entry]);
+
+        assert.calledOnceWithExactly(reconciler.applyRosterAdded, [entry]);
+        assert.notCalled(reconciler.applyRosterRemoved);
+
+        emitSession('rosterRemoved', {urls: [OWN_DEVICE_URL]});
+
+        assert.calledOnceWithExactly(reconciler.applyRosterRemoved, [OWN_DEVICE_URL]);
+        assert.calledOnce(reconciler.applyRosterAdded);
+      });
+
+      it('resets the reconciler on stop', async () => {
+        await e2ee.stop();
+
+        assert.calledOnce(reconciler.reset);
+      });
+
+      it('applies roster changes from the new session after a restart', async () => {
+        await e2ee.stop();
+        await e2ee.start();
+
+        emitSession('rosterAdded', [entry]);
+        emitSession('rosterRemoved', {urls: [OWN_DEVICE_URL]});
+
+        assert.calledOnce(reconciler.reset);
+        assert.calledOnceWithExactly(reconciler.applyRosterAdded, [entry]);
+        assert.calledOnceWithExactly(reconciler.applyRosterRemoved, [OWN_DEVICE_URL]);
       });
     });
 
@@ -591,6 +677,7 @@ describe('plugin-meetings', () => {
         assert.equal(e2ee.state, E2eeState.Disabled);
         assert.notCalled(signalingStopStub);
         assert.notCalled(leaveStub);
+        assert.notCalled(reconciler.reset);
         assert.notCalled(events.state);
         assert.notCalled(loggerInfoStub);
       });
@@ -641,6 +728,10 @@ describe('plugin-meetings', () => {
         {step: 'signaling.stop', fail: () => signalingStopStub.throws(new Error('stop failed'))},
         {step: 'session.off', fail: () => offStub.throws(new Error('off failed'))},
         {step: 'session.leave', fail: () => leaveStub.throws(new Error('leave failed'))},
+        {
+          step: 'reconciler.reset',
+          fail: () => reconciler.reset.throws(new Error('reset failed')),
+        },
       ].forEach(({step, fail}) => {
         it(`still completes cleanup when ${step} throws`, async () => {
           await e2ee.start();
