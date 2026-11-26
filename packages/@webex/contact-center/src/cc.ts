@@ -1724,6 +1724,33 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
               });
             }
 
+            // Revalidate disconnect-idle eligibility at actual dispatch.
+            // A recovery request (reason = WSS_DISCONNECT_REASON) may have been
+            // queued while a manual Idle/Lunch was in-flight. By the time this
+            // closure dequeues, the confirmation has updated channelStatesMap
+            // and the agent's deliberate choice must not be overridden.
+            if (channelStateChangeData.reason === WSS_DISCONNECT_REASON) {
+              const targetChannels =
+                channelStateChangeData.channelType.length > 0
+                  ? channelStateChangeData.channelType
+                  : SELECTABLE_CHANNEL_TYPES;
+              const stillDisconnected = targetChannels.some(
+                (ct) => this.channelStatesMap[ct]?.stateChangeReason === WSS_DISCONNECT_REASON
+              );
+              if (!stillDisconnected) {
+                throw Object.assign(
+                  new Error('Disconnect-idle recovery superseded by manual state change'),
+                  {
+                    details: {
+                      type: 'SDK_VALIDATION_ERROR',
+                      trackingId: '',
+                      data: {reason: 'disconnect_recovery_superseded'},
+                    },
+                  }
+                );
+              }
+            }
+
             return this.services.agent.stateChangeV2({data: channelStateChangeData});
           });
         this.v2StateChangeChain = thisRequest; // Link into serial chain
@@ -2889,9 +2916,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         data.agentSessionId !== this.currentAgentSessionId;
 
       if (sessionChanged) {
-        // Different session — full rebuild; old channels and live updates are invalid.
+        // Different session — full rebuild; old channels, live updates, and
+        // pending batches are invalid.  Batches carry the old session's identity
+        // and must not flush against the replacement session's channel states.
         this.channelStatesMap = {} as Record<ChannelType, AgentChannelTypeStates>;
         this.liveUpdatedChannels.clear();
+        this.pendingBatches.forEach((batch) => clearTimeout(batch.timer));
+        this.pendingBatches.clear();
         if (this.loginChannelsMap) {
           this.loginChannelsMap = {};
         }
