@@ -857,7 +857,7 @@ describe('contact-center root public contract', () => {
       declare const internalAgent: ReturnType<typeof routingAgentInternal>;
       const data = {state: 'Available', auxCodeId: '0'};
       const callback = (response: any): void => {};
-      const context = {generation: 3, signal: new AbortController().signal};
+      const context = {signal: new AbortController().signal};
       const legacy: Promise<StateChangeSuccess> = agent.stateChange({data});
       const withCallback: Promise<StateChangeSuccess> = agent.stateChange({data}, callback);
       const withContext: Promise<StateChangeSuccess> = internalAgent.stateChange({data}, undefined, context);
@@ -866,8 +866,6 @@ describe('contact-center root public contract', () => {
       agent.stateChange({data, requestId: '8f5ec5e4-80b8-4f5d-9720-10bfe56e7ca1'});
       // @ts-expect-error state changes still require their payload.
       agent.stateChange({});
-      // @ts-expect-error context still requires an explicit generation.
-      internalAgent.stateChange({data}, callback, {signal: context.signal});
       `,
       [recovery]: `
       import {CC_EVENTS, REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES} from '../../../src';

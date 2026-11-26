@@ -525,7 +525,7 @@ describe('TaskManager', () => {
       webSocketManagerMock as any,
       rtdWebSocketManagerMock as any
     );
-    taskManager.startSession({signal: new AbortController().signal, assertCommandAllowed: jest.fn()});
+    taskManager.startSession({signal: new AbortController().signal});
     taskManager.taskCollection[taskId] = createStateMachineTask(taskDataMock);
     (taskManager as any).setupTaskListeners?.(taskManager.taskCollection[taskId]);
     taskManager.setAgentId('test-agent-id');
@@ -3068,10 +3068,9 @@ describe('TaskManager', () => {
     it('fences an incoming call during recovery and admits a fresh offer once ready', () => {
       const retiring = reserveTask();
       retiring.data.interaction.state = 'wrapUp';
-      const guard = taskManager.recoveryGuard;
-      guard.assertCommandAllowed.mockImplementation(() => {
-        throw new Error('RECOVERY_IN_PROGRESS');
-      });
+      const paused = new AbortController();
+      taskManager.startSession({signal: paused.signal});
+      paused.abort();
       const call = createCall();
       const line = {deregister: jest.fn()};
       webCallingService.line = line;
@@ -3095,9 +3094,9 @@ describe('TaskManager', () => {
       expect(call.off).not.toHaveBeenCalled();
       expect(call.answer).not.toHaveBeenCalled();
 
+      taskManager.startSession({signal: new AbortController().signal});
       const replacement = reserveTask();
       expect(replacement).not.toBe(retiring);
-      guard.assertCommandAllowed.mockImplementation(() => undefined);
       const freshCall = createCall('fresh-call');
       webCallingService.call = freshCall;
       webCallingService.emit(LINE_EVENTS.INCOMING_CALL, freshCall);
@@ -6938,7 +6937,6 @@ describe('TaskManager', () => {
 });
 
 describe('T-008 TaskManager recovery owners', () => {
-  const {createRegionRecoveryError} = jest.requireActual('../../../../../src/services/core/Utils');
   const {createTaskData} = require('./taskTestUtils');
   const actualFactory = jest.requireActual('../../../../../src/services/task/TaskFactory').default;
   const flags = {isEndTaskEnabled: true, isEndConsultEnabled: true, webRtcEnabled: false, autoWrapup: false};
@@ -6968,7 +6966,7 @@ describe('T-008 TaskManager recovery owners', () => {
 
     return {
       controller,
-      guard: {signal: controller.signal, assertCommandAllowed: jest.fn()},
+      guard: {signal: controller.signal},
     };
   };
 
@@ -7014,7 +7012,7 @@ describe('T-008 TaskManager recovery owners', () => {
         {conversationId: 'cached-interaction', summaryText: 'old buffered summary'});
       expect(manager['pendingFeatureEnablement'].size).toBe(1);
       expect(manager['receivingSummaryBuffer'].size).toBe(1);
-      const retired = expect(old.requestPostCallSummary()).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+      const retired = expect(old.requestPostCallSummary()).rejects.toThrow('RTD request cleared');
       const orphan = expect(api.requestAndWaitForRtd({
         correlationId: 'orphan', rtdEventType: 'POST_CALL_SUMMARY', timeoutMs: AI_SUMMARY_DURATION_MS,
         createTimeoutError: () => new Error('orphan timeout'), agentId: 'agent-1', interactionId: 'orphan',
@@ -7025,7 +7023,6 @@ describe('T-008 TaskManager recovery owners', () => {
 
       if (boundary === 'stopSession') manager.stopSession();
       else {
-        manager.interruptTaskOperations(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
         manager.invalidateRegionalTasks();
         manager.clearAISummaryState();
       }
@@ -7063,7 +7060,7 @@ describe('T-008 TaskManager recovery owners', () => {
     }
   });
 
-  it('hydrates replacement wxApp mute state while restoration blocks commands', async () => {
+  it('hydrates replacement wxApp mute state after regional cleanup', async () => {
     const data = createTaskData({
       type: CC_EVENTS.AGENT_CONTACT,
       interaction: {mediaType: 'telephony', state: 'connected', participants: {
@@ -7083,12 +7080,8 @@ describe('T-008 TaskManager recovery owners', () => {
       hydrate();
       const retained = manager.getTask(data.interactionId) as Voice;
       await flushEventLoopTurn();
-      manager.interruptTaskOperations(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
       manager.invalidateRegionalTasks();
       const {guard: replacementGuard} = createGuard();
-      replacementGuard.assertCommandAllowed.mockImplementation(() => {
-        throw createRegionRecoveryError('RECOVERY_IN_PROGRESS');
-      });
       manager.startSession(replacementGuard);
       service.getCallDetails.mockClear();
 
@@ -7100,15 +7093,10 @@ describe('T-008 TaskManager recovery owners', () => {
       await flushEventLoopTurn();
       expect(service.getCallDetails.mock.calls).toEqual([[{callId: 'call-1', lineOwnerId: undefined}]]);
       expect(restored.getWxAppMuted()).toBe(true);
-      expect(replacementGuard.assertCommandAllowed).not.toHaveBeenCalled();
 
       manager.syncWxAppMuteFromCallDetailsForAllTasks();
       await flushEventLoopTurn();
       expect(service.getCallDetails).toHaveBeenCalledTimes(2);
-      await expect(restored.toggleMute()).rejects.toMatchObject({data: {reason: 'RECOVERY_IN_PROGRESS'}});
-      expect(service.muteCall).not.toHaveBeenCalled();
-      expect(service.unmuteCall).not.toHaveBeenCalled();
-      replacementGuard.assertCommandAllowed.mockImplementation(() => undefined);
       await restored.toggleMute();
       expect(service.unmuteCall.mock.calls).toEqual([[{callId: 'call-1', lineOwnerId: undefined}]]);
       expect(service.muteCall).not.toHaveBeenCalled();
@@ -7145,18 +7133,15 @@ describe('T-008 TaskManager recovery owners', () => {
       expect(incoming.getCallId).not.toHaveBeenCalled();
       expect(calling.mapCallToTask).not.toHaveBeenCalled();
 
-      replacementGuard.assertCommandAllowed.mockImplementation(() => {
-        throw createRegionRecoveryError('RECOVERY_IN_PROGRESS');
-      });
       const published = jest.fn((task: Task) => expect(task['recoveryGuard']).toBe(replacementGuard));
       manager.on(TASK_EVENTS.TASK_HYDRATE, published);
       hydrate();
       const fresh = manager.getTask('interaction-1');
       expect(fresh).not.toBe(old);
       expect(published.mock.calls).toEqual([[fresh]]);
-      await expect(fresh.accept()).rejects.toMatchObject({data: {reason: 'RECOVERY_IN_PROGRESS'}});
       await expect(old.accept()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
-      expect(contact.accept).not.toHaveBeenCalled();
+      await expect(fresh.accept()).resolves.toEqual({trackingId: 'accepted'});
+      expect(contact.accept.mock.calls).toEqual([[{interactionId: 'interaction-1'}]]);
     } finally {
       manager.stopSession();
     }
@@ -7295,7 +7280,7 @@ describe('T-008 TaskManager recovery owners', () => {
     }
   );
 
-  it.each(['missing-guard', 'aborted-signal', 'no-browser-voice', 'admission-throws', 'admitted'])(
+  it.each(['missing-guard', 'aborted-signal', 'no-browser-voice', 'admitted'])(
     'registered incoming call admission preserves task and call ownership: %s', (admission) => {
       const {manager, controller, guard, calling, hydrate} = setup(createTaskData({
         type: CC_EVENTS.AGENT_CONTACT,
@@ -7314,11 +7299,6 @@ describe('T-008 TaskManager recovery owners', () => {
         if (admission === 'missing-guard') manager['recoveryGuard'] = undefined;
         if (admission === 'aborted-signal') controller.abort();
         if (admission === 'no-browser-voice') calling.isBrowserVoiceRequired.mockReturnValue(false);
-        if (admission === 'admission-throws') {
-          guard.assertCommandAllowed.mockImplementation(() => {
-            throw createRegionRecoveryError('RECOVERY_IN_PROGRESS');
-          });
-        }
         expect(calling.listenerCount(LINE_EVENTS.INCOMING_CALL)).toBe(1);
 
         calling.emit(LINE_EVENTS.INCOMING_CALL, incoming);
@@ -7366,100 +7346,6 @@ describe('T-008 TaskManager recovery owners', () => {
       expect(completeTransition).toHaveBeenCalledTimes(1);
       expect(manager.getTask('interaction-1')).not.toBe(retired);
       expect(manager['call']).toBe(fresh);
-    } finally {
-      manager.stopSession();
-    }
-  });
-
-  it('blocked auto-answer offers are not replayed on readiness and fresh offers remain usable', async () => {
-    const {manager, guard, contact, data, hydrate} = setup(createTaskData({
-      type: CC_EVENTS.AGENT_CONTACT_RESERVED,
-      interaction: {mediaType: 'chat', state: 'new'},
-    }));
-    try {
-      manager.startSession(guard);
-      hydrate();
-      const task = manager.getTask('interaction-1') as Task;
-      const accept = jest.spyOn(task, 'accept');
-      const offered = jest.fn();
-      const autoAnswered = jest.fn();
-      task.on(TASK_EVENTS.TASK_OFFER_CONTACT, offered);
-      task.on(TASK_EVENTS.TASK_AUTO_ANSWERED, autoAnswered);
-      const offer = {...data, type: CC_EVENTS.AGENT_OFFER_CONTACT, isAutoAnswering: true};
-      guard.assertCommandAllowed.mockImplementation(() => {
-        throw createRegionRecoveryError('RECOVERY_IN_PROGRESS');
-      });
-
-      hydrate(offer);
-      await flushEventLoopTurn();
-
-      expect(offered.mock.calls).toEqual([[task]]);
-      expect(task.data.isAutoAnswering).toBe(true);
-      expect(accept).toHaveBeenCalledTimes(1);
-      expect(contact.accept).not.toHaveBeenCalled();
-      expect(autoAnswered).not.toHaveBeenCalled();
-      guard.assertCommandAllowed.mockImplementation(() => undefined);
-      await flushEventLoopTurn();
-      expect(accept).toHaveBeenCalledTimes(1);
-      expect(contact.accept).not.toHaveBeenCalled();
-      expect(autoAnswered).not.toHaveBeenCalled();
-
-      await task.accept();
-      expect(contact.accept.mock.calls).toEqual([[{interactionId: 'interaction-1'}]]);
-      expect(autoAnswered).not.toHaveBeenCalled();
-      const freshOffer = {
-        ...offer,
-        interactionId: 'interaction-2',
-        interaction: {...offer.interaction, interactionId: 'interaction-2'},
-      };
-      hydrate({...freshOffer, type: CC_EVENTS.AGENT_CONTACT_RESERVED, isAutoAnswering: false});
-      const freshTask = manager.getTask(freshOffer.interactionId);
-      const freshAutoAnswered = jest.fn();
-      freshTask.on(TASK_EVENTS.TASK_AUTO_ANSWERED, freshAutoAnswered);
-      hydrate(freshOffer);
-      await flushEventLoopTurn();
-      expect(contact.accept.mock.calls).toEqual([
-        [{interactionId: 'interaction-1'}], [{interactionId: 'interaction-2'}],
-      ]);
-      expect(freshAutoAnswered.mock.calls).toEqual([[freshTask]]);
-    } finally {
-      manager.stopSession();
-    }
-  });
-
-  it('interrupts pending work outside AQM once per task before invalidation', async () => {
-    const {manager, guard, data, hydrate} = setup();
-    try {
-      manager.startSession(guard);
-      hydrate();
-      hydrate({...data, interactionId: 'interaction-2', interaction: {
-        ...data.interaction, interactionId: 'interaction-2',
-      }});
-      const tasks = ['interaction-1', 'interaction-2'].map((id) => manager.getTask(id) as Task);
-      manager['taskCollection'].alias = tasks[0];
-      const pending = tasks.map(() => createDeferred<string>());
-      const results = tasks.map((task, index) =>
-        task['runTaskOperation'](() => pending[index].promise).catch((error) => error)
-      );
-      const interrupt = tasks[0].interruptOperations.bind(tasks[0]);
-      const visit = jest.spyOn(tasks[0], 'interruptOperations').mockImplementation((createError) => {
-        interrupt(createError);
-        throw new Error('task cleanup observer failed');
-      });
-
-      manager.interruptTaskOperations(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-      const [first, second] = await Promise.all(results);
-      expect(first).toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-      expect(second).toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-      expect(first).not.toBe(second);
-      expect(visit).toHaveBeenCalledTimes(1);
-      expect(guard.signal.aborted).toBe(false);
-      expect(manager.getTask('interaction-1')).toBe(tasks[0]);
-      expect(tasks[0].stateMachineService).toBeDefined();
-
-      pending.forEach((request) => request.reject(new Error('late failure')));
-      await flushEventLoopTurn();
-      visit.mockRestore();
     } finally {
       manager.stopSession();
     }

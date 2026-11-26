@@ -4464,6 +4464,7 @@ async function cancelWellnessBeforePlayback(message) {
 }
 
 async function enterWellnessBreak(sendAccepted) {
+  if (stationActionsPaused()) return;
   clearWellnessOffer();
   cancelWellnessRestoreRetry();
   const operationGeneration = wellnessState.operationGeneration + 1;
@@ -4498,7 +4499,7 @@ async function enterWellnessBreak(sendAccepted) {
     return;
   }
 
-  if (wellnessState.operationGeneration !== operationGeneration) return;
+  if (wellnessState.operationGeneration !== operationGeneration || stationActionsPaused()) return;
   wellnessState.stateConfirmed = true;
   if (sendAccepted) {
     try {

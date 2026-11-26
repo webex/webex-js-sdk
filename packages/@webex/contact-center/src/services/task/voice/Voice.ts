@@ -139,7 +139,7 @@ export default class Voice extends Task implements IVoice {
         this.wxAppMuted = muted;
       },
       getUsersubPublished: this.getUsersubPublished,
-      assertCommandAllowed: () => this.assertTaskCommandAllowed(),
+      assertCommandAllowed: () => this.assertTaskActive(),
     };
   }
 
@@ -157,14 +157,14 @@ export default class Voice extends Task implements IVoice {
   }
 
   private setWxAppAnswerPending(pending: boolean): void {
-    if (this.operationsInterrupted || this.regionallyInvalidated) return;
+    if (this.regionallyInvalidated) return;
     this.wxAppAnswerPending = pending;
     this.uiControlConfig = {...this.uiControlConfig, wxAppAnswerPending: pending};
     this.updateUiControls(true);
   }
 
   private setWxAppAcceptInFlight(inFlight: boolean): void {
-    if (this.operationsInterrupted || this.regionallyInvalidated) return;
+    if (this.regionallyInvalidated) return;
     this.wxAppAcceptInFlight = inFlight;
     this.uiControlConfig = {...this.uiControlConfig, wxAppAcceptInFlight: inFlight};
     this.updateUiControls(true);
@@ -186,7 +186,7 @@ export default class Voice extends Task implements IVoice {
 
   protected updateUiControls(forceEmit = false): void {
     super.updateUiControls(forceEmit);
-    if (this.operationsInterrupted || this.regionallyInvalidated) return;
+    if (this.regionallyInvalidated) return;
     this.getOrCreateWxAppOfferObservability().handleUiControlsUpdate(
       this.getWxAppOfferObservabilityContext()
     );
@@ -197,7 +197,7 @@ export default class Voice extends Task implements IVoice {
    * Used after usersub publish so a pre-publish offer can schedule mismatch grace.
    */
   public refreshWxAppOfferObservability(): void {
-    if (this.operationsInterrupted || this.regionallyInvalidated) return;
+    if (this.regionallyInvalidated) return;
     this.getOrCreateWxAppOfferObservability().handleUiControlsUpdate(
       this.getWxAppOfferObservabilityContext()
     );
@@ -229,7 +229,7 @@ export default class Voice extends Task implements IVoice {
   }
 
   public applyWxAppMuteStateFromSync(incomingCallId: string, muted: boolean): void {
-    if (this.operationsInterrupted || this.regionallyInvalidated) return;
+    if (this.regionallyInvalidated) return;
     if (!this.enableWxBetterTogether) {
       return;
     }
@@ -316,7 +316,7 @@ export default class Voice extends Task implements IVoice {
   }
 
   public async syncWxAppMuteFromCallDetails(retryAttempt = 0): Promise<boolean | undefined> {
-    this.assertTaskLifetimeActive();
+    this.assertTaskActive();
     if (!this.enableWxBetterTogether || !this.answerCallOnWebexService) {
       return undefined;
     }
@@ -353,7 +353,7 @@ export default class Voice extends Task implements IVoice {
     if (!callId) {
       if (retryAttempt < Voice.WXAPP_MUTE_SYNC_MAX_RETRIES && this.canRetryWxAppMuteSync()) {
         await Voice.delay(Voice.WXAPP_MUTE_SYNC_RETRY_DELAY_MS);
-        this.assertTaskLifetimeActive();
+        this.assertTaskActive();
 
         return this.performWxAppMuteSync(retryAttempt + 1);
       }
@@ -380,7 +380,7 @@ export default class Voice extends Task implements IVoice {
       return undefined;
     }
 
-    this.assertTaskLifetimeActive();
+    this.assertTaskActive();
     if (muted === undefined) return this.wxAppMuted;
 
     this.applyWxAppMuteStateFromSync(callId, muted);
@@ -452,7 +452,7 @@ export default class Voice extends Task implements IVoice {
    * Accepts the task. Routes to wxApp telephony answer when `enableWxBetterTogether` and wxApp offer.
    */
   public async accept(): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     if (this.enableWxBetterTogether && this.isWebexAppCallingOffer()) {
       await runWxAppAccept(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
         acceptReason: this.getWxAppAcceptReasonForMetrics(),
@@ -468,7 +468,7 @@ export default class Voice extends Task implements IVoice {
    * Declines the task. Routes wxApp inbound to telephony reject; wxApp outdial offer to cancelTask.
    */
   public async decline(): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     if (this.enableWxBetterTogether && this.isWebexAppInboundCallingOffer()) {
       await runWxAppReject(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
         acceptReason: this.getWxAppAcceptReasonForMetrics(),
@@ -536,7 +536,7 @@ export default class Voice extends Task implements IVoice {
    * Toggles mute for wxApp engaged telephony when `enableWxBetterTogether` is active.
    */
   public async toggleMute(options?: TaskToggleMuteOptions): Promise<void> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     if (this.enableWxBetterTogether && this.getWebexCallingCallId()) {
       const togglePromise = this.wxAppMuteToggleTail
         .catch(() => undefined)
@@ -556,7 +556,7 @@ export default class Voice extends Task implements IVoice {
    * Sends in-call DTMF for wxApp engaged telephony when `enableWxBetterTogether` is active.
    */
   public async transmitDtmf(options: TaskTransmitDtmfOptions): Promise<void> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     if (this.enableWxBetterTogether && this.getWebexCallingCallId()) {
       const dtmfPromise = this.wxAppDtmfTail
         .catch(() => undefined)
@@ -613,7 +613,7 @@ export default class Voice extends Task implements IVoice {
    * ```
    * */
   public async holdResume(): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     /*
     Determine if the task is being held or resumed based on the media resource state
     If the media resource is not found, default to resuming the task
@@ -693,8 +693,6 @@ export default class Voice extends Task implements IVoice {
           data: {mediaResourceId: mainMediaResource},
         });
 
-        this.assertTaskCommandAllowed();
-
         // Send success event to complete the transition
         if (this.stateMachineService) {
           this.stateMachineService.send({
@@ -723,8 +721,6 @@ export default class Voice extends Task implements IVoice {
           interactionId: this.data.interactionId,
           data: {mediaResourceId: mainMediaResource},
         });
-
-        this.assertTaskCommandAllowed();
 
         // Send success event to complete the transition
         if (this.stateMachineService) {
@@ -792,7 +788,7 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async pauseRecording(): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     // Validate recording is active
     const state = this.getStateMachineSnapshot();
     if (state) {
@@ -867,7 +863,7 @@ export default class Voice extends Task implements IVoice {
   public async resumeRecording(
     resumeRecordingPayload?: ResumeRecordingPayload
   ): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     // Validate recording is paused
     const state = this.getStateMachineSnapshot();
     if (state) {
@@ -949,7 +945,7 @@ export default class Voice extends Task implements IVoice {
    * ```
    * */
   public async consult(consultPayload?: ConsultPayload): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     // Validate consult is allowed
     const state = this.getStateMachineSnapshot();
     const canConsult =
@@ -995,8 +991,6 @@ export default class Voice extends Task implements IVoice {
         interactionId: requestInteractionId,
         data: consultPayload,
       });
-
-      this.assertTaskCommandAllowed();
 
       // Send success event to transition to CONSULTING state
       if (this.stateMachineService) {
@@ -1063,7 +1057,7 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async endConsult(consultEndPayload?: ConsultEndPayload): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     const requestInteractionId =
       this.data.interaction?.mainInteractionId || this.data.interactionId;
 
@@ -1129,7 +1123,7 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async transfer(payload: TransferPayLoad): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     try {
       LoggerProxy.info(`Transferring task to ${payload.to}`, {
         module: CC_FILE,
@@ -1216,7 +1210,7 @@ export default class Voice extends Task implements IVoice {
    * Start a consult conference, merging main and consult calls.
    */
   public async consultConference(): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     const derivedDestAgentId =
       this.data.interaction && this.data.agentId
         ? calculateDestAgentId(this.data.interaction, this.data.agentId)
@@ -1271,8 +1265,6 @@ export default class Voice extends Task implements IVoice {
         interactionId: paramsDataForConferenceV2.interactionId,
         data: paramsDataForConferenceV2.data,
       });
-
-      this.assertTaskCommandAllowed();
 
       // Send success event to transition to CONFERENCING
       if (this.stateMachineService) {
@@ -1345,7 +1337,7 @@ export default class Voice extends Task implements IVoice {
   public async dropConferenceParticipant(
     payload: DropConferenceParticipantPayload
   ): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     // The TypeScript contract requires payload, but the published SDK is also callable from
     // untyped JavaScript. Keep an explicit runtime boundary check before direct property access.
     if (!payload) {
@@ -1445,7 +1437,7 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async exitConference(): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     // Validate we're in conference state OR conference is in progress per task data
     // This handles cases where:
     // 1. State machine is in CONFERENCING state
@@ -1492,8 +1484,6 @@ export default class Voice extends Task implements IVoice {
       const response = await this.contact.exitConference({
         interactionId: requestInteractionId,
       });
-
-      this.assertTaskCommandAllowed();
 
       // Send success event to transition state
       if (this.stateMachineService) {
@@ -1587,7 +1577,7 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async transferConference(): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     // Validate we're in conference or consulting state
     // CONSULTING is allowed because agent can transfer conference while consulting
     // (transfers ownership to the consulted agent)
@@ -1631,8 +1621,6 @@ export default class Voice extends Task implements IVoice {
       const response = await this.contact.conferenceTransfer({
         interactionId: requestInteractionId,
       });
-
-      this.assertTaskCommandAllowed();
 
       // Send success event to transition state
       if (this.stateMachineService) {
@@ -1703,7 +1691,7 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async switchCall(): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     // Validate we're in CONSULTING state
     const state = this.getStateMachineSnapshot();
     if (!state?.matches(TaskState.CONSULTING)) {

@@ -155,9 +155,9 @@ The `contact-center-region-recovery` contract exports the runtime constants `REG
 and `REGION_RECOVERY_ERROR_CODES` and the `RegionRecoveryState` type from `src/index.ts`.
 `region:stateChange` carries the whole `RegionRecoveryState` snapshot. Status is `recovering`,
 `ready`, `reloadRequired`, `stationLoginRequired`, or `unavailable`. Missing optional fields clear
-previous tracking, scope, placement, retry, and auto-Available metadata. Recovery errors expose
-`RECOVERY_INTERRUPTED`, `RECOVERY_IN_PROGRESS`, `STALE_TASK` or `REGION_RELOAD_REQUIRED` in the
-plain Error's `data.reason`.
+previous tracking, scope, placement, retry, and auto-Available metadata. Hosts use these snapshots
+to pause station actions during recovery. Requests already sent follow their existing completion
+or timeout path.
 
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 |---|---|---|---|---|---|---|
@@ -207,9 +207,9 @@ contracts are owned by the services modules that declare them; this module re-ex
 | CONTACT_CENTER-R-011 | `enableWxBetterTogether` (default false) is an init-only flag read by `isWxBetterTogetherEnabled()`. After station login and silent relogin, ContactCenter applies the wxApp session hooks described under Design overview without failing the login, and `deregister()` clears the flag. | The private setter's JSDoc makes the init flag the Phase 1 host contract and keeps the runtime toggle internal; usersub state suppresses Webex App toasts, so a stale value must be cleared after a page refresh. | `src/cc.ts`, `src/config.ts`, `src/services/WebexCrossClientService.ts`, `src/services/WxAppTelephonyMercurySync.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/WebexCrossClientService.ts`, `test/unit/spec/services/WxAppTelephonyMercurySync.ts` | Compatibility with `allowMultiLogin: true` is stated by the design but has no dedicated case. | PRESENT |
 | CONTACT_CENTER-R-012 | At READY, ContactCenter throws `Invalid Contact Center configuration: disableWebRTCRegistration cannot be true when allowMultiLogin is false. …` when that combination is configured, before any collaborator is created. The subscribe request carries `force`, `isKeepAliveEnabled`, `clientType`, and `allowMultiLogin` from the plugin config. | The error text states the reason: an SDK instance can receive Mobius/WebRTC task events only when it registers WebRTC or allows multi-login. | `src/cc.ts`, `src/config.ts`, `src/types.ts` | `test/unit/spec/cc.ts` | `getConnectionConfig` falls back to `allowMultiLogin` true when no config is present, while the registered default is false. | PRESENT |
 | CONTACT_CENTER-R-013 | After Welcome and Profile identity validation, `register()` reads eligibility from the optional internal `Profile.multiRegionSettings` populated by the organization desktop-login response. Literal `true` enables recovery for an accepted current-org switch. Literal `false` yields `unavailable` with reason `not-eligible`; unknown eligibility ignores the switch. Registration clears previous eligibility and deduplicates up to 128 accepted switch IDs. Ordinary reconnect does not reread eligibility. | Reuse the existing registration request and protect the current station from stale or foreign switch events. | `src/cc.ts`, `src/services/config/index.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/config/index.ts` | `register()` removes `multiRegionSettings` before returning the profile. | PRESENT |
-| CONTACT_CENTER-R-014 | The current recovery closes or fences old transports and commands before publishing `recovering`. A current Welcome permits session restoration. With a previously signed-in station and automatic relogin enabled, try up to four reloads with 2/4/8-second transient spacing. At most one fallback `stationLogin()` uses previous station details or, with `allowSavedStationLoginOnRecovery`, a consented saved Desktop DN or extension validated against the current profile. A recognized existing-session response permits one extra reload. Publish `ready` or `stationLoginRequired` only after the connection driver adopts the replacement socket. Emit `stationLoginRequired` when applicable automatic station paths cannot complete. A recognized subscribe mismatch publishes `reloadRequired` for a fresh app start and registration. | A host can act immediately on a station outcome. Replacing a socket must not make a stale station or Task appear usable. | `src/cc.ts`, `src/services/core/websocket/connection-service.ts` | `test/unit/spec/cc.ts` | T-002, T-005, T-007–T-011. See `docs/getting-started.md` and the Contact Center sample for T-006 host restart guidance. | PRESENT |
+| CONTACT_CENTER-R-014 | ContactCenter stops old transport recovery and publishes `recovering` so hosts can pause station actions. A current Welcome permits session restoration. With a previously signed-in station and automatic relogin enabled, try up to four reloads with 2/4/8-second transient spacing. At most one fallback `stationLogin()` uses previous station details or, with `allowSavedStationLoginOnRecovery`, a consented saved Desktop DN or extension validated against the current profile. A recognized existing-session response permits one extra reload. Publish `ready` or `stationLoginRequired` only after the connection driver adopts the replacement socket. Emit `stationLoginRequired` when applicable automatic station paths cannot complete. A recognized subscribe mismatch publishes `reloadRequired` for a fresh app start and registration. | Hosts use the station outcome to resume actions with current station and Task data. | `src/cc.ts`, `src/services/core/websocket/connection-service.ts` | `test/unit/spec/cc.ts` | T-002, T-005, T-007–T-011. See `docs/getting-started.md` and the Contact Center sample for T-006 host restart guidance. | PRESENT |
 | CONTACT_CENTER-R-015 | Publish complete `region:stateChange` snapshots. Station acceptance produces `ready`. Transport-only admission does not. When a qualifying accepted reload restores disconnect state, the SDK may request Available once under the current session and state intent. Required browser voice must be ready first. An Available acknowledgment may omit the idle timestamp or send it as null. An admitted explicit state change cancels an unsent action. Once the automatic request is sent, AQM applies its existing duplicate-request rules. Logout or replacement cancels the action. `autoAvailable` reports that action independently of station readiness. | Hosts can decide when to enable work without conflating transport, station, and voice readiness. | `src/cc.ts`, `src/types.ts`, `src/index.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/index.ts` | T-007, T-009, T-011, T-013. Preserve stations and call state semantics. Local evidence does not establish uninterrupted media. | PRESENT |
-| CONTACT_CENTER-R-016 | Use generation-owned elapsed time and normalized, bounded fields in recovery diagnostics. A blocked command reports a plain Error with `data.reason`. Optional RTD failures stay within the RTD lifecycle. | Recovery telemetry must summarize the operation without disclosing credentials or creating duplicate recovery completions. | `src/cc.ts`, `src/services/core/Utils.ts`, `src/metrics/constants.ts` | `test/unit/spec/cc.ts` | T-008, T-010, T-012, T-013. | PRESENT |
+| CONTACT_CENTER-R-016 | Use elapsed time and normalized, bounded fields from the current recovery attempt in recovery diagnostics. Optional RTD failures stay within the RTD lifecycle. | Recovery telemetry summarizes the attempt and protects credentials. | `src/cc.ts`, `src/services/core/Utils.ts`, `src/metrics/constants.ts` | `test/unit/spec/cc.ts` | T-008, T-010, T-012, T-013. | PRESENT |
 
 ## Design overview
 
@@ -352,9 +352,9 @@ sequenceDiagram
 ### Recovery
 
 Ordinary reconnect uses the existing relogin path shown below. For a current entitled region
-switch, ContactCenter fences old work, pauses RTD and ordinary retry, publishes `recovering`, and
-starts the region driver. Replacement Welcome starts the station policy. If that socket is lost
-before adoption, ContactCenter retires Tasks hydrated during the attempt and opens a new Task
+switch, ContactCenter pauses RTD and ordinary retry, publishes `recovering`, and starts the region
+driver. Hosts pause new station actions. Replacement Welcome starts the station policy. If that
+socket is lost before adoption, ContactCenter retires Tasks hydrated during the attempt and opens a new Task
 lifetime on the next attempt. The initial failed-region wipe runs once. The driver adopts the socket
 before ContactCenter publishes `ready` or `stationLoginRequired`. A recognized mismatch requires host reload.
 Deferred auto-Available has its own ownership and voice readiness check (CONTACT_CENTER-R-014
@@ -429,8 +429,7 @@ sequenceDiagram
 ```
 
 Caught station-operation failures track the failed metric and rethrow the `getErrorDetails` error.
-Recovery admission and ownership checks before the operation's `try` reject directly; see
-Caller-visible failure modes for the lifecycle-error exceptions.
+See Caller-visible failure modes for the lifecycle-error exceptions.
 `updateAgentProfile()` runs `stationLogout()` then `stationLogin()` and returns the login response
 typed `AgentDeviceTypeUpdateSuccess`.
 
@@ -597,7 +596,7 @@ ContactCenter retains in-memory `agentConfig`, collaborator references, event li
 | ID | Invariant | WHY | Enforcement source | Test evidence |
 | -- | --------- | --- | ------------------ | ------------- |
 | `INV-001` | Collaborators are initialized after host READY and before their use; `register()` must not be documented as their constructor boundary. | Collaborators need the host request, logger, and configuration that exist only after READY (CONTACT_CENTER-R-001). | `src/cc.ts` | `test/unit/spec/cc.ts` |
-| `INV-002` | AQM promises settle once on a correlated notification, host rejection, timeout or interruption. HTTP acknowledgement keeps the notification pending. | The HTTP response only acknowledges the request; the backend reports the outcome on the socket. | `src/services/core/aqm-reqs.ts` | `test/unit/spec/services/core/aqm-reqs.ts` |
+| `INV-002` | Ordinary AQM promises settle once on a matching notification, host rejection, or timeout. HTTP acknowledgement keeps the notification pending. | The HTTP response only acknowledges the request; the backend reports the outcome on the socket. | `src/services/core/aqm-reqs.ts` | `test/unit/spec/services/core/aqm-reqs.ts` |
 | `INV-003` | `skipPreviewContact` checks `campaignPreviewSkipDisabled` and `removePreviewContact` checks `campaignPreviewRemoveDisabled` on the matching task. When the applicable value is `'true'`, ContactCenter throws before initiating an HTTP or WebSocket-correlated AQM operation; `acceptPreviewContact` has no equivalent pre-guard. | The campaign disables those actions for the reservation; a local throw avoids a request the backend would reject. | `src/cc.ts` | None found (CONTACT_CENTER-R-003 gap) |
 | `INV-004` | `handleWebsocketMessage` only re-emits event names that belong to the typed `CC_EVENTS` allow-list (the values of `CC_AGENT_EVENTS` and `CC_TASK_EVENTS`); an untrusted `eventData.data.type` outside that allow-list is not emitted as an event name. Mapped `AGENT_EVENTS` names come only from fixed switch cases. | The comment on `CC_EVENT_ALLOW_LIST`: guard against emitting an arbitrary event name supplied by the socket payload. | `src/cc.ts` | `test/unit/spec/cc.ts` |
 | `INV-005` | ContactCenter owns automated relogin policy; ConnectionService owns transport-state detection/emission. | Only ContactCenter has the profile and config needed to relogin (CONTACT_CENTER-R-005). | `src/cc.ts`, `src/services/core/websocket/connection-service.ts` | `test/unit/spec/cc.ts` |
@@ -642,9 +641,8 @@ stateDiagram-v2
 ```
 
 Ordinary reconnect status is separate from the regional recovery snapshots. Auto-Available can
-be pending after a station is ready. Deregistration closes both sockets and invalidates pending
-work before later cleanup. Missing profile data or a host cleanup error can still cause a
-teardown failure.
+be pending after a station is ready. Deregistration closes both sockets and ends the current
+registration. Missing profile data or a host cleanup error can still cause a teardown failure.
 
 ## Protocol and wire format
 
@@ -662,16 +660,16 @@ Authenticated REST initiates direct data/config operations and AQM agent/task op
 
 Recovery failures expose a code in `error.data.reason`. See
 [Core error handling](../services/core/docs/README.md#caller-visible-failure-modes) for error identity
-and projection. Admission failures before an operation's `try` bypass its diagnostics. An error
+and projection. Ownership failures before an operation's `try` bypass its diagnostics. An error
 caught later can still reach the operation's failure logging and metrics. `register()` propagates
 lifecycle errors before its ordinary failure diagnostics.
 
 | Condition | Signal or result | Caller behavior | Retry or recovery | Evidence |
 | --------- | ---------------- | --------------- | ----------------- | -------- |
-| `stationLogin`, `setAgentState`, `startOutdial`, `acceptPreviewContact`, `skipPreviewContact`, `removePreviewContact`, or `updateAgentProfile` reaches recovery admission while recovery is active | Plain `Error` with `data.reason = RECOVERY_IN_PROGRESS`; commands require phase `idle` or `ready`. Station login is a session operation and is also admitted in `manualLoginRequired` | Disable commands while recovery owns the session; handle `region:stateChange` snapshots | Wait for `ready`; for `stationLoginRequired`, call `stationLogin` explicitly instead of waiting for automatic relogin | `src/cc.ts`, `test/unit/spec/cc.ts` |
-| Command or session admission reaches phase `reloadRequired`, or an initial registration is marked for reload | Plain `Error` with `data.reason = REGION_RELOAD_REQUIRED` | Follow the host restart/re-registration policy; no command replay in this registration | Restart registration; respect the bounded host reload guard in the getting-started guide | `src/cc.ts`, `test/unit/spec/cc.ts` |
-| Admission reaches `unavailable` or `cancelled`; an operation loses its generation, station, identity, or abort ownership; a pending AQM operation is interrupted | Plain `Error` with `data.reason = RECOVERY_INTERRUPTED`; pending work, including an older `register`, can reject when recovery, a new registration, logout, deregistration, or identity replacement supersedes it | Discard the superseded result and inspect the current registration/recovery state; do not treat interruption as a backend failure | Reconcile current state before retrying a safe operation; stale/aborted AQM contexts reject before query/teardown exemptions | `src/cc.ts`, `src/services/core/aqm-reqs.ts`, `test/unit/spec/cc.ts`, `test/unit/spec/services/core/aqm-reqs.ts` |
-| An application invokes a command on a Task invalidated by regional recovery | Plain `Error` with `data.reason = STALE_TASK`; invalidation wins over recovery admission | Drop the retained Task reference and read current tasks again | Invoke only on a fresh Task after recovery permits commands; the old Task never becomes usable again | `src/services/task/Task.ts`, `test/unit/spec/services/task/Task.ts` |
+| Region recovery is active | `region:stateChange` with status `recovering` | Pause task and station actions in the app | Wait for `ready`. When `stationLoginRequired` is emitted, use the existing station login flow | `src/cc.ts`, [getting started](../../docs/getting-started.md#multi-region-recovery) |
+| A recognized region mismatch occurs | Status `reloadRequired`; an affected `register()` can also reject with `data.reason = REGION_RELOAD_REQUIRED` | Follow the host restart and re-registration policy | Restart registration using the getting-started guide | `src/cc.ts`, `test/unit/spec/cc.ts` |
+| Registration or recovery work is superseded | Plain `Error` with `data.reason = RECOVERY_INTERRUPTED` | Use the current registration and recovery state | Reconcile the current state before retrying | `src/cc.ts`, `src/services/core/aqm-reqs.ts`, `test/unit/spec/cc.ts` |
+| An application invokes a command on a Task invalidated by regional recovery | Plain `Error` with `data.reason = STALE_TASK` | Drop the retained Task reference and read current tasks again | Invoke commands on a fresh Task once the station is ready | `src/services/task/Task.ts`, `test/unit/spec/services/task/Task.ts` |
 | `stationLogout` has an unusable primary socket or loses ownership | Cancels recovery and rejects with `RECOVERY_INTERRUPTED` before dispatch on an unusable socket. Only backend-confirmed logout clears the accepted station. | Check the current session. | Retry with a usable primary. | `src/cc.ts`, `test/unit/spec/cc.ts` T-007, T-012 |
 | `deregister` loses termination ownership before its `try` (including reentrant registration or an organization change) | Synthesized plain `Error` with `data.reason = RECOVERY_INTERRUPTED` from `assertOwned()`; no deregister catch-level logging or metrics on this path | Keep the newer registration authoritative | Reconcile the current owner before requesting another teardown; ownership checks after awaits can also reject inside the `try`, where catch logging and metrics do run | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | Invalid plugin configuration at READY | `Error` `Invalid Contact Center configuration: …` thrown in the READY handler | Fix the config (allow multi-login or WebRTC registration) | Re-init; no collaborator exists | `src/cc.ts`, `test/unit/spec/cc.ts` |
@@ -684,7 +682,7 @@ lifecycle errors before its ordinary failure diagnostics.
 | Preview skip or remove disabled by the campaign | Plain `Error` `Skip action is disabled …` or `Remove action is disabled …`, not wrapped | Hide the action | None | `src/cc.ts` |
 | `getOutdialAniEntries` with no organization id | Plain `Error('Org ID not found.')` | Authorize the host SDK first | Retry after authorization | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | Silent relogin reports an unsupported device type | `Unsupported device type: …`, wrapped; `AGENT_NOT_FOUND` is swallowed | Station login again | None automatic | `src/cc.ts`, `test/unit/spec/cc.ts` |
-| Ordinary failure inside `register()`, `deregister()`, or `updateAgentProfile()` | The caught error is rethrown after failure logging and metrics; ordinary registration failures also upload logs. Lifecycle admission, registration short-circuits, and pre-`try` deregister interruption follow the rows above | Inspect the error and current ownership | Retry only after reconciliation; a failed `deregister()` may leave a partial teardown (State machine) | `src/cc.ts`, `test/unit/spec/cc.ts` |
+| Ordinary failure inside `register()`, `deregister()`, or `updateAgentProfile()` | The caught error is rethrown after failure logging and metrics; ordinary registration failures also upload logs. Registration short-circuits and pre-`try` deregister interruption follow the rows above | Inspect the error and current ownership | Retry only after reconciliation; a failed `deregister()` may leave a partial teardown (State machine) | `src/cc.ts`, `test/unit/spec/cc.ts` |
 
 ## Pitfalls and constraints
 
@@ -699,7 +697,7 @@ lifecycle errors before its ordinary failure diagnostics.
 ## Module-specific rules
 
 - Do: log through `LoggerProxy` with `module: CC_FILE` and a `METHODS` name, and never log a full notification payload.
-- Do: run recovery admission before operation preparation; preserve each operation's existing timing, failure metrics, and error handling. Lifecycle errors passed through `getErrorDetails` retain their identity and data without log upload, while pre-`try` failures bypass catch diagnostics.
+- Do: preserve each operation's existing timing, failure metrics, and error handling. Lifecycle errors passed through `getErrorDetails` retain their identity and data without log upload, while pre-`try` failures bypass catch diagnostics.
 - Do: add or remove a root export in `src/index.ts` and in the expected list of `test/unit/spec/index.ts` in the same change.
 - DO route agent recovery decisions through ContactCenter because it owns profile/config policy.
 - DON'T synthesize successful register/deregister results after a dependency or cleanup failure.

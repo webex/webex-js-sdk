@@ -17,19 +17,12 @@ export type RecoveryFailure = {
   id?: string;
 };
 
-/** Command admission belongs to the current generation; retained for Req declarations. */
-export type AqmOperationKind = 'command' | 'query' | 'session' | 'teardown';
-/** @internal Request ownership and correlation are assigned by the SDK. */
+/** @internal Options for SDK-driven station recovery and state requests. */
 export type AqmRequestContext = Readonly<{
-  generation: number;
   signal?: AbortSignal;
   correlationId?: string;
   requireCorrelation?: boolean;
 }>;
-export type AqmRecoveryGate =
-  | Readonly<{state: 'open'}>
-  | Readonly<{state: 'recovering' | 'manualLoginRequired'; sessionSignal?: AbortSignal}>
-  | Readonly<{state: 'unavailable'; reason: 'RECOVERY_INTERRUPTED' | 'REGION_RELOAD_REQUIRED'}>;
 
 export type Pending = {
   check: (msg: Msg) => boolean;
@@ -46,7 +39,7 @@ interface Bind {
 export type Timeout = number | 'disabled';
 
 export type Req<TRes, TErr> = {
-  kind?: AqmOperationKind;
+  kind?: 'session';
   url: string;
   host?: string;
   method?: HTTP_METHODS;

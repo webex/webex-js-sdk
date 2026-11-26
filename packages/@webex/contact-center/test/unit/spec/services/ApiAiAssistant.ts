@@ -287,40 +287,21 @@ describe('ApiAIAssistant', () => {
       ['respondToWellnessBreak', (instance: ApiAIAssistant) => instance.respondToWellnessBreak({action: WELLNESS_BREAK_USER_ACTIONS.ACCEPTED})],
     ] as const;
 
-    it.each(wellnessOperations)('rejects %s before HTTP when the station owner is absent', async (_name, invoke) => {
+    it.each(wellnessOperations)('completes %s through HTTP while RTD is paused', async (_name, invoke) => {
       recoverySignal = undefined;
-      await expect(invoke(createOwnedAssistant())).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-      expect(mockWebex.request).not.toHaveBeenCalled();
-      expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
+      (mockWebex.request as jest.Mock).mockResolvedValue({statusCode: 202});
+      await expect(invoke(createOwnedAssistant())).resolves.toBeUndefined();
+      expect(mockWebex.request).toHaveBeenCalledTimes(1);
     });
 
-    it.each(wellnessOperations)('rejects %s before dispatch when preparation invalidates its owner', async (_name, invoke) => {
-      mockMetricsManager.timeEvent.mockImplementationOnce(() => controller.abort());
-      await expect(invoke(createOwnedAssistant())).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-      expect(mockWebex.request).not.toHaveBeenCalled();
-    });
-
-    it.each(wellnessOperations)('interrupts a pending %s HTTP request without waiting for its result', async (_name, invoke) => {
+    it.each(wellnessOperations)('allows a pending %s HTTP request to finish when RTD pauses', async (_name, invoke) => {
       const http = deferred<unknown>();
       (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
-      const observed = expect(invoke(createOwnedAssistant())).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-      await flush();
+      const request = invoke(createOwnedAssistant());
       expect(mockWebex.request).toHaveBeenCalledTimes(1);
       controller.abort();
-      await observed;
-      await observeLateSettlement(() => http.reject(new Error('late HTTP failure')));
-      expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
-      expect(LoggerProxy.error).not.toHaveBeenCalled();
-    });
-
-    it('rejects a late wellness completion after the command signal changes', async () => {
-      const http = deferred<unknown>();
-      (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
-      const observed = expect(createOwnedAssistant().requestWellnessBreak()).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-      recoverySignal = new AbortController().signal;
-      http.resolve({statusCode: 202, body: httpBody});
-      await observed;
-      expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
+      http.resolve({statusCode: 202});
+      await expect(request).resolves.toBeUndefined();
     });
 
     it.each(['before', 'after'])('interrupts an RTD request %s its event while HTTP is pending', async (phase) => {

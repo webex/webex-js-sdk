@@ -151,16 +151,6 @@ export default class TaskManager extends EventEmitter {
     this.clearAISummaryState();
   }
 
-  public interruptTaskOperations(createError: () => Error): void {
-    for (const task of new Set(Object.values(this.taskCollection))) {
-      try {
-        task.interruptOperations(createError);
-      } catch {
-        // One observer cannot retain another Task's operations.
-      }
-    }
-  }
-
   public invalidateRegionalTasks(): void {
     if (this.cleaningUpRegionalTasks) return;
     this.cleaningUpRegionalTasks = true;
@@ -187,15 +177,7 @@ export default class TaskManager extends EventEmitter {
   }
 
   private canHandleIncomingCall(owner: TaskRecoveryGuard | undefined): boolean {
-    if (!this.ownsTaskDelivery(owner) || !this.webCallingService.isBrowserVoiceRequired())
-      return false;
-    try {
-      owner.assertCommandAllowed();
-
-      return true;
-    } catch {
-      return false;
-    }
+    return this.ownsTaskDelivery(owner) && this.webCallingService.isBrowserVoiceRequired();
   }
 
   private ownsTaskDelivery(owner: TaskRecoveryGuard | undefined): boolean {

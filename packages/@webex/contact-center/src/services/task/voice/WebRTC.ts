@@ -56,7 +56,7 @@ export default class WebRTC extends Voice implements IWebRTC {
   }
 
   private handleRemoteMedia = (track: MediaStreamTrack) => {
-    if (this.operationsInterrupted || this.regionallyInvalidated) return;
+    if (this.regionallyInvalidated) return;
     this.emit(TASK_EVENTS.TASK_MEDIA, track);
   };
 
@@ -83,7 +83,7 @@ export default class WebRTC extends Voice implements IWebRTC {
    * ```
    */
   public async accept(): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     LoggerProxy.log(`Accepting WebRTC task for taskId:${this.data.interactionId}`, {
       module: 'WebRTC',
       method: 'accept',
@@ -98,7 +98,7 @@ export default class WebRTC extends Voice implements IWebRTC {
       const localStream = await navigator.mediaDevices.getUserMedia(constraints);
       const tracks = localStream.getTracks();
       try {
-        this.assertTaskCommandAllowed();
+        this.assertTaskActive();
       } catch (error) {
         tracks.forEach((track) => track.stop());
         throw error;
@@ -146,7 +146,7 @@ export default class WebRTC extends Voice implements IWebRTC {
    * ```
    */
   public async decline(): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     LoggerProxy.log(`Declining WebRTC task for taskId:${this.data.interactionId}`, {
       module: 'WebRTC',
       method: 'decline',
@@ -194,7 +194,7 @@ export default class WebRTC extends Voice implements IWebRTC {
    * ```
    */
   public async toggleMute(options?: TaskToggleMuteOptions) {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     if (options) {
       // parameter intentionally unused — WebRTC toggles from local stream state
     }

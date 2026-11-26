@@ -104,8 +104,7 @@ export class ApiAIAssistant {
 
   private async sendWellnessBreakAction(
     action: WellnessBreakUserAction,
-    method: string,
-    signal = this.requireRecoverySignal()
+    method: string
   ): Promise<void> {
     this.metricsManager.timeEvent([
       METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_ACCEPTED,
@@ -132,8 +131,7 @@ export class ApiAIAssistant {
       }
 
       const baseUrl = this.getBaseUrl();
-      this.requireRecoverySignal(signal);
-      const request = this.webex.request({
+      const response = (await this.webex.request({
         uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
         method: HTTP_METHODS.POST,
         addAuthHeader: true,
@@ -150,9 +148,7 @@ export class ApiAIAssistant {
             },
           },
         },
-      });
-      const response = (await awaitRecoveryWork(request, signal)) as IHttpResponse;
-      this.requireRecoverySignal(signal);
+      })) as IHttpResponse;
 
       if (response.statusCode !== 202) {
         throw this.createWellnessError(
@@ -171,7 +167,6 @@ export class ApiAIAssistant {
         data: {action},
       });
     } catch (error) {
-      this.requireRecoverySignal(signal);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_FAILED,
         {
@@ -216,7 +211,6 @@ export class ApiAIAssistant {
    * @public
    */
   public async respondToWellnessBreak(params: RespondToWellnessBreakParams): Promise<void> {
-    const signal = this.requireRecoverySignal();
     const {action} = params;
     if (
       ![
@@ -233,7 +227,7 @@ export class ApiAIAssistant {
       throw error;
     }
 
-    return this.sendWellnessBreakAction(action, METHODS.RESPOND_TO_WELLNESS_BREAK, signal);
+    return this.sendWellnessBreakAction(action, METHODS.RESPOND_TO_WELLNESS_BREAK);
   }
 
   private getBaseUrl(): string {

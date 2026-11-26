@@ -124,9 +124,9 @@ describe('AQM routing agent', () => {
         dialNumber: '1001', usesOtherDN: false, auxCodeId: 'login-idle-code',
       },
     },
-    {operation: 'logout', kind: 'teardown', data: {logoutReason: 'User requested logout'}},
+    {operation: 'logout', kind: undefined, data: {logoutReason: 'User requested logout'}},
     {
-      operation: 'buddyAgents', kind: 'query',
+      operation: 'buddyAgents', kind: undefined,
       data: {agentProfileId: 'buddy-profile', mediaType: 'telephony', state: 'Available'},
     },
     {

@@ -2320,5 +2320,4 @@ export interface EventContext {
 
 export type TaskRecoveryGuard = Readonly<{
   signal: AbortSignal;
-  assertCommandAllowed: () => void;
 }>;

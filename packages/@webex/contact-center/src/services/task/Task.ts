@@ -36,12 +36,7 @@ import {
   CC_FILE,
   TASK_FILE,
 } from '../../constants';
-import {
-  awaitRecoveryWork,
-  createRegionRecoveryError,
-  getErrorDetails,
-  isRegionRecoveryError,
-} from '../core/Utils';
+import {createRegionRecoveryError, getErrorDetails} from '../core/Utils';
 import {REGION_RECOVERY_ERROR_CODES} from '../core/constants';
 import type {InteractionUIControls, TaskRecoveryGuard} from './types';
 import routingContact from './contact';
@@ -74,9 +69,7 @@ type UIControlConfigInput = Omit<UIControlConfig, 'channelType'> & {
 
 export default abstract class Task extends EventEmitter implements ITask {
   private recoveryGuard?: TaskRecoveryGuard;
-  protected operationsInterrupted = false;
   protected regionallyInvalidated = false;
-  private taskOperations = new Set<AbortController>();
   private stateSubscription?: {unsubscribe: () => void};
 
   /** @internal */
@@ -85,73 +78,9 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   /** @internal */
-  protected assertTaskCommandAllowed(): void {
+  protected assertTaskActive(): void {
     if (this.regionallyInvalidated) {
       throw createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.STALE_TASK);
-    }
-    this.recoveryGuard?.assertCommandAllowed();
-    if (this.operationsInterrupted || this.recoveryGuard?.signal.aborted) {
-      throw createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.RECOVERY_INTERRUPTED);
-    }
-  }
-
-  /** @internal */
-  protected assertTaskLifetimeActive(): void {
-    if (this.regionallyInvalidated) {
-      throw createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.STALE_TASK);
-    }
-    if (this.operationsInterrupted || this.recoveryGuard?.signal.aborted) {
-      throw createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.RECOVERY_INTERRUPTED);
-    }
-  }
-
-  /** @internal */
-  public interruptOperations(createError: () => Error): void {
-    this.operationsInterrupted = true;
-    for (const controller of this.taskOperations) {
-      controller.abort(createError());
-    }
-    this.cancelAutoWrapupTimer();
-  }
-
-  /** @internal */
-  protected async runTaskOperation<T>(
-    operation: (signal: AbortSignal) => Promise<T>,
-    timedEventKeys?: string | string[]
-  ): Promise<T> {
-    const parent = this.recoveryGuard?.signal;
-    this.assertTaskCommandAllowed();
-    const controller = new AbortController();
-    const {signal} = controller;
-    const onParentAbort = (): void => {
-      controller.abort(createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.RECOVERY_INTERRUPTED));
-    };
-    parent?.addEventListener('abort', onParentAbort, {once: true});
-    this.taskOperations.add(controller);
-    try {
-      if (parent?.aborted) onParentAbort();
-      if (signal.aborted) throw signal.reason;
-
-      const result = await awaitRecoveryWork(operation(signal), signal, () => signal.reason);
-      if (signal.aborted) throw signal.reason;
-      this.assertTaskCommandAllowed();
-
-      return result;
-    } catch (error) {
-      if (isRegionRecoveryError(error)) throw error;
-      if (signal.aborted) throw signal.reason;
-      this.assertTaskCommandAllowed();
-      throw error;
-    } finally {
-      parent?.removeEventListener('abort', onParentAbort);
-      this.taskOperations.delete(controller);
-      if (signal.aborted && timedEventKeys) {
-        try {
-          this.metricsManager.cancelTimedEvent(timedEventKeys);
-        } catch {
-          // Timer cleanup must preserve the operation's rejection.
-        }
-      }
     }
   }
 
@@ -159,15 +88,11 @@ export default abstract class Task extends EventEmitter implements ITask {
   public invalidateForRegionRecovery(): void {
     if (this.regionallyInvalidated) return;
     this.regionallyInvalidated = true;
-    try {
-      this.interruptOperations(() =>
-        createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.RECOVERY_INTERRUPTED)
-      );
-    } finally {
-      this.stopStateMachine();
-      this.disposeRegionalResources();
-      this.updateUiControls(true);
-    }
+    this.cancelAutoWrapupTimer();
+    this.clearFeatureEnablement();
+    this.stopStateMachine();
+    this.disposeRegionalResources();
+    this.updateUiControls(true);
   }
 
   /** @internal */
@@ -368,47 +293,44 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   public async requestPostCallSummary(): Promise<AISummary> {
-    const metricFields: Record<string, unknown> = {
-      operation: METHODS.REQUEST_POST_CALL_SUMMARY,
-    };
-    const timedEvents = [
-      METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
-      METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
-    ];
+    this.assertTaskActive();
+    const metricFields: Record<string, unknown> = {operation: METHODS.REQUEST_POST_CALL_SUMMARY};
+
     try {
-      const result = await this.runTaskOperation((signal) => {
-        this.metricsManager.timeEvent(timedEvents);
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
+      ]);
 
-        const interactionId = this.data.interactionId;
-        const conversationId = this.data.interaction?.mainInteractionId || interactionId;
-        Object.assign(metricFields, {conversationId, interactionId});
+      const interactionId = this.data.interactionId;
+      const conversationId = this.data.interaction?.mainInteractionId || interactionId;
+      Object.assign(metricFields, {conversationId, interactionId});
 
-        if (
-          !this.apiAIAssistant ||
-          this.apiAIAssistant.aiFeature?.generatedSummaries?.wrapUpSummariesEnabled !== true ||
-          !this.aiSummaryCapabilities.postCallEnabled
-        ) {
-          throw createSummaryError(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED);
-        }
+      if (
+        !this.apiAIAssistant ||
+        this.apiAIAssistant.aiFeature?.generatedSummaries?.wrapUpSummariesEnabled !== true ||
+        !this.aiSummaryCapabilities.postCallEnabled
+      ) {
+        throw createSummaryError(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED);
+      }
 
-        return this.apiAIAssistant.requestAndWaitForRtd<AISummary>({
-          signal,
-          correlationId: conversationId,
-          rtdEventType: 'POST_CALL_SUMMARY',
-          timeoutMs: AI_SUMMARY_DURATION_MS,
-          createTimeoutError: () =>
-            createSummaryError(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_TIMEOUT),
-          agentId: this.agentId as string,
-          interactionId,
-          eventType: AIAssistantEventType.CTI_EVENT,
-          eventName: AIAssistantEventName.GET_POST_CALL_SUMMARY,
-          eventMetaData: {
-            conversationId,
-            clientType: AI_ASSISTANT_CLIENT_TYPE,
-          },
-          timeout: AI_SUMMARY_DURATION_MS,
-        });
-      }, timedEvents);
+      const result = await this.apiAIAssistant.requestAndWaitForRtd<AISummary>({
+        signal: this.recoveryGuard?.signal,
+        correlationId: conversationId,
+        rtdEventType: 'POST_CALL_SUMMARY',
+        timeoutMs: AI_SUMMARY_DURATION_MS,
+        createTimeoutError: () =>
+          createSummaryError(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_TIMEOUT),
+        agentId: this.agentId as string,
+        interactionId,
+        eventType: AIAssistantEventType.CTI_EVENT,
+        eventName: AIAssistantEventName.GET_POST_CALL_SUMMARY,
+        eventMetaData: {
+          conversationId,
+          clientType: AI_ASSISTANT_CLIENT_TYPE,
+        },
+        timeout: AI_SUMMARY_DURATION_MS,
+      });
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
@@ -418,7 +340,6 @@ export default abstract class Task extends EventEmitter implements ITask {
 
       return result;
     } catch (error) {
-      if (isRegionRecoveryError(error)) throw error;
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
         {
@@ -433,48 +354,45 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   public async sendPostCallSummaryResponse(response: AISummaryResponse): Promise<void> {
+    this.assertTaskActive();
     const metricFields: Record<string, unknown> = {
       operation: METHODS.SEND_POST_CALL_SUMMARY_RESPONSE,
     };
-    const timedEvents = [
-      METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
-      METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
-    ];
+
     try {
-      await this.runTaskOperation(() => {
-        this.metricsManager.timeEvent(timedEvents);
-        const interactionId = this.data.interactionId;
-        const conversationId = this.data.interaction?.mainInteractionId || interactionId;
-        Object.assign(metricFields, {conversationId, interactionId});
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
+        METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
+      ]);
+      const interactionId = this.data.interactionId;
+      const conversationId = this.data.interaction?.mainInteractionId || interactionId;
+      Object.assign(metricFields, {conversationId, interactionId});
 
-        const publishTimestamp = Date.now();
-        const eventName = AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE;
-        const eventPayload = {
-          conversationId,
-          clientType: AI_ASSISTANT_CLIENT_TYPE,
-          action: eventName,
-          summary: response.summary,
-          numberOfTimesViewed: response.numberOfTimesViewed,
-          numberOfTimesEdited: response.numberOfTimesEdited,
-          numberOfTimesCopied: response.numberOfTimesCopied,
-          feedback: response.feedback,
-          state: response.state,
-          wrapUpCode: response.wrapUpCode,
-        };
-        this.assertTaskCommandAllowed();
-
-        return this.apiAIAssistant.sendEvent(
-          this.agentId as string,
-          interactionId,
-          AIAssistantEventType.CTI_EVENT,
-          eventName,
-          eventPayload,
-          undefined,
-          undefined,
-          publishTimestamp,
-          AI_SUMMARY_DURATION_MS
-        );
-      }, timedEvents);
+      const publishTimestamp = Date.now();
+      const eventName = AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE;
+      const eventPayload = {
+        conversationId,
+        clientType: AI_ASSISTANT_CLIENT_TYPE,
+        action: eventName,
+        summary: response.summary,
+        numberOfTimesViewed: response.numberOfTimesViewed,
+        numberOfTimesEdited: response.numberOfTimesEdited,
+        numberOfTimesCopied: response.numberOfTimesCopied,
+        feedback: response.feedback,
+        state: response.state,
+        wrapUpCode: response.wrapUpCode,
+      };
+      await this.apiAIAssistant.sendEvent(
+        this.agentId as string,
+        interactionId,
+        AIAssistantEventType.CTI_EVENT,
+        eventName,
+        eventPayload,
+        undefined,
+        undefined,
+        publishTimestamp,
+        AI_SUMMARY_DURATION_MS
+      );
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
@@ -482,7 +400,6 @@ export default abstract class Task extends EventEmitter implements ITask {
         ['operational']
       );
     } catch (error) {
-      if (isRegionRecoveryError(error)) throw error;
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
         {
@@ -497,54 +414,52 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   public async requestMidCallSummary(action: AISummaryAction): Promise<AISummary> {
+    this.assertTaskActive();
     const metricFields: Record<string, unknown> = {
       operation: METHODS.REQUEST_MID_CALL_SUMMARY,
       actionType: action,
     };
-    const timedEvents = [
-      METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
-      METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
-    ];
+
     try {
-      const result = await this.runTaskOperation((signal) => {
-        this.metricsManager.timeEvent(timedEvents);
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
+      ]);
 
-        const interactionId = this.data.interactionId;
-        const conversationId = this.data.interaction?.mainInteractionId || interactionId;
-        Object.assign(metricFields, {conversationId, interactionId});
+      const interactionId = this.data.interactionId;
+      const conversationId = this.data.interaction?.mainInteractionId || interactionId;
+      Object.assign(metricFields, {conversationId, interactionId});
 
-        if (
-          !this.apiAIAssistant ||
-          this.apiAIAssistant.aiFeature?.generatedSummaries?.consultTransferSummariesEnabled !==
-            true ||
-          !this.aiSummaryCapabilities.midCallEnabled
-        ) {
-          throw createSummaryError(AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED);
-        }
+      if (
+        !this.apiAIAssistant ||
+        this.apiAIAssistant.aiFeature?.generatedSummaries?.consultTransferSummariesEnabled !==
+          true ||
+        !this.aiSummaryCapabilities.midCallEnabled
+      ) {
+        throw createSummaryError(AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED);
+      }
 
-        const eventName =
-          action === 'CONSULT'
-            ? AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY
-            : AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY;
-
-        return this.apiAIAssistant.requestAndWaitForRtd<AISummary>({
-          signal,
-          correlationId: conversationId,
-          rtdEventType: 'MID_CALL_SUMMARY',
-          timeoutMs: AI_SUMMARY_DURATION_MS,
-          createTimeoutError: () =>
-            createSummaryError(AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_TIMEOUT),
-          agentId: this.agentId as string,
-          interactionId,
-          eventType: AIAssistantEventType.CTI_EVENT,
-          eventName,
-          eventMetaData: {
-            conversationId,
-            clientType: AI_ASSISTANT_CLIENT_TYPE,
-          },
-          timeout: AI_SUMMARY_DURATION_MS,
-        });
-      }, timedEvents);
+      const eventName =
+        action === 'CONSULT'
+          ? AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY
+          : AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY;
+      const result = await this.apiAIAssistant.requestAndWaitForRtd<AISummary>({
+        signal: this.recoveryGuard?.signal,
+        correlationId: conversationId,
+        rtdEventType: 'MID_CALL_SUMMARY',
+        timeoutMs: AI_SUMMARY_DURATION_MS,
+        createTimeoutError: () =>
+          createSummaryError(AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_TIMEOUT),
+        agentId: this.agentId as string,
+        interactionId,
+        eventType: AIAssistantEventType.CTI_EVENT,
+        eventName,
+        eventMetaData: {
+          conversationId,
+          clientType: AI_ASSISTANT_CLIENT_TYPE,
+        },
+        timeout: AI_SUMMARY_DURATION_MS,
+      });
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
@@ -554,7 +469,6 @@ export default abstract class Task extends EventEmitter implements ITask {
 
       return result;
     } catch (error) {
-      if (isRegionRecoveryError(error)) throw error;
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
         {
@@ -572,52 +486,49 @@ export default abstract class Task extends EventEmitter implements ITask {
     response: AISummaryResponse,
     action: AISummaryAction
   ): Promise<void> {
+    this.assertTaskActive();
     const metricFields: Record<string, unknown> = {
       operation: METHODS.SEND_MID_CALL_SUMMARY_RESPONSE,
       actionType: action,
     };
-    const timedEvents = [
-      METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS,
-      METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
-    ];
+
     try {
-      await this.runTaskOperation(() => {
-        this.metricsManager.timeEvent(timedEvents);
-        const interactionId = this.data.interactionId;
-        const conversationId = this.data.interaction?.mainInteractionId || interactionId;
-        Object.assign(metricFields, {conversationId, interactionId});
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS,
+        METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
+      ]);
+      const interactionId = this.data.interactionId;
+      const conversationId = this.data.interaction?.mainInteractionId || interactionId;
+      Object.assign(metricFields, {conversationId, interactionId});
 
-        const publishTimestamp = Date.now();
-        const eventName =
-          action === 'CONSULT'
-            ? AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE
-            : AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE;
-        const eventPayload = {
-          conversationId,
-          clientType: AI_ASSISTANT_CLIENT_TYPE,
-          action: eventName,
-          summary: response.summary,
-          numberOfTimesViewed: response.numberOfTimesViewed,
-          numberOfTimesEdited: response.numberOfTimesEdited,
-          numberOfTimesCopied: response.numberOfTimesCopied,
-          feedback: response.feedback,
-          state: response.state,
-          agentName: this.agentName ?? '',
-        };
-        this.assertTaskCommandAllowed();
-
-        return this.apiAIAssistant.sendEvent(
-          this.agentId as string,
-          interactionId,
-          AIAssistantEventType.CTI_EVENT,
-          eventName,
-          eventPayload,
-          undefined,
-          undefined,
-          publishTimestamp,
-          AI_SUMMARY_DURATION_MS
-        );
-      }, timedEvents);
+      const publishTimestamp = Date.now();
+      const eventName =
+        action === 'CONSULT'
+          ? AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE
+          : AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE;
+      const eventPayload = {
+        conversationId,
+        clientType: AI_ASSISTANT_CLIENT_TYPE,
+        action: eventName,
+        summary: response.summary,
+        numberOfTimesViewed: response.numberOfTimesViewed,
+        numberOfTimesEdited: response.numberOfTimesEdited,
+        numberOfTimesCopied: response.numberOfTimesCopied,
+        feedback: response.feedback,
+        state: response.state,
+        agentName: this.agentName ?? '',
+      };
+      await this.apiAIAssistant.sendEvent(
+        this.agentId as string,
+        interactionId,
+        AIAssistantEventType.CTI_EVENT,
+        eventName,
+        eventPayload,
+        undefined,
+        undefined,
+        publishTimestamp,
+        AI_SUMMARY_DURATION_MS
+      );
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS,
@@ -625,7 +536,6 @@ export default abstract class Task extends EventEmitter implements ITask {
         ['operational']
       );
     } catch (error) {
-      if (isRegionRecoveryError(error)) throw error;
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
         {
@@ -699,7 +609,7 @@ export default abstract class Task extends EventEmitter implements ITask {
    * Send an event to the state machine
    */
   public sendStateMachineEvent(event: TaskEventPayload): void {
-    if (this.operationsInterrupted || this.regionallyInvalidated) return;
+    if (this.regionallyInvalidated) return;
     if (this.stateMachineService) {
       LoggerProxy.log(`Sending state machine event: ${event?.type}`, {
         module: CC_FILE,
@@ -809,7 +719,7 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   private async autoAnswerIfNeeded(): Promise<void> {
-    if (this.operationsInterrupted || this.regionallyInvalidated) return;
+    if (this.regionallyInvalidated) return;
     if (!this.data) {
       return;
     }
@@ -836,7 +746,7 @@ export default abstract class Task extends EventEmitter implements ITask {
 
     try {
       await this.accept();
-      this.assertTaskCommandAllowed();
+      if (this.regionallyInvalidated) return;
       LoggerProxy.info(`Task auto-answered successfully`, {
         module: TASK_FILE,
         method: 'autoAnswerIfNeeded',
@@ -855,8 +765,7 @@ export default abstract class Task extends EventEmitter implements ITask {
 
       this.emit(TASK_EVENTS.TASK_AUTO_ANSWERED, this);
     } catch (error) {
-      if (this.operationsInterrupted || this.regionallyInvalidated || isRegionRecoveryError(error))
-        return;
+      if (this.regionallyInvalidated) return;
       this.updateTaskData({...this.data, isAutoAnswering: false});
       LoggerProxy.error(`Failed to auto-answer task`, {
         module: TASK_FILE,
@@ -1032,7 +941,7 @@ export default abstract class Task extends EventEmitter implements ITask {
    * Sets up the automatic wrap-up timer if wrap-up is required
    */
   protected setupAutoWrapupTimer(): void {
-    if (this.operationsInterrupted || this.regionallyInvalidated) return;
+    if (this.regionallyInvalidated) return;
     if (
       this.data.wrapUpRequired &&
       !this.autoWrapup &&
@@ -1099,7 +1008,7 @@ export default abstract class Task extends EventEmitter implements ITask {
    * @throws Error
    */
   protected unsupportedMethodError(methodName: string): never {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     LoggerProxy.error(`Unsupported operation`, {
       module: 'TASK',
       method: methodName,
@@ -1118,7 +1027,7 @@ export default abstract class Task extends EventEmitter implements ITask {
    * ```
    */
   public updateTaskData(updatedData: TaskData, shouldOverwrite = false): ITask {
-    if (this.operationsInterrupted || this.regionallyInvalidated) return this;
+    if (this.regionallyInvalidated) return this;
     this.data = shouldOverwrite ? updatedData : this.reconcileData(this.data, updatedData);
     if (!shouldOverwrite) {
       this.pruneStaleInteractionMaps(updatedData);
@@ -1175,7 +1084,7 @@ export default abstract class Task extends EventEmitter implements ITask {
    * ```
    */
   public async transfer(transferPayload: TransferPayLoad): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     LoggerProxy.log(`Starting task transfer for taskId:${this.data.interactionId}`, {
       module: 'Task',
       method: 'transfer',
@@ -1249,7 +1158,7 @@ export default abstract class Task extends EventEmitter implements ITask {
    *  ```
    */
   public async end(): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     LoggerProxy.log(`Ending task for taskId:${this.data.interactionId}`, {
       module: 'Task',
       method: 'end',
@@ -1303,7 +1212,7 @@ export default abstract class Task extends EventEmitter implements ITask {
    * ```
    */
   public async wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse> {
-    this.assertTaskCommandAllowed();
+    this.assertTaskActive();
     this.cancelAutoWrapupTimer();
     LoggerProxy.log(`Starting task wrapup for taskId:${this.data.interactionId}`, {
       module: 'Task',

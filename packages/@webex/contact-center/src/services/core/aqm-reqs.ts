@@ -4,17 +4,7 @@ import * as Err from './Err';
 import {HTTP_METHODS} from '../../types';
 import type {WebexRequestPayload} from '../../types';
 import LoggerProxy from '../../logger-proxy';
-import type {
-  CbRes,
-  Conf,
-  ConfEmpty,
-  Pending,
-  Req,
-  Res,
-  ResEmpty,
-  AqmRequestContext,
-  AqmRecoveryGate,
-} from './types';
+import type {CbRes, Conf, ConfEmpty, Pending, Req, Res, ResEmpty, AqmRequestContext} from './types';
 import {TIMEOUT_REQ, METHODS} from './constants';
 import {AQM_REQS_FILE} from '../../constants';
 import WebexRequest from './WebexRequest';
@@ -29,33 +19,13 @@ import {
 export default class AqmReqs {
   private pendingRequests: Record<string, Pending> = {};
   private pendingNotifCancelrequest: Record<string, Pending> = {};
-  private readonly operations = new Map<string, (error: Error) => void>();
   // Retain recent IDs across registration replacement to recognize late local notifications.
   private readonly trackingIds = new Map<string, {url: string; session: boolean}>();
-  private generation = 0;
-  private recoveryGate: AqmRecoveryGate = {state: 'open'};
   private webexRequest: WebexRequest;
-  private readonly primary: WebSocketManager;
 
   constructor(webSocketManager: WebSocketManager) {
     this.webexRequest = WebexRequest.getInstance();
-    this.primary = webSocketManager;
     webSocketManager.on('message', this.onMessage);
-  }
-
-  public beginGeneration(generation: number): void {
-    this.generation = generation;
-  }
-
-  public setRecoveryGate(gate: AqmRecoveryGate): void {
-    this.recoveryGate = gate;
-  }
-
-  public interruptPending(): void {
-    for (const reject of [...this.operations.values()]) {
-      reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-    }
-    AqmReqs.diagnose('info', 'Routing operations interrupted');
   }
 
   public isLocalSessionTrackingId(trackingId: string): boolean {
@@ -67,42 +37,38 @@ export default class AqmReqs {
     if (this.trackingIds.size > 128) this.trackingIds.delete(this.trackingIds.keys().next().value);
   }
 
+  /**
+   * Creates a request function for an API call with parameters
+   * @param config - The configuration for the request
+   * @returns A function that makes the API request
+   */
   req<TRes, TErr, TReq>(config: Conf<TRes, TErr, TReq>): Res<TRes, TReq> {
     return (p: TReq, cbRes?: CbRes<TRes>, context?: AqmRequestContext) =>
       this.createPromise(config(p), cbRes, context);
   }
 
+  /**
+   * Creates a request function for an API call with no parameters
+   * @param config - The configuration for the request
+   * @returns A function that makes the API request
+   */
   reqEmpty<TRes, TErr>(config: ConfEmpty<TRes, TErr>): ResEmpty<TRes> {
     return (cbRes?: CbRes<TRes>, context?: AqmRequestContext) =>
       this.createPromise(config(), cbRes, context);
   }
 
-  private assertAdmission<TRes, TErr>(c: Req<TRes, TErr>, context: AqmRequestContext): void {
-    if (context.generation !== this.generation || context.signal?.aborted) {
-      throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-    }
-    const kind = c.kind ?? 'command';
-    const gate = this.recoveryGate;
-    if (gate.state === 'open' || kind === 'query') return;
-    if (kind === 'teardown') {
-      if (!this.primary.hasUsableSocket()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-
-      return;
-    }
-    if (gate.state === 'unavailable') throw createRegionRecoveryError(gate.reason);
-    if (kind === 'session' && context.signal && context.signal === gate.sessionSignal) return;
-    throw createRegionRecoveryError('RECOVERY_IN_PROGRESS');
-  }
-
   private async createPromise<TRes, TErr>(
     c: Req<TRes, TErr>,
     cbRes?: CbRes<TRes>,
-    requestContext?: AqmRequestContext
+    context?: AqmRequestContext
   ): Promise<TRes> {
     return new Promise<TRes>((resolve, reject) => {
-      const context = requestContext ?? {generation: this.generation};
-      this.assertAdmission(c, context);
-      const {generation} = context;
+      const signal = context?.signal;
+      if (signal?.aborted) {
+        reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+
+        return;
+      }
       const keySuccess = this.bindPrint(c.notifSuccess.bind);
       const keyFail = c.notifFail && this.bindPrint(c.notifFail.bind);
       const duplicateSuccess = this.pendingRequests[keySuccess];
@@ -119,20 +85,23 @@ export default class AqmReqs {
       }
       const operationId = uuidv4();
       const session = c.kind === 'session';
-      const correlationId = session ? uuidv4() : context.correlationId;
-      const strict = context.requireCorrelation || (session && this.recoveryGate.state !== 'open');
+      const correlationId = session ? uuidv4() : context?.correlationId;
       const correlate = (bind: any) =>
-        strict && correlationId ? {...bind, data: {...bind.data, trackingId: correlationId}} : bind;
+        context?.requireCorrelation && correlationId
+          ? {...bind, data: {...bind.data, trackingId: correlationId}}
+          : bind;
       const successBind = correlate(c.notifSuccess.bind);
       const failBind = c.notifFail && correlate(c.notifFail.bind);
       const cancelBind = c.notifCancel?.bind;
       const keyCancel = cancelBind && this.bindPrint(cancelBind);
       let response: WebexRequestPayload | null = null;
       let timeoutId: ReturnType<typeof setTimeout>;
+      let settled = false;
       const finish = (result: {value: TRes} | {error: Error}) => {
-        if (!this.operations.delete(operationId)) return;
+        if (settled) return;
+        settled = true;
         clearTimeout(timeoutId);
-        context.signal?.removeEventListener('abort', onAbort);
+        signal?.removeEventListener('abort', onAbort);
         [keySuccess, keyFail].forEach((key) => {
           if (key && this.pendingRequests[key]?.operationId === operationId)
             delete this.pendingRequests[key];
@@ -144,20 +113,8 @@ export default class AqmReqs {
       };
       const rejectOperation = (error: Error) => finish({error});
       const onAbort = () => {
-        if (!this.operations.has(operationId)) return;
         rejectOperation(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
         AqmReqs.diagnose('info', 'Routing operation aborted');
-      };
-      this.operations.set(operationId, rejectOperation);
-      const current = () => {
-        if (!this.operations.has(operationId)) return false;
-        if (generation !== this.generation || context.signal?.aborted) {
-          rejectOperation(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-
-          return false;
-        }
-
-        return true;
       };
       const matches = (bind: any, msg: Msg): boolean => {
         const id = msg.data?.trackingId;
@@ -166,7 +123,7 @@ export default class AqmReqs {
         return this.bindCheck(bind, msg);
       };
       const success = (msg: Msg) => {
-        if (!current()) return;
+        if (settled) return;
         // Legacy binds also own the server-assigned ID of a matched local station outcome.
         if (session && typeof msg.data?.trackingId === 'string')
           this.rememberTrackingId(msg.data.trackingId, c.url, true);
@@ -182,7 +139,7 @@ export default class AqmReqs {
           operationId,
           check: (msg) => matches(failBind, msg),
           handle: (msg) => {
-            if (!current()) return;
+            if (settled) return;
             try {
               const failure = c.notifFail!;
               const error =
@@ -204,12 +161,11 @@ export default class AqmReqs {
           handle: success,
         };
       }
-      context.signal?.addEventListener('abort', onAbort, {once: true});
-      if (!current()) return;
+      signal?.addEventListener('abort', onAbort, {once: true});
       if (c.timeout !== 'disabled') {
         timeoutId = setTimeout(
           () => {
-            if (!current()) return;
+            if (settled) return;
             const {status, reasonCode, trackingId, id} = normalizeRecoveryFailure(response);
             // Copy selected scalars only; the shared acknowledgement can contain credentials.
             const safeResponse = response
@@ -233,7 +189,7 @@ export default class AqmReqs {
       }
       if (correlationId) this.rememberTrackingId(correlationId, c.url, session);
       const onHttpFailure = (error: WebexRequestPayload) => {
-        if (!current()) return;
+        if (settled) return;
         if (isRegionRecoveryError(error)) {
           rejectOperation(error);
 
@@ -260,7 +216,7 @@ export default class AqmReqs {
             ...(correlationId ? {headers: {trackingid: `webex-js-sdk_${correlationId}`}} : {}),
           })
           .then((res) => {
-            if (!current()) return;
+            if (settled) return;
             response = res as unknown as WebexRequestPayload;
             try {
               if (cbRes) Promise.resolve(cbRes(res)).then(() => undefined, onHttpFailure);

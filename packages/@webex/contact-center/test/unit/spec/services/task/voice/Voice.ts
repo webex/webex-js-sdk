@@ -2382,10 +2382,7 @@ describe('T-008 Voice regional lifetime', () => {
   });
 
   describe('wxApp mute backfill lifetime', () => {
-    const retirements = ['interrupted', 'stale', 'aborted'] as const;
     let task: Voice;
-    let controller: AbortController;
-    let admission: jest.Mock;
     let service: {getCallDetails: jest.Mock};
     const flush = async () => { for (let i = 0; i < 40; i += 1) await Promise.resolve(); };
     const finishRetries = async () => {
@@ -2394,16 +2391,8 @@ describe('T-008 Voice regional lifetime', () => {
         await flush();
       }
     };
-    const retire = (boundary: typeof retirements[number]) => {
-      if (boundary === 'stale') task.invalidateForRegionRecovery();
-      else if (boundary === 'aborted') controller.abort();
-      else task.interruptOperations(() => Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-    };
-
     beforeEach(() => {
       jest.useFakeTimers();
-      controller = new AbortController();
-      admission = jest.fn(() => { throw Utils.createRegionRecoveryError('RECOVERY_IN_PROGRESS'); });
       service = {getCallDetails: jest.fn().mockResolvedValue({muted: true})};
       task = new Voice(dummyContact, createBaseData({agentId: 'agent-1', interaction: {
         participants: {'agent-1': {
@@ -2413,7 +2402,6 @@ describe('T-008 Voice regional lifetime', () => {
         enableWxBetterTogether: true,
         answerCallOnWebexService: service as unknown as AnswerCallOnWebexService,
       });
-      task.bindRecoveryGuard({signal: controller.signal, assertCommandAllowed: admission});
     });
 
     afterEach(() => {
@@ -2422,7 +2410,7 @@ describe('T-008 Voice regional lifetime', () => {
       jest.restoreAllMocks();
     });
 
-    it.each([false, true])('finishes retries and read continuations with commands blocked: rejected=%s', async (rejected) => {
+    it.each([false, true])('finishes retries and read continuations on an active task: rejected=%s', async (rejected) => {
       if (rejected) service.getCallDetails.mockRejectedValue({status: 400, message: 'Call not found'});
       const updated = jest.fn();
       task.on(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, updated);
@@ -2433,44 +2421,38 @@ describe('T-008 Voice regional lifetime', () => {
       expect(service.getCallDetails.mock.calls).toEqual([[{callId: 'call-1', lineOwnerId: undefined}]]);
       expect(task.getWxAppMuted()).toBe(!rejected);
       expect(updated.mock.calls).toEqual(rejected ? [] : [[{muted: true}]]);
-      expect(admission).not.toHaveBeenCalled();
-      expect(task['taskOperations'].size).toBe(0);
       expect(task['wxAppMuteSyncInFlight']).toBeUndefined();
       expect(jest.getTimerCount()).toBe(0);
     });
 
-    it.each(retirements)('does not start reads for a task that is %s', async (boundary) => {
-      retire(boundary);
-      await expect(task.syncWxAppMuteFromCallDetails()).rejects.toMatchObject({data: {
-        reason: boundary === 'stale' ? 'STALE_TASK' : 'RECOVERY_INTERRUPTED',
-      }});
+    it('does not start reads for a retired task', async () => {
+      task.invalidateForRegionRecovery();
+      await expect(task.syncWxAppMuteFromCallDetails()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
       expect(service.getCallDetails).not.toHaveBeenCalled();
-      expect(admission).not.toHaveBeenCalled();
-      expect(task['taskOperations'].size).toBe(0);
       expect(jest.getTimerCount()).toBe(0);
     });
 
-    it('does not send a pending mute retry for an interrupted task', async () => {
+    it('does not send a pending mute retry for a retired task', async () => {
       const result = task.syncWxAppMuteFromCallDetails();
-      const observed = expect(result).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-      retire('interrupted');
+      const observed = expect(result).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
+      task.invalidateForRegionRecovery();
 
       await finishRetries();
       await observed;
       expect(service.getCallDetails).not.toHaveBeenCalled();
     });
 
-    it('does not apply a mute response from an interrupted task', async () => {
+    it('does not apply a mute response from a retired task', async () => {
       const pending = createDeferred<{muted: boolean}>();
       service.getCallDetails.mockReturnValue(pending.promise);
       const updated = jest.fn();
       task.on(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, updated);
       const result = task.syncWxAppMuteFromCallDetails();
-      const observed = expect(result).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+      const observed = expect(result).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
       await finishRetries();
       expect(service.getCallDetails).toHaveBeenCalledTimes(1);
 
-      retire('interrupted');
+      task.invalidateForRegionRecovery();
       pending.resolve({muted: true});
       await observed;
 
@@ -2490,7 +2472,7 @@ describe('T-008 Voice regional lifetime', () => {
     });
 
     it.each([true, false])(
-      'drains a pending answer through real Voice dependencies: interrupted=%s', async (interrupted) => {
+      'drains a pending answer through real Voice dependencies: retired=%s', async (retired) => {
         jest.clearAllMocks();
         jest.spyOn(Utils, 'getErrorDetails').mockImplementation(actualUtils.getErrorDetails);
         const actionLog = jest.spyOn(wxAppDiagnosticLogging, 'logWxAppTelephonyAction');
@@ -2537,10 +2519,9 @@ describe('T-008 Voice regional lifetime', () => {
         expect(sync).not.toHaveBeenCalled();
         expect(metrics).not.toHaveBeenCalled();
 
-        if (interrupted) {
-          const error = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
-          const rejected = expect(result).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-          task.interruptOperations(() => error);
+        if (retired) {
+          const rejected = expect(result).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
+          task.invalidateForRegionRecovery();
           const controls = task.uiControls;
           const config = {...task.uiControlConfig};
           const updatesAtRetirement = updated.mock.calls.slice();
@@ -2586,7 +2567,7 @@ describe('T-008 Voice regional lifetime', () => {
     it.each([
       {method: 'muteCall', invoke: (voice: Voice) => voice.toggleMute({muted: true})},
       {method: 'transmitDtmf', invoke: (voice: Voice) => voice.transmitDtmf({dtmf: '1'})},
-    ])('does not dispatch a queued $method after a regional interruption', async ({method, invoke}) => {
+    ])('does not dispatch a queued $method after task retirement', async ({method, invoke}) => {
       const pending = createDeferred<void>();
       const request = jest.fn().mockReturnValueOnce(pending.promise).mockResolvedValue(undefined);
       const taskData = createBaseData({
@@ -2605,16 +2586,15 @@ describe('T-008 Voice regional lifetime', () => {
       });
       primeConnectedState(task, taskData);
 
-      const error = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
       const inFlight = invoke(task);
       const first = method === 'muteCall'
-        ? expect(inFlight).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}})
+        ? expect(inFlight).rejects.toMatchObject({data: {reason: 'STALE_TASK'}})
         : expect(inFlight).resolves.toBeUndefined();
-      const second = expect(invoke(task)).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+      const second = expect(invoke(task)).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
       await flushEventLoopTurn();
       expect(request).toHaveBeenCalledTimes(1);
 
-      task.interruptOperations(() => error);
+      task.invalidateForRegionRecovery();
       pending.resolve();
       await Promise.all([first, second]);
 
@@ -2623,7 +2603,7 @@ describe('T-008 Voice regional lifetime', () => {
     });
   });
 
-  describe('command recovery fences', () => {
+  describe('voice command lifecycle', () => {
     const actualUtils = jest.requireActual('../../../../../../src/services/core/Utils');
     const uploadLogs = WebexRequest.getInstance().uploadLogs as jest.Mock;
     const consultPayload = {to: 'agent-2', destinationType: DESTINATION_TYPE.AGENT};
@@ -2823,10 +2803,6 @@ describe('T-008 Voice regional lifetime', () => {
         consulting: TaskState.CONSULTING, conference: TaskState.CONFERENCING,
       }[testCase.state]);
       testCase.prime?.(task, taskData);
-      const admission = jest.fn();
-      task.bindRecoveryGuard({
-        signal: new AbortController().signal, assertCommandAllowed: admission,
-      });
       const actor = jest.spyOn(task.stateMachineService, 'send');
       const emit = jest.spyOn(task, 'emit');
       const updates = jest.spyOn(task, 'updateTaskData');
@@ -2836,8 +2812,8 @@ describe('T-008 Voice regional lifetime', () => {
       const effects = () => ({
         // Clone values so an in-place mutation cannot also change our baseline.
         state: JSON.parse(JSON.stringify({
-          value: task.stateMachineService.getSnapshot().value,
-          context: task.stateMachineService.getSnapshot().context,
+          value: task.stateMachineService?.getSnapshot().value,
+          context: task.stateMachineService?.getSnapshot().context,
           data: task.data, controls: task.uiControls, config: task['uiControlConfig'],
           wxAppMuted: task.getWxAppMuted(),
         })),
@@ -2845,7 +2821,6 @@ describe('T-008 Voice regional lifetime', () => {
           ...Object.values(boundaries)].map((sink) => sink.mock.calls.slice()),
       });
       const expectBoundary = () => {
-        expect(admission).toHaveBeenCalled();
         expect(Object.fromEntries(Object.entries(boundaries).map(([name, mock]) => [
           name, mock.mock.calls,
         ]))).toEqual(Object.fromEntries(Object.keys(boundaries).map((name) => [
@@ -2854,17 +2829,16 @@ describe('T-008 Voice regional lifetime', () => {
       };
       const response = {trackingId: 'voice-command-tracking', data: taskData};
 
-      return {pending, admission, actor, effects, expectBoundary, response, request: boundaries[testCase.boundary]};
+      return {pending, actor, effects, expectBoundary, response, request: boundaries[testCase.boundary]};
     };
 
     describe.each(commandCases)('$label', (testCase) => {
-      it('blocks entry before I/O or local effects', async () => {
+      it('blocks retired tasks before I/O or local effects', async () => {
         const harness = createHarness(testCase);
-        const error = Utils.createRegionRecoveryError('RECOVERY_IN_PROGRESS');
-        harness.admission.mockImplementation(() => {throw error;});
+        task.invalidateForRegionRecovery();
         const before = harness.effects();
 
-        await expect(testCase.invoke(task)).rejects.toBe(error);
+        await expect(testCase.invoke(task)).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
 
         expect(harness.effects()).toEqual(before);
       });
@@ -2888,15 +2862,14 @@ describe('T-008 Voice regional lifetime', () => {
       });
 
       if (testCase.label === 'holdResume hold') {
-        it('skips the hold transition if recovery starts as the AQM response arrives', async () => {
+        it('settles a pending hold without updating a retired task', async () => {
           const harness = createHarness(testCase);
-          const error = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
           const result = testCase.invoke(task);
           harness.pending.resolve(harness.response);
-          task.interruptOperations(() => error);
+          task.invalidateForRegionRecovery();
           harness.actor.mockClear();
 
-          await expect(result).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+          await expect(result).resolves.toBe(harness.response);
 
           expect(harness.actor).not.toHaveBeenCalled();
         });

@@ -1316,82 +1316,21 @@ describe('Task AI summary APIs', () => {
     {
       label: 'post-call', createPayload: createPostCallResponsePayload,
       invoke: (task: DummyTask, response: AISummaryResponse) => task.sendPostCallSummaryResponse(response),
-      eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
-      timedEvents: [METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
-        METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED],
     },
     {
       label: 'mid-call', createPayload: createMidCallResponsePayload,
       invoke: (task: DummyTask, response: AISummaryResponse) => task.sendMidCallSummaryResponse(response, 'CONSULT'),
-      eventName: AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE,
-      timedEvents: [METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS,
-        METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED],
     },
-  ])('summary response recovery: $label', ({createPayload, invoke, eventName, timedEvents}) => {
-    const {createRegionRecoveryError} = jest.requireActual('../../../../../src/services/core/Utils');
-    let task: DummyTask;
-    let adapter: {sendEvent: jest.Mock};
-    let metrics: ReturnType<typeof spyOnAISummaryMetrics>;
-    let parent: AbortController;
-    let admission: jest.Mock;
-
-    beforeEach(() => {
-      task = new DummyTask(dummyContact, createAISummaryTaskData());
-      ({adapter} = createSummaryMocks(task));
-      metrics = spyOnAISummaryMetrics(task);
-      parent = new AbortController();
-      admission = jest.fn();
-      task.bindRecoveryGuard({signal: parent.signal, assertCommandAllowed: admission});
-    });
-
+  ])('summary response recovery: $label', ({createPayload, invoke}) => {
     it('rejects an invalidated Task before sending or starting timing', async () => {
+      const task = new DummyTask(dummyContact, createAISummaryTaskData());
+      const {adapter} = createSummaryMocks(task);
+      const metrics = spyOnAISummaryMetrics(task);
       task.invalidateForRegionRecovery();
+
       await expect(invoke(task, createPayload())).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
       expect(adapter.sendEvent).not.toHaveBeenCalled();
       expect(metrics.timeEvent).not.toHaveBeenCalled();
-    });
-
-    it('does not dispatch after a response getter revokes admission', async () => {
-      const payload = createPayload();
-      const error = createRegionRecoveryError('RECOVERY_IN_PROGRESS');
-      const response = {...payload, get summary() {
-        admission.mockImplementation(() => {throw error;});
-        return payload.summary;
-      }};
-
-      await expect(invoke(task, response)).rejects.toBe(error);
-      expect(adapter.sendEvent).not.toHaveBeenCalled();
-      expect(metrics.trackEvent).not.toHaveBeenCalled();
-    });
-
-    it.each(['resolve', 'reject'] as const)('aborts promptly with a pending send that later %ss', async (late) => {
-      const send = createDeferred<void>();
-      task.data.interaction.mainInteractionId = undefined;
-      adapter.sendEvent.mockReturnValueOnce(send.promise);
-      const observed = expect(invoke(task, createPayload())).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-      expect(adapter.sendEvent.mock.calls[0][3]).toBe(eventName);
-      expect(adapter.sendEvent.mock.calls[0][4].conversationId).toBe(task.data.interactionId);
-      parent.abort();
-      await observed;
-      if (late === 'resolve') send.resolve(undefined);
-      else send.reject(new Error('late summary response failure'));
-      await flushEventLoopTurn();
-      expect(adapter.sendEvent).toHaveBeenCalledTimes(1);
-      expect(metrics.trackEvent).not.toHaveBeenCalled();
-      expect(task['metricsManager'].cancelTimedEvent).toHaveBeenCalledWith(timedEvents);
-    });
-
-    it.each(['resolve', 'reject'] as const)('suppresses effects when admission is revoked before send %ss', async (late) => {
-      const send = createDeferred<void>();
-      adapter.sendEvent.mockReturnValueOnce(send.promise);
-      const error = createRegionRecoveryError('RECOVERY_IN_PROGRESS');
-      const observed = expect(invoke(task, createPayload())).rejects.toBe(error);
-      admission.mockImplementation(() => {throw error;});
-      if (late === 'resolve') send.resolve(undefined);
-      else send.reject(new Error('late summary response failure'));
-      await observed;
-      expect(parent.signal.aborted).toBe(false);
-      expect(metrics.trackEvent).not.toHaveBeenCalled();
     });
   });
 
@@ -1403,19 +1342,18 @@ describe('Task AI summary APIs', () => {
   ])('Task summary signal ownership: $eventType', ({eventType, eventName, invoke}) => {
     it('cancels only its own real coordinator request while acknowledgements are pending', async () => {
       jest.useFakeTimers();
-      const {createRegionRecoveryError} = jest.requireActual('../../../../../src/services/core/Utils');
       const flush = async () => {for (let i = 0; i < 20; i += 1) await Promise.resolve();};
       const {coordinator, request} = createSummaryCoordinator();
       const oldHttp = createDeferred<any>();
       const liveHttp = createDeferred<any>();
       request.mockReturnValueOnce(oldHttp.promise).mockReturnValueOnce(liveHttp.promise);
-      const parent = new AbortController();
+      const sessions = [new AbortController(), new AbortController()];
       const register = jest.spyOn(coordinator, 'requestAndWaitForRtd');
-      const tasks = ['owned', 'unrelated'].map((id) => {
+      const tasks = ['owned', 'unrelated'].map((id, index) => {
         const task = new DummyTask(dummyContact, createAISummaryTaskData({
           interactionId: id, interaction: {mainInteractionId: id} as any,
         }));
-        task.bindRecoveryGuard({signal: parent.signal, assertCommandAllowed: jest.fn()});
+        task.bindRecoveryGuard({signal: sessions[index].signal});
         injectSummaryDependencies(task, coordinator, {
           wrapUpSummariesEnabled: true, consultTransferSummariesEnabled: true,
         });
@@ -1429,10 +1367,10 @@ describe('Task AI summary APIs', () => {
       const [first, second] = register.mock.calls.map(([options]) => options);
       expect(first).toMatchObject({correlationId: 'owned', eventName, rtdEventType: eventType});
       expect(second).toMatchObject({correlationId: 'unrelated', eventName, rtdEventType: eventType});
-      expect(first.signal).not.toBe(parent.signal);
+      expect(first.signal).toBe(sessions[0].signal);
       expect(first.signal).not.toBe(second.signal);
 
-      tasks[0].interruptOperations(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+      sessions[0].abort();
       await retired;
       expect(first.signal.aborted).toBe(true);
       expect(second.signal.aborted).toBe(false);
@@ -2876,104 +2814,25 @@ describe('Task AI summary APIs', () => {
 
 describe('T-008 Task regional lifetime', () => {
   const recovery = jest.requireActual('../../../../../src/services/core/Utils');
-  const interrupted = () => recovery.createRegionRecoveryError('RECOVERY_INTERRUPTED');
-  const createGuard = () => {
+  it('allows a live task command while notification delivery is paused', async () => {
     const controller = new AbortController();
-
-    return {
-      controller,
-      guard: {signal: controller.signal, assertCommandAllowed: jest.fn()},
-    };
-  };
-
-  it('pre-aborted command admission performs no backend or timing work', async () => {
-    const {controller, guard} = createGuard();
-    const contact = {end: jest.fn()};
+    const response = {trackingId: 'current'};
+    const contact = {end: jest.fn().mockResolvedValue(response)};
     const task = new DummyTask(contact, createTaskData());
-    task.bindRecoveryGuard(guard);
-    const metrics = task['metricsManager'];
-    const addListener = jest.spyOn(controller.signal, 'addEventListener');
-    controller.abort(interrupted());
-
-    const error = await task.end().catch((failure) => failure);
-
-    expect(error).toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-    expect(error).not.toBe(controller.signal.reason);
-    expect(error.data).not.toBe(controller.signal.reason.data);
-    expect(guard.assertCommandAllowed).toHaveBeenCalledTimes(1);
-    expect(contact.end).not.toHaveBeenCalled();
-    expect(metrics.timeEvent).not.toHaveBeenCalled();
-    expect(metrics.trackEvent).not.toHaveBeenCalled();
-    expect(metrics.cancelTimedEvent).not.toHaveBeenCalled();
-    expect(addListener).not.toHaveBeenCalled();
-    expect(task['taskOperations'].size).toBe(0);
-  });
-
-  it('parent abort rejects pending work outside AQM and clears its timers', async () => {
-    const {controller, guard} = createGuard();
-    const task = new DummyTask({} as any, createTaskData());
-    task.bindRecoveryGuard(guard);
-    const pending = [createDeferred<string>(), createDeferred<string>()];
-    const removeListener = jest.spyOn(controller.signal, 'removeEventListener');
-    const timedEvents = [METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS, METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED];
-    const results = pending.map(({promise}) =>
-      task['runTaskOperation'](() => promise, timedEvents).catch((error) => error)
-    );
-
-    controller.abort(interrupted());
-    const [first, second] = await Promise.all(results);
-    expect(first).toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-    expect(second).toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-    expect(first).not.toBe(second);
-    expect(first).not.toBe(controller.signal.reason);
-    expect(task['taskOperations'].size).toBe(0);
-    expect(removeListener).toHaveBeenCalledTimes(2);
-    expect(task['metricsManager'].cancelTimedEvent.mock.calls).toEqual([[timedEvents], [timedEvents]]);
-
-    pending.forEach((backend) => backend.reject(new Error('late failure')));
-    await flushEventLoopTurn();
-  });
-
-  it('new command admission precedes captured interruption while invalidation stays permanent', async () => {
-    const controller = new AbortController();
-    const contact = {end: jest.fn()};
-    const admission = jest.fn(() => { throw recovery.createRegionRecoveryError('RECOVERY_IN_PROGRESS'); });
-    const task = new DummyTask(contact, createTaskData());
-    task.bindRecoveryGuard({signal: controller.signal, assertCommandAllowed: admission});
+    task.bindRecoveryGuard({signal: controller.signal});
     controller.abort();
-    task.interruptOperations(interrupted);
-    await expect(task.end()).rejects.toMatchObject({data: {reason: 'RECOVERY_IN_PROGRESS'}});
-    admission.mockImplementation(() => undefined);
-    await expect(task.end()).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+
+    await expect(task.end()).resolves.toBe(response);
     task.invalidateForRegionRecovery();
-    admission.mockImplementation(() => { throw recovery.createRegionRecoveryError('RECOVERY_IN_PROGRESS'); });
     await expect(task.end()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
-    admission.mockImplementation(() => undefined);
-    await expect(task.end()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
-    expect(contact.end).not.toHaveBeenCalled();
+    expect(contact.end).toHaveBeenCalledTimes(1);
   });
 
-  it('in-flight completion queued before interruption retains the operation error reason', async () => {
-    const controller = new AbortController();
-    const admission = jest.fn();
-    const task = new DummyTask({} as any, createTaskData());
-    task.bindRecoveryGuard({signal: controller.signal, assertCommandAllowed: admission});
-    const result = (task as any).runTaskOperation(() => Promise.resolve('old result'));
-    const rejected = expect(result).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-    await Promise.resolve().then(() => {
-      admission.mockImplementation(() => { throw recovery.createRegionRecoveryError('RECOVERY_IN_PROGRESS'); });
-      controller.abort();
-    });
-    await rejected;
-    expect((task as any).taskOperations.size).toBe(0);
-  });
-
-  it.each([false, true])('interruptedAndStalePublicMutatorsAreInert: stale=%s', (stale) => {
+  it('leaves a retired task unchanged when receiving old updates', () => {
     const task = new DummyTask({} as any, createTaskData());
     const data = task.data;
     const actor = task.stateMachineService;
-    task.interruptOperations(interrupted);
-    if (stale) task.invalidateForRegionRecovery();
+    task.invalidateForRegionRecovery();
     const send = jest.spyOn(actor, 'send');
     const update = jest.spyOn(task as any, 'updateUiControls');
     expect(task.updateTaskData(createTaskData({interactionId: 'replacement'}), true)).toBe(task);
@@ -3067,7 +2926,6 @@ describe('T-008 Task regional lifetime', () => {
   it('preserves a backend recovery error', async () => {
     const error = recovery.createRegionRecoveryError('REGION_RELOAD_REQUIRED', {status: 409});
     const task = new DummyTask({end: jest.fn().mockRejectedValue(error)}, createTaskData());
-    task.bindRecoveryGuard(createGuard().guard);
     await expect(task.end()).rejects.toBe(error);
     expect(error.data).toEqual({reason: 'REGION_RELOAD_REQUIRED', status: 409});
   });
@@ -3076,15 +2934,14 @@ describe('T-008 Task regional lifetime', () => {
 describe('T-009 automatic wrapup cancellation', () => {
   const {createRegionRecoveryError} = jest.requireActual('../../../../../src/services/core/Utils');
   const props = {autoWrapup: true, autoWrapupInterval: 100, allowCancelAutoWrapup: false, wrapUpReasonList: [{name: 'default', id: '1', isDefault: true}]};
-  it.each(['queued', 'dispatched', 'stale'])(
-    'autoWrapupAfterInterruptionNeverRearmsOrRejectsUnhandled: %s', async phase => {
+  it.each(['queued', 'dispatched'])(
+    'retired task wrap-up never rearms or rejects unhandled: %s', async phase => {
       const pending = createDeferred<any>();
       const contact = {wrapup: jest.fn(() => pending.promise)};
       const task = new DummyTask(contact, createTaskData({wrapUpRequired: true}), {wrapUpProps: props});
       const callback = (task.autoWrapup as any).start.mock.calls[0][0];
       if (phase === 'dispatched') expect(callback()).toBeUndefined();
-      task.interruptOperations(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-      if (phase === 'stale') task.invalidateForRegionRecovery();
+      task.invalidateForRegionRecovery();
       expect(callback()).toBeUndefined();
       (task as any).setupAutoWrapupTimer();
       expect(task.autoWrapup).toBeUndefined();

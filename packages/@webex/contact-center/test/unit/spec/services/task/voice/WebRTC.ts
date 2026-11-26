@@ -12,7 +12,6 @@ import {createTaskData} from '../taskTestUtils';
 import {CC_EVENTS} from '../../../../../../src/services/config/types';
 import MetricsManager from '../../../../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../../../../src/metrics/constants';
-import * as Utils from '../../../../../../src/services/core/Utils';
 
 jest.mock('@webex/calling', () => ({
   LocalMicrophoneStream: class {
@@ -244,7 +243,6 @@ describe('WebRTC Task', () => {
     });
   });
   describe('T-008/T-009 owned media recovery', () => {
-    const lifecycle = jest.requireActual('../../../../../../src/services/core/Utils');
 
     it('registered remote media handler delivers live media and suppresses it during interruption', () => {
       const calling = new WebCallingService({} as WebexSDK);
@@ -252,11 +250,7 @@ describe('WebRTC Task', () => {
       const manager = new TaskManager(
         undefined, {} as any, calling, new EventEmitter() as any, new EventEmitter() as any
       );
-      const controller = new AbortController();
       const task = new WebRTC({} as any, calling, createTaskData());
-      task.bindRecoveryGuard({
-        signal: controller.signal, assertCommandAllowed: jest.fn(),
-      });
       manager['taskCollection'] = {[task.data.interactionId]: task};
       const media = jest.fn();
       task.on(TASK_EVENTS.TASK_MEDIA, media);
@@ -267,11 +261,9 @@ describe('WebRTC Task', () => {
         calling.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, liveTrack);
         expect(media.mock.calls).toEqual([[liveTrack]]);
 
-        manager.interruptTaskOperations(() => lifecycle.createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-        controller.abort();
-        // Keep the handler registered and the Task in the collection to exercise its own fence.
-        expect(calling.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(1);
-        expect(manager.getTask(task.data.interactionId)).toBe(task);
+        manager.invalidateRegionalTasks();
+        expect(calling.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(0);
+        expect(manager.getTask(task.data.interactionId)).toBeUndefined();
         calling.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, lateTrack);
 
         expect(media.mock.calls).toEqual([[liveTrack]]);
@@ -283,57 +275,44 @@ describe('WebRTC Task', () => {
       expect(calling.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(0);
     });
 
-    it.each([
-      {path: 'task-manager', cleanup: false},
-      {path: 'parent-abort', cleanup: true},
-    ])(
-      'stops late microphone tracks after $path interruption (disposed: $cleanup)', async ({path, cleanup}) => {
-        let acquired: (stream: MediaStream) => void;
-        const stream = new Promise<MediaStream>(resolve => { acquired = resolve; });
-        const track = {stop: jest.fn()};
-        jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockReturnValue(stream);
-        const contact = {end: jest.fn()};
-        const calling = new WebCallingService({} as WebexSDK);
-        calling.setLoginOption(LoginOption.BROWSER);
-        const call = {answer: jest.fn(), end: jest.fn(), off: jest.fn(), getCallId: () => 'pending-call'};
-        calling['call'] = call as any;
-        const answer = jest.spyOn(calling, 'answerCall');
-        const deregister = jest.spyOn(calling, 'deregisterWebCallingLine');
-        const manager = new TaskManager(undefined, contact as any, calling, new EventEmitter() as any, new EventEmitter() as any);
-        const controller = new AbortController();
-        const task = new WebRTC(contact as any, calling, createTaskData());
-        task.bindRecoveryGuard({signal: controller.signal, assertCommandAllowed: jest.fn()});
-        manager['taskCollection'] = {[task.data.interactionId]: task};
-        manager['call'] = call as any;
-        calling.mapCallToTask(call.getCallId(), task.data.interactionId);
-        const ended = jest.fn(); task.on(TASK_EVENTS.TASK_END, ended);
-        try {
-          const rejection = expect(task.accept()).rejects.toMatchObject({
-            data: {reason: cleanup ? 'STALE_TASK' : 'RECOVERY_INTERRUPTED'},
-          });
-          expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({audio: true});
-          if (path === 'parent-abort') controller.abort();
-          else manager.interruptTaskOperations(() => lifecycle.createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-          expect(controller.signal.aborted).toBe(path === 'parent-abort');
-          expect(manager.getTask(task.data.interactionId)).toBe(task);
-          if (cleanup) manager.invalidateRegionalTasks();
-          expect(calling.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(cleanup ? 0 : 1);
-          expect(track.stop).not.toHaveBeenCalled();
-          acquired({getTracks: () => [track], getAudioTracks: () => [track]} as unknown as MediaStream);
-          await rejection;
-          expect(track.stop).toHaveBeenCalledTimes(1);
-          expect(answer).not.toHaveBeenCalled();
-          expect(call.answer).not.toHaveBeenCalled();
-          expect(call.end).not.toHaveBeenCalled();
-          expect(contact.end).not.toHaveBeenCalled();
-          expect(ended).not.toHaveBeenCalled();
-          expect(deregister).not.toHaveBeenCalled();
-        } finally {
-          manager.stopSession();
-          task.unregisterWebCallListeners();
-        }
+    it('stops late microphone tracks after retiring a task', async () => {
+      let acquired: (stream: MediaStream) => void;
+      const stream = new Promise<MediaStream>(resolve => { acquired = resolve; });
+      const track = {stop: jest.fn()};
+      jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockReturnValue(stream);
+      const contact = {end: jest.fn()};
+      const calling = new WebCallingService({} as WebexSDK);
+      calling.setLoginOption(LoginOption.BROWSER);
+      const call = {answer: jest.fn(), end: jest.fn(), off: jest.fn(), getCallId: () => 'pending-call'};
+      calling['call'] = call as any;
+      const answer = jest.spyOn(calling, 'answerCall');
+      const deregister = jest.spyOn(calling, 'deregisterWebCallingLine');
+      const manager = new TaskManager(undefined, contact as any, calling, new EventEmitter() as any, new EventEmitter() as any);
+      const task = new WebRTC(contact as any, calling, createTaskData());
+      manager['taskCollection'] = {[task.data.interactionId]: task};
+      manager['call'] = call as any;
+      calling.mapCallToTask(call.getCallId(), task.data.interactionId);
+      const ended = jest.fn();
+      task.on(TASK_EVENTS.TASK_END, ended);
+      try {
+        const rejection = expect(task.accept()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
+        expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({audio: true});
+        manager.invalidateRegionalTasks();
+        expect(calling.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(0);
+        expect(track.stop).not.toHaveBeenCalled();
+        acquired({getTracks: () => [track], getAudioTracks: () => [track]} as unknown as MediaStream);
+        await rejection;
+        expect(track.stop).toHaveBeenCalledTimes(1);
+        expect(answer).not.toHaveBeenCalled();
+        expect(call.answer).not.toHaveBeenCalled();
+        expect(call.end).not.toHaveBeenCalled();
+        expect(contact.end).not.toHaveBeenCalled();
+        expect(ended).not.toHaveBeenCalled();
+        expect(deregister).not.toHaveBeenCalled();
+      } finally {
+        manager.stopSession();
       }
-    );
+    });
 
     it.each([false, true])('disposes SDK media while preserving host tracks and line ownership: replacement=%s', async (replace) => {
       const owned = [{stop: jest.fn()}, {stop: jest.fn()}];
@@ -359,7 +338,7 @@ describe('WebRTC Task', () => {
       const call = makeCall();
       const replacement = replace ? makeCall() : undefined;
       try {
-        manager.startSession({signal: new AbortController().signal, assertCommandAllowed: jest.fn()});
+        manager.startSession({signal: new AbortController().signal});
         const data = createTaskData({type: CC_EVENTS.AGENT_CONTACT});
         primary.emit('message', JSON.stringify({data}));
         const task = manager.getTask(data.interactionId) as WebRTC;
@@ -423,15 +402,14 @@ describe('WebRTC Task', () => {
   });
 });
 
-describe('WebRTC command admission', () => {
+describe('WebRTC commands on retired tasks', () => {
   it.each(['accept', 'decline', 'toggleMute'] as const)('blocks %s before accessing calling or media', async (operation) => {
     const calling = {on: jest.fn(), off: jest.fn(), answerCall: jest.fn(), declineCall: jest.fn(), muteUnmuteCall: jest.fn()};
     const task = new WebRTC({} as any, calling as unknown as WebCallingService, createTaskData());
-    const error = Utils.createRegionRecoveryError('RECOVERY_IN_PROGRESS');
-    task.bindRecoveryGuard({signal: new AbortController().signal, assertCommandAllowed: () => {throw error;}});
+    task.invalidateForRegionRecovery();
     const getUserMedia = jest.spyOn(navigator.mediaDevices, 'getUserMedia');
     try {
-      await expect(task[operation]()).rejects.toBe(error);
+      await expect(task[operation]()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
       expect(getUserMedia).not.toHaveBeenCalled();
       expect(calling.answerCall).not.toHaveBeenCalled();
       expect(calling.declineCall).not.toHaveBeenCalled();

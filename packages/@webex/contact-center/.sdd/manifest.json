@@ -670,7 +670,7 @@
         "publication": "internal",
         "source_kind": "repository-path",
         "source": "src/services/core/aqm-reqs.ts",
-        "summary": "AqmReqs request/notification correlation, WebexRequest HTTP calls, WebSocketManager and ConnectionService socket lifecycle, and the shared error and utility helpers. Specified in src/services/core/docs/README.md. Owns generation-scoped interruption, nested request UUID matching for recovery-owned operations, legacy event-type bindings for ordinary operations, paced single-flight admission with Welcome deadlines, and terminal recovery classification. Diagnostics redact request/response credentials and station data."
+        "summary": "AqmReqs request/notification correlation, WebexRequest HTTP calls, WebSocketManager and ConnectionService socket lifecycle, and the shared error and utility helpers. Specified in src/services/core/docs/README.md. Owns ordinary AQM event matching and timeout, scoped recovery request correlation, paced single-flight transport admission with Welcome deadlines, and terminal recovery classification. Diagnostics redact request/response credentials and station data."
       },
       "contact-center-metrics": {
         "kind": "event",

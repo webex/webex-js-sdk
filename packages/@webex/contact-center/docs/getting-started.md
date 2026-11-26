@@ -157,9 +157,10 @@ Use `RegionRecoveryState['status']` if your host needs the type of the status fi
 | `reloadRequired` | Follow the [host restart guidance](#multi-region-recovery-host-restart). |
 | `unavailable` | Show the terminal reason and keep station actions paused. Use the app’s sign-in flow for `authentication-failed` or its normal restart or sign-out flow for other reasons. |
 
-The SDK handles reconnection and station restoration. Wait for `ready` before issuing new station
-work. If a request was interrupted, use the latest state and Task objects to decide whether to issue
-a new request. Automatically replaying call controls can duplicate an action the backend already received.
+The SDK handles reconnection and station restoration. Your app pauses its controls and background
+station actions until `ready`. Requests already sent follow their usual completion or timeout path.
+Use the latest station state and Task objects before deciding whether to retry an action. Replaying
+a call control can duplicate an action the backend already received.
 
 On `ready`, keep manual state controls disabled while `autoAvailable` is `requesting`. The SDK is
 sending or awaiting an automatic state change, and an overlapping `setAgentState()` can receive the

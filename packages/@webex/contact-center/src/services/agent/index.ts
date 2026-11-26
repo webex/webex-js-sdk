@@ -132,7 +132,6 @@ export default function routingAgent(routing: AqmReqs) {
      * @public
      */
     logout: routing.req((p: {data: Agent.Logout}) => ({
-      kind: 'teardown',
       url: '/v1/agents/logout',
       host: WCC_API_GATEWAY,
       data: p.data,
@@ -220,7 +219,6 @@ export default function routingAgent(routing: AqmReqs) {
      * @public
      */
     buddyAgents: routing.req((p: {data: Agent.BuddyAgents}) => ({
-      kind: 'query',
       url: `/v1/agents/buddyList`,
       host: WCC_API_GATEWAY,
       data: {...p.data},

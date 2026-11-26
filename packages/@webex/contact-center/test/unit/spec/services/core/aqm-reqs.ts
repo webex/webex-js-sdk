@@ -703,7 +703,7 @@ describe('AqmReqs', () => {
   });
 });
 
-describe('T-007/T-008 real AQM operation and session owners', () => {
+describe('AQM station recovery and request settlement', () => {
   const {EventEmitter} = require('events');
   const routingAgent = jest.requireActual('../../../../../src/services/agent').default;
   let aqm: AqmReqs, socket: any, http: jest.Mock, agent: ReturnType<typeof routingAgent>;
@@ -755,19 +755,18 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       cancelTimedEvent: jest.fn(),
     };
     (MetricsManager.getInstance as jest.Mock).mockReset().mockReturnValue(metrics);
-    socket = new EventEmitter(); socket.hasUsableSocket = () => true;
+    socket = new EventEmitter();
     http = jest.fn().mockResolvedValue({statusCode: 202, headers: {}});
     uploadLogs = jest.fn();
     mockWebexRequest.getInstance = jest.fn().mockReturnValue({request: http, uploadLogs});
     aqm = new AqmReqs(socket); agent = routingAgent(aqm);
   });
   afterEach(() => {
-    aqm.interruptPending();
     jest.clearAllTimers(); jest.useRealTimers(); jest.restoreAllMocks();
   });
 
   it.each(['reload', 'stationLogin'].flatMap((operation) =>
-    ['success', 'failure', 'timeout', 'interrupt', 'abort'].map((settlement) => ({operation, settlement}))
+    ['success', 'failure', 'timeout', 'abort'].map((settlement) => ({operation, settlement}))
   ))('sessionAttemptIdsAreUnique / sessionTrackingProvenanceSurvivesSettlement $operation settlement=$settlement', async ({operation, settlement}) => {
     const ids: string[] = [];
     const localAtDispatch: boolean[] = [];
@@ -776,17 +775,16 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       return Promise.resolve({statusCode: 202, headers: {}});
     });
     const data = operation === 'reload' ? {} : {teamId: 'team', dialNumber: 'number', roles: ['agent']};
-    for (let generation = 0; generation < 2; generation += 1) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
       const controller = new AbortController();
       const removeAbortListener = jest.spyOn(controller.signal, 'removeEventListener');
-      const promise = invoke(operation, {data, context: {generation, signal: controller.signal}});
-      expect(http).toHaveBeenCalledTimes(generation + 1);
-      expect(localAtDispatch).toEqual(Array(generation + 1).fill(true));
-      const request = http.mock.calls[generation][0];
+      const promise = invoke(operation, {data, context: {signal: controller.signal, requireCorrelation: true}});
+      expect(http).toHaveBeenCalledTimes(attempt + 1);
+      expect(localAtDispatch).toEqual(Array(attempt + 1).fill(true));
+      const request = http.mock.calls[attempt][0];
       expect(request.body).toEqual(data);
-      const id = requestUuid(generation); ids.push(id);
+      const id = requestUuid(attempt); ids.push(id);
       expect(aqm.isLocalSessionTrackingId(id)).toBe(true);
-      expect(aqm['operations'].size).toBe(1);
       expect(jest.getTimerCount()).toBe(1);
       const notification = frame(operation, settlement === 'success', id);
       const settled = settlement === 'success' ? expect(promise).resolves.toEqual(notification)
@@ -795,17 +793,13 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
         : expect(promise).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
       if (settlement === 'success' || settlement === 'failure') send(notification);
       if (settlement === 'timeout') jest.advanceTimersByTime(20000);
-      if (settlement === 'interrupt') aqm.interruptPending();
       if (settlement === 'abort') controller.abort();
       await settled;
-      expect(aqm['operations'].size).toBe(0);
       expect(aqm['pendingRequests']).toEqual({});
       expect(aqm['pendingNotifCancelrequest']).toEqual({});
       expect(jest.getTimerCount()).toBe(0);
       expect(removeAbortListener).toHaveBeenCalledTimes(1);
       expect(removeAbortListener).toHaveBeenCalledWith('abort', expect.any(Function));
-      ids.forEach((trackingId) => expect(aqm.isLocalSessionTrackingId(trackingId)).toBe(true));
-      aqm.beginGeneration(generation + 1);
       ids.forEach((trackingId) => expect(aqm.isLocalSessionTrackingId(trackingId)).toBe(true));
     }
     expect(new Set(ids).size).toBe(2);
@@ -819,12 +813,8 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       const uuid = '8f5ec5e4-80b8-4f5d-9720-10bfe56e7ca1';
       const signal = new AbortController().signal;
       const context: AqmRequestContext = operation === 'stateChange'
-        ? {generation: 0, signal, correlationId: uuid, requireCorrelation: true}
-        : {generation: 0, signal};
-      if (operation === 'stationLogin')
-        aqm.setRecoveryGate({state: 'manualLoginRequired', sessionSignal: signal});
-      else if (operation === 'reload')
-        aqm.setRecoveryGate({state: 'recovering', sessionSignal: signal});
+        ? {signal, correlationId: uuid, requireCorrelation: true}
+        : {signal, requireCorrelation: true};
       const data = operation === 'stateChange' ? {state: 'Available', auxCodeId: '0'}
         : operation === 'reload' ? {} : {teamId: 'team', dialNumber: 'number', roles: ['agent']};
       const promise = invoke(operation, {data, context});
@@ -843,7 +833,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       expect(settled).toHaveBeenCalledTimes(1);
       if (success) expect(settled.mock.calls[0][0]).toEqual(matching);
       else expect(settled.mock.calls[0][0].details).toEqual(matching);
-      expect(aqm['operations'].size).toBe(0); expect(jest.getTimerCount()).toBe(0);
+      expect(jest.getTimerCount()).toBe(0);
     }
   );
 
@@ -869,7 +859,6 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       const data = operation === 'stateChange' ? {state: 'Available', auxCodeId: '0'} : {};
       const controller = new AbortController();
       const first = invoke(operation, {data, context: {
-        generation: 0,
         signal: controller.signal,
         correlationId: '8f5ec5e4-80b8-4f5d-9720-10bfe56e7ca1',
         requireCorrelation: true,
@@ -879,7 +868,6 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       controller.abort();
       await interrupted;
 
-      aqm.beginGeneration(1);
       const pending = invoke(operation, {data});
       if (operation === 'stateChange') expect(http.mock.calls[1][0].headers).toBeUndefined();
       const settled = jest.fn();
@@ -896,19 +884,18 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     }
   );
 
-  it.each(['success', 'abort', 'stale', 'already-aborted'])(
-    'legacy stateChange forwards callback and generation/AbortSignal context: %s', async (settlement) => {
-      aqm.beginGeneration(3);
+  it.each(['success', 'abort', 'already-aborted'])(
+    'stateChange forwards callback and its AbortSignal: %s', async (settlement) => {
       const controller = new AbortController();
       if (settlement === 'already-aborted') controller.abort();
-      const context = {generation: settlement === 'stale' ? 2 : 3, signal: controller.signal};
+      const context = {signal: controller.signal};
       const callback = jest.fn();
       const response = {statusCode: 202, headers: {}};
       http.mockResolvedValue(response);
       const data = {state: 'Available', auxCodeId: '0'};
       const promise = agent.stateChange({data}, callback, context);
 
-      if (settlement === 'stale' || settlement === 'already-aborted') {
+      if (settlement === 'already-aborted') {
         await expect(promise).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
         expect(http).not.toHaveBeenCalled();
         expect(callback).not.toHaveBeenCalled();
@@ -929,7 +916,6 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
           await expect(promise).resolves.toEqual(matching);
         }
       }
-      expect(aqm['operations'].size).toBe(0);
       expect(aqm['pendingRequests']).toEqual({});
       expect(aqm['pendingNotifCancelrequest']).toEqual({});
       expect(jest.getTimerCount()).toBe(0);
@@ -943,7 +929,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       const callback = jest.fn();
       const correlationId = '5d159995-5e3d-478c-94c7-d0a3fbcb5f6b';
       const data = {};
-      const promise = invoke(operation as string, {data, callback, context: {generation: 0, correlationId, requireCorrelation: true}});
+      const promise = invoke(operation as string, {data, callback, context: {correlationId, requireCorrelation: true}});
       expect(http).toHaveBeenCalledTimes(1);
       expect(http.mock.calls[0][0].body).toEqual(data);
       const id = requestUuid();
@@ -953,7 +939,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       if (late === 'resolve') resolve({statusCode: 202, options: {body: {dialNumber: 'secret'}}});
       else reject(new Error('late failure'));
       await flush(); expect(callback).not.toHaveBeenCalled();
-      expect(aqm['operations'].size).toBe(0); expect(jest.getTimerCount()).toBe(0);
+      expect(jest.getTimerCount()).toBe(0);
     }
   );
 
@@ -961,7 +947,6 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     const data = operation === 'stateChange' ? {state: 'Available', auxCodeId: '0'}
       : operation === 'reload' ? {} : {teamId: 'team', dialNumber: 'number', roles: ['agent']};
     const first = invoke(operation, {data, context: {
-      generation: 0,
       correlationId: '8f5ec5e4-80b8-4f5d-9720-10bfe56e7ca1',
       requireCorrelation: true,
     }});
@@ -971,12 +956,10 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     expect(bindKeys).toHaveLength(2);
     expect(bindKeys.join('')).not.toContain(requestUuid());
     await expect(invoke(operation, {data, context: {
-      generation: 0,
       correlationId: 'a0010213-add8-47f0-88ca-de81bfa7ec6f',
       requireCorrelation: true,
     }})).rejects.toMatchObject({id: 'Service.aqm.reqs.Pending', details: {key: bindKeys.join('')}});
     expect(http).toHaveBeenCalledTimes(1);
-    expect(aqm['operations'].size).toBe(1);
     expect(jest.getTimerCount()).toBe(1);
     const matching = frame(operation, true, requestUuid());
     send(matching);
@@ -984,230 +967,14 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     await observed;
     expect(settled).toHaveBeenCalledTimes(1);
     expect(settled).toHaveBeenCalledWith(matching);
-    expect(aqm['operations'].size).toBe(0);
     expect(aqm['pendingRequests']).toEqual({});
     expect(aqm['pendingNotifCancelrequest']).toEqual({});
     expect(jest.getTimerCount()).toBe(0);
     const request = aqm.req(() => command());
     const normal = request({}); send({type: 'DONE'}); await expect(normal).resolves.toEqual({type: 'DONE'});
-    expect(aqm['operations'].size).toBe(0);
     expect(aqm['pendingRequests']).toEqual({});
     expect(aqm['pendingNotifCancelrequest']).toEqual({});
     expect(jest.getTimerCount()).toBe(0);
-  });
-
-  it.each([
-    ...['command', 'query', 'session', 'teardown'].map(kind => ({gate: 'open', kind})),
-    ...['command', 'query', 'session'].map(kind => ({gate: 'recovering', kind})),
-    {gate: 'recovering', kind: 'teardown', usablePrimary: true},
-    {gate: 'recovering', kind: 'teardown'},
-    {gate: 'manualLoginRequired', kind: 'command'},
-    {gate: 'manualLoginRequired', kind: 'session'},
-    {gate: 'unavailable-interrupted', kind: 'command'},
-    {gate: 'unavailable-reload', kind: 'session'},
-    {gate: 'unavailable-reload', kind: 'query'},
-    {gate: 'unavailable-reload', kind: 'teardown'},
-    {gate: 'unavailable-reload', kind: 'teardown', usablePrimary: true},
-    {gate: 'open', kind: 'query', contextState: 'stale'},
-    {gate: 'recovering', kind: 'query', contextState: 'aborted'},
-    {gate: 'unavailable-reload', kind: 'command', contextState: 'stale'},
-    {gate: 'unavailable-reload', kind: 'teardown', usablePrimary: true, contextState: 'aborted'},
-  ].map(row => ({usablePrimary: false, contextState: 'current', ...row})))(
-    'recovery admission gate=$gate kind=$kind primary=$usablePrimary context=$contextState',
-    async ({gate, kind, usablePrimary, contextState}) => {
-      aqm.beginGeneration(1);
-      socket.hasUsableSocket = jest.fn(() => usablePrimary);
-      const reason = gate === 'unavailable-reload' ? 'REGION_RELOAD_REQUIRED' : 'RECOVERY_INTERRUPTED';
-      aqm.setRecoveryGate(gate.startsWith('unavailable') ? {state: 'unavailable', reason} : {state: gate} as any);
-      const controller = new AbortController();
-      if (contextState === 'aborted') controller.abort();
-      const registerOperation = jest.spyOn(aqm['operations'], 'set');
-      const scheduleTimeout = jest.spyOn(global, 'setTimeout');
-      const request = aqm.req(() => command({kind}));
-      const promise = request({}, undefined, {
-        generation: contextState === 'stale' ? 0 : 1,
-        signal: controller.signal,
-      });
-      const observed = promise.catch((error) => error);
-      const allowed = contextState === 'current' &&
-        (gate === 'open' || kind === 'query' || (kind === 'teardown' && usablePrimary));
-      expect(http).toHaveBeenCalledTimes(allowed ? 1 : 0);
-      expect(registerOperation).toHaveBeenCalledTimes(allowed ? 1 : 0);
-      expect(scheduleTimeout).toHaveBeenCalledTimes(allowed ? 1 : 0);
-      expect(aqm['operations'].size).toBe(allowed ? 1 : 0);
-      expect(jest.getTimerCount()).toBe(allowed ? 1 : 0);
-      expect(socket.hasUsableSocket).toHaveBeenCalledTimes(
-        contextState === 'current' && gate !== 'open' && kind === 'teardown' ? 1 : 0
-      );
-      if (allowed) {
-        const notification = kind === 'session'
-          ? {type: 'DONE', data: {trackingId: requestUuid()}}
-          : {type: 'DONE'};
-        send(notification);
-        await expect(observed).resolves.toEqual(notification);
-      } else {
-        const expectedReason = contextState !== 'current' || (kind === 'teardown' && !usablePrimary)
-          ? 'RECOVERY_INTERRUPTED'
-          : gate.startsWith('unavailable') ? reason : 'RECOVERY_IN_PROGRESS';
-        const error = await observed;
-        expect(error.data).toEqual({reason: expectedReason});
-      }
-      expect(aqm['operations'].size).toBe(0);
-      expect(aqm['pendingRequests']).toEqual({});
-      expect(aqm['pendingNotifCancelrequest']).toEqual({});
-      expect(jest.getTimerCount()).toBe(0);
-    }
-  );
-
-  it.each((['recovering', 'manualLoginRequired'] as const).flatMap(gate =>
-    ['valid', 'missing', 'different-signal', 'aborted', 'stale-context'].map(variant => [gate, variant] as const)
-  ))('recovery session uses the current signal in %s with %s context', async (gate, variant) => {
-      aqm.beginGeneration(7);
-      const controller = new AbortController();
-      aqm.setRecoveryGate({state: gate, sessionSignal: controller.signal});
-      if (variant === 'aborted') controller.abort();
-      const context = {
-        generation: variant === 'stale-context' ? 6 : 7,
-        signal: variant === 'different-signal' ? new AbortController().signal
-          : variant === 'missing' ? undefined : controller.signal,
-      };
-      const promise = agent.reload(undefined, context); const observed = promise.catch((error) => error);
-      expect(http).toHaveBeenCalledTimes(variant === 'valid' ? 1 : 0);
-      if (variant === 'valid') aqm.interruptPending();
-      const error = await observed;
-      expect(error.data.reason).toBe(['valid', 'stale-context', 'aborted'].includes(variant) ? 'RECOVERY_INTERRUPTED' : 'RECOVERY_IN_PROGRESS');
-    }
-  );
-
-  it('does not infer the restore signal and rejects recovering teardown without usable primary', async () => {
-    aqm.setRecoveryGate({state: 'recovering', sessionSignal: new AbortController().signal});
-    await expect(agent.reload()).rejects.toMatchObject({data: {reason: 'RECOVERY_IN_PROGRESS'}});
-    socket.hasUsableSocket = () => false;
-    await expect(agent.logout({data: {logoutReason: 'User'}})).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-    expect(http).not.toHaveBeenCalled();
-  });
-
-  it.each(['interrupt', 'abort'])('timeoutDisabledAliasDisplacementInterrupted / timeoutDisabledDisplacedAbortKeepsReplacement %s', async (cancel) => {
-    const request = aqm.req(() => command({timeout: 'disabled'}));
-    const controller = new AbortController();
-    const first = request({}, undefined, {generation: 0, signal: controller.signal}); const rejected = first.catch((error) => error);
-    const second = request({}); const observed = second.catch((error) => error);
-    expect(aqm['operations'].size).toBe(2);
-    if (cancel === 'interrupt') aqm.interruptPending();
-    else controller.abort();
-    expect((await rejected).data.reason).toBe('RECOVERY_INTERRUPTED');
-    if (cancel === 'abort') { expect(aqm['operations'].size).toBe(1); send({type: 'DONE'}); expect(await observed).toEqual({type: 'DONE'}); }
-    else expect((await observed).data.reason).toBe('RECOVERY_INTERRUPTED');
-    expect(aqm['pendingRequests']).toEqual({}); expect(aqm['operations'].size).toBe(0);
-  });
-
-  it('entryInterruptBefore100sWait / interruptionErrorsAreIndependent / noSecond20sTimeoutSettlement', async () => {
-    const request = aqm.req((p: any) => command({notifSuccess: {bind: {type: p.type}, msg: {}}}));
-    const pending = ['ONE', 'TWO', 'THREE'].map((type) => request({type}).catch((error) => error));
-    aqm.interruptPending();
-    const errors = await Promise.all(pending);
-    expect(new Set(errors).size).toBe(3); expect(new Set(errors.map((error) => error.data)).size).toBe(3);
-    errors[0].loginOption = 'BROWSER'; errors[0].data.reason = 'changed'; errors[0].details = {changed: true};
-    expect(errors[1].data).toEqual({reason: 'RECOVERY_INTERRUPTED'});
-    expect(errors[1].details).toBeUndefined();
-    jest.advanceTimersByTime(100000); expect(aqm['operations'].size).toBe(0); expect(jest.getTimerCount()).toBe(0);
-    expect(http).toHaveBeenCalledTimes(3);
-  });
-
-  it('clears interrupted operations before late outcomes arrive', async () => {
-    const {getEventListeners} = require('events');
-    const unhandledRejection = jest.fn();
-    process.on('unhandledRejection', unhandledRejection);
-    try {
-      const operations = ['ONE', 'TWO'].map((type) => {
-        let resolveHttp!: (value: unknown) => void, rejectHttp!: (error: Error) => void;
-        http.mockReturnValueOnce(new Promise((resolve, reject) => {
-          resolveHttp = resolve; rejectHttp = reject;
-        }));
-        const controller = new AbortController();
-        const removeAbortListener = jest.spyOn(controller.signal, 'removeEventListener');
-        const notifications = {
-          success: {type: `${type}_SUCCESS`},
-          failure: {type: `${type}_FAILURE`},
-          cancel: {type: `${type}_CANCEL`},
-        };
-        const request = aqm.req(() => command({
-          timeout: 20000,
-          notifSuccess: {bind: notifications.success, msg: {}},
-          notifFail: {bind: notifications.failure, errId: 'Service.aqm.contact.consult'},
-          notifCancel: {bind: notifications.cancel, msg: {}},
-        }));
-        const acknowledged = jest.fn(), resolved = jest.fn(), rejected = jest.fn((error) => error);
-        const observed = request({}, acknowledged, {generation: 0, signal: controller.signal})
-          .then(resolved, rejected);
-        const [abortListener] = getEventListeners(controller.signal, 'abort');
-        expect(getEventListeners(controller.signal, 'abort')).toEqual([abortListener]);
-        expect(abortListener).toEqual(expect.any(Function));
-
-        return {controller, removeAbortListener, abortListener, notifications, acknowledged,
-          resolved, rejected, observed, resolveHttp, rejectHttp};
-      });
-      const operationIds = [...aqm['operations'].keys()];
-      expect(operationIds).toHaveLength(2);
-      expect(Object.keys(aqm['pendingRequests'])).toHaveLength(4);
-      expect(Object.keys(aqm['pendingNotifCancelrequest'])).toHaveLength(2);
-      expect(jest.getTimerCount()).toBe(2);
-      operationIds.forEach((operationId) => {
-        expect(Object.values(aqm['pendingRequests'])
-          .filter((entry) => entry.operationId === operationId)).toHaveLength(2);
-        expect(Object.values(aqm['pendingNotifCancelrequest'])
-          .filter((entry) => entry.operationId === operationId)).toHaveLength(1);
-      });
-      await flush();
-      operations.forEach(({resolved, rejected}) => {
-        expect(resolved).not.toHaveBeenCalled(); expect(rejected).not.toHaveBeenCalled();
-      });
-
-      aqm.interruptPending();
-      const errors = await Promise.all(operations.map(({observed}) => observed));
-      errors.forEach((error) => {
-        expect(Object.getPrototypeOf(error)).toBe(Error.prototype);
-        expect(error.message).toBe('RECOVERY_INTERRUPTED');
-        expect(error.data).toEqual({reason: 'RECOVERY_INTERRUPTED'});
-      });
-      const assertSettledAndCleaned = () => {
-        expect(aqm['operations'].size).toBe(0);
-        expect(aqm['pendingRequests']).toEqual({});
-        expect(aqm['pendingNotifCancelrequest']).toEqual({});
-        expect(jest.getTimerCount()).toBe(0);
-        operations.forEach((operation, index) => {
-          expect(operation.resolved).not.toHaveBeenCalled();
-          expect(operation.rejected).toHaveBeenCalledTimes(1);
-          expect(operation.rejected).toHaveBeenCalledWith(errors[index]);
-          expect(operation.acknowledged).not.toHaveBeenCalled();
-          expect(operation.removeAbortListener).toHaveBeenCalledTimes(1);
-          expect(operation.removeAbortListener).toHaveBeenCalledWith('abort', operation.abortListener);
-          expect(getEventListeners(operation.controller.signal, 'abort')).toEqual([]);
-        });
-        expect(http).toHaveBeenCalledTimes(2);
-      };
-      assertSettledAndCleaned();
-
-      const deliverLateOutcomes = () => {
-        aqm.interruptPending();
-        operations.forEach(({controller, notifications}) => {
-          controller.abort();
-          Object.values(notifications).forEach(send);
-        });
-        jest.advanceTimersByTime(100000);
-      };
-      deliverLateOutcomes();
-      operations[0].resolveHttp({statusCode: 202, headers: {}});
-      operations[1].rejectHttp(new Error('late HTTP failure'));
-      await flush();
-      // Let Node report any unobserved rejection while AQM timeouts remain fake.
-      await new Promise<void>((resolve) => jest.requireActual('timers').setImmediate(resolve));
-      deliverLateOutcomes(); await flush();
-      assertSettledAndCleaned();
-      expect(unhandledRejection).not.toHaveBeenCalled();
-    } finally {
-      process.removeListener('unhandledRejection', unhandledRejection);
-    }
   });
 
   it('aliasCleanupCannotDeleteReplacement when an old alternate cancel completes first', async () => {
@@ -1215,9 +982,8 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     const first = request({cancel: 'CANCEL_OLD'}), second = request({cancel: 'CANCEL_NEW'});
     send({type: 'CANCEL_OLD'});
     await expect(first).resolves.toEqual({type: 'CANCEL_OLD'});
-    expect(aqm['operations'].size).toBe(1);
     send({type: 'DONE'}); await expect(second).resolves.toEqual({type: 'DONE'});
-    expect(aqm['operations'].size).toBe(0); expect(aqm['pendingNotifCancelrequest']).toEqual({});
+    expect(aqm['pendingNotifCancelrequest']).toEqual({});
   });
 
   it('stale HTTP failure cannot remove a timeout-disabled replacement alias', async () => {
@@ -1226,7 +992,6 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     const request = aqm.req(() => command({timeout: 'disabled'}));
     const first = request({}).catch((error) => error), second = request({});
     rejectOld(new Error('old HTTP failure')); await first;
-    expect(aqm['operations'].size).toBe(1);
     send({type: 'DONE'}); await expect(second).resolves.toEqual({type: 'DONE'});
     expect(aqm['pendingRequests']).toEqual({});
   });
@@ -1244,7 +1009,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     const promise = agent.reload(); const observed = promise.catch((error) => error);
     const id = requestUuid();
     expect(() => send(frame('reload', outcome === 'success', id))).not.toThrow();
-    await observed; expect(aqm['operations'].size).toBe(0); expect(aqm['pendingRequests']).toEqual({});
+    await observed; expect(aqm['pendingRequests']).toEqual({});
     expect(jest.getTimerCount()).toBe(0);
     (LoggerProxy.info as jest.Mock).mockReset();
   });
@@ -1256,7 +1021,6 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     {operation: 'reload', scenario: 'http'},
     {operation: 'stateChange', scenario: 'http-error', diagnostics: 'throwing'},
     {operation: 'reload', scenario: 'abort'},
-    {operation: 'stateChange', scenario: 'interrupt', diagnostics: 'throwing'},
     {operation: 'stationLogin', scenario: 'late-resolve'},
     {operation: 'reload', scenario: 'late-reject'},
   ].map(row => ({diagnostics: 'normal', ...row})))(
@@ -1276,7 +1040,6 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       const removeAbortListener = jest.spyOn(controller.signal, 'removeEventListener');
       const acknowledged = jest.fn();
       const requestContext = {
-        generation: 0,
         signal: controller.signal,
         correlationId: '8f5ec5e4-80b8-4f5d-9720-10bfe56e7ca1',
         requireCorrelation: true,
@@ -1287,7 +1050,6 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       const resolved = jest.fn();
       const settled = jest.fn((error) => error);
       const observed = promise.then(resolved, settled);
-      expect(aqm['operations'].size).toBe(1);
       expect(jest.getTimerCount()).toBe(1);
       const response = {
         statusCode: 202,
@@ -1323,8 +1085,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       if (scenario === 'notification') { complete(response); await flush(); send(notification); }
       if (scenario === 'http') fail(response);
       if (scenario === 'http-error') fail(httpFailure);
-      if (scenario === 'abort') controller.abort();
-      if (['interrupt', 'late-resolve', 'late-reject'].includes(scenario)) aqm.interruptPending();
+      if (['abort', 'late-resolve', 'late-reject'].includes(scenario)) controller.abort();
       const error = await observed;
       const messages = {
         timeout: 'Routing request timeout',
@@ -1332,9 +1093,8 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
         http: 'Routing HTTP request failed',
         'http-error': 'Routing HTTP request failed',
         abort: 'Routing operation aborted',
-        interrupt: 'Routing operations interrupted',
-        'late-resolve': 'Routing operations interrupted',
-        'late-reject': 'Routing operations interrupted',
+        'late-resolve': 'Routing operation aborted',
+        'late-reject': 'Routing operation aborted',
       };
       const level = scenario === 'timeout' ? 'error' : scenario === 'notification' ? 'log' : 'info';
       const data = scenario === 'notification' ? {reasonCode: 1037} :
@@ -1356,7 +1116,6 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
         expect(settled).toHaveBeenCalledTimes(1);
         expect(settled).toHaveBeenCalledWith(error);
         expect(removeAbortListener).toHaveBeenCalledTimes(1);
-        expect(aqm['operations'].size).toBe(0);
         expect(aqm['pendingRequests']).toEqual({});
         expect(aqm['pendingNotifCancelrequest']).toEqual({});
         expect(jest.getTimerCount()).toBe(0);
@@ -1379,8 +1138,6 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       // Exercise competing completions before and after the deferred HTTP result.
       const duplicateCompletions = () => {
         controller.abort(); controller.abort();
-        aqm.interruptPending();
-        aqm.interruptPending();
         send(notification); send(notification);
         send(frame(operation, true, id)); send(frame(operation, true, id));
         jest.advanceTimersByTime(100000);
