@@ -745,8 +745,7 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
-      expect(result.profile).toMatchObject({agentId: mockUser.ciUserId, webRtcEnabled: true});
-      expect(result.profile).not.toHaveProperty('multiRegionSettings');
+      expect(result).toMatchObject({agentId: mockUser.ciUserId, webRtcEnabled: true});
       if (expected) expect(result.multiRegionSettings).toStrictEqual(expected);
       else expect(result).not.toHaveProperty('multiRegionSettings');
       expect(mockWebexRequest.request).toHaveBeenCalledTimes(1);
@@ -816,7 +815,7 @@ describe('AgentConfigService', () => {
       expect(parseAgentConfigsSpy).toHaveBeenCalledWith(
         expect.objectContaining({dialPlanData: mockDialPlanData})
       );
-      expect(result.profile.dialPlan).toEqual({
+      expect(result.dialPlan).toEqual({
         type: 'adhocDial',
         dialPlanEntity: [{regex: '[0-9]+', prefix: '1', strippedChars: '( )-', name: 'Plan 1'}],
       });

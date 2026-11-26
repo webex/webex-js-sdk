@@ -12,7 +12,6 @@ import type {
   TeamList,
   DialPlanEntity,
   Profile,
-  MultiRegionSettings,
   ListTeamsResponse,
   AuxCode,
   MultimediaProfileResponse,
@@ -49,14 +48,11 @@ export default class AgentConfigService {
    * Fetches the agent configuration data for the given orgId and agentId.
    * @param {string} orgId - organization ID for which the agent configuration is to be fetched.
    * @param {string} agentId - agent ID for which the configuration is to be fetched.
-   * @returns The agent profile and optional regional settings.
+   * @returns {Promise<Profile>} - A promise that resolves to the agent configuration profile.
    * @throws {Error} - Throws an error if any API call fails or if the response status is not 200.
    * @public
    */
-  public async getAgentConfig(
-    orgId: string,
-    agentId: string
-  ): Promise<{profile: Profile; multiRegionSettings?: MultiRegionSettings}> {
+  public async getAgentConfig(orgId: string, agentId: string): Promise<Profile> {
     try {
       const orgConfigPromise = this.getOrgDesktopLoginConfig(orgId);
       const userConfigPromise = this.getUserDesktopLoginConfig(orgId, agentId);
@@ -111,18 +107,16 @@ export default class AgentConfigService {
       });
 
       const {multiRegionEnabled, homeRegion} = orgConfig.organizationSetting;
-      if (typeof multiRegionEnabled !== 'boolean') return {profile};
-
-      const normalizedHomeRegion =
-        typeof homeRegion === 'string' ? homeRegion.trim().toLowerCase() : undefined;
-
-      return {
-        profile,
-        multiRegionSettings: {
+      if (typeof multiRegionEnabled === 'boolean') {
+        const normalizedHomeRegion =
+          typeof homeRegion === 'string' ? homeRegion.trim().toLowerCase() : undefined;
+        profile.multiRegionSettings = {
           multiRegionEnabled,
           ...(normalizedHomeRegion ? {homeRegion: normalizedHomeRegion} : {}),
-        },
-      };
+        };
+      }
+
+      return profile;
     } catch (error) {
       LoggerProxy.error(`getAgentConfig call failed with ${error}`, {
         module: CONFIG_FILE_NAME,

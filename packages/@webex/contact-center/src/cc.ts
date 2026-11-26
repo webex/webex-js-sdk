@@ -2808,7 +2808,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         throw new Error('Primary Welcome agent identity is required');
       }
       const agentId = data.agentId;
-      const {profile, multiRegionSettings} = await awaitRecoveryWork(
+      const profile = await awaitRecoveryWork(
         this.services.config.getAgentConfig(orgId, agentId),
         signal
       );
@@ -2817,6 +2817,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.terminateRegistration(true);
         throw new Error('Primary Welcome and Profile agent identities differ');
       }
+      const {multiRegionSettings} = profile;
+      // Keep recovery settings private when register() returns this profile.
+      delete profile.multiRegionSettings;
       this.agentConfig = profile;
       this.registrationAgentId = agentId;
       this.resetOrdinaryConnection();

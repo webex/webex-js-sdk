@@ -769,10 +769,10 @@ describe('webex.cc', () => {
       const prepare = async (multiRegionEnabled: boolean | null = true, restored = false, restoredResponse = result()) => {
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: restored};
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-        webex.cc.services.config.getAgentConfig.mockResolvedValue({
-          profile: createFreshAgentProfile({webRtcEnabled: false, loginVoiceOptions: [LoginOption.EXTENSION]}),
+        webex.cc.services.config.getAgentConfig.mockImplementation(async () => createFreshAgentProfile({
+          webRtcEnabled: false, loginVoiceOptions: [LoginOption.EXTENSION],
           ...(multiRegionEnabled === null ? {} : {multiRegionSettings: {multiRegionEnabled, homeRegion: 'produs1'}}),
-        });
+        }));
         webex.cc.services.agent.reload.mockResolvedValue(restoredResponse);
         webex.cc.services.agent.stationLogin.mockResolvedValue(result());
         webex.cc.services.agent.logout.mockResolvedValue({data: {}});
@@ -1895,13 +1895,11 @@ describe('webex.cc', () => {
         const driver = createDeferred<void>();
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: automation};
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-        webex.cc.services.config.getAgentConfig.mockResolvedValue({
-          profile: createFreshAgentProfile({
-            webRtcEnabled: stage === 'mercury',
-            loginVoiceOptions: stage === 'mercury' ? [LoginOption.BROWSER] : [LoginOption.EXTENSION],
-          }),
+        webex.cc.services.config.getAgentConfig.mockImplementation(async () => createFreshAgentProfile({
+          webRtcEnabled: stage === 'mercury',
+          loginVoiceOptions: stage === 'mercury' ? [LoginOption.BROWSER] : [LoginOption.EXTENSION],
           multiRegionSettings: {multiRegionEnabled: true, homeRegion: 'produs1'},
-        });
+        }));
         if (stage === 'mercury') jest.spyOn(webex.internal.mercury, 'connect').mockReturnValue(work.promise);
         else webex.cc.services.agent.reload.mockReturnValueOnce(work.promise);
         webex.cc.services.connectionService.recoverRegion.mockReturnValueOnce(driver.promise);
@@ -2164,7 +2162,7 @@ describe('webex.cc', () => {
       it.each(['live', 'throwing diagnostic', 'aborted', 'failed', 'superseded', 'foreign organization'] as const)
       ('T-002 preProfileUnknownEligibility %s', async boundary => {
         jest.useFakeTimers();
-        const agentConfig = createDeferred<{profile: Profile; multiRegionSettings?: MultiRegionSettings}>();
+        const agentConfig = createDeferred<Profile>();
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
         webex.cc.services.config.getAgentConfig.mockReturnValueOnce(agentConfig.promise);
@@ -2203,10 +2201,10 @@ describe('webex.cc', () => {
         expect([...webex.cc['acceptedSwitchIds']]).toEqual([]);
         expect(states).not.toHaveBeenCalled();
 
-        agentConfig.resolve({
-          profile: createFreshAgentProfile({webRtcEnabled: false, loginVoiceOptions: [LoginOption.EXTENSION]}),
+        agentConfig.resolve(createFreshAgentProfile({
+          webRtcEnabled: false, loginVoiceOptions: [LoginOption.EXTENSION],
           multiRegionSettings: {multiRegionEnabled: true},
-        });
+        }));
         if (['aborted', 'superseded'].includes(boundary))
           await expect(registering).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
         else if (boundary !== 'failed') await registering;
@@ -2226,7 +2224,7 @@ describe('webex.cc', () => {
       const beginRegistrationBoundary = (boundary: string) => {
         if (boundary === 'different-identity register') {
           mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'replacement-agent'});
-          webex.cc.services.config.getAgentConfig.mockResolvedValue({profile: createFreshAgentProfile({agentId: 'replacement-agent'})});
+          webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({agentId: 'replacement-agent'}));
         }
         if (boundary.endsWith('register') && boundary !== 'deregister') return webex.cc.register();
         if (boundary === 'deregister') return webex.cc.deregister();
@@ -2288,7 +2286,7 @@ describe('webex.cc', () => {
           webex.cc.$config.allowAutomatedRelogin = false;
 
           if (terminating) {
-            webex.cc.services.config.getAgentConfig.mockResolvedValue({profile: createFreshAgentProfile()});
+            webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile());
             pending = beginRegistrationBoundary(boundary);
           } else if (boundary === 'distinct switch supersession')
             webex.cc['handleWebsocketMessage'](switchEvent('B'));
@@ -2332,17 +2330,17 @@ describe('webex.cc', () => {
             webex.credentials.getOrgId.mockReturnValue('mockOrgId');
             if (!boundary.endsWith('register') || boundary === 'deregister') {
               mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-              webex.cc.services.config.getAgentConfig.mockResolvedValue({profile: createFreshAgentProfile()});
+              webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile());
               await webex.cc.register();
             }
             expect(webex.cc['multiRegionSettings']).toBeNull();
             webex.cc['handleWebsocketMessage'](switchEvent());
             expectHistoryAndStation([], undefined);
             expect(webex.cc.services.connectionService.recoverRegion).toHaveBeenCalledTimes(recoveries);
-            webex.cc.services.config.getAgentConfig.mockResolvedValue({
-              profile: createFreshAgentProfile({agentId: webex.cc['registrationAgentId']}),
+            webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({
+              agentId: webex.cc['registrationAgentId'],
               multiRegionSettings: {multiRegionEnabled: true, homeRegion: 'produs1'},
-            });
+            }));
             await webex.cc.register();
             expectHistoryAndStation([], undefined);
             webex.cc['handleWebsocketMessage'](switchEvent());
@@ -3096,10 +3094,10 @@ describe('webex.cc', () => {
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: source === 'register-restored'};
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
         mockWebSocketManager.getServingRegion.mockReturnValue(servingRegion);
-        webex.cc.services.config.getAgentConfig.mockResolvedValue({
-          profile: createFreshAgentProfile({webRtcEnabled: false}),
+        webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({
+          webRtcEnabled: false,
           multiRegionSettings: {multiRegionEnabled: true, homeRegion: 'produs1'},
-        });
+        }));
         webex.cc.services.agent.stationLogin.mockResolvedValue(result());
         webex.cc.services.agent.reload.mockResolvedValue(result());
         const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
@@ -3226,9 +3224,9 @@ describe('webex.cc', () => {
       beforeEach(() => {
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-        webex.cc.services.config.getAgentConfig.mockResolvedValue({profile: createFreshAgentProfile({
+        webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({
           webRtcEnabled: false, loginVoiceOptions: [LoginOption.EXTENSION],
-        })});
+        }));
       });
 
       it.each(['logger', 'ordinary reset'])(
@@ -3334,7 +3332,7 @@ describe('webex.cc', () => {
           beforeEach(() => {
             work = createDeferred<any>();
             webex.cc.$config.allowAutomatedRelogin = true;
-            webex.cc.services.config.getAgentConfig.mockResolvedValue({profile: createFreshAgentProfile()});
+            webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile());
             const mercury = jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
             const reload = webex.cc.services.agent.reload.mockResolvedValue(restoredSession);
             const calling = jest.spyOn(webex.cc.webCallingService, 'registerWebCallingLine').mockResolvedValue(undefined);
@@ -3462,16 +3460,18 @@ describe('webex.cc', () => {
       const prepare = (agentId = 'agent123', multiRegionSettings?: MultiRegionSettings) => {
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId});
-        const profile = createFreshAgentProfile({agentId, webRtcEnabled: false});
+        const profile = createFreshAgentProfile({agentId, webRtcEnabled: false, multiRegionSettings});
         const getAgentConfig = webex.cc.services.config.getAgentConfig as jest.Mock;
-        getAgentConfig.mockResolvedValue({profile, multiRegionSettings});
+        getAgentConfig.mockResolvedValue(profile);
         return {getAgentConfig, profile};
       };
 
       it.each(['agent123', 'replacement-agent'])('binds config to the current Welcome identity %s', async (replacement) => {
         const first = prepare('agent123', {multiRegionEnabled: true, homeRegion: 'produs1'});
         webex.cc.agentConfig = createFreshAgentProfile({agentId: 'stale-agent'});
-        await expect(webex.cc.register()).resolves.toBe(first.profile);
+        const registeredProfile = await webex.cc.register();
+        expect(registeredProfile).toBe(first.profile);
+        expect(registeredProfile).not.toHaveProperty('multiRegionSettings');
         const firstSignal = webex.cc['registrationAbortController'].signal;
         expect(webex.cc['registrationAgentId']).toBe('agent123');
         expect(webex.cc['multiRegionSettings']).toEqual({multiRegionEnabled: true, homeRegion: 'produs1'});
@@ -3497,10 +3497,10 @@ describe('webex.cc', () => {
 
       it('rejects a mismatched or failed Profile and keeps settings unknown', async () => {
         const {getAgentConfig} = prepare();
-        getAgentConfig.mockResolvedValueOnce({
-          profile: createFreshAgentProfile({agentId: 'other-agent'}),
+        getAgentConfig.mockResolvedValueOnce(createFreshAgentProfile({
+          agentId: 'other-agent',
           multiRegionSettings: {multiRegionEnabled: true},
-        });
+        }));
         await expect(webex.cc.register()).rejects.toThrow('identities differ');
         expect(webex.cc['multiRegionSettings']).toBeNull();
 
@@ -3510,9 +3510,9 @@ describe('webex.cc', () => {
       });
 
       it('ignores settings arriving from a superseded desktop login response', async () => {
-        const {getAgentConfig, profile} = prepare('agent123', {multiRegionEnabled: false});
+        const {getAgentConfig} = prepare('agent123', {multiRegionEnabled: false});
         const requested = createDeferred<void>();
-        const pending = createDeferred<{profile: Profile; multiRegionSettings: MultiRegionSettings}>();
+        const pending = createDeferred<Profile>();
         getAgentConfig.mockImplementationOnce(() => {
           requested.resolve();
           return pending.promise;
@@ -3523,7 +3523,7 @@ describe('webex.cc', () => {
         expect(getAgentConfig).toHaveBeenCalledTimes(1);
         webex.credentials.getOrgId.mockReturnValue('replacement-org');
         await webex.cc.register();
-        pending.resolve({profile, multiRegionSettings: {multiRegionEnabled: true, homeRegion: 'produs1'}});
+        pending.resolve(createFreshAgentProfile({multiRegionSettings: {multiRegionEnabled: true, homeRegion: 'produs1'}}));
         await interrupted;
         await flushMicrotasks();
         expect(webex.cc['multiRegionSettings']).toEqual({multiRegionEnabled: false});
@@ -3534,14 +3534,14 @@ describe('webex.cc', () => {
         const {getAgentConfig, profile} = prepare('agent123', {multiRegionEnabled: true, homeRegion: 'produs1'});
         await webex.cc.register();
         expect(webex.cc['multiRegionSettings']?.multiRegionEnabled).toBe(true);
-        const pending = createDeferred<{profile: Profile}>();
+        const pending = createDeferred<Profile>();
         getAgentConfig.mockReturnValueOnce(pending.promise);
         const replacement = webex.cc.register();
         expect(webex.cc['multiRegionSettings']).toBeNull();
         expect(webex.cc['lastPublishedRegionState']).toBeUndefined();
 
         profile.aiFeature = {realtimeTranscripts: {enable: true}} as any;
-        pending.resolve({profile});
+        pending.resolve(profile);
         await expect(replacement).resolves.toBe(profile);
         expect(webex.cc['multiRegionSettings']).toBeNull();
         expect(webex.cc['registrationAbortController'].signal.aborted).toBe(false);
@@ -3578,7 +3578,7 @@ describe('webex.cc', () => {
       it('registerRestoredSessionReady once, while ordinary reconnect emits nothing new', async () => {
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: true};
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-        webex.cc.services.config.getAgentConfig.mockResolvedValue({profile: createFreshAgentProfile({webRtcEnabled: false})});
+        webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({webRtcEnabled: false}));
         const response = {data: {agentId: 'agent123', agentSessionId: 'session', teamId: 'team', deviceType: LoginOption.EXTENSION, dn: '1234'}};
         const secondReload = createDeferred<any>();
         webex.cc.services.agent.reload.mockResolvedValueOnce(response).mockReturnValueOnce(secondReload.promise);
@@ -3623,7 +3623,7 @@ describe('webex.cc', () => {
         'register-restored BROWSER readiness waits for successful %s setup', async (stage) => {
           webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: true};
           mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-          webex.cc.services.config.getAgentConfig.mockImplementation(async () => ({profile: createFreshAgentProfile()}));
+          webex.cc.services.config.getAgentConfig.mockImplementation(async () => createFreshAgentProfile());
           webex.cc.services.agent.reload.mockResolvedValue({data: {
             agentId: 'agent123', agentSessionId: 'session', teamId: 'team',
             deviceType: LoginOption.BROWSER, dn: 'webrtc-agent123',
@@ -3663,7 +3663,7 @@ describe('webex.cc', () => {
       it('socketOnlyNeverReady', async () => {
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-        webex.cc.services.config.getAgentConfig.mockResolvedValue({profile: createFreshAgentProfile({webRtcEnabled: false})});
+        webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({webRtcEnabled: false}));
         const listener = jest.fn();
         webex.cc.on('region:stateChange', listener);
         await webex.cc.register();
@@ -3724,8 +3724,8 @@ describe('webex.cc', () => {
         'resets publication at identity boundary and rechecks replacement ownership %j', async ({boundary, reentrant}) => {
           webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
           mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-          webex.cc.services.config.getAgentConfig.mockImplementation(async () => ({
-            profile: createFreshAgentProfile({webRtcEnabled: false}),
+          webex.cc.services.config.getAgentConfig.mockImplementation(async () => createFreshAgentProfile({
+            webRtcEnabled: false,
             multiRegionSettings: {multiRegionEnabled: true, homeRegion: 'produs1'},
           }));
           await webex.cc.register();
@@ -3923,7 +3923,7 @@ describe('webex.cc', () => {
       });
       const configSpy = jest
         .spyOn(webex.cc.services.config, 'getAgentConfig')
-        .mockResolvedValue({profile: mockAgentProfile});
+        .mockResolvedValue(mockAgentProfile);
       mockWebSocketManager.initWebSocket.mockResolvedValue({
         agentId: 'agent123',
       });
@@ -4030,7 +4030,7 @@ describe('webex.cc', () => {
 
       const configSpy = jest
         .spyOn(webex.cc.services.config, 'getAgentConfig')
-        .mockResolvedValue({profile: mockAgentProfile});
+        .mockResolvedValue(mockAgentProfile);
 
       mockWebSocketManager.initWebSocket.mockResolvedValue({
         agentId: 'agent123',
@@ -4241,9 +4241,8 @@ describe('webex.cc', () => {
     it('clears wellness session context when registration fails after relogin', async () => {
       const mockError = new Error('Error after silent relogin');
       webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: true};
-      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue({
-        profile: {...mockAgentProfile, webRtcEnabled: false, aiFeature: undefined},
-      });
+      jest.spyOn(webex.cc.services.config, 'getAgentConfig')
+        .mockResolvedValue({...mockAgentProfile, webRtcEnabled: false, aiFeature: undefined});
       mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
       jest.spyOn(webex.cc as any, 'silentRelogin').mockImplementation(async () => {
         webex.cc['updateWellnessSession']('partial-session');
@@ -4271,7 +4270,7 @@ describe('webex.cc', () => {
       });
       const configSpy = jest
         .spyOn(webex.cc.services.config, 'getAgentConfig')
-        .mockResolvedValue({profile: mockAgentProfile});
+        .mockResolvedValue(mockAgentProfile);
       mockWebSocketManager.initWebSocket.mockResolvedValue({
         agentId: 'agent123',
       });
@@ -4331,7 +4330,7 @@ describe('webex.cc', () => {
       const mercurySpy = jest.spyOn(webex.internal.mercury, 'connect');
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
       const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
-      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue({profile: mockAgentProfile});
+      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(mockAgentProfile);
       mockWebSocketManager.initWebSocket.mockResolvedValue({
         agentId: 'agent123',
       });
@@ -4367,7 +4366,7 @@ describe('webex.cc', () => {
       });
       const configSpy = jest
         .spyOn(webex.cc.services.config, 'getAgentConfig')
-        .mockResolvedValue({profile: mockAgentProfile});
+        .mockResolvedValue(mockAgentProfile);
       mockWebSocketManager.initWebSocket.mockResolvedValue({
         agentId: 'agent123',
       });
@@ -4408,7 +4407,7 @@ describe('webex.cc', () => {
           dn: '12345',
         },
       });
-      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue({profile: mockAgentProfile});
+      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(mockAgentProfile);
       mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
 
       await webex.cc.register();
@@ -4444,7 +4443,7 @@ describe('webex.cc', () => {
           dn: '12345',
         },
       });
-      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue({profile: mockAgentProfile});
+      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(mockAgentProfile);
       mockWebSocketManager.initWebSocket.mockResolvedValue({
         agentId: 'agent123',
       });
@@ -4475,9 +4474,8 @@ describe('webex.cc', () => {
         {wrapUpSummariesEnabled: false, consultTransferSummariesEnabled: true},
       ]) {
         jest.clearAllMocks();
-        jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue({
-          profile: {...mockAgentProfile, aiFeature: {generatedSummaries} as any},
-        });
+        jest.spyOn(webex.cc.services.config, 'getAgentConfig')
+          .mockResolvedValue({...mockAgentProfile, aiFeature: {generatedSummaries} as any});
 
         await webex.cc.register();
 
@@ -4523,7 +4521,7 @@ describe('webex.cc', () => {
         jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
         const configSpy = jest
           .spyOn(webex.cc.services.config, 'getAgentConfig')
-          .mockResolvedValue({profile: configuredProfile});
+          .mockResolvedValue(configuredProfile);
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: welcomeAgentId});
 
         await expect(webex.cc.register()).resolves.toEqual(expectedProfile);
@@ -4564,7 +4562,7 @@ describe('webex.cc', () => {
         const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
         const configSpy = jest
           .spyOn(webex.cc.services.config, 'getAgentConfig')
-          .mockResolvedValue({profile: configuredProfile});
+          .mockResolvedValue(configuredProfile);
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: welcomeAgentId});
 
         const result = await webex.cc.register();
@@ -4991,7 +4989,7 @@ describe('webex.cc', () => {
 
       webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
       harness.webSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent-1'});
-      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue({profile});
+      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(profile);
 
       await webex.cc.register();
       await flushMicrotasks();
@@ -7508,7 +7506,7 @@ describe('webex.cc', () => {
         };
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
         jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
-        webex.cc.services.config.getAgentConfig.mockResolvedValue({profile: webex.cc.agentConfig});
+        webex.cc.services.config.getAgentConfig.mockResolvedValue(webex.cc.agentConfig);
         webex.cc.services.agent.reload.mockResolvedValue({
           data: {
             agentId: 'agent123',

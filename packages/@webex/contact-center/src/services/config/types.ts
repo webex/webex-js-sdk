@@ -1,7 +1,7 @@
 import * as Agent from '../agent/types';
 import {COLLABORATION_ACCESS} from './constants';
 
-/** Confirmed entitlement; retained for Config declarations, without a root API export. */
+/** @internal Validated organization settings for regional recovery. */
 export type MultiRegionSettings = {
   multiRegionEnabled: boolean;
   homeRegion?: string;
@@ -1039,6 +1039,8 @@ export type UserDesktopLoginResponse = {
  * @public
  */
 export type Profile = {
+  /** @internal Organization recovery settings consumed during registration. */
+  multiRegionSettings?: MultiRegionSettings;
   /** Microsoft Teams integration configuration */
   microsoftConfig?: {
     /** Whether to show user details in Teams */

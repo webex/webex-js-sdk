@@ -302,8 +302,8 @@ sequenceDiagram
   WS-->>CC: Welcome data containing agentId
   CC->>Cfg: getAgentConfig(orgId, agentId)
   alt profile fetched
-    Cfg-->>CC: Profile and optional regional eligibility
-    CC->>CC: set Profile, eligibility, TaskManager and AI flags
+    Cfg-->>CC: Profile with optional internal recovery settings
+    CC->>CC: consume recovery settings and set Profile, TaskManager and AI flags
     opt applicable AI feature or wellness enabled
       CC->>CC: start RTD WebSocket; log but contain RTD failure
     end

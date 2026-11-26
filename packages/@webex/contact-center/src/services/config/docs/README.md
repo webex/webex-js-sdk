@@ -78,7 +78,7 @@ missing or contradictory evidence blocks promotion.
 | `src/services/config/constants.ts` | `endPointMap`, `DEFAULT_PAGE` (0), `DEFAULT_PAGE_SIZE` (100), `DEFAULT_AUXCODE_ATTRIBUTES`, `WELLBEING_BREAK_IDLE_CODE`, `WELLNESS_BREAK_REMINDERS_ENABLED`, `COLLABORATION_ACCESS`, `METHODS` |
 | `src/services/config/types.ts` | `CC_TASK_EVENTS` (66 keys), `CC_AGENT_EVENTS` (19 keys), `CC_EVENTS`, `VOICE_CONNECTION_EVENTS`, `Profile`, and the response types (catalog source of `contact-center-cc-events`) |
 | `src/services/index.ts` | `Services` constructs one `AgentConfigService` as `services.config` |
-| `src/cc.ts` | Consumers: `connectWebsocket` stores the Profile and optional recovery settings returned by `getAgentConfig`; `getWellbeingBreakIdleCode` and `getOutdialAniEntries` wrap the service; `CC_EVENT_ALLOW_LIST` filters re-emitted WebSocket event names |
+| `src/cc.ts` | Consumers: `connectWebsocket` consumes the optional recovery settings from the Profile returned by `getAgentConfig`; `getWellbeingBreakIdleCode` and `getOutdialAniEntries` wrap the service; `CC_EVENT_ALLOW_LIST` filters re-emitted WebSocket event names |
 | `src/index.ts`, `src/webex.js` | Public re-export of `CC_EVENTS`, `CC_AGENT_EVENTS`, `CC_TASK_EVENTS`, `VOICE_CONNECTION_EVENTS`, `IDLE_CODE`, `WRAP_UP_CODE`, and the config types; `Webex.CC_AGENT_EVENTS` |
 | `src/services/core/WebexRequest.ts` | The singleton HTTP wrapper over `webex.request` used by every method |
 | `src/services/core/websocket/WebSocketManager.ts` | Resolves registration on the `CC_EVENTS.WELCOME` message |
@@ -169,7 +169,7 @@ Types used by the config service, all defined in [`types.ts`](../types.ts):
 
 | Type | Description |
 | ---- | ----------- |
-| `Profile` | Aggregated agent profile returned as `profile` by `getAgentConfig()` |
+| `Profile` | Aggregated agent profile returned by `getAgentConfig()`, with optional internal `multiRegionSettings` |
 | `OrgDesktopLoginResponse` | Response from `getOrgDesktopLoginConfig()`; sections in Protocol and wire format |
 | `UserDesktopLoginResponse` | Response from `getUserDesktopLoginConfig()` — `user` and `agentProfile` sections (fields in Protocol and wire format) |
 | `AgentResponse` | `user` section of the user aggregate — agent metadata, `dbId`, `siteId`, `agentProfileId` |
@@ -220,7 +220,7 @@ Types used by the config service, all defined in [`types.ts`](../types.ts):
 | CONFIG-R-010 | `getOutdialAniEntries(orgId, params)` adds only the provided `page`, `pageSize`, `search`, `filter`, and `attributes` query parameters, resolves `response.body?.data`, and rethrows a request rejection; it does not check `statusCode`. | `cc.getOutdialAniEntries` is the public caller-ID lookup and records the result count in metrics. | `src/services/config/index.ts`, `src/cc.ts` | `test/unit/spec/services/config/index.ts` | A resolved non-200 response yields `undefined`, not an error (asserted by the 404 and 500 cases). | Present |
 | CONFIG-R-011 | `parseAgentConfigs` keeps active aux codes of each `workTypeCode` from the full pool as `Entity` values, appends the synthetic idle code `{id: '0', name: 'Available'}`, and sets `defaultWrapupCode` to the default wrap-up code id or an empty string. | The desktop-login aggregate does not carry per-agent restriction lists, so the whole pool applies (JSDoc of `getFilterAuxCodes`). | `src/services/config/Util.ts` | `test/unit/spec/services/config/Util.ts` | None. | Present |
 | CONFIG-R-012 | When `dialPlanEnabled` is true, `Profile.dialPlan` is `{type: 'adhocDial', dialPlanEntity}` built from every active plan; otherwise it is `undefined` and no dial-plan request is made. | The aggregate does not carry the per-profile `dialPlans` selection, so all active plans apply (JSDoc of `getFilteredDialplanEntries`). | `src/services/config/Util.ts`, `src/services/config/index.ts` | `test/unit/spec/services/config/Util.ts`, `test/unit/spec/services/config/index.ts` | None. | Present |
-| CONFIG-R-013 | Internal `getAgentConfig()` resolves `{profile, multiRegionSettings?}`. Carry the boolean `organizationSetting.multiRegionEnabled` from the existing `GET organization/{orgId}/desktop-login` response into settings. Trim and lowercase an optional nonempty `organizationSetting.homeRegion`. A missing or malformed flag leaves settings absent. | Reuse the registration aggregate without an extra entitlement request. | `src/services/config/index.ts`, `src/services/config/types.ts`, `src/cc.ts` | `test/unit/spec/services/config/index.ts`, `test/unit/spec/cc.ts` | Registration owns the settings. Public `register()` returns only the Profile. | PRESENT |
+| CONFIG-R-013 | Internal `getAgentConfig()` resolves `Profile`. The optional `Profile.multiRegionSettings` carries the boolean `organizationSetting.multiRegionEnabled` and a trimmed, lowercase `organizationSetting.homeRegion` from the existing `GET organization/{orgId}/desktop-login` response. A missing or malformed flag leaves settings absent. | The registration aggregate provides eligibility in the existing request. | `src/services/config/index.ts`, `src/services/config/types.ts`, `src/cc.ts` | `test/unit/spec/services/config/index.ts`, `test/unit/spec/cc.ts` | Registration consumes the internal field before storing and returning the Profile. | PRESENT |
 
 ## Design overview
 
@@ -233,9 +233,12 @@ The AgentProfile is the central configuration object required for an agent to op
 // Inside cc.ts → connectWebsocket(), after WebSocket connection is established:
 const agentId = data.agentId;
 const orgId = this.$webex.credentials.getOrgId();
-const {profile, multiRegionSettings} = await this.services.config.getAgentConfig(orgId, agentId);
+const profile = await this.services.config.getAgentConfig(orgId, agentId);
 // After validating the current registration and Welcome identity:
+const {multiRegionSettings} = profile;
+delete profile.multiRegionSettings;
 this.agentConfig = profile;
+// After resetting ordinary connection monitoring and rechecking ownership:
 this.multiRegionSettings = multiRegionSettings ?? null;
 ```
 
@@ -256,7 +259,7 @@ Sequence coverage:
 
 | Operation group | Entry and outcome | Diagram or evidence | Failure and recovery coverage |
 | --------------- | ----------------- | ------------------- | ----------------------------- |
-| Profile aggregation and AI feature flags | `getAgentConfig(orgId, agentId)` resolves `{profile, multiRegionSettings?}` | Profile aggregation diagram; `src/services/config/index.ts` | Any required request rejection rejects `getAgentConfig`; no partial Profile is returned. |
+| Profile aggregation and AI feature flags | `getAgentConfig(orgId, agentId)` resolves a `Profile` | Profile aggregation diagram; `src/services/config/index.ts` | Any required request rejection rejects `getAgentConfig`; no partial Profile is returned. |
 | Team/aux-code pagination | `getAllTeams`, `getAllAuxCodes` resolve the concatenated list | Pagination diagram; `src/services/config/index.ts` | Continue until page metadata is exhausted; any page rejection rejects the operation. |
 | Wellness system idle code | `getWellbeingBreakIdleCode(orgId)` resolves one `Entity` | Wellness idle-code lookup diagram; `src/services/config/index.ts` | Sequential pages stop at the first match; no match rejects with `WELLBEING_BREAK_IDLE_CODE_NOT_FOUND`; a non-200 page rejects. |
 | Single-resource fetches | `getOrgDesktopLoginConfig`, `getUserDesktopLoginConfig`, `getSiteInfo`, `getDialPlanData`, `getMultimediaProfileById`, `getListOfTeams`, `getListOfAuxCodes` resolve the response body | `src/services/config/index.ts` | Non-200 throws `API call failed with {statusCode}`; rejections are logged and rethrown. |
@@ -266,8 +269,8 @@ AI-feature retrieval shares the same actors, ordering, Promise aggregation, and 
 
 ### Profile aggregation
 
-`getAgentConfig()` resolves `{profile, multiRegionSettings?}`. The existing organization
-desktop-login response supplies the optional recovery settings.
+`getAgentConfig()` resolves a `Profile` with optional internal recovery settings from the
+existing organization desktop-login response.
 
 **Flow**:
 
@@ -305,7 +308,7 @@ sequenceDiagram
     Cfg->>Cfg: multimediaProfileId = team value, else site value
     Cfg->>Util: parseAgentConfigs(orgConfig, userData, agentProfileData, ...)
     Util-->>Cfg: Profile including aiFeature
-    Cfg-->>CC: Profile and optional regional eligibility from orgConfig
+    Cfg-->>CC: Profile with optional internal recovery settings
   else any fails
     Cfg-->>CC: throw; no partial Profile
   end
@@ -454,7 +457,7 @@ A caller wraps the aggregation the same way; the service has already logged the 
 
 ```typescript
 try {
-  const {profile} = await this.services.config.getAgentConfig(orgId, agentId);
+  const profile = await this.services.config.getAgentConfig(orgId, agentId);
 } catch (error) {
   // getAgentConfig already logged `getAgentConfig call failed with ${error}`
   // with module CONFIG_FILE_NAME and method getAgentConfig, then rethrew.
