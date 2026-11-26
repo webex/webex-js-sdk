@@ -359,6 +359,10 @@ lifetime on the next attempt. The initial failed-region wipe runs once. The driv
 before ContactCenter publishes `ready` or `stationLoginRequired`. A recognized mismatch requires host reload.
 Deferred auto-Available has its own ownership and voice readiness check (CONTACT_CENTER-R-014
 and CONTACT_CENTER-R-015).
+Explicit agent-state requests and ordinary relogin keep the standard AQM event matching after
+recovery. Among state-change requests, regional auto-Available requires an exact tracking ID match.
+A newer explicit request cancels the automatic action and keeps its late replies from updating the
+SDK's cached state.
 
 ```mermaid
 sequenceDiagram

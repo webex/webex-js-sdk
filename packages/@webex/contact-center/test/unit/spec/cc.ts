@@ -765,9 +765,9 @@ describe('webex.cc', () => {
         auxCodeId: webex.cc.agentConfig.lastStateAuxCodeId,
         lastStateChangeTimestamp: webex.cc.agentConfig.lastStateChangeTimestamp,
         lastIdleCodeChangeTimestamp: webex.cc.agentConfig.lastIdleCodeChangeTimestamp,
-        status: webex.cc['confirmedState']?.data.status,
-        subStatus: webex.cc['confirmedState']?.data.subStatus,
-        lastStateChangeReason: webex.cc['confirmedState']?.data.lastStateChangeReason,
+        status: webex.cc['confirmedState']?.status,
+        subStatus: webex.cc['confirmedState']?.subStatus,
+        lastStateChangeReason: webex.cc['confirmedState']?.lastStateChangeReason,
       });
       const expectAcceptedStation = (payload, response) => {
         expect(webex.cc['acceptedStation']).toEqual({
@@ -1194,7 +1194,6 @@ describe('webex.cc', () => {
           await startAuto(requesting, () => webex.cc.on('region:stateChange', state => history.push(state)));
           const cc = webex.cc;
           const auto = cc['autoAvailable'];
-          const dispatch = auto.requestId && cc['stateDispatches'].get(auto.requestId);
           const revision = cc['stateIntentRevision'];
           const barrier = cc['inFlightDrAutoState'];
           const removed = jest.spyOn(auto.signal, 'removeEventListener');
@@ -1236,7 +1235,6 @@ describe('webex.cc', () => {
           expect(cc['stateIntentRevision']).toBe(revision);
           expect(cc['autoAvailable']).toBeUndefined();
           expect(cc['inFlightDrAutoState']).toBe(barrier);
-          if (dispatch) expect(dispatch.outcome).toBe('cancelled');
           const published = snapshots.slice();
           const acceptedState = [cc.agentConfig?.lastStateAuxCodeId, cc.agentConfig?.lastStateChangeTimestamp,
             cc.agentConfig?.lastIdleCodeChangeTimestamp];
@@ -1250,7 +1248,6 @@ describe('webex.cc', () => {
           expect(snapshots).toEqual(published);
           expect(cc.services.agent.stateChange).toHaveBeenCalledTimes(requesting ? 1 : 0);
           expect(cc['inFlightDrAutoState']).toBeUndefined();
-          if (dispatch) expect(dispatch.outcome).toBe('cancelled');
           if (boundary !== 'ordinary relogin') expect([cc.agentConfig?.lastStateAuxCodeId,
             cc.agentConfig?.lastStateChangeTimestamp, cc.agentConfig?.lastIdleCodeChangeTimestamp]).toEqual(acceptedState);
         });
@@ -1363,7 +1360,7 @@ describe('webex.cc', () => {
           const frame = ack(id);
           expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(1);
           webex.cc['handleWebsocketMessage'](JSON.stringify(frame)); automatic.resolve(frame); await settle();
-          expect(webex.cc['stateDispatches'].get(id).outcome).toBe('cancelled');
+
           expect(snapshots).toEqual([{...readySnapshot(), status: 'recovering'},
             readySnapshot('requesting'), readySnapshot('cancelled')]);
           expect(generic.mock.calls).toEqual([[frame.data]]);
@@ -1373,7 +1370,7 @@ describe('webex.cc', () => {
           const accepted = ack(explicitId, {subStatus: 'Idle', auxCodeId: 'manual', lastStateChangeTimestamp: 30});
           webex.cc['handleWebsocketMessage'](JSON.stringify(accepted)); explicit.resolve(accepted); await request;
           expect(webex.cc['lastPublishedRegionState']).toEqual(readySnapshot('cancelled'));
-          expect(webex.cc['stateDispatches'].get(id).outcome).toBe('cancelled');
+
         });
 
         it('T-007 registerReloginUsesNonExplicitSource / distinctStateRequestIdsAcrossPaths uses separate IDs', async () => {
@@ -1405,7 +1402,7 @@ describe('webex.cc', () => {
         });
 
         it.each(['register relogin-auto', 'ordinary relogin-auto', 'explicit'])
-        ('T-007 ordinaryCorrelatedStateAndSilentReloginComplete pending %s never installs DR barrier', async source => {
+        ('T-007 ordinary state change %s keeps legacy matching and no recovery history', async source => {
           const pending = createDeferred<any>();
           const dispatch = jest.spyOn(webex.cc, 'performAgentStateChange');
           webex.cc.services.agent.stateChange.mockReturnValue(pending.promise);
@@ -1429,12 +1426,8 @@ describe('webex.cc', () => {
           const frame = ack(requestId, {subStatus: data.state, auxCodeId: data.auxCodeId});
           webex.cc['handleWebsocketMessage'](JSON.stringify(frame)); pending.resolve(frame); await operation;
           expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
-          expect(webex.cc['stateDispatches'].get(requestId)).toEqual({
-            source: source === 'explicit' ? 'explicit' : 'relogin-auto',
-            registration: webex.cc['registrationGeneration'], sessionId: 'session',
-            stationRevision: webex.cc['stationRevision'], generation: webex.cc['recoveryGeneration'],
-            ordinal: expect.any(Number),
-          });
+          expect(webex.cc['autoAvailableDispatches'].size).toBe(0);
+          expect(webex.cc.services.agent.stateChange.mock.calls[0][2]).not.toHaveProperty('requireCorrelation');
         });
 
         it.each(['fulfilled', 'rejected'])('T-007 DR-only barrier survives cancellation until %s settlement', async outcome => {
@@ -1525,24 +1518,23 @@ describe('webex.cc', () => {
           expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(1);
         });
 
-        it.each([true, false])('T-007 authoritativeStateReconciliation independentAfterDispatch=%s', async (after) => {
+        it('T-007 applies ordinary state notifications with equal timestamps in arrival order', async () => {
           await prepare(true, true);
           const pending = createDeferred<any>(); webex.cc.services.agent.stateChange.mockReturnValue(pending.promise);
           const independent = ack('independent', {auxCodeId: 'independent', subStatus: 'Idle'});
-          if (!after) webex.cc['handleWebsocketMessage'](JSON.stringify(independent));
           const explicit = webex.cc.setAgentState({state: 'Idle', auxCodeId: 'explicit'});
           const observed = explicit.catch(() => undefined);
           const id = webex.cc.services.agent.stateChange.mock.calls[0][2].correlationId;
-          if (after) webex.cc['handleWebsocketMessage'](JSON.stringify(independent));
+          webex.cc['handleWebsocketMessage'](JSON.stringify(independent));
           const local = ack(id, {auxCodeId: 'explicit', subStatus: 'Idle'});
           webex.cc['handleWebsocketMessage'](JSON.stringify(local)); pending.resolve(local);
           await explicit; await observed;
-          expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe(after ? 'independent' : 'explicit');
+          expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe('explicit');
           expect(webex.cc.agentConfig.lastStateChangeTimestamp).toBe(20);
           expect(webex.cc.agentConfig.lastIdleCodeChangeTimestamp).toBe(21);
         });
 
-        it('T-007 timeoutLateReplyCannotCompleteExplicit or overwrite accepted explicit state', async () => {
+        it('T-007 keeps only automatic IDs and protects newer manual state from a late auto reply', async () => {
           const automatic = createDeferred<any>(); const explicit = createDeferred<any>();
           webex.cc.services.agent.stateChange.mockReturnValueOnce(automatic.promise).mockReturnValueOnce(explicit.promise);
           await startAuto(); const oldId = webex.cc.services.agent.stateChange.mock.calls[0][2].correlationId;
@@ -1555,31 +1547,12 @@ describe('webex.cc', () => {
           const accepted = ack(id, {auxCodeId: 'manual', subStatus: 'Idle', lastStateChangeTimestamp: 30});
           webex.cc['handleWebsocketMessage'](JSON.stringify(accepted)); explicit.resolve(accepted);
           await request; await observed;
-          // Correlation survives settlements and arbitrary age/count; old automatic replies
-          // must never be reclassified as independent authoritative notifications.
-          webex.cc.services.agent.stateChange.mockImplementation((_request, _callback, {correlationId: requestId}) => {
-            const frame = ack(requestId, {auxCodeId: 'manual', subStatus: 'Idle', lastStateChangeTimestamp: 30});
-            webex.cc['handleWebsocketMessage'](JSON.stringify(frame));
-            return Promise.resolve(frame);
-          });
-          for (let index = 0; index < 128; index += 1)
-            await webex.cc.setAgentState({state: 'Idle', auxCodeId: 'manual'});
-          jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 30 * 24 * 60 * 60 * 1000);
           webex.cc['handleWebsocketMessage'](JSON.stringify(ack(oldId, {lastStateChangeTimestamp: 100})));
           expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe('manual');
           expect(webex.cc['lastPublishedRegionState'].autoAvailable).toBe('failed');
-          expect(webex.cc['stateDispatches'].get(oldId)).toEqual({
-            source: 'dr-auto', registration: webex.cc['registrationGeneration'], sessionId: 'session',
-            stationRevision: webex.cc['stationRevision'], generation: webex.cc['recoveryGeneration'],
-            ordinal: expect.any(Number), outcome: 'failed',
-          });
-          for (const dispatch of webex.cc['stateDispatches'].values()) {
-            expect(Object.values(dispatch).every(value => ['string', 'number'].includes(typeof value))).toBe(true);
-            expect(dispatch).not.toHaveProperty('signal');
-            expect(dispatch).not.toHaveProperty('intentRevision');
-          }
+          expect([...webex.cc['autoAvailableDispatches'].keys()]).toEqual([oldId]);
           webex.cc['clearAcceptedStation']();
-          expect(webex.cc['stateDispatches'].size).toBe(0);
+          expect(webex.cc['autoAvailableDispatches'].size).toBe(0);
         });
 
         it.each([false, true])('T-007 local-only voice race rereads readiness on rearm: ready=%s', async (ready) => {
@@ -11037,7 +11010,7 @@ describe('realRecoveryWiring', () => {
       const changes = requests.filter(r => r.resource === '/v1/agents/session/state');
       expect(changes).toHaveLength(1);
       const id = changes[0].headers.trackingid;
-      expect(cc['stateDispatches'].get(id.replace(/^webex-js-sdk_/, '')).source).toBe('explicit');
+      expect(cc['autoAvailableDispatches'].size).toBe(0);
       expect(cc['stateIntentRevision']).toBe(revision + 1);
       expect(settled).not.toHaveBeenCalled();
       const response = {...frame(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, id,
@@ -15303,7 +15276,7 @@ describe('realRecoveryWiring', () => {
       expect(cc.agentConfig.lastStateAuxCodeId).toBe('0');
       expect(cc.agentConfig.lastIdleCodeChangeTimestamp).toBe(idleTimestamp ?? undefined);
       expectAutoListenersDetached(cc, removed);
-      expect(cc['stateDispatches'].get(auto.requestId).outcome).toBe('succeeded');
+
       sockets[1].message({...ack, type: CC_EVENTS.AGENT_STATE_CHANGE});
       sockets[1].lost(); await flush();
       expect(snapshots.filter(s => s.status === 'ready').map(s => s.autoAvailable)).toEqual(['requesting', 'succeeded']);
@@ -15409,7 +15382,7 @@ describe('realRecoveryWiring', () => {
       await restoreAutoAvailable(h, false);
       const auto = cc['autoAvailable'];
       const removed = jest.spyOn(auto.signal, 'removeEventListener');
-      const changed = {...cc['confirmedState'], data: {...auto.disconnect, auxCodeId: 'newer-state'}};
+      const changed = {...auto.disconnect, auxCodeId: 'newer-state'};
       const metric = jest.spyOn(cc['metricsManager'], 'timeEvent');
       if (boundary === 'voice-ready') cc['confirmedState'] = changed;
       else metric.mockImplementationOnce(() => { cc['confirmedState'] = changed; });
@@ -15757,14 +15730,13 @@ describe('realRecoveryWiring', () => {
       settings: cc['multiRegionSettings'] && {...cc['multiRegionSettings']}, agentId: cc['registrationAgentId'],
       history: [...cc['acceptedSwitchIds']],
       station: cc['acceptedStation'], active: cc['priorStationActive'],
-      dispatches: cc['stateDispatches'].size, confirmed: cc['confirmedState'],
-      ordinal: cc['acceptedExplicitOrdinal'],
+      dispatches: cc['autoAvailableDispatches'].size, confirmed: cc['confirmedState'],
       idleCode: cc['wellbeingBreakIdleCode'],
     });
     const cleared = {
       settings: null, agentId: undefined, history: [],
       station: undefined, active: false, dispatches: 0, confirmed: undefined,
-      ordinal: 0, idleCode: undefined,
+      idleCode: undefined,
     };
     const runBoundary = (h, boundary) => {
       const {cc, host, sockets} = h;
@@ -15818,7 +15790,7 @@ describe('realRecoveryWiring', () => {
           const ready = cc['lastPublishedRegionState'];
           const registration = cc['registrationAbortController'];
           const epoch = cc['rtdEpoch'];
-          expect(cc['stateDispatches'].size).toBeGreaterThan(0);
+          expect(cc['autoAvailableDispatches'].size).toBeGreaterThan(0);
           cc['wellbeingBreakIdleCode'] = {id: 'old-idle-code'};
           host.internal.mercury = {connected: true, off: jest.fn(), disconnect: jest.fn().mockResolvedValue(undefined)};
           host.internal.device = {unregister: jest.fn().mockResolvedValue(undefined)};
@@ -15972,10 +15944,7 @@ describe('realRecoveryWiring', () => {
         status: 'ready', reason: 'region-switch', trackingId: 'switch', homeRegion: 'produs1',
         autoAvailable: outcome,
       }]);
-      if (ready) {
-        expect(cc['stateDispatches'].get(auto.requestId).outcome).toBe('failed');
-        expect(cc['inFlightDrAutoState']).toBe(barrier);
-      }
+      if (ready) expect(cc['inFlightDrAutoState']).toBe(barrier);
       await flush();
       if (barrier) await barrier;
       expect(cc['inFlightDrAutoState']).toBeUndefined();
@@ -16021,7 +15990,7 @@ describe('realRecoveryWiring', () => {
       sockets[1].message(ack); await flush();
       await expect(stateChange.mock.results[0].value).resolves.toEqual(JSON.parse(JSON.stringify(ack)));
       expectAutoListenersDetached(cc, removed);
-      expect(cc['stateDispatches'].get(auto.requestId).outcome).toBe('failed');
+
       expect(cc['confirmedState']).toBe(confirmed);
       expect([cc.agentConfig.lastStateAuxCodeId, cc.agentConfig.lastStateChangeTimestamp,
         cc.agentConfig.lastIdleCodeChangeTimestamp]).toEqual(['idle', 1, 1]);
@@ -16035,7 +16004,7 @@ describe('realRecoveryWiring', () => {
           lastStateChangeTimestamp: 3, lastIdleCodeChangeTimestamp: 4}).data}});
       await flush();
       expect(cc.agentConfig.lastStateAuxCodeId).toBe('0');
-      expect(cc['stateDispatches'].get(auto.requestId).outcome).toBe('failed');
+
       expect(listener).toHaveBeenCalledTimes(1);
       removed.mockRestore(); stateChange.mockRestore();
     });
@@ -16053,12 +16022,43 @@ describe('realRecoveryWiring', () => {
         {reason: 'REJECTED'}), type: CC_EVENTS.AGENT_STATE_CHANGE};
       sockets[1].message(failure); await flush();
       expectAutoListenersDetached(cc, removed);
-      expect(cc['stateDispatches'].get(auto.requestId).outcome).toBe('failed');
+
       sockets[1].message(failure); sockets[1].lost(); await flush();
       cc['handleAutoAvailableAbort'](); cc['handleAutoAvailableVoiceChange'](); await flush();
       expect(listener.mock.calls.map(([state]) => state.autoAvailable)).toEqual(['failed']);
       expect(requests.filter(r => r.resource === '/v1/agents/session/state')).toHaveLength(1);
       removed.mockRestore();
+    });
+  });
+
+  it('T-007 accepts a legacy manual state reply and ignores late automatic replies', async () => {
+    await withGraph(async h => {
+      const {cc, requests, sockets, frame, flush} = h;
+      await restoreAutoAvailable(h);
+      const automatic = requests.find(request => request.resource === '/v1/agents/session/state');
+      const notification = (type, id, data = {}) => ({
+        ...frame(type, id, data),
+        type: CC_EVENTS.AGENT_STATE_CHANGE,
+      });
+      const lateFailure = notification(CC_EVENTS.AGENT_STATE_CHANGE_FAILED, automatic.headers.trackingid);
+      sockets[1].message(lateFailure);
+      await flush();
+
+      const manual = cc.setAgentState({state: 'Idle', auxCodeId: 'manual'});
+      const settled = jest.fn();
+      manual.then(settled, settled);
+      await flush();
+      sockets[1].message(lateFailure);
+      sockets[1].message(notification(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, automatic.headers.trackingid));
+      await flush();
+      expect(settled).not.toHaveBeenCalled();
+
+      const response = notification(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, 'server-id', {
+        subStatus: 'Idle', auxCodeId: 'manual', lastStateChangeTimestamp: 3, trackingId: undefined,
+      });
+      sockets[1].message(response);
+      await expect(manual).resolves.toEqual(JSON.parse(JSON.stringify(response)));
+      expect(cc.agentConfig.lastStateAuxCodeId).toBe('manual');
     });
   });
 
@@ -16076,8 +16076,6 @@ describe('realRecoveryWiring', () => {
       else await cc.deregister();
       expect(sockets[1].close).toHaveBeenCalledTimes(1);
       expectAutoListenersDetached(cc, removed);
-      if (ready && boundary === 'switch')
-        expect(cc['stateDispatches'].get(auto.requestId).outcome).toBe('cancelled');
       await flush();
       sockets[1].message({...frame(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, auto.requestId,
         {auxCodeId: '0', subStatus: 'Available'}), type: CC_EVENTS.AGENT_STATE_CHANGE});
@@ -16661,7 +16659,7 @@ describe('realRecoveryWiring', () => {
 
   it.each(['timeout', 'abort'].flatMap(boundary => [false, true].flatMap(replacement =>
     [false, true].map(success => [boundary, replacement, success]))))(
-    'T-007 lateReloadCannotCompleteRetry / sameSocketAndReplacementKeepStateCorrelation boundary=%s replacement=%s success=%s',
+    'T-007 late reload cannot complete a retry boundary=%s replacement=%s success=%s',
     async (boundary, replacement, success) => {
       await withGraph(async h => {
         const {cc, requests, sockets, frame, login, flush} = h;
@@ -16735,16 +16733,6 @@ describe('realRecoveryWiring', () => {
         expect(cc.services.aqmReqs['operations'].size).toBe(0);
         expect(requests.filter(r => r.resource === '/v1/agents/login')).toHaveLength(1);
         expect(requests.filter(r => r.resource === '/v1/agents/reload')).toHaveLength(count);
-        const explicit = cc.setAgentState({state: 'Idle', auxCodeId: 'manual'});
-        await flush();
-        const state = requests.filter(r => r.resource === '/v1/agents/session/state').slice(-1)[0];
-        const stateSettled = jest.fn(); const observed = explicit.then(stateSettled); observed.catch(() => undefined);
-        current.message({...frame(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, 'obsolete-state', {auxCodeId: 'old'}), type: CC_EVENTS.AGENT_STATE_CHANGE});
-        await flush(); expect(stateSettled).not.toHaveBeenCalled();
-        current.message({...frame(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, state.headers.trackingid, {auxCodeId: 'manual', agentSessionId: 'current-session',
-            lastStateChangeTimestamp: 2, lastIdleCodeChangeTimestamp: 3}), type: CC_EVENTS.AGENT_STATE_CHANGE});
-        await observed; expect(stateSettled).toHaveBeenCalledTimes(1);
-        expect(cc.agentConfig.lastStateAuxCodeId).toBe('manual');
       });
     }
   );
@@ -16896,8 +16884,8 @@ describe('realRecoveryWiring', () => {
       const current = cc['confirmedState'];
       if (!applies) expect(current).toBe(confirmed);
       else {
-        expect(current.data).toEqual(received);
-        // An identical echo is idempotent, including ledger identity and dispatch ordering.
+        expect(current).toEqual(received);
+        // An identical echo leaves the cached state reference intact.
         sockets[0].message({...payload, type: CC_EVENTS.AGENT_STATE_CHANGE}); await flush();
         expect(cc['confirmedState']).toBe(current);
         expect(generic).toHaveBeenCalledTimes(2);

@@ -535,7 +535,6 @@ export default class Voice extends Task implements IVoice {
           ? 'wxApp_answer_pending'
           : 'wxApp_offer_ready';
         this.setWxAppAnswerPending(false);
-        this.assertTaskCommandAllowed();
         const response = await this.runTaskOperation(
           () =>
             runWxAppOutdialDecline(

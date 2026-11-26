@@ -72,7 +72,6 @@ export class WebSocketManager extends EventEmitter {
     }
     const previous = this.attempt;
     if (previous) this.disposeAttempt(previous, createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-    this.clearServingRegion();
     this.shouldReconnect = true;
 
     return new Promise((resolve, reject) => {
@@ -142,7 +141,6 @@ export class WebSocketManager extends EventEmitter {
 
   public close(shouldReconnect: boolean, reason = 'Unknown'): void {
     this.shouldReconnect = shouldReconnect;
-    this.clearServingRegion();
     const attempt = this.attempt;
     if (!attempt) return;
     this.disposeAttempt(attempt, createRegionRecoveryError('RECOVERY_INTERRUPTED'));

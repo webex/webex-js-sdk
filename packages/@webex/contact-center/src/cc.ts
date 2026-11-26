@@ -237,14 +237,6 @@ type StateDispatchContext = {
   signal: AbortSignal;
 };
 
-// Late replies have no expiry; retain correlation scalars, never invocation cancellation owners.
-type StateDispatch = Pick<StateDispatchContext, 'source' | 'stationRevision' | 'generation'> & {
-  registration: number;
-  sessionId: string;
-  ordinal: number;
-  outcome?: 'succeeded' | 'failed' | 'cancelled';
-};
-
 type AutoAvailable = {
   registration: number;
   generation: number;
@@ -258,6 +250,17 @@ type AutoAvailable = {
   requestId?: string;
   startedAt: number;
 };
+
+type AutoAvailableDispatch = Pick<
+  AutoAvailable,
+  'generation' | 'stationRevision' | 'intentRevision'
+>;
+
+type ConfirmedAgentState = Pick<
+  Agent.StateChangeSuccess['data'],
+  'auxCodeId' | 'status' | 'subStatus'
+> &
+  AgentStateVersion & {lastStateChangeReason?: string};
 
 /**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.
@@ -516,16 +519,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private autoAvailable?: AutoAvailable;
   private inFlightDrAutoState?: Promise<void>;
   private explicitStateWaiter?: object;
-  private stateDispatches = new Map<string, StateDispatch>();
-  private stateOrdinal = 0;
-  private acceptedExplicitOrdinal = 0;
-  private confirmedState?: {
-    data: Pick<Agent.StateChangeSuccess['data'], 'auxCodeId' | 'status' | 'subStatus'> &
-      AgentStateVersion & {lastStateChangeReason?: string};
-    ordinal: number;
-    dispatchOrdinal?: number;
-    independent: boolean;
-  };
+  private readonly autoAvailableDispatches = new Map<string, AutoAvailableDispatch>();
+  private confirmedState?: ConfirmedAgentState;
 
   private multiRegionSettings: MultiRegionSettings | null = null;
 
@@ -912,9 +907,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   private clearAcceptedStation(): void {
-    this.stateDispatches.clear();
+    this.autoAvailableDispatches.clear();
     this.confirmedState = undefined;
-    this.acceptedExplicitOrdinal = 0;
     this.acceptedStation = undefined;
     this.priorStationActive = false;
     if (this.agentConfig) {
@@ -1306,12 +1300,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.priorStationActive = true;
     this.agentConfig.isAgentLoggedIn = true;
     this.updateWellnessSession(sessionId);
-    if (hasAgentStateVersion(data))
-      this.confirmedState = {
-        data: {...data},
-        ordinal: (this.stateOrdinal += 1),
-        independent: true,
-      };
+    if (hasAgentStateVersion(data)) this.confirmedState = {...data};
     this.agentConfig.currentTeamId = data.teamId;
     let payload: Agent.UserStationLogin;
     if (input.source === 'login') {
@@ -1383,14 +1372,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   private async applyRestoredStationEffects(signal: AbortSignal): Promise<void> {
-    if (signal.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
     const payload = this.acceptedStation?.payload;
     if (payload)
       await awaitRecoveryWork(
         this.handleDeviceType(payload.deviceType as LoginOption, payload.dialNumber, signal),
         signal
       );
-    if (signal.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
     await awaitRecoveryWork(this.ensureWxAppPostStationLogin(signal), signal);
   }
 
@@ -1490,7 +1477,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           }
           if (!this.isCurrentRecovery(recovery) || context.signal.aborted)
             throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-          this.assertPrimaryIdentity(response.data.agentId);
           if (stage === 'fallback')
             this.rememberAcceptedStation({
               source: 'login',
@@ -1526,8 +1512,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           });
         } catch (error) {
           const retryDelay = STATION_RELOAD_RETRY_DELAYS_MS[recovery.reloads - 1];
-          if (!this.isCurrentRecovery(recovery) || context.signal.aborted) {
-            if (this.isCurrentRecovery(recovery) && stage === 'reload' && retryDelay !== undefined)
+          const current = this.isCurrentRecovery(recovery);
+          if (!current || context.signal.aborted) {
+            if (current && stage === 'reload' && retryDelay !== undefined)
               recovery.retryNotBefore = Math.max(recovery.retryNotBefore, Date.now() + retryDelay);
             throw error;
           }
@@ -1673,9 +1660,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     )
       this.rtdTerminatedFor = undefined;
     if (agentSessionId !== this.currentAgentSessionId) {
-      this.stateDispatches.clear();
+      this.autoAvailableDispatches.clear();
       this.confirmedState = undefined;
-      this.acceptedExplicitOrdinal = 0;
     }
     this.currentAgentSessionId = agentSessionId;
   }
@@ -2087,7 +2073,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private resumeRtd(signal: AbortSignal): Promise<void> {
     if (
-      signal.aborted ||
       signal !== this.registrationAbortController?.signal ||
       !this.shouldSubscribeRtd() ||
       !this.getHttpRecoveryGuard() ||
@@ -2936,7 +2921,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
               context.signal?.aborted
             )
               throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-            this.assertPrimaryIdentity(resp.data.agentId);
             this.rememberAcceptedStation({source: 'login', payload, response: resp});
             reconcileCallingState();
             if (!this.isCurrentStation(registration, station, orgId, profile))
@@ -3421,10 +3405,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.publishRegionState(this.buildRegionState('ready', 'region-switch'));
   };
 
-  /** Release active work once, retaining sent-request correlation and its settlement barrier. */
+  /** Release active work once. Its sent request still owns its correlation and settlement. */
   private consumeAutoAvailable(
     auto: AutoAvailable,
-    outcome: NonNullable<StateDispatch['outcome']>,
+    outcome: 'succeeded' | 'failed' | 'cancelled',
     failure?: RecoveryFailure
   ): boolean {
     if (this.autoAvailable !== auto) return false;
@@ -3435,8 +3419,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       VOICE_CONNECTION_EVENTS.STATE_CHANGE,
       this.handleAutoAvailableVoiceChange
     );
-    const dispatch = auto.requestId && this.stateDispatches.get(auto.requestId);
-    if (dispatch && !dispatch.outcome) dispatch.outcome = outcome;
     // Commit settlement before the sink: a reentrant notification cannot settle twice.
     if (current)
       this.recordRecoveryDiagnostic('auto-available', outcome, 1, auto.startedAt, failure);
@@ -3473,7 +3455,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       !this.isCurrentAutoAvailable(auto)
     )
       return;
-    if (this.invalidatesAutoAvailableDisconnect(this.confirmedState?.data, auto)) {
+    if (this.invalidatesAutoAvailableDisconnect(this.confirmedState, auto)) {
       const cancelled = this.cancelAutoAvailable();
       if (cancelled) this.publishRegionState(cancelled);
 
@@ -3563,50 +3545,37 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     )
       return;
     const request =
-      typeof data.trackingId === 'string' ? this.stateDispatches.get(data.trackingId) : undefined;
+      typeof data.trackingId === 'string'
+        ? this.autoAvailableDispatches.get(data.trackingId)
+        : undefined;
     if (
       request &&
-      (request.registration !== this.registrationGeneration ||
-        request.stationRevision !== this.stationRevision ||
+      (request.stationRevision !== this.stationRevision ||
         request.generation !== this.recoveryGeneration ||
-        request.sessionId !== this.currentAgentSessionId)
+        request.intentRevision !== this.stateIntentRevision)
     )
       return;
-    if (request?.source === 'dr-auto' && request.ordinal < this.acceptedExplicitOrdinal) return;
     const previous = this.confirmedState;
-    const version = previous ? compareAgentStateVersions(data, previous.data) : 1;
+    const version = previous ? compareAgentStateVersions(data, previous) : 1;
     if (version < 0) return;
-    const identical =
-      previous && AGENT_STATE_FIELDS.every((key) => data[key] === previous.data[key]);
-    if (
-      !version &&
-      !identical &&
-      request &&
-      previous &&
-      ((previous.independent && previous.ordinal > request.ordinal) ||
-        (!previous.independent && previous.dispatchOrdinal > request.ordinal))
-    )
-      return;
-    if (request?.source === 'explicit')
-      this.acceptedExplicitOrdinal = Math.max(this.acceptedExplicitOrdinal, request.ordinal);
+    const identical = previous && AGENT_STATE_FIELDS.every((key) => data[key] === previous[key]);
     if (version || !identical) {
       this.agentConfig.lastStateAuxCodeId = data.auxCodeId as string;
       this.agentConfig.lastStateChangeTimestamp = data.lastStateChangeTimestamp;
       this.agentConfig.lastIdleCodeChangeTimestamp = data.lastIdleCodeChangeTimestamp ?? undefined;
-      this.confirmedState = {
-        data: {...data} as Agent.StateChangeSuccess['data'],
-        ordinal: (this.stateOrdinal += 1),
-        independent: !request,
-        dispatchOrdinal: request?.ordinal,
-      };
+      this.confirmedState = {...data} as Agent.StateChangeSuccess['data'];
     }
     const auto = this.autoAvailable;
-    const ownAuto = request?.source === 'dr-auto' && auto?.requestId === data.trackingId;
-    if (ownAuto && this.isCurrentAutoAvailable(auto) && !auto.signal.aborted && !request.outcome) {
+    if (
+      request &&
+      auto?.requestId === data.trackingId &&
+      !auto.signal.aborted &&
+      this.isCurrentAutoAvailable(auto)
+    ) {
       if (!this.consumeAutoAvailable(auto, 'succeeded')) return;
       this.regionStateContext.autoAvailable = 'succeeded';
       this.publishRegionState(this.buildRegionState('ready', 'region-switch'));
-    } else if (!ownAuto && this.invalidatesAutoAvailableDisconnect(data, auto)) {
+    } else if (!request && this.invalidatesAutoAvailableDisconnect(data, auto)) {
       const cancelled = this.cancelAutoAvailable();
       if (cancelled) this.publishRegionState(cancelled);
     }
@@ -3651,26 +3620,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (context.source === 'dr-auto') timeDispatch();
       this.assertStateDispatchCurrent(context);
       if (context.source === 'dr-auto') {
-        if (
-          this.invalidatesAutoAvailableDisconnect(this.confirmedState?.data, this.autoAvailable)
-        ) {
+        if (this.invalidatesAutoAvailableDisconnect(this.confirmedState, this.autoAvailable)) {
           const cancelled = this.cancelAutoAvailable();
           if (cancelled) this.publishRegionState(cancelled);
         }
         if (!this.autoAvailable) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
       }
       const requestId = uuidv4();
-      const dispatch: StateDispatch = {
-        source: context.source,
-        stationRevision: context.stationRevision,
-        generation: context.generation,
-        registration: this.registrationGeneration,
-        sessionId: this.currentAgentSessionId,
-        ordinal: (this.stateOrdinal += 1),
-      };
-      this.stateDispatches.set(requestId, dispatch);
-      if (context.source === 'dr-auto' && this.autoAvailable)
+      if (context.source === 'dr-auto') {
         this.autoAvailable.requestId = requestId;
+        this.autoAvailableDispatches.set(requestId, {
+          generation: context.generation,
+          stationRevision: context.stationRevision,
+          intentRevision: context.intentRevision,
+        });
+      }
       const pending = this.services.agent.stateChange(
         {data: {...data, agentId: data.agentId || this.agentConfig.agentId}},
         undefined,
@@ -3678,9 +3642,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           generation: context.generation,
           signal: context.signal,
           correlationId: requestId,
-          ...(context.source === 'dr-auto' || this.regionStateContext.trackingId
-            ? {requireCorrelation: true}
-            : {}),
+          ...(context.source === 'dr-auto' ? {requireCorrelation: true} : {}),
         }
       );
       if (context.source === 'dr-auto') {
