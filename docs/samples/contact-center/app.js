@@ -4994,6 +4994,8 @@ async function restoreWellnessState(options = {}) {
   const operationGeneration = wellnessState.operationGeneration;
   const sessionId = wellnessState.agentSessionId;
   const maxAttempts = options.maxAttempts || WELLNESS_RESTORE_MAX_ATTEMPTS;
+  const wellnessCodeId = wellnessState.idleCode?.id;
+  const selectableChannelOrder = ['telephony', 'chat', 'email', 'social'];
   clearWellnessBreakTimer();
   clearWellnessSafeStateTimer();
   wellnessState.lifecycle = 'Restoring';
@@ -5009,6 +5011,24 @@ async function restoreWellnessState(options = {}) {
       ) {
         return false;
       }
+
+      // AQM resolves on the first channel confirmation. Other channels can
+      // report success while this retry waits, so recognize completed
+      // restoration before sending another wellness-scoped request.
+      if (attempt > 1 && wellnessCodeId) {
+        const channelStates = webex.cc.getChannelStates?.() || {};
+        const stillOnBreak = selectableChannelOrder.some(
+          (channelType) => channelStates[channelType]?.auxCodeId === wellnessCodeId
+        );
+        if (!stillOnBreak) {
+          clearWellnessLifecycleOwnership();
+          wellnessState.lifecycle = isWellnessReady() ? 'Ready' : 'Unavailable';
+          setWellnessMessage(options.completionMessage || 'Previous agent state restored.');
+          renderWellnessState();
+          return true;
+        }
+      }
+
       try {
         await performSingleWellnessRestore();
         if (
@@ -5024,10 +5044,8 @@ async function restoreWellnessState(options = {}) {
         // succeeded), treat this as a partial failure and retry instead
         // of releasing recovery ownership.
         const channelStates = webex.cc.getChannelStates?.() || {};
-        const wellnessCodeId = wellnessState.idleCode?.id;
         if (wellnessCodeId) {
-          const SELECTABLE_ORDER = ['telephony', 'chat', 'email', 'social'];
-          const stillOnBreak = SELECTABLE_ORDER.filter(
+          const stillOnBreak = selectableChannelOrder.filter(
             (ct) => channelStates[ct]?.auxCodeId === wellnessCodeId
           );
           if (stillOnBreak.length > 0) {

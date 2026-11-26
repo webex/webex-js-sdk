@@ -3255,6 +3255,35 @@ describe('webex.cc', () => {
         );
       });
 
+      it('rejects a login when deregistration ends registration during profile refresh', async () => {
+        webex.cc.agentConfig.webRtcEnabled = true;
+        let resolveProfileRefresh: (value: any) => void = () => undefined;
+        jest
+          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
+          .mockImplementation(
+            () =>
+              new Promise((resolve) => {
+                resolveProfileRefresh = resolve;
+              })
+          );
+        const v1Login = jest.spyOn(webex.cc.services.agent, 'stationLogin');
+        const v2Login = jest.spyOn(webex.cc.services.agent, 'stationLoginV2');
+        const setLoginOption = jest.spyOn(webex.cc.webCallingService, 'setLoginOption');
+
+        const loginPromise = webex.cc.stationLogin({
+          teamId: 'teamId',
+          loginOption: LoginOption.BROWSER,
+        });
+        await Promise.resolve();
+        await webex.cc.deregister();
+        resolveProfileRefresh({agentProfile: {manageChannelAvailability: true}});
+
+        await expect(loginPromise).rejects.toThrow('REGISTRATION_ENDED');
+        expect(v1Login).not.toHaveBeenCalled();
+        expect(v2Login).not.toHaveBeenCalled();
+        expect(setLoginOption).not.toHaveBeenCalled();
+      });
+
       it('restores the previous flag when login fails (INV-012)', async () => {
         // Start with V1 session (manageChannelAvailability = false)
         webex.cc.agentConfig.manageChannelAvailability = false;
@@ -6154,6 +6183,8 @@ describe('webex.cc', () => {
     });
 
     it('should emit AGENT_RELOGIN_SUCCESS on CC_EVENTS.AGENT_RELOGIN_SUCCESS with mapped payload', () => {
+      webex.cc['v2ReloadPromise'] = Promise.resolve({} as any);
+      webex.cc['v2ReloadGeneration'] = webex.cc['reloadGeneration'];
       const channelsMap = {chat: ['a', 'b'], email: [], social: ['x'], telephony: ['y', 'z']};
       const payload = {
         trackingId: 'trk-relogin',
@@ -6187,6 +6218,8 @@ describe('webex.cc', () => {
     });
 
     it('should downgrade manageChannelAvailability before emitting V1 relogin success', () => {
+      webex.cc['v2ReloadPromise'] = Promise.resolve({} as any);
+      webex.cc['v2ReloadGeneration'] = webex.cc['reloadGeneration'];
       webex.cc.agentConfig = {agentId: 'agent-1', manageChannelAvailability: true} as Profile;
       // Pre-seed stale V2 state
       webex.cc['channelStatesMap'] = {telephony: {agentState: 'Available'}} as any;
@@ -6219,7 +6252,40 @@ describe('webex.cc', () => {
       webex.cc.off(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, handler);
     });
 
-    it('ignores a stale V1 relogin notification whose session does not match the current session', () => {
+    it('accepts a replacement V1 session returned by the current reload', () => {
+      webex.cc.agentConfig = {
+        agentId: 'agent-1',
+        manageChannelAvailability: true,
+        isAgentLoggedIn: true,
+      } as Profile;
+      webex.cc['currentAgentSessionId'] = 'session-old';
+      webex.cc['channelStatesMap'] = {telephony: {agentState: 'Available'}} as any;
+      webex.cc['loginChannelsMap'] = {telephony: ['t1']};
+      webex.cc['v2ReloadPromise'] = Promise.resolve({} as any);
+      webex.cc['v2ReloadGeneration'] = webex.cc['reloadGeneration'];
+
+      messageCallback(
+        JSON.stringify({
+          type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
+          trackingId: 'trk-replacement',
+          data: {
+            agentId: 'agent-1',
+            agentSessionId: 'session-replacement',
+            channelsMap: {telephony: ['t1']},
+            type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
+          },
+        })
+      );
+
+      expect(webex.cc.agentConfig.manageChannelAvailability).toBe(false);
+      expect(webex.cc['currentAgentSessionId']).toBe('session-replacement');
+      expect(emitSpy).toHaveBeenCalledWith(
+        AGENT_EVENTS.AGENT_RELOGIN_SUCCESS,
+        expect.objectContaining({agentSessionId: 'session-replacement'})
+      );
+    });
+
+    it('ignores a stale V1 relogin notification without current reload ownership', () => {
       // A new V2 login succeeded (session-new). The old reload's V1 response
       // arrives — its session-old identity must not downgrade the new session.
       webex.cc.agentConfig = {

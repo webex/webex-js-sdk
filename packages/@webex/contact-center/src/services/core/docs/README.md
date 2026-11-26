@@ -68,7 +68,7 @@ Related context: [documentation index](../../../../docs/index.md) ·
 | Evidence | What it establishes |
 | -------- | ------------------- |
 | `src/services/core/WebexRequest.ts` | Singleton `WebexRequest`: `getInstance`, `request` (service, resource, method, body, optional headers), and `uploadLogs` with metrics |
-| `src/services/core/aqm-reqs.ts` | `AqmReqs`: `req`, `reqEmpty`, bind keys, pending maps, duplicate rejection, HTTP failure masking, timeout, and redaction |
+| `src/services/core/aqm-reqs.ts` | `AqmReqs`: `req`, `reqEmpty`, bind keys, pending maps, duplicate rejection, retired notification correlation IDs, HTTP failure masking, timeout, and redaction |
 | `src/services/core/types.ts` | `Req`, `Conf`, `ConfEmpty`, `Res`, `ResEmpty`, `CbRes`, `Pending`, `Timeout`, and the RTD request types |
 | `src/services/core/websocket/WebSocketManager.ts` | Subscribe registration, the `wss` allow-list check, socket handlers, keepalive worker wiring, welcome resolution, multi-login close, and `message`/`socketClose` events |
 | `src/services/core/websocket/connection-service.ts` | Liveness timers, reconnect interval, restore failure, and the `connectionLost` event; the member subsections under Class and component relationships are justified by this file and `src/services/core/websocket/WebSocketManager.ts` |
@@ -200,6 +200,7 @@ Do not remove or reinterpret exported symbols/events without a documented consum
 | CORE-R-013 | An incoming `AGENT_MULTI_LOGIN` message closes the socket with `shouldReconnect` false and reason `multiLogin`, so no `socketClose` event and no reconnect follow. | A second login of the same agent replaces this session; reconnecting would fight it. | `src/services/core/websocket/WebSocketManager.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | None. | PRESENT |
 | CORE-R-014 | `uploadLogs(metaData)` submits diff logs with a fresh `feedbackId`, tracks `UPLOAD_LOGS_SUCCESS` or `UPLOAD_LOGS_FAILED`, resolves `{trackingid, feedbackId}` plus any returned `url`, `userId`, `correlationId`, and rethrows a failure. | The JSDoc: logs are uploaded to the backend for diagnostics; the `feedbackId` and `correlationId` let support find them. | `src/services/core/WebexRequest.ts` | `test/unit/spec/services/core/WebexRequest.ts` | None. | PRESENT |
 | CORE-R-015 | `getErrorDetails` and `generateTaskErrorObject` keep the error shapes and the logging and log-upload side effects specified under Caller-visible failure modes. | Callers rely on one error shape per flow for metrics, UI messages, and station-login field hints. | `src/services/core/Utils.ts` | `test/unit/spec/services/core/Utils.ts` | `generateTaskErrorObject` has no unit case in this module's tests. | PRESENT |
+| CORE-R-016 | After a notification settles an AQM request successfully or through its failure bind, AqmReqs retires the request correlation ID for `TIMEOUT_REQ`. It selects `data.trackingId` when present and otherwise the envelope `trackingId`; a later message carrying a retired ID is absorbed before it can settle another pending request. | V2 per-channel notifications share an inner request ID while carrying distinct envelope IDs, and delayed notifications from an already-settled request must not complete a retry that reuses the same bind. | `src/services/core/aqm-reqs.ts` | `test/unit/spec/services/core/aqm-reqs.ts` (`resolved trackingId absorption`) | Retirement applies to notification success and failure, not HTTP rejection or timeout. | PRESENT |
 
 ## Design overview
 
@@ -424,6 +425,7 @@ sequenceDiagram
     else timeout
       AQM-->>Caller: Service.aqm.reqs.Timeout
     end
+    Note over AQM,WS: Settled notification IDs use data.trackingId, falling back to trackingId; later messages with a retired ID are absorbed until TIMEOUT_REQ expires.
     AQM->>AQM: clear success, failure, and cancel binds
   end
 ```
@@ -683,6 +685,7 @@ WebSocketManager owns socket/welcome/worker state. AqmReqs owns pending success/
 | -------------- | ----- | ------------- | ------------------- | ----------------------------- |
 | `url`, `websocket`, `isSocketClosed`, `shouldReconnect`, `isWelcomeReceived`, `welcomePromiseResolve`, `forceCloseWebSocketOnTimeout`, `isConnectionLost` | `WebSocketManager` | No URL, empty socket, `shouldReconnect` true | Register, `onopen`, `onmessage`, `onclose`, `close`, `handleConnectionLost` | Memory; each `initWebSocket` replaces the URL and socket |
 | `pendingRequests`, `pendingNotifCancelrequest` | `AqmReqs` | Empty maps keyed by printed bind | Generated request call; cleared on success, failure, cancel, HTTP rejection, or timeout | Memory; one instance per `Services` |
+| `resolvedTrackingIds` | `AqmReqs` | Empty map of correlation IDs to expiry timers | Success/failure notification settlement adds the inner `data.trackingId` or, when absent, the envelope `trackingId`; expiry removes the ID after `TIMEOUT_REQ` | Memory; one instance per `Services`; HTTP rejection and timeout do not retire IDs |
 | Liveness timers, `reconnectInterval`, and the four flags | `ConnectionService` | Flags false, no timers | Every `message`, `socketClose`, timer expiry | Memory; flags reset by `updateConnectionData` |
 | `WebexRequest.instance` | `WebexRequest` class | Unset until the first `getInstance({webex})` | First call with `webex` | Process lifetime; never replaced |
 
@@ -700,7 +703,7 @@ WebSocketManager owns socket/welcome/worker state. AqmReqs owns pending success/
   (registered in the `Services` constructor) see each message before the plugin's listener added in
   `register()`. `AqmReqs.onMessage` settles at most one pending success or failure entry per message,
   then checks every cancel entry.
-- Idempotency and retry: AQM requests are never retried; a duplicate bind is rejected (CORE-R-009).
+- Idempotency and retry: AQM requests are never retried; a duplicate bind is rejected (CORE-R-009). A correlation ID from a successful or failed notification is retired for `TIMEOUT_REQ` so lagged messages from that request cannot settle a later request with a reused bind (CORE-R-016).
   Reconnect attempts repeat until one succeeds or the restore timer fires.
 - Shared-state protection: each piece of state has one owner (Client state model); `ConnectionService`
   writes `WebSocketManager.shouldReconnect` only on restore failure.
@@ -720,7 +723,7 @@ When a keepalive response arrives after a lost-connection state, `ConnectionServ
 | `CONNECTIVITY_CHECK_INTERVAL`      | 5 000 ms  | Interval between reconnection attempts       |
 | `KEEPALIVE_WORKER_INTERVAL`        | 4 000 ms  | Keepalive frame interval                     |
 | `CLOSE_SOCKET_TIMEOUT`             | 16 000 ms | Offline wait before the worker asks for a forced close |
-| `TIMEOUT_REQ`                      | 20 000 ms | Default AQM request timeout; `WEBSOCKET_EVENT_TIMEOUT` (`src/services/constants.ts`) is not the AqmReqs default |
+| `TIMEOUT_REQ`                      | 20 000 ms | Default AQM request timeout and expiry for retired notification correlation IDs; `WEBSOCKET_EVENT_TIMEOUT` (`src/services/constants.ts`) is not the AqmReqs default |
 
 `CLOSE_SOCKET_TIMEOUT_DURATION`, `NOTIFS_RESOLVE_DELAY`, `PING_API_URL`, `WELCOME_TIMEOUT`, and
 `RTD_PING_EVENT` are defined in `constants.ts` but not read by this module.
@@ -981,7 +984,7 @@ Unit tests mirror module paths under `test/unit/spec/services/core`. Preserve po
 | ------------------------ | ---------- | ----------------- | ----------------------------- | --- |
 | `CORE-R-001`, `CORE-R-014` | Unit | `test/unit/spec/services/core/WebexRequest.ts` request and upload cases | `test/unit/spec/services/core/WebexRequest.ts` failure cases | None |
 | `CORE-R-002`, `CORE-R-008`, `CORE-R-012`, `CORE-R-013`, `INV-002` | Unit | `test/unit/spec/services/core/websocket/WebSocketManager.ts` connect, welcome, INT header, multi-login cases | `test/unit/spec/services/core/websocket/WebSocketManager.ts` non-wss, non-allow-listed, register failure, error event; `test/unit/spec/services/core/Utils.ts` isAllowedUrlHost cases | No welcome-timeout case (none exists in code) |
-| `CORE-R-003`, `CORE-R-010`, `CORE-R-011`, `INV-001` | Unit | `test/unit/spec/services/core/aqm-reqs.ts` notif success, notifCancel, participant-left cases | `test/unit/spec/services/core/aqm-reqs.ts` notif fail, err-function, HTTP failure masking, default timeout cases | None |
+| `CORE-R-003`, `CORE-R-010`, `CORE-R-011`, `CORE-R-016`, `INV-001` | Unit | `test/unit/spec/services/core/aqm-reqs.ts` notif success, notifCancel, participant-left, success/failure retirement and envelope fallback cases | `test/unit/spec/services/core/aqm-reqs.ts` notif fail, stale success/failure absorption, expiry, err-function, HTTP failure masking, default timeout cases | None |
 | `CORE-R-004` | Unit | `test/unit/spec/services/core/websocket/connection-service.ts` reconnect and ping cases | `test/unit/spec/services/core/websocket/connection-service.ts` connection lost and restore failed cases | Offline retry and the unhandled rejection are not covered |
 | `CORE-R-005` | Unit (partial) | `test/unit/spec/services/core/aqm-reqs.ts` default-timeout case | None found | Keep timer-value assertions synchronized with constants; the worker `start` values are not asserted |
 | `CORE-R-007` | Unit | `test/unit/spec/services/core/aqm-reqs.ts` redaction cases | `test/unit/spec/services/core/aqm-reqs.ts` failure without redactSensitiveLogs | None |

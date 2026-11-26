@@ -274,6 +274,52 @@ describe('Contact Center wellness sample utilities', () => {
       expect(wellnessState.recoveryMarker).toBeUndefined();
     });
 
+    it('recognizes delayed all-channel confirmation before issuing a retry', async () => {
+      const wellnessState = {
+        operationGeneration: 1,
+        agentSessionId: 'session-1',
+        lifecycle: 'Ready',
+        idleCode: {id: 'wellness'},
+        recoveryMarker: {agentSessionId: 'session-1'},
+      };
+      const channelStates = {
+        telephony: {agentState: 'Idle', auxCodeId: 'lunch'},
+        chat: {agentState: 'Idle', auxCodeId: 'wellness'},
+      };
+      const performRestore = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('Chat confirmation is delayed'));
+      const clearOwnership = jest.fn(() => {
+        wellnessState.recoveryMarker = undefined;
+      });
+      const restoreWellnessState = loadSampleRestoreWellnessState({
+        wellnessState,
+        WELLNESS_RESTORE_MAX_ATTEMPTS: 3,
+        WELLNESS_RESTORE_RETRY_MS: 10000,
+        WELLNESS_COPY: {restoreFailure: 'Restoration failed.'},
+        clearWellnessBreakTimer: jest.fn(),
+        clearWellnessSafeStateTimer: jest.fn(),
+        setWellnessMessage: jest.fn(),
+        renderWellnessState: jest.fn(),
+        performSingleWellnessRestore: performRestore,
+        waitForWellnessRestoreRetry: jest.fn().mockImplementation(async () => {
+          channelStates.chat.auxCodeId = '0';
+          return true;
+        }),
+        clearWellnessLifecycleOwnership: clearOwnership,
+        scheduleLegacyRestoreRecovery: jest.fn(),
+        isWellnessReady: () => true,
+        webex: {cc: {getChannelStates: () => channelStates}},
+      });
+
+      await expect(restoreWellnessState()).resolves.toBe(true);
+
+      expect(performRestore).toHaveBeenCalledTimes(1);
+      expect(clearOwnership).toHaveBeenCalledTimes(1);
+      expect(wellnessState.recoveryMarker).toBeUndefined();
+      expect(wellnessState.lifecycle).toBe('Ready');
+    });
+
     it('attaches the wellness constants consumed by the standalone browser sample', () => {
       const webexSource = readFileSync(resolve(__dirname, '../../../src/webex.js'), 'utf8');
       const appSource = readFileSync(

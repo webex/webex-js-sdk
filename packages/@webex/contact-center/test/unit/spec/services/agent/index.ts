@@ -1,6 +1,10 @@
 import MetricsManager from '../../../../../src/metrics/MetricsManager';
 import routingAgent from '../../../../../src/services/agent';
 import AqmReqs from '../../../../../src/services/core/aqm-reqs';
+import {
+  AGENT_REQUEST_EVENT_TYPE,
+  ROUTING_MESSAGE_TYPE,
+} from '../../../../../src/services/core/constants';
 
 jest.mock('../../../../../src/services/core/Utils', () => ({
   createErrDetailsObject: jest.fn(),
@@ -90,6 +94,15 @@ describe('AQM routing agent', () => {
     expect(req.notifSuccess.bind.data.type).toBe('AgentChannelStateChanged');
     expect(req.notifFail.bind.data.type).toBe('AgentChannelStateChangeFailed');
     expect(req.notifFail.errId).toBe('Service.aqm.agent.stateChangeV2');
+  });
+
+  it('uses canonical envelope types for both V2 state-change binds', () => {
+    const data = {state: 'Available', auxCodeId: '0', channelType: ['chat']} as any;
+    const req = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({data});
+    const envelopeTypes = [AGENT_REQUEST_EVENT_TYPE, ROUTING_MESSAGE_TYPE, 'AgentChannelStateChange'];
+
+    expect(req.notifSuccess.bind.type).toEqual(envelopeTypes);
+    expect(req.notifFail.bind.type).toEqual(envelopeTypes);
   });
 
   it('stateChangeV2 correlates notifications to the requested channels', () => {

@@ -1336,6 +1336,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
     const loggerContext = {module: CC_FILE, method: METHODS.STATION_LOGIN};
+    const registrationGeneration = this.wellnessRegistrationGeneration;
     // Capture the calling context so a failed login attempt against a
     // different device type (e.g. EXTENSION while BROWSER is active) does
     // not leave the still-active session with the wrong loginOption /
@@ -1411,6 +1412,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             {module: CC_FILE, method: METHODS.STATION_LOGIN}
           );
         }
+      }
+
+      if (registrationGeneration !== this.wellnessRegistrationGeneration) {
+        const registrationEndedError = new Error('REGISTRATION_ENDED') as GenericError;
+        registrationEndedError.details = {
+          type: 'SDK_VALIDATION_ERROR',
+          orgId: this.$webex.credentials.getOrgId(),
+          trackingId: EMPTY_STRING,
+          data: {reason: 'REGISTRATION_ENDED'},
+        };
+        throw registrationEndedError;
       }
 
       // Signal WS handler: true→V2, false→V1, undefined→no login in-flight.
@@ -2266,16 +2278,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         break;
       }
       case CC_EVENTS.AGENT_RELOGIN_SUCCESS: {
-        // Guard: reject a stale V1 reload notification whose session does not
-        // match the current active session.  A reload may still be in-flight
-        // (or arrive after AQM timeout clears v2ReloadPromise) while the agent
-        // logs out and starts a new session.  Its V1 response must not
-        // downgrade manageChannelAvailability or overwrite the new session.
-        if (
-          this.currentAgentSessionId &&
-          eventData.data.agentSessionId &&
-          eventData.data.agentSessionId !== this.currentAgentSessionId
-        ) {
+        // A current reload may legitimately restore a replacement V1 session.
+        // Reject only results without current reload ownership, including late
+        // notifications after the reload was superseded or timed out.
+        const ownsCurrentReload =
+          this.v2ReloadPromise !== undefined && this.v2ReloadGeneration === this.reloadGeneration;
+        if (!ownsCurrentReload) {
           break;
         }
 

@@ -761,6 +761,22 @@ describe('AqmReqs', () => {
       },
     });
 
+    const makeV1StateConfig = (state: string) => ({
+      host: 'fake-host',
+      url: '/v1/agents/session/state',
+      method: 'PUT' as const,
+      data: {state},
+      err: (error: any) => error,
+      notifSuccess: {
+        bind: {type: 'AgentStateChange', data: {type: 'AgentStateChangeSuccess'}},
+        msg: {} as any,
+      },
+      notifFail: {
+        bind: {type: 'AgentStateChange', data: {type: 'AgentStateChangeFailed'}},
+        errId: 'Service.aqm.agent.stateChange' as const,
+      },
+    });
+
     it('absorbs a stale failure so it does not reject a newer request with the same bind key', async () => {
       jest.useFakeTimers();
       (global.window as any).setTimeout = global.setTimeout;
@@ -966,6 +982,49 @@ describe('AqmReqs', () => {
         // Advance past TIMEOUT_REQ (20s)
         jest.advanceTimersByTime(20001);
         expect(aqm['resolvedTrackingIds'].has('req-A')).toBe(false);
+      } finally {
+        jest.useRealTimers();
+        (global.window as any).setTimeout = global.setTimeout;
+      }
+    });
+
+    it('falls back to the envelope trackingId for V1 notifications', async () => {
+      jest.useFakeTimers();
+      (global.window as any).setTimeout = global.setTimeout;
+      try {
+        webexRequestInstance.request.mockResolvedValue(mockWebexRequestResolvedValue);
+
+        const promiseA = aqm['createPromise'](makeV1StateConfig('Available'));
+        webSocketManagerInstance.emit(
+          'message',
+          JSON.stringify({
+            type: 'AgentStateChange',
+            trackingId: 'v1-request-A',
+            data: {type: 'AgentStateChangeSuccess'},
+          })
+        );
+        await expect(promiseA).resolves.toBeDefined();
+        expect(aqm['resolvedTrackingIds'].has('v1-request-A')).toBe(true);
+
+        const promiseB = aqm['createPromise'](makeV1StateConfig('Idle'));
+        webSocketManagerInstance.emit(
+          'message',
+          JSON.stringify({
+            type: 'AgentStateChange',
+            trackingId: 'v1-request-A',
+            data: {type: 'AgentStateChangeFailed'},
+          })
+        );
+        webSocketManagerInstance.emit(
+          'message',
+          JSON.stringify({
+            type: 'AgentStateChange',
+            trackingId: 'v1-request-B',
+            data: {type: 'AgentStateChangeSuccess'},
+          })
+        );
+
+        await expect(promiseB).resolves.toBeDefined();
       } finally {
         jest.useRealTimers();
         (global.window as any).setTimeout = global.setTimeout;
