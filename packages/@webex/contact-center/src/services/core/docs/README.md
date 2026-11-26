@@ -488,16 +488,16 @@ classDiagram
 
 ### WebSocketManager members
 
-`hasUsableSocket()` requires an open socket with an accepted Welcome. `cancelPending(error)`
-settles pending admission with the given error and preserves an admitted socket. An already-aborted
-signal leaves the current attempt intact. Abort of an admitted attempt disposes the socket without
+`hasUsableSocket()` requires an open socket with an accepted Welcome. An already-aborted signal
+leaves the current attempt intact. Abort of an admitted attempt disposes the socket without
 resettling its promise. See CORE-R-002 and CORE-R-016 for admission deadlines and ownership.
 
 ### AqmReqs members
 
 ContactCenter calls `beginGeneration`, `setRecoveryGate`, and `interruptPending` together in
-`fenceRecoveryWork`. The first two change admission and ownership. `interruptPending` settles each
-owned operation once and removes its binds, timer and abort listener.
+`fenceRecoveryWork`. The first two change admission and ownership. `interruptPending` rejects each
+owned operation with a fresh `RECOVERY_INTERRUPTED` error and removes its binds, timer and abort
+listener.
 
 `AqmRequestContext` carries `generation` and optional `signal`, `correlationId`, and
 `requireCorrelation`. AqmReqs uses its current generation when a caller supplies no context.
@@ -597,15 +597,15 @@ waits for the next future slot without overlap or catch-up. A region switch paus
 registration-owned regional invocation, with its own timer and flight. Reset restores ordinary
 reconnection eligibility. Stop clears work and listeners.
 
-| Constant | Value | Purpose |
-| -------- | ----- | ------- |
-| `LOST_CONNECTION_RECOVERY_TIMEOUT` | 50 000 ms | Ordinary restore watchdog |
-| `WS_DISCONNECT_ALLOWED` | 8 000 ms | Ordinary loss detection |
-| `CONNECTIVITY_CHECK_INTERVAL` | 5 000 ms | Ordinary retry slots |
-| `KEEPALIVE_WORKER_INTERVAL` | 4 000 ms | Keepalive frame interval |
-| `CLOSE_SOCKET_TIMEOUT` | 16 000 ms | Offline wait before the worker asks for forced close |
-| `TIMEOUT_REQ` | 20 000 ms | Default AQM timeout and subscribe deadline |
-| `WELCOME_TIMEOUT` | 30 000 ms | Deadline from accepted subscribe through socket Welcome |
+| Constant                           | Value     | Purpose                                      |
+| ---------------------------------- | --------- | -------------------------------------------- |
+| `LOST_CONNECTION_RECOVERY_TIMEOUT` | 50 000 ms | Ordinary restore watchdog                    |
+| `WS_DISCONNECT_ALLOWED`            | 8 000 ms  | Ordinary loss detection                      |
+| `CONNECTIVITY_CHECK_INTERVAL`      | 5 000 ms  | Ordinary retry slots                         |
+| `KEEPALIVE_WORKER_INTERVAL`        | 4 000 ms  | Keepalive frame interval                     |
+| `CLOSE_SOCKET_TIMEOUT`             | 16 000 ms | Offline wait before the worker asks for a forced close |
+| `TIMEOUT_REQ`                      | 20 000 ms | Default AQM timeout and subscribe deadline   |
+| `WELCOME_TIMEOUT`                  | 30 000 ms | Deadline from accepted subscribe through socket Welcome |
 
 Region retries use the pacing in CORE-R-017 independently of the ordinary watchdog.
 
@@ -677,12 +677,12 @@ Source: [`keepalive.worker.js`](../websocket/keepalive.worker.js) — a Web Work
 | Subscribe call rejects or returns an explicit non-2xx status | `initWebSocket` rejects with the host error or response unchanged | `src/cc.ts` fails registration | Caller retries `register()` or the current recovery driver applies its retry policy | `src/services/core/websocket/WebSocketManager.ts` |
 | Subscribe has not completed within 20 seconds | `Error('Subscribe deadline exceeded')` | `register()` fails; attempt ownership is disposed, so late HTTP cannot install a socket | Caller retries `register()`; recovery driver applies its own retry policy | `src/services/core/websocket/WebSocketManager.ts`, `test/unit/spec/services/core/websocket/WebSocketManager.ts` (“bounds pending subscribe at 20 seconds”) |
 | No valid Welcome within 30 seconds after successful subscribe | `Error('Welcome deadline exceeded')` | `register()` fails; the attempt's socket, worker and timers are disposed | Caller retries `register()`; recovery driver applies its own retry policy | `src/services/core/websocket/WebSocketManager.ts`, `test/unit/spec/services/core/websocket/WebSocketManager.ts` (“bounds malformed Welcome data”) |
-| WebSocket admission signal is aborted, the attempt is superseded, or explicitly closed before Welcome | Plain Error with `data.reason: 'RECOVERY_INTERRUPTED'` | Pending `initWebSocket`/registration rejects; late results cannot affect a newer attempt | Only the current owner may start a new admission; `cancelPending(error)` instead uses its supplied error | `src/services/core/websocket/WebSocketManager.ts`, `test/unit/spec/services/core/websocket/WebSocketManager.ts` (T-003) |
+| WebSocket admission signal is aborted, the attempt is superseded, or explicitly closed before Welcome | Plain Error with `data.reason: 'RECOVERY_INTERRUPTED'` | Pending `initWebSocket`/registration rejects; late results cannot affect a newer attempt | Only the current owner may start a new admission | `src/services/core/websocket/WebSocketManager.ts`, `test/unit/spec/services/core/websocket/WebSocketManager.ts` (T-003) |
 | `webSocketUrl` missing, malformed, non-`wss`, or not allow-listed | `Error('Rejected webSocketUrl from RoutingNotifs registration: scheme or host not allow-listed')` | Registration fails; no socket | None | `src/services/core/websocket/WebSocketManager.ts` |
 | Socket `onerror` before welcome | `initWebSocket` rejects with `Error('WebSocket connection failed')` | Registration fails | Caller retries | `src/services/core/websocket/WebSocketManager.ts` |
 | Socket closes before accepted Welcome | `Error('WebSocket closed')` | Registration fails; unadmitted native close does not emit admitted `socketClose` | Current caller/driver handles the rejection | `src/services/core/websocket/WebSocketManager.ts`, `test/unit/spec/services/core/websocket/WebSocketManager.ts` |
 | AQM admission fails | `RECOVERY_INTERRUPTED`, `RECOVERY_IN_PROGRESS`, or `REGION_RELOAD_REQUIRED` according to the [admission matrix](#aqmreqs-members) | Use the current recovery state to decide whether to wait, restore a station, or reload | Follow the owner-specific path | `src/services/core/aqm-reqs.ts`, `test/unit/spec/services/core/aqm-reqs.ts` |
-| Admitted AQM operation aborts, observes generation mismatch, or is explicitly interrupted | `RECOVERY_INTERRUPTED` for abort/mismatch; `interruptPending` calls `createError()` per operation (fallback `RECOVERY_INTERRUPTED`) | Reject once and remove only owned binds, timer and abort listener; late completions are inert | Never replay a state-changing command automatically | `src/services/core/aqm-reqs.ts`, `test/unit/spec/services/core/aqm-reqs.ts` (T-007/T-008) |
+| Admitted AQM operation aborts, observes generation mismatch, or is explicitly interrupted | `RECOVERY_INTERRUPTED`, created per operation | Reject once and remove only owned binds, timer and abort listener; late completions are inert | Never replay a state-changing command automatically | `src/services/core/aqm-reqs.ts`, `test/unit/spec/services/core/aqm-reqs.ts` (T-007/T-008) |
 | Duplicate pending AQM bind | `Err.Details('Service.aqm.reqs.Pending', {key, msg})` | Wait for the first request | Retry after it settles | `src/services/core/aqm-reqs.ts` |
 | AQM HTTP rejection | `c.err(error)`, `Err.Message(c.err)`, or `Err.Message('Service.aqm.reqs.GenericRequestError')`. A known lifecycle error passes through. | Inspect structured details, preserve tracking id, and retry only when the operation is safe. | Caller decides | `src/services/core/aqm-reqs.ts` |
 | AQM failure bind matched | `Err.Details(errId, msg)` or `notifFail.err(msg)` | Read `details.data.reason` | Caller decides | `src/services/core/aqm-reqs.ts` |

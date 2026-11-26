@@ -560,17 +560,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (!Number.isInteger(attempt) || attempt < 0 || !Number.isFinite(startedAt)) return;
     const elapsedMs = Math.max(0, Date.now() - startedAt);
     if (!Number.isFinite(elapsedMs)) return;
-    const registration = this.registrationGeneration;
     const generation = this.recoveryGeneration;
     const station = this.stationRevision;
-    const recovery = this.recovery;
-    const controller = this.registrationAbortController;
-    let org: string;
-    try {
-      org = this.$webex.credentials.getOrgId();
-    } catch {
-      return;
-    }
     const id = normalizeRecoveryDiagnosticId(failure?.id);
     const trackingId = normalizeRecoveryDiagnosticId(failure?.trackingId);
     const payload: RecoveryDiagnosticPayload = {
@@ -586,31 +577,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ? {reason: failure.reason}
         : {}),
     };
-    const current = () => {
-      try {
-        return (
-          registration === this.registrationGeneration &&
-          generation === this.recoveryGeneration &&
-          station === this.stationRevision &&
-          recovery === this.recovery &&
-          controller === this.registrationAbortController &&
-          (!controller?.signal.aborted || outcome === 'cancelled') &&
-          org === this.$webex.credentials.getOrgId()
-        );
-      } catch {
-        return false;
-      }
-    };
-    if (current()) {
-      this.recordBestEffort(() =>
-        LoggerProxy.info('Region recovery', {
-          module: CC_FILE,
-          method: METHODS.RECORD_RECOVERY_DIAGNOSTIC,
-          data: {...payload},
-        })
-      );
-    }
-    if (!current()) return;
+    this.recordBestEffort(() =>
+      LoggerProxy.info('Region recovery', {
+        module: CC_FILE,
+        method: METHODS.RECORD_RECOVERY_DIAGNOSTIC,
+        data: {...payload},
+      })
+    );
+    if (generation !== this.recoveryGeneration || station !== this.stationRevision) return;
     let metric:
       | typeof METRIC_EVENT_NAMES.REGION_RECOVERY_SUCCESS
       | typeof METRIC_EVENT_NAMES.REGION_RECOVERY_FAILED
@@ -779,7 +753,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.commandController = new AbortController();
     this.services.aqmReqs.beginGeneration(this.recoveryGeneration);
     this.setRecoveryPhase(phase);
-    this.services.aqmReqs.interruptPending(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+    this.services.aqmReqs.interruptPending();
     if (['waiting', 'unavailable', 'reloadRequired'].includes(phase)) {
       this.interruptedTaskGeneration = this.recoveryGeneration;
       this.taskLifetimeController?.abort();
@@ -814,17 +788,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private getTaskRecoveryGuard(): TaskRecoveryGuard {
     if (!this.taskLifetimeController || this.taskLifetimeController.signal.aborted)
       this.taskLifetimeController = new AbortController();
-    const controller = this.taskLifetimeController;
-    const generation = this.recoveryGeneration;
 
     return {
-      generation,
-      signal: controller.signal,
-      assertCommandAllowed: () => {
-        this.assertRecoveryAdmission('command');
-        if (controller.signal.aborted || controller !== this.taskLifetimeController)
-          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-      },
+      signal: this.taskLifetimeController.signal,
+      assertCommandAllowed: () => this.assertRecoveryAdmission('command'),
     };
   }
 

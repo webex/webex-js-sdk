@@ -51,14 +51,10 @@ export default class AqmReqs {
     this.recoveryGate = gate;
   }
 
-  public interruptPending(createError: () => Error): void {
-    [...this.operations.values()].forEach((reject) => {
-      try {
-        reject(createError());
-      } catch {
-        reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-      }
-    });
+  public interruptPending(): void {
+    for (const reject of [...this.operations.values()]) {
+      reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+    }
     AqmReqs.diagnose('info', 'Routing operations interrupted');
   }
 

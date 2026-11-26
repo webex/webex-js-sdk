@@ -3,7 +3,6 @@ import {MEDIA_CHANNEL, TaskData, TaskResponse} from '../../../../../../src/servi
 import {TaskEvent, TaskEventPayload} from '../../../../../../src/services/task/state-machine';
 import {createRegionRecoveryError} from '../../../../../../src/services/core/Utils';
 import MetricsManager from '../../../../../../src/metrics/MetricsManager';
-import {createDeferred, flushEventLoopTurn} from '../../../../fixtures/aiSummaryTestUtils';
 
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
@@ -56,31 +55,20 @@ describe('Digital Task', () => {
     expect(dummyContact.accept).not.toHaveBeenCalled();
   });
 
-  it.each(['resolve', 'reject'] as const)(
-    'accept() rejects during recovery and ignores a late %s',
-    async (settlement) => {
-      const response = createDeferred<TaskResponse>();
-      dummyContact.accept.mockReturnValue(response.promise);
-      const task = new Digital(dummyContact, dummyData);
-      const trackEvent = jest.spyOn(MetricsManager.getInstance(), 'trackEvent').mockImplementation();
-      const error = createRegionRecoveryError('RECOVERY_INTERRUPTED');
+  it('accept() propagates AQM interruption without recording a failure', async () => {
+    const error = createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    dummyContact.accept.mockRejectedValue(error);
+    const task = new Digital(dummyContact, dummyData);
+    const trackEvent = jest.spyOn(MetricsManager.getInstance(), 'trackEvent').mockImplementation();
 
-      try {
-        const interrupted = expect(task.accept()).rejects.toBe(error);
-        expect(dummyContact.accept).toHaveBeenCalledTimes(1);
-        task.interruptOperations(() => error);
-        await interrupted;
-
-        if (settlement === 'resolve') response.resolve({trackingId: 'late'} as TaskResponse);
-        else response.reject(new Error('late accept failure'));
-        await flushEventLoopTurn();
-
-        expect(trackEvent).not.toHaveBeenCalled();
-      } finally {
-        trackEvent.mockRestore();
-      }
+    try {
+      await expect(task.accept()).rejects.toBe(error);
+      expect(dummyContact.accept).toHaveBeenCalledTimes(1);
+      expect(trackEvent).not.toHaveBeenCalled();
+    } finally {
+      trackEvent.mockRestore();
     }
-  );
+  });
 
   it('constructor shows accept when offered', () => {
     const task = new Digital(dummyContact, dummyData);

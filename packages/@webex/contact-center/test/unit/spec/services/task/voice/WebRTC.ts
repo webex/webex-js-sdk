@@ -255,7 +255,7 @@ describe('WebRTC Task', () => {
       const controller = new AbortController();
       const task = new WebRTC({} as any, calling, createTaskData());
       task.bindRecoveryGuard({
-        generation: 1, signal: controller.signal, assertCommandAllowed: jest.fn(),
+        signal: controller.signal, assertCommandAllowed: jest.fn(),
       });
       manager['taskCollection'] = {[task.data.interactionId]: task};
       const media = jest.fn();
@@ -303,7 +303,7 @@ describe('WebRTC Task', () => {
         const manager = new TaskManager(undefined, contact as any, calling, new EventEmitter() as any, new EventEmitter() as any);
         const controller = new AbortController();
         const task = new WebRTC(contact as any, calling, createTaskData());
-        task.bindRecoveryGuard({generation: 1, signal: controller.signal, assertCommandAllowed: jest.fn()});
+        task.bindRecoveryGuard({signal: controller.signal, assertCommandAllowed: jest.fn()});
         manager['taskCollection'] = {[task.data.interactionId]: task};
         manager['call'] = call as any;
         calling.mapCallToTask(call.getCallId(), task.data.interactionId);
@@ -364,7 +364,7 @@ describe('WebRTC Task', () => {
       const call = makeCall();
       const replacement = replace ? makeCall() : undefined;
       try {
-        manager.startSession({generation: 1, signal: new AbortController().signal, assertCommandAllowed: jest.fn()});
+        manager.startSession({signal: new AbortController().signal, assertCommandAllowed: jest.fn()});
         const data = createTaskData({type: CC_EVENTS.AGENT_CONTACT});
         primary.emit('message', JSON.stringify({data}));
         const task = manager.getTask(data.interactionId) as WebRTC;
@@ -433,7 +433,7 @@ describe('WebRTC command admission', () => {
     const calling = {on: jest.fn(), off: jest.fn(), answerCall: jest.fn(), declineCall: jest.fn(), muteUnmuteCall: jest.fn()};
     const task = new WebRTC({} as any, calling as unknown as WebCallingService, createTaskData());
     const error = Utils.createRegionRecoveryError('RECOVERY_IN_PROGRESS');
-    task.bindRecoveryGuard({generation: 1, signal: new AbortController().signal, assertCommandAllowed: () => {throw error;}});
+    task.bindRecoveryGuard({signal: new AbortController().signal, assertCommandAllowed: () => {throw error;}});
     const getUserMedia = jest.spyOn(navigator.mediaDevices, 'getUserMedia');
     try {
       await expect(task[operation]()).rejects.toBe(error);

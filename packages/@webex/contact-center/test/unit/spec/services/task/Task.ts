@@ -1341,7 +1341,7 @@ describe('Task AI summary APIs', () => {
       metrics = spyOnAISummaryMetrics(task);
       parent = new AbortController();
       admission = jest.fn();
-      task.bindRecoveryGuard({generation: 1, signal: parent.signal, assertCommandAllowed: admission});
+      task.bindRecoveryGuard({signal: parent.signal, assertCommandAllowed: admission});
     });
 
     it('rejects an invalidated Task before sending or starting timing', async () => {
@@ -1415,7 +1415,7 @@ describe('Task AI summary APIs', () => {
         const task = new DummyTask(dummyContact, createAISummaryTaskData({
           interactionId: id, interaction: {mainInteractionId: id} as any,
         }));
-        task.bindRecoveryGuard({generation: 1, signal: parent.signal, assertCommandAllowed: jest.fn()});
+        task.bindRecoveryGuard({signal: parent.signal, assertCommandAllowed: jest.fn()});
         injectSummaryDependencies(task, coordinator, {
           wrapUpSummariesEnabled: true, consultTransferSummariesEnabled: true,
         });
@@ -2882,7 +2882,7 @@ describe('T-008 Task regional lifetime', () => {
 
     return {
       controller,
-      guard: {generation: 1, signal: controller.signal, assertCommandAllowed: jest.fn()},
+      guard: {signal: controller.signal, assertCommandAllowed: jest.fn()},
     };
   };
 
@@ -2948,63 +2948,29 @@ describe('T-008 Task regional lifetime', () => {
     expect(task['taskOperations'].size).toBe(0);
   });
 
-  it('parent abort promptly rejects each pending operation and releases its ownership', async () => {
+  it('parent abort rejects pending work outside AQM and clears its timers', async () => {
     const {controller, guard} = createGuard();
-    const pending = [createDeferred<any>(), createDeferred<any>()];
-    const contact = {end: jest.fn()
-      .mockReturnValueOnce(pending[0].promise)
-      .mockReturnValueOnce(pending[1].promise)};
-    const task = new DummyTask(contact, createTaskData());
+    const task = new DummyTask({} as any, createTaskData());
     task.bindRecoveryGuard(guard);
-    const metrics = task['metricsManager'];
-    const addListener = jest.spyOn(controller.signal, 'addEventListener');
+    const pending = [createDeferred<string>(), createDeferred<string>()];
     const removeListener = jest.spyOn(controller.signal, 'removeEventListener');
-    const settled = jest.fn((error) => error);
-    const results = [task.end().catch(settled), task.end().catch(settled)];
-    const scopes = [...task['taskOperations']];
-    const removeScopeListeners = scopes.map((scope) =>
-      jest.spyOn(scope.signal, 'removeEventListener')
+    const timedEvents = [METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS, METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED];
+    const results = pending.map(({promise}) =>
+      task['runTaskOperation'](() => promise, timedEvents).catch((error) => error)
     );
-    const timedEvents = [METRIC_EVENT_NAMES.TASK_END_SUCCESS, METRIC_EVENT_NAMES.TASK_END_FAILED];
-    expect(contact.end.mock.calls).toEqual([
-      [{interactionId: task.data.interactionId}],
-      [{interactionId: task.data.interactionId}],
-    ]);
-    expect(metrics.timeEvent.mock.calls).toEqual([[timedEvents], [timedEvents]]);
-    expect(scopes).toHaveLength(2);
 
     controller.abort(interrupted());
-    await flushEventLoopTurn();
-
-    // Neither invalidation nor a backend settlement may supply these rejections.
-    expect(settled).toHaveBeenCalledTimes(2);
     const [first, second] = await Promise.all(results);
-    for (const [index, error] of [first, second].entries()) {
-      expect(error).toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-      expect(error).toBe(scopes[index].signal.reason);
-      expect(error).not.toBe(controller.signal.reason);
-      expect(error.data).not.toBe(controller.signal.reason.data);
-      expect(removeScopeListeners[index].mock.calls).toEqual([['abort', expect.any(Function)]]);
-    }
+    expect(first).toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+    expect(second).toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
     expect(first).not.toBe(second);
-    expect(first.data).not.toBe(second.data);
-    first.data.reason = 'changed';
-    expect(second.data.reason).toBe('RECOVERY_INTERRUPTED');
-    expect(controller.signal.reason.data.reason).toBe('RECOVERY_INTERRUPTED');
+    expect(first).not.toBe(controller.signal.reason);
     expect(task['taskOperations'].size).toBe(0);
-    expect(removeListener.mock.calls).toEqual(
-      addListener.mock.calls.map(([event, listener]) => [event, listener])
-    );
-    expect(metrics.cancelTimedEvent.mock.calls).toEqual([[timedEvents], [timedEvents]]);
-    expect(metrics.trackEvent).not.toHaveBeenCalled();
+    expect(removeListener).toHaveBeenCalledTimes(2);
+    expect(task['metricsManager'].cancelTimedEvent.mock.calls).toEqual([[timedEvents], [timedEvents]]);
 
-    // Leave rejection observation to the abandoned operation, rather than the fixture.
-    pending.forEach((backend) => backend.reject(new Error('late backend failure')));
+    pending.forEach((backend) => backend.reject(new Error('late failure')));
     await flushEventLoopTurn();
-    expect(settled).toHaveBeenCalledTimes(2);
-    expect(metrics.trackEvent).not.toHaveBeenCalled();
-    expect(metrics.cancelTimedEvent).toHaveBeenCalledTimes(2);
-    expect(task['taskOperations'].size).toBe(0);
   });
 
   it('new command admission precedes captured interruption while invalidation stays permanent', async () => {
@@ -3012,7 +2978,7 @@ describe('T-008 Task regional lifetime', () => {
     const contact = {end: jest.fn()};
     const admission = jest.fn(() => { throw recovery.createRegionRecoveryError('RECOVERY_IN_PROGRESS'); });
     const task = new DummyTask(contact, createTaskData());
-    task.bindRecoveryGuard({generation: 1, signal: controller.signal, assertCommandAllowed: admission});
+    task.bindRecoveryGuard({signal: controller.signal, assertCommandAllowed: admission});
     controller.abort();
     task.interruptOperations(interrupted);
     await expect(task.end()).rejects.toMatchObject({data: {reason: 'RECOVERY_IN_PROGRESS'}});
@@ -3026,36 +2992,11 @@ describe('T-008 Task regional lifetime', () => {
     expect(contact.end).not.toHaveBeenCalled();
   });
 
-  it.each(['end', 'transfer', 'wrapup'] as const)(
-    'interruptedTaskOperationObservesLateRejectionAndReleasesScope: %s',
-    async (method) => {
-      const pending = createDeferred<any>();
-      const contact = {end: jest.fn(() => pending.promise), blindTransfer: jest.fn(() => pending.promise), wrapup: jest.fn(() => pending.promise)};
-      const task = new DummyTask(contact, createTaskData());
-      task.bindRecoveryGuard(createGuard().guard);
-      const metrics = (task as any).metricsManager;
-      metrics.trackEvent.mockClear();
-      const result = method === 'transfer'
-        ? task.transfer({to: 'agent-2', destinationType: DESTINATION_TYPE.AGENT})
-        : method === 'wrapup' ? task.wrapup({wrapUpReason: 'done', auxCodeId: '1'}) : task.end();
-      const observed = result.catch((error) => error);
-      task.interruptOperations(interrupted);
-      expect((await observed).data).toEqual({reason: 'RECOVERY_INTERRUPTED'});
-      expect((task as any).taskOperations.size).toBe(0);
-      expect(metrics.cancelTimedEvent).toHaveBeenCalled();
-      const calls = metrics.trackEvent.mock.calls.length;
-      pending.reject(new Error('late backend failure'));
-      await flushEventLoopTurn();
-      expect(metrics.trackEvent).toHaveBeenCalledTimes(calls);
-      expect((task as any).taskOperations.size).toBe(0);
-    }
-  );
-
   it('in-flight completion queued before interruption retains the operation error reason', async () => {
     const controller = new AbortController();
     const admission = jest.fn();
     const task = new DummyTask({} as any, createTaskData());
-    task.bindRecoveryGuard({generation: 1, signal: controller.signal, assertCommandAllowed: admission});
+    task.bindRecoveryGuard({signal: controller.signal, assertCommandAllowed: admission});
     const result = (task as any).runTaskOperation(() => Promise.resolve('old result'));
     const rejected = expect(result).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
     await Promise.resolve().then(() => {

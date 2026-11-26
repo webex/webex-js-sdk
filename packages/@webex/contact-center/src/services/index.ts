@@ -39,7 +39,8 @@ export default class Services {
    * @param options - Configuration options
    * @param options.webex - WebexSDK instance
    */
-  constructor({webex}: {webex: WebexSDK}) {
+  constructor(options: {webex: WebexSDK}) {
+    const {webex} = options;
     this.webSocketManager = new WebSocketManager({webex});
     // TODO: Implement reconnection logic for this websocket in upcoming PR
     this.rtdWebSocketManager = new WebSocketManager({webex});

@@ -188,98 +188,17 @@ reconnect. Attach essential listeners before registration and remove them at tea
 
 ## Multi-region recovery host restart
 
-A region mismatch emits `reloadRequired`. A pending initial `register()` can also reject with
-`REGION_RELOAD_REQUIRED`. The app owns the restart so it can reinitialize regional routing. A browser
-app can do this automatically. This example shares one restart decision between the event and
-rejection and uses the authenticated organization at decision time. It
-persists the guard before navigation and allows one automatic restart per organization and tab
-per 120 seconds. Missing storage, malformed timestamps and clock rollback block automatic restart.
+A region mismatch emits `reloadRequired`. Initial `register()` can also reject with
+`error.data.reason === REGION_RECOVERY_ERROR_CODES.REGION_RELOAD_REQUIRED`. Route both to the
+same restart handler so they trigger one attempt. The restart should initialize and register
+again so the SDK fetches fresh routing.
 
-<!-- region-recovery-host-example:start -->
-```ts
-function decideRegionRestart(
-  getOrgId: () => string | null | undefined,
-  now: number,
-  getStorage: () => Pick<Storage, 'getItem' | 'setItem'>
-): 'restart' | 'blocked' {
-  try {
-    const authenticatedOrg = getOrgId();
-    if (typeof authenticatedOrg !== 'string' || !authenticatedOrg.trim() ||
-        !Number.isFinite(now) || now < 0) return 'blocked';
-    const orgId = authenticatedOrg.trim();
-    const storage = getStorage();
-    const key = `ccsdk:region-reload:${orgId}`;
-    const previous = storage.getItem(key);
-    if (previous !== null) {
-      const last = JSON.parse(previous);
-      if (typeof last !== 'number' || !Number.isFinite(last) || last < 0 ||
-          last > now || now - last < 120000) return 'blocked';
-    }
-    storage.setItem(key, JSON.stringify(now));
-    return 'restart';
-  } catch {
-    return 'blocked';
-  }
-}
-```
-<!-- region-recovery-host-example:end -->
-
-Clear stale state after invoking register or logout so synchronous cancellation events cannot put
-it back. Keep the restart guard across ordinary teardown. If the guard blocks automatic restart,
-offer a manual restart after checking the live authenticated session and mismatch reason.
-
-```ts
-import {REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES} from '@webex/contact-center';
-import type {RegionRecoveryState} from '@webex/contact-center';
-
-let region: RegionRecoveryState | undefined;
-let registrationAttempt: {mismatchObserved: boolean} | undefined;
-function requestHostRestart(): void {
-  const decision = decideRegionRestart(
-    () => webex.credentials.getOrgId(), Date.now(), () => window.sessionStorage
-  );
-  if (decision === 'restart') {
-    window.location.reload();
-  } else {
-    console.error('Automatic restart blocked. Check the session and restart manually.');
-  }
-}
-function onRegionState(snapshot: RegionRecoveryState): void {
-  region = snapshot;
-  if (snapshot.status === 'reloadRequired') {
-    if (registrationAttempt) registrationAttempt.mismatchObserved = true;
-    requestHostRestart();
-  }
-}
-async function registerAgent() {
-  webex.cc.off(REGION_RECOVERY_EVENTS.STATE_CHANGE, onRegionState);
-  webex.cc.on(REGION_RECOVERY_EVENTS.STATE_CHANGE, onRegionState);
-  const attempt = {mismatchObserved: false};
-  registrationAttempt = attempt;
-  try {
-    const pending = webex.cc.register();
-    region = undefined;
-    return await pending;
-  } catch (error) {
-    const reason = (error as {data?: {reason?: unknown}} | null | undefined)?.data?.reason;
-    if (reason === REGION_RECOVERY_ERROR_CODES.REGION_RELOAD_REQUIRED && !attempt.mismatchObserved)
-      requestHostRestart();
-    throw error;
-  } finally {
-    if (registrationAttempt === attempt) registrationAttempt = undefined;
-  }
-}
-async function logoutAgent() {
-  const pending = webex.cc.stationLogout({logoutReason: 'User requested logout'});
-  region = undefined;
-  return pending;
-}
-async function teardownAgent() {
-  region = undefined;
-  webex.cc.off(REGION_RECOVERY_EVENTS.STATE_CHANGE, onRegionState);
-  await webex.cc.deregister();
-}
-```
+For automatic browser restart, store the attempt before navigation and limit retries per
+signed-in organization and tab. If storage is unavailable, the guard blocks a repeat, or
+navigation fails, show a manual **Reload** action. Clear the host's previous recovery state
+when starting a fresh registration, logging out or deregistering, and detach the listener
+when deregistering. The [Contact Center sample](../../../../docs/samples/contact-center/app.js)
+shows both restart paths and resumes registration using its saved sign-in state.
 
 ## Recovery accessibility guidance
 

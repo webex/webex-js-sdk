@@ -5,7 +5,7 @@ import {SUBSCRIBE_API} from '../../../../../../src/services/constants';
 import {CC_EVENTS} from '../../../../../../src/services/config/types';
 import {createDeferred} from '../../../../fixtures/aiSummaryTestUtils';
 import LoggerProxy from '../../../../../../src/logger-proxy';
-import {CONNECTION_SERVICE_FILE} from '../../../../../../src/constants';
+import { CONNECTION_SERVICE_FILE } from '../../../../../../src/constants';
 import {METHODS} from '../../../../../../src/services/core/constants';
 
 class ManagerDouble extends EventEmitter {

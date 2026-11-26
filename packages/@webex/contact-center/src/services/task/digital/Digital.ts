@@ -54,21 +54,20 @@ export default class Digital extends Task implements IDigital {
    * ```
    */
   public async accept(): Promise<TaskResponse> {
-    const timedEvents = [
-      METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
-      METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
-    ];
+    this.assertTaskCommandAllowed();
     try {
-      const response = await this.runTaskOperation(() => {
-        LoggerProxy.info(`Accepting task`, {
-          module: CC_FILE,
-          method: METHODS.ACCEPT,
-          interactionId: this.data.interactionId,
-        });
-        this.metricsManager.timeEvent(timedEvents);
+      LoggerProxy.info(`Accepting task`, {
+        module: CC_FILE,
+        method: METHODS.ACCEPT,
+        interactionId: this.data.interactionId,
+      });
 
-        return this.contact.accept({interactionId: this.data.interactionId});
-      }, timedEvents);
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
+      ]);
+
+      const response = await this.contact.accept({interactionId: this.data.interactionId});
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,

@@ -5,7 +5,7 @@
 
 import {HTTP_METHODS} from '../../types';
 import LoggerProxy from '../../logger-proxy';
-import type {
+import {
   ListAuxCodesResponse,
   OrgDesktopLoginResponse,
   UserDesktopLoginResponse,
@@ -87,7 +87,7 @@ export default class AgentConfigService {
         method: METHODS.GET_AGENT_CONFIG,
       });
 
-      const profile = parseAgentConfigs({
+      const response = parseAgentConfigs({
         orgConfig,
         userData,
         agentProfileData,
@@ -110,13 +110,13 @@ export default class AgentConfigService {
       if (typeof multiRegionEnabled === 'boolean') {
         const normalizedHomeRegion =
           typeof homeRegion === 'string' ? homeRegion.trim().toLowerCase() : undefined;
-        profile.multiRegionSettings = {
+        response.multiRegionSettings = {
           multiRegionEnabled,
           ...(normalizedHomeRegion ? {homeRegion: normalizedHomeRegion} : {}),
         };
       }
 
-      return profile;
+      return response;
     } catch (error) {
       LoggerProxy.error(`getAgentConfig call failed with ${error}`, {
         module: CONFIG_FILE_NAME,

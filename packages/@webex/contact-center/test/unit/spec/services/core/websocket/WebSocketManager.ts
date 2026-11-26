@@ -460,10 +460,9 @@ describe('WebSocketManager owned admission', () => {
     expect(manager.hasUsableSocket()).toBe(true);
   });
 
-  it('retains an idle admitted socket on cancelPending and disposes worker/Blob on close', async () => {
+  it('disposes the worker and Blob URL on close', async () => {
     const socket = await admit();
     const workerMessage = workers[0].onmessage!;
-    manager.cancelPending(new Error('cancel admission'));
     expect(manager.hasUsableSocket()).toBe(true);
     workerMessage({data: {type: 'keepalive'}});
     expect(socket.send).toHaveBeenCalledTimes(2);

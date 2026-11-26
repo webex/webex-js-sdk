@@ -298,7 +298,6 @@ export default class Voice extends Task implements IVoice {
   }
 
   private applyWxAppMuteFromBackfill(callId: string, muted: boolean): void {
-    if (this.operationsInterrupted || this.regionallyInvalidated) return;
     if (!this.enableWxBetterTogether || this.wxAppMuted === muted) {
       return;
     }
@@ -443,14 +442,6 @@ export default class Voice extends Task implements IVoice {
     return this.stateMachineService?.getSnapshot?.();
   }
 
-  private runTimedRequest<T>(request: () => Promise<T>, timedEvents: string[]): Promise<T> {
-    return this.runTaskOperation(() => {
-      this.metricsManager.timeEvent(timedEvents);
-
-      return request();
-    }, timedEvents);
-  }
-
   private getWxAppAcceptReasonForMetrics(): WxAppAcceptReason {
     if (this.wxAppAcceptInFlight) {
       return 'wxApp_accept_in_flight';
@@ -512,24 +503,21 @@ export default class Voice extends Task implements IVoice {
       interactionId,
     });
 
-    const declineMetrics = [
-      METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
-      METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
-    ];
     try {
-      this.metricsManager.timeEvent(declineMetrics);
       const declineAcceptReason = this.wxAppAnswerPending
         ? 'wxApp_answer_pending'
         : 'wxApp_offer_ready';
       this.setWxAppAnswerPending(false);
-      const response = await this.runTaskOperation(
-        () =>
-          runWxAppOutdialDecline(
-            this.getWxAppVoiceDependencies(),
-            () => this.contact.cancelTask({interactionId}),
-            {acceptReason: declineAcceptReason}
-          ),
-        wxAppDeclineMetrics
+      this.assertTaskCommandAllowed();
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
+      ]);
+
+      const response = await runWxAppOutdialDecline(
+        this.getWxAppVoiceDependencies(),
+        () => this.contact.cancelTask({interactionId}),
+        {acceptReason: declineAcceptReason}
       );
 
       this.metricsManager.trackEvent(
@@ -543,11 +531,7 @@ export default class Voice extends Task implements IVoice {
 
       return response;
     } catch (error) {
-      if (isRegionRecoveryError(error)) {
-        this.metricsManager.cancelTimedEvent(declineMetrics);
-        throw error;
-      }
-
+      if (isRegionRecoveryError(error)) throw error;
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
         {
@@ -715,19 +699,17 @@ export default class Voice extends Task implements IVoice {
       ? [METRIC_EVENT_NAMES.TASK_HOLD_SUCCESS, METRIC_EVENT_NAMES.TASK_HOLD_FAILED]
       : [METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS, METRIC_EVENT_NAMES.TASK_RESUME_FAILED];
 
-    const timedEvents = [successEvt, failedEvt];
+    this.assertTaskCommandAllowed();
+    this.metricsManager.timeEvent([successEvt, failedEvt]);
 
     try {
       let response: TaskResponse;
       if (shouldHold) {
-        response = await this.runTimedRequest(
-          () =>
-            this.contact.hold({
-              interactionId: this.data.interactionId,
-              data: {mediaResourceId: mainMediaResource},
-            }),
-          timedEvents
-        );
+        response = await this.contact.hold({
+          interactionId: this.data.interactionId,
+          data: {mediaResourceId: mainMediaResource},
+        });
+
         this.assertTaskCommandAllowed();
 
         // Send success event to complete the transition
@@ -754,14 +736,11 @@ export default class Voice extends Task implements IVoice {
           interactionId: this.data.interactionId,
         });
       } else {
-        response = await this.runTimedRequest(
-          () =>
-            this.contact.unHold({
-              interactionId: this.data.interactionId,
-              data: {mediaResourceId: mainMediaResource},
-            }),
-          timedEvents
-        );
+        response = await this.contact.unHold({
+          interactionId: this.data.interactionId,
+          data: {mediaResourceId: mainMediaResource},
+        });
+
         this.assertTaskCommandAllowed();
 
         // Send success event to complete the transition
@@ -858,14 +837,11 @@ export default class Voice extends Task implements IVoice {
         method: 'pauseRecording',
         interactionId: this.data.interactionId,
       });
-      const timedEvents = [
+      this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_SUCCESS,
         METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_FAILED,
-      ];
-      const result = await this.runTimedRequest(
-        () => this.contact.pauseRecording({interactionId: this.data.interactionId}),
-        timedEvents
-      );
+      ]);
+      const result = await this.contact.pauseRecording({interactionId: this.data.interactionId});
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_SUCCESS,
         {
@@ -936,20 +912,16 @@ export default class Voice extends Task implements IVoice {
         method: 'resumeRecording',
         interactionId: this.data.interactionId,
       });
-      const timedEvents = [
+      this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_SUCCESS,
         METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_FAILED,
-      ];
+      ]);
       resumeRecordingPayload ??= {autoResumed: false};
 
-      const result = await this.runTimedRequest(
-        () =>
-          this.contact.resumeRecording({
-            interactionId: this.data.interactionId,
-            data: resumeRecordingPayload,
-          }),
-        timedEvents
-      );
+      const result = await this.contact.resumeRecording({
+        interactionId: this.data.interactionId,
+        data: resumeRecordingPayload,
+      });
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_SUCCESS,
         {
@@ -1034,18 +1006,16 @@ export default class Voice extends Task implements IVoice {
         method: 'consult',
         interactionId: requestInteractionId,
       });
-      const timedEvents = [
+      this.assertTaskCommandAllowed();
+      this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS,
         METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
-      ];
-      const result = await this.runTimedRequest(
-        () =>
-          this.contact.consult({
-            interactionId: requestInteractionId,
-            data: consultPayload,
-          }),
-        timedEvents
-      );
+      ]);
+      const result = await this.contact.consult({
+        interactionId: requestInteractionId,
+        data: consultPayload,
+      });
+
       this.assertTaskCommandAllowed();
 
       // Send success event to transition to CONSULTING state
@@ -1125,18 +1095,14 @@ export default class Voice extends Task implements IVoice {
         method: 'endConsult',
         interactionId: requestInteractionId,
       });
-      const timedEvents = [
+      this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_CONSULT_END_SUCCESS,
         METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
-      ];
-      const result = await this.runTimedRequest(
-        () =>
-          this.contact.consultEnd({
-            interactionId: requestInteractionId,
-            data: consultEndPayload,
-          }),
-        timedEvents
-      );
+      ]);
+      const result = await this.contact.consultEnd({
+        interactionId: requestInteractionId,
+        data: consultEndPayload,
+      });
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_CONSULT_END_SUCCESS,
         {
@@ -1192,10 +1158,10 @@ export default class Voice extends Task implements IVoice {
         method: METHODS.TRANSFER_CALL,
         interactionId: this.data.interactionId,
       });
-      const timedEvents = [
+      this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
         METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
-      ];
+      ]);
 
       // consult transfer path
       if (this.data.interaction.state === 'consulting') {
@@ -1220,14 +1186,10 @@ export default class Voice extends Task implements IVoice {
           };
         }
 
-        const result = await this.runTimedRequest(
-          () =>
-            this.contact.consultTransfer({
-              interactionId: this.data.interactionId,
-              data: consultPayload,
-            }),
-          timedEvents
-        );
+        const result = await this.contact.consultTransfer({
+          interactionId: this.data.interactionId,
+          data: consultPayload,
+        });
         this.metricsManager.trackEvent(
           METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
           {
@@ -1327,12 +1289,12 @@ export default class Voice extends Task implements IVoice {
         this.data.interactionId
       );
 
-      const response = await this.runTaskOperation(() =>
-        this.contact.consultConference({
-          interactionId: paramsDataForConferenceV2.interactionId,
-          data: paramsDataForConferenceV2.data,
-        })
-      );
+      this.assertTaskCommandAllowed();
+      const response = await this.contact.consultConference({
+        interactionId: paramsDataForConferenceV2.interactionId,
+        data: paramsDataForConferenceV2.data,
+      });
+
       this.assertTaskCommandAllowed();
 
       // Send success event to transition to CONFERENCING
@@ -1436,19 +1398,15 @@ export default class Voice extends Task implements IVoice {
     });
 
     try {
-      const timedEvents = [
+      this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS,
         METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED,
-      ];
+      ]);
 
-      const response = await this.runTimedRequest(
-        () =>
-          this.contact.dropConferenceParticipant({
-            interactionId: requestInteractionId,
-            participantId,
-          }),
-        timedEvents
-      );
+      const response = await this.contact.dropConferenceParticipant({
+        interactionId: requestInteractionId,
+        participantId,
+      });
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS,
@@ -1555,18 +1513,16 @@ export default class Voice extends Task implements IVoice {
         interactionId: requestInteractionId,
       });
 
-      const timedEvents = [
+      this.assertTaskCommandAllowed();
+      this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_SUCCESS,
         METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_FAILED,
-      ];
+      ]);
 
-      const response = await this.runTimedRequest(
-        () =>
-          this.contact.exitConference({
-            interactionId: requestInteractionId,
-          }),
-        timedEvents
-      );
+      const response = await this.contact.exitConference({
+        interactionId: requestInteractionId,
+      });
+
       this.assertTaskCommandAllowed();
 
       // Send success event to transition state
@@ -1702,18 +1658,16 @@ export default class Voice extends Task implements IVoice {
         interactionId: requestInteractionId,
       });
 
-      const timedEvents = [
+      this.assertTaskCommandAllowed();
+      this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS,
         METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED,
-      ];
+      ]);
 
-      const response = await this.runTimedRequest(
-        () =>
-          this.contact.conferenceTransfer({
-            interactionId: requestInteractionId,
-          }),
-        timedEvents
-      );
+      const response = await this.contact.conferenceTransfer({
+        interactionId: requestInteractionId,
+      });
+
       this.assertTaskCommandAllowed();
 
       // Send success event to transition state
@@ -1835,21 +1789,18 @@ export default class Voice extends Task implements IVoice {
       this.stateMachineService.send({type: targetEvent});
     }
 
-    const timedEvents = [
+    this.assertTaskCommandAllowed();
+    this.metricsManager.timeEvent([
       METRIC_EVENT_NAMES.TASK_SWITCH_CALL_SUCCESS,
       METRIC_EVENT_NAMES.TASK_SWITCH_CALL_FAILED,
-    ];
+    ]);
 
     try {
       if (isOnConsultLeg) {
-        const response = await this.runTimedRequest(
-          () =>
-            this.contact.unHold({
-              interactionId: this.data.interactionId,
-              data: {mediaResourceId: this.data.mediaResourceId},
-            }),
-          timedEvents
-        );
+        const response = await this.contact.unHold({
+          interactionId: this.data.interactionId,
+          data: {mediaResourceId: this.data.mediaResourceId},
+        });
 
         this.metricsManager.trackEvent(
           METRIC_EVENT_NAMES.TASK_SWITCH_CALL_SUCCESS,
@@ -1872,14 +1823,10 @@ export default class Voice extends Task implements IVoice {
         return response;
       }
 
-      const response = await this.runTimedRequest(
-        () =>
-          this.contact.hold({
-            interactionId: this.data.interactionId,
-            data: {mediaResourceId: this.data.mediaResourceId},
-          }),
-        timedEvents
-      );
+      const response = await this.contact.hold({
+        interactionId: this.data.interactionId,
+        data: {mediaResourceId: this.data.mediaResourceId},
+      });
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_SWITCH_CALL_SUCCESS,

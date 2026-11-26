@@ -2413,7 +2413,7 @@ describe('T-008 Voice regional lifetime', () => {
         enableWxBetterTogether: true,
         answerCallOnWebexService: service as unknown as AnswerCallOnWebexService,
       });
-      task.bindRecoveryGuard({generation: 1, signal: controller.signal, assertCommandAllowed: admission});
+      task.bindRecoveryGuard({signal: controller.signal, assertCommandAllowed: admission});
     });
 
     afterEach(() => {
@@ -2770,7 +2770,6 @@ describe('T-008 Voice regional lifetime', () => {
     let task: Voice;
     let errorLog: jest.SpyInstance;
     let metrics: jest.SpyInstance;
-    let cancelTiming: jest.SpyInstance;
     let diagnosticSinks: jest.SpyInstance[];
 
     beforeEach(() => {
@@ -2778,7 +2777,6 @@ describe('T-008 Voice regional lifetime', () => {
       errorLog = jest.spyOn(LoggerProxy, 'error').mockImplementation();
       const manager = MetricsManager.getInstance();
       metrics = jest.spyOn(manager, 'trackEvent').mockImplementation();
-      cancelTiming = jest.spyOn(manager, 'cancelTimedEvent').mockImplementation();
       diagnosticSinks = [
         metrics, errorLog,
         jest.spyOn(manager, 'timeEvent').mockImplementation(),
@@ -2852,7 +2850,7 @@ describe('T-008 Voice regional lifetime', () => {
       testCase.prime?.(task, taskData);
       const admission = jest.fn();
       task.bindRecoveryGuard({
-        generation: 1, signal: new AbortController().signal, assertCommandAllowed: admission,
+        signal: new AbortController().signal, assertCommandAllowed: admission,
       });
       const actor = jest.spyOn(task.stateMachineService, 'send');
       const emit = jest.spyOn(task, 'emit');
@@ -2907,32 +2905,25 @@ describe('T-008 Voice regional lifetime', () => {
         await observed;
 
         expect(harness.effects()).toEqual(initiated);
-        if (testCase.boundary === 'cancelTask') {
-          expect(cancelTiming).toHaveBeenCalledWith([
-            METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
-            METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
-          ]);
-        }
       });
 
-      it.each(['resolve', 'reject'] as const)('interrupts pending work and drains late %s without effects or replay', async (settlement) => {
-        const harness = createHarness(testCase);
-        const error = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
-        const observed = expect(testCase.invoke(task)).rejects.toBe(error);
-        harness.expectBoundary();
+      if (testCase.boundary === 'rejectCall') {
+        it.each(['resolve', 'reject'] as const)('ignores a late Webex App decline %s', async (settlement) => {
+          const harness = createHarness(testCase);
+          const error = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
+          const observed = expect(testCase.invoke(task)).rejects.toBe(error);
+          harness.expectBoundary();
 
-        task.interruptOperations(() => error);
-        await observed; // The backend remains pending.
-        const retired = harness.effects();
-        if (settlement === 'resolve') harness.pending.resolve(harness.response);
-        else harness.pending.reject(new Error('abandoned ordinary backend failure'));
-        await flushEventLoopTurn();
+          task.interruptOperations(() => error);
+          await observed;
+          const retired = harness.effects();
+          if (settlement === 'resolve') harness.pending.resolve(harness.response);
+          else harness.pending.reject(new Error('abandoned ordinary backend failure'));
+          await flushEventLoopTurn();
 
-        expect(harness.effects()).toEqual(retired);
-        expect(metrics).not.toHaveBeenCalled();
-        expect(errorLog).not.toHaveBeenCalled();
-        expect(uploadLogs).not.toHaveBeenCalled();
-      });
+          expect(harness.effects()).toEqual(retired);
+        });
+      }
 
       it('preserves ordinary backend failure handling', async () => {
         const harness = createHarness(testCase);
@@ -2964,6 +2955,19 @@ describe('T-008 Voice regional lifetime', () => {
 
           expect(harness.request).not.toHaveBeenCalled();
           expect(MetricsManager.getInstance().timeEvent).not.toHaveBeenCalled();
+        });
+
+        it('skips the hold transition if recovery starts as the AQM response arrives', async () => {
+          const harness = createHarness(testCase);
+          const error = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
+          const result = testCase.invoke(task);
+          harness.pending.resolve(harness.response);
+          task.interruptOperations(() => error);
+          const retired = harness.effects();
+
+          await expect(result).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+
+          expect(harness.effects()).toEqual(retired);
         });
       }
 

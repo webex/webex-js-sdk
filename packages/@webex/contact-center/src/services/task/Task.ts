@@ -1202,38 +1202,36 @@ export default abstract class Task extends EventEmitter implements ITask {
    * ```
    */
   public async transfer(transferPayload: TransferPayLoad): Promise<TaskResponse> {
-    const timedEvents = [
-      METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
-      METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
-    ];
+    this.assertTaskCommandAllowed();
+    LoggerProxy.log(`Starting task transfer for taskId:${this.data.interactionId}`, {
+      module: 'Task',
+      method: 'transfer',
+    });
     try {
-      const result = await this.runTaskOperation(() => {
-        LoggerProxy.log(`Starting task transfer for taskId:${this.data.interactionId}`, {
-          module: 'Task',
-          method: 'transfer',
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
+      ]);
+      let result: TaskResponse;
+      const isQueueTransfer = transferPayload.destinationType === DESTINATION_TYPE.QUEUE;
+      const isEntryPointTransfer = transferPayload.destinationType === DESTINATION_TYPE.ENTRYPOINT;
+
+      if (isQueueTransfer || isEntryPointTransfer) {
+        result = await this.contact.vteamTransfer({
+          interactionId: this.data.interactionId,
+          data: {
+            ...transferPayload,
+            destinationType: isEntryPointTransfer
+              ? ENTRY_POINT_TRANSFER_DESTINATION_TYPE
+              : DESTINATION_TYPE.QUEUE,
+          },
         });
-        this.metricsManager.timeEvent(timedEvents);
-        const isQueueTransfer = transferPayload.destinationType === DESTINATION_TYPE.QUEUE;
-        const isEntryPointTransfer =
-          transferPayload.destinationType === DESTINATION_TYPE.ENTRYPOINT;
-
-        if (isQueueTransfer || isEntryPointTransfer) {
-          return this.contact.vteamTransfer({
-            interactionId: this.data.interactionId,
-            data: {
-              ...transferPayload,
-              destinationType: isEntryPointTransfer
-                ? ENTRY_POINT_TRANSFER_DESTINATION_TYPE
-                : DESTINATION_TYPE.QUEUE,
-            },
-          });
-        }
-
-        return this.contact.blindTransfer({
+      } else {
+        result = await this.contact.blindTransfer({
           interactionId: this.data.interactionId,
           data: transferPayload,
         });
-      }, timedEvents);
+      }
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
@@ -1278,19 +1276,20 @@ export default abstract class Task extends EventEmitter implements ITask {
    *  ```
    */
   public async end(): Promise<TaskResponse> {
+    this.assertTaskCommandAllowed();
+    LoggerProxy.log(`Ending task for taskId:${this.data.interactionId}`, {
+      module: 'Task',
+      method: 'end',
+    });
     const requestInteractionId =
       this.data.interaction?.mainInteractionId || this.data.interactionId;
-    const timedEvents = [METRIC_EVENT_NAMES.TASK_END_SUCCESS, METRIC_EVENT_NAMES.TASK_END_FAILED];
-    try {
-      const response = await this.runTaskOperation(() => {
-        LoggerProxy.log(`Ending task for taskId:${this.data.interactionId}`, {
-          module: 'Task',
-          method: 'end',
-        });
-        this.metricsManager.timeEvent(timedEvents);
 
-        return this.contact.end({interactionId: requestInteractionId});
-      }, timedEvents);
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_END_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_END_FAILED,
+      ]);
+      const response = await this.contact.end({interactionId: requestInteractionId});
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_END_SUCCESS,
@@ -1331,33 +1330,31 @@ export default abstract class Task extends EventEmitter implements ITask {
    * ```
    */
   public async wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse> {
-    const timedEvents = [
-      METRIC_EVENT_NAMES.TASK_WRAPUP_SUCCESS,
-      METRIC_EVENT_NAMES.TASK_WRAPUP_FAILED,
-    ];
+    this.assertTaskCommandAllowed();
+    this.cancelAutoWrapupTimer();
+    LoggerProxy.log(`Starting task wrapup for taskId:${this.data.interactionId}`, {
+      module: 'Task',
+      method: 'wrapup',
+    });
     try {
-      const response = await this.runTaskOperation(() => {
-        this.cancelAutoWrapupTimer();
-        LoggerProxy.log(`Starting task wrapup for taskId:${this.data.interactionId}`, {
-          module: 'Task',
-          method: 'wrapup',
-        });
-        this.metricsManager.timeEvent(timedEvents);
-        if (!this.data) {
-          throw new Error('No task data available');
-        }
-        if (!wrapupPayload.auxCodeId || wrapupPayload.auxCodeId.length === 0) {
-          throw new Error('AuxCodeId is required');
-        }
-        if (!wrapupPayload.wrapUpReason || wrapupPayload.wrapUpReason.length === 0) {
-          throw new Error('WrapUpReason is required');
-        }
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_WRAPUP_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_WRAPUP_FAILED,
+      ]);
+      if (!this.data) {
+        throw new Error('No task data available');
+      }
+      if (!wrapupPayload.auxCodeId || wrapupPayload.auxCodeId.length === 0) {
+        throw new Error('AuxCodeId is required');
+      }
+      if (!wrapupPayload.wrapUpReason || wrapupPayload.wrapUpReason.length === 0) {
+        throw new Error('WrapUpReason is required');
+      }
 
-        return this.contact.wrapup({
-          interactionId: this.data.interactionId,
-          data: wrapupPayload,
-        });
-      }, timedEvents);
+      const response = await this.contact.wrapup({
+        interactionId: this.data.interactionId,
+        data: wrapupPayload,
+      });
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_WRAPUP_SUCCESS,

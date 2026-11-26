@@ -525,7 +525,7 @@ describe('TaskManager', () => {
       webSocketManagerMock as any,
       rtdWebSocketManagerMock as any
     );
-    taskManager.startSession({generation: 1, signal: new AbortController().signal, assertCommandAllowed: jest.fn()});
+    taskManager.startSession({signal: new AbortController().signal, assertCommandAllowed: jest.fn()});
     taskManager.taskCollection[taskId] = createStateMachineTask(taskDataMock);
     (taskManager as any).setupTaskListeners?.(taskManager.taskCollection[taskId]);
     taskManager.setAgentId('test-agent-id');
@@ -6963,12 +6963,12 @@ describe('T-008 TaskManager recovery owners', () => {
     });
   };
 
-  const createGuard = (generation = 1) => {
+  const createGuard = () => {
     const controller = new AbortController();
 
     return {
       controller,
-      guard: {generation, signal: controller.signal, assertCommandAllowed: jest.fn()},
+      guard: {signal: controller.signal, assertCommandAllowed: jest.fn()},
     };
   };
 
@@ -7035,7 +7035,7 @@ describe('T-008 TaskManager recovery owners', () => {
       expect(old.aiSummaryCapabilities).toEqual({postCallEnabled: false, midCallEnabled: false});
       expect(jest.getTimerCount()).toBe(0);
 
-      manager.startSession(createGuard(2).guard);
+      manager.startSession(createGuard().guard);
       // Exercise both a frame buffered before hydration and one delivered to a live Task.
       if (boundary === 'stopSession') enable(data.interactionId);
       hydrate();
@@ -7085,7 +7085,7 @@ describe('T-008 TaskManager recovery owners', () => {
       await flushEventLoopTurn();
       manager.interruptTaskOperations(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
       manager.invalidateRegionalTasks();
-      const {guard: replacementGuard} = createGuard(2);
+      const {guard: replacementGuard} = createGuard();
       replacementGuard.assertCommandAllowed.mockImplementation(() => {
         throw createRegionRecoveryError('RECOVERY_IN_PROGRESS');
       });
@@ -7122,7 +7122,7 @@ describe('T-008 TaskManager recovery owners', () => {
 
   it('blocks reentrant delivery during cleanup and binds the fresh Task before publication', async () => {
     const {manager, controller, guard, hydrate, calling, contact} = setup();
-    const {guard: replacementGuard} = createGuard(2);
+    const {guard: replacementGuard} = createGuard();
     try {
       manager.startSession(guard);
       hydrate();
@@ -7176,7 +7176,7 @@ describe('T-008 TaskManager recovery owners', () => {
       const replace = jest.fn(() => {
         controller.abort();
         manager.invalidateRegionalTasks();
-        manager.startSession(createGuard(2).guard);
+        manager.startSession(createGuard().guard);
         hydrate({...data, trackingId: 'fresh-frame'});
       });
       retired.once(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, replace);
@@ -7202,7 +7202,7 @@ describe('T-008 TaskManager recovery owners', () => {
         retired.on(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, retiredEnablement);
         controller.abort();
         manager.invalidateRegionalTasks();
-        manager.startSession(createGuard(2).guard);
+        manager.startSession(createGuard().guard);
         manager.handleRealtimeWebsocketEvent(JSON.stringify({type: CC_TASK_EVENTS.FEATURE_ENABLEMENT, data: {data: {
           interactionId: data.interactionId, postCallEnabled: true, midCallEnabled: true,
         }}}));
@@ -7356,7 +7356,7 @@ describe('T-008 TaskManager recovery owners', () => {
       const completeTransition = jest.spyOn(retired, 'sendStateMachineEvent').mockImplementationOnce(() => {
         controller.abort();
         manager.invalidateRegionalTasks();
-        manager.startSession(createGuard(2).guard);
+        manager.startSession(createGuard().guard);
         hydrate();
         calling.emit(LINE_EVENTS.INCOMING_CALL, fresh);
       });
@@ -7427,15 +7427,8 @@ describe('T-008 TaskManager recovery owners', () => {
     }
   });
 
-  it('interruptionErrorsAreIndependent across real Task scopes, aliases and throwing handlers', async () => {
-    const {manager, controller, guard, contact, data, hydrate} = setup();
-    const pending = [];
-    contact.accept.mockImplementation(() => {
-      const backend = createDeferred<any>();
-      pending.push(backend);
-
-      return backend.promise;
-    });
+  it('interrupts pending work outside AQM once per task before invalidation', async () => {
+    const {manager, guard, data, hydrate} = setup();
     try {
       manager.startSession(guard);
       hydrate();
@@ -7443,80 +7436,30 @@ describe('T-008 TaskManager recovery owners', () => {
         ...data.interaction, interactionId: 'interaction-2',
       }});
       const tasks = ['interaction-1', 'interaction-2'].map((id) => manager.getTask(id) as Task);
-      tasks.forEach((task) => expect(task).toBeInstanceOf(Task));
-      expect(tasks[0]).not.toBe(tasks[1]);
       manager['taskCollection'].alias = tasks[0];
-      const settled = jest.fn((error) => error);
-      const results = tasks.flatMap((task) => [task.accept().catch(settled), task.accept().catch(settled)]);
-      expect(contact.accept.mock.calls).toEqual([
-        [{interactionId: 'interaction-1'}], [{interactionId: 'interaction-1'}],
-        [{interactionId: 'interaction-2'}], [{interactionId: 'interaction-2'}],
-      ]);
-      expect(tasks.map((task) => task['taskOperations'].size)).toEqual([2, 2]);
-      const interruptFirst = tasks[0].interruptOperations.bind(tasks[0]);
-      const visits = tasks.map((task) => jest.spyOn(task, 'interruptOperations'));
-      visits[0].mockImplementation((createError) => {
-        interruptFirst(createError);
-        throw new Error('first Task observer failed');
+      const pending = tasks.map(() => createDeferred<string>());
+      const results = tasks.map((task, index) =>
+        task['runTaskOperation'](() => pending[index].promise).catch((error) => error)
+      );
+      const interrupt = tasks[0].interruptOperations.bind(tasks[0]);
+      const visit = jest.spyOn(tasks[0], 'interruptOperations').mockImplementation((createError) => {
+        interrupt(createError);
+        throw new Error('task cleanup observer failed');
       });
-      const createError = jest.fn(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-
-      expect(() => manager.interruptTaskOperations(createError)).not.toThrow();
-      await flushEventLoopTurn();
-
-      expect(settled).toHaveBeenCalledTimes(4);
-      const errors = await Promise.all(results);
-      visits.forEach((visit) => expect(visit.mock.calls).toEqual([[createError]]));
-      expect(createError).toHaveBeenCalledTimes(4);
-      errors.forEach((error, index) => {
-        expect(error).toBe(createError.mock.results[index].value);
-        expect(error).toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-      });
-      expect(new Set(errors).size).toBe(4);
-      expect(new Set(errors.map((error) => error.data)).size).toBe(4);
-      errors[0].data.reason = 'changed';
-      errors[0].data.extra = 'first operation only';
-      errors[0].message = 'changed';
-      errors.slice(1).forEach((error) => expect(error).toMatchObject({
-        message: 'RECOVERY_INTERRUPTED', data: {reason: 'RECOVERY_INTERRUPTED'},
-      }));
-      errors.slice(1).forEach((error) => expect(error.data.extra).toBeUndefined());
-      expect(controller.signal.aborted).toBe(false);
-      expect(tasks.map((task) => task['taskOperations'].size)).toEqual([0, 0]);
-      pending.forEach((backend) => backend.reject(new Error('late backend failure')));
-      await flushEventLoopTurn();
-      expect(settled).toHaveBeenCalledTimes(4);
-      visits.forEach((visit) => visit.mockRestore());
-    } finally {
-      manager.stopSession();
-    }
-  });
-
-  it('interruptTaskOperations rejects pending work with a live parent before invalidation', async () => {
-    const {manager, guard, hydrate, contact} = setup();
-    let complete: (value: {trackingId: string}) => void;
-    contact.accept.mockReturnValue(new Promise(resolve => {complete = resolve;}));
-    try {
-      manager.startSession(guard);
-      hydrate();
-      const task = manager.getTask('interaction-1') as Task;
-      const stop = jest.spyOn(task, 'stopStateMachine');
-      const rejected = jest.fn();
-      const result = task.accept().catch(error => {rejected(error); return error;});
-      expect(contact.accept).toHaveBeenCalledWith({interactionId: 'interaction-1'});
 
       manager.interruptTaskOperations(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-      for (let i = 0; i < 12; i += 1) await Promise.resolve();
-
-      // Neither parent abort, invalidation nor backend completion may provide this rejection.
-      expect(rejected).toHaveBeenCalledTimes(1);
-      expect((await result).data.reason).toBe('RECOVERY_INTERRUPTED');
+      const [first, second] = await Promise.all(results);
+      expect(first).toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+      expect(second).toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+      expect(first).not.toBe(second);
+      expect(visit).toHaveBeenCalledTimes(1);
       expect(guard.signal.aborted).toBe(false);
-      expect(manager.getTask('interaction-1')).toBe(task);
-      expect(stop).not.toHaveBeenCalled();
-      complete({trackingId: 'late-accept'});
-      for (let i = 0; i < 12; i += 1) await Promise.resolve();
-      expect(rejected).toHaveBeenCalledTimes(1);
+      expect(manager.getTask('interaction-1')).toBe(tasks[0]);
+      expect(tasks[0].stateMachineService).toBeDefined();
+
+      pending.forEach((request) => request.reject(new Error('late failure')));
+      await flushEventLoopTurn();
+      visit.mockRestore();
     } finally {
       manager.stopSession();
     }

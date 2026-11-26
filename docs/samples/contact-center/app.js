@@ -3988,9 +3988,9 @@ function setWellnessMessage(message, isError = false) {
 }
 
 function isWellnessReady() {
+  if (stationActionsPaused()) return false;
   return Boolean(
-    !stationActionsPaused() &&
-      wellnessState.enabled &&
+    wellnessState.enabled &&
       agentId &&
       wellnessState.agentSessionId &&
       wellnessState.idleCode
@@ -4948,8 +4948,7 @@ function register(resumingRegion = false) {
     cc.off('region:stateChange', showRegionRecoveryState);
     cc.on('region:stateChange', showRegionRecoveryState);
     showRegionRecoveryState(undefined, resumingRegion);
-    const registration = cc.register();
-    registration.then((agentProfile) => {
+    cc.register().then((agentProfile) => {
         if (cc !== webex.cc) return;
         registerStatus.innerHTML = 'Subscribed';
         // Update button states upon successful registration

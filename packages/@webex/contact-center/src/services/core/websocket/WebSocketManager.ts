@@ -113,11 +113,6 @@ export class WebSocketManager extends EventEmitter {
     });
   }
 
-  public cancelPending(error: Error): void {
-    const attempt = this.attempt;
-    if (attempt && !attempt.accepted) this.disposeAttempt(attempt, error);
-  }
-
   public getServingRegion(): string | undefined {
     return this.servingRegion;
   }

@@ -706,7 +706,6 @@ describe('AqmReqs', () => {
 describe('T-007/T-008 real AQM operation and session owners', () => {
   const {EventEmitter} = require('events');
   const routingAgent = jest.requireActual('../../../../../src/services/agent').default;
-  const {createRegionRecoveryError} = jest.requireActual('../../../../../src/services/core/Utils');
   let aqm: AqmReqs, socket: any, http: jest.Mock, agent: ReturnType<typeof routingAgent>;
   let uploadLogs: jest.Mock;
   let metrics: Record<string, jest.Mock>;
@@ -763,7 +762,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     aqm = new AqmReqs(socket); agent = routingAgent(aqm);
   });
   afterEach(() => {
-    aqm.interruptPending(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+    aqm.interruptPending();
     jest.clearAllTimers(); jest.useRealTimers(); jest.restoreAllMocks();
   });
 
@@ -796,7 +795,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
         : expect(promise).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
       if (settlement === 'success' || settlement === 'failure') send(notification);
       if (settlement === 'timeout') jest.advanceTimersByTime(20000);
-      if (settlement === 'interrupt') aqm.interruptPending(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+      if (settlement === 'interrupt') aqm.interruptPending();
       if (settlement === 'abort') controller.abort();
       await settled;
       expect(aqm['operations'].size).toBe(0);
@@ -1074,7 +1073,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       };
       const promise = agent.reload(undefined, context); const observed = promise.catch((error) => error);
       expect(http).toHaveBeenCalledTimes(variant === 'valid' ? 1 : 0);
-      if (variant === 'valid') aqm.interruptPending(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+      if (variant === 'valid') aqm.interruptPending();
       const error = await observed;
       expect(error.data.reason).toBe(['valid', 'stale-context', 'aborted'].includes(variant) ? 'RECOVERY_INTERRUPTED' : 'RECOVERY_IN_PROGRESS');
     }
@@ -1094,7 +1093,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     const first = request({}, undefined, {generation: 0, signal: controller.signal}); const rejected = first.catch((error) => error);
     const second = request({}); const observed = second.catch((error) => error);
     expect(aqm['operations'].size).toBe(2);
-    if (cancel === 'interrupt') aqm.interruptPending(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+    if (cancel === 'interrupt') aqm.interruptPending();
     else controller.abort();
     expect((await rejected).data.reason).toBe('RECOVERY_INTERRUPTED');
     if (cancel === 'abort') { expect(aqm['operations'].size).toBe(1); send({type: 'DONE'}); expect(await observed).toEqual({type: 'DONE'}); }
@@ -1105,9 +1104,8 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
   it('entryInterruptBefore100sWait / interruptionErrorsAreIndependent / noSecond20sTimeoutSettlement', async () => {
     const request = aqm.req((p: any) => command({notifSuccess: {bind: {type: p.type}, msg: {}}}));
     const pending = ['ONE', 'TWO', 'THREE'].map((type) => request({type}).catch((error) => error));
-    const factory = jest.fn(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-    aqm.interruptPending(factory); const errors = await Promise.all(pending);
-    expect(factory).toHaveBeenCalledTimes(3);
+    aqm.interruptPending();
+    const errors = await Promise.all(pending);
     expect(new Set(errors).size).toBe(3); expect(new Set(errors.map((error) => error.data)).size).toBe(3);
     errors[0].loginOption = 'BROWSER'; errors[0].data.reason = 'changed'; errors[0].details = {changed: true};
     expect(errors[1].data).toEqual({reason: 'RECOVERY_INTERRUPTED'});
@@ -1116,7 +1114,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     expect(http).toHaveBeenCalledTimes(3);
   });
 
-  it('interruptionErrorsAreIndependent when the first factory call throws', async () => {
+  it('clears interrupted operations before late outcomes arrive', async () => {
     const {getEventListeners} = require('events');
     const unhandledRejection = jest.fn();
     process.on('unhandledRejection', unhandledRejection);
@@ -1165,22 +1163,14 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
         expect(resolved).not.toHaveBeenCalled(); expect(rejected).not.toHaveBeenCalled();
       });
 
-      const thrownError = createRegionRecoveryError('STALE_TASK');
-      const factoryError = createRegionRecoveryError('REGION_RELOAD_REQUIRED');
-      const factory = jest.fn()
-        .mockImplementationOnce(() => { throw thrownError; })
-        .mockReturnValue(factoryError);
-      expect(() => aqm.interruptPending(factory)).not.toThrow();
+      aqm.interruptPending();
       const errors = await Promise.all(operations.map(({observed}) => observed));
-      expect(Object.getPrototypeOf(errors[0])).toBe(Error.prototype);
-      expect(errors[0].message).toBe('RECOVERY_INTERRUPTED');
-      expect(errors[0].data).toEqual({reason: 'RECOVERY_INTERRUPTED'});
-      expect(errors[0]).not.toBe(thrownError); expect(errors[0]).not.toBe(factoryError);
-      expect(errors[0].data).not.toBe(thrownError.data);
-      expect(errors[0].data).not.toBe(factoryError.data);
-      expect(errors[1]).toBe(factoryError);
+      errors.forEach((error) => {
+        expect(Object.getPrototypeOf(error)).toBe(Error.prototype);
+        expect(error.message).toBe('RECOVERY_INTERRUPTED');
+        expect(error.data).toEqual({reason: 'RECOVERY_INTERRUPTED'});
+      });
       const assertSettledAndCleaned = () => {
-        expect(factory).toHaveBeenCalledTimes(2);
         expect(aqm['operations'].size).toBe(0);
         expect(aqm['pendingRequests']).toEqual({});
         expect(aqm['pendingNotifCancelrequest']).toEqual({});
@@ -1199,7 +1189,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       assertSettledAndCleaned();
 
       const deliverLateOutcomes = () => {
-        aqm.interruptPending(factory);
+        aqm.interruptPending();
         operations.forEach(({controller, notifications}) => {
           controller.abort();
           Object.values(notifications).forEach(send);
@@ -1334,7 +1324,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       if (scenario === 'http') fail(response);
       if (scenario === 'http-error') fail(httpFailure);
       if (scenario === 'abort') controller.abort();
-      if (['interrupt', 'late-resolve', 'late-reject'].includes(scenario)) aqm.interruptPending(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+      if (['interrupt', 'late-resolve', 'late-reject'].includes(scenario)) aqm.interruptPending();
       const error = await observed;
       const messages = {
         timeout: 'Routing request timeout',
@@ -1389,8 +1379,8 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       // Exercise competing completions before and after the deferred HTTP result.
       const duplicateCompletions = () => {
         controller.abort(); controller.abort();
-        aqm.interruptPending(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-        aqm.interruptPending(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+        aqm.interruptPending();
+        aqm.interruptPending();
         send(notification); send(notification);
         send(frame(operation, true, id)); send(frame(operation, true, id));
         jest.advanceTimersByTime(100000);

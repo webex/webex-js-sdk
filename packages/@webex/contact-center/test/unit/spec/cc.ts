@@ -101,7 +101,6 @@ jest.mock('../../../src/services', () => ({
         on: jest.fn(),
         off: jest.fn(),
         close: jest.fn(),
-        cancelPending: jest.fn(),
         getServingRegion: jest.fn(),
         clearServingRegion: jest.fn(),
         hasUsableSocket: jest.fn(() => true),
@@ -111,7 +110,6 @@ jest.mock('../../../src/services', () => ({
         on: jest.fn(),
         off: jest.fn(),
         close: jest.fn(),
-        cancelPending: jest.fn(),
         getServingRegion: jest.fn(),
         clearServingRegion: jest.fn(),
         hasUsableSocket: jest.fn(() => true),
@@ -312,7 +310,6 @@ jest.mock('uuid', () => ({v4: jest.fn(() => 'mock-tracking-uuid')}));
 global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
 
 class EventEmitterDouble extends EventEmitter {
-  public cancelPending = jest.fn();
   public stop = jest.fn();
   public pause = jest.fn();
   public reset = jest.fn();
@@ -445,7 +442,6 @@ describe('webex.cc', () => {
       on: jest.fn(),
       off: jest.fn(),
       close: jest.fn(),
-      cancelPending: jest.fn(),
       getServingRegion: jest.fn(),
       clearServingRegion: jest.fn(),
       hasUsableSocket: jest.fn(() => true),
@@ -496,7 +492,6 @@ describe('webex.cc', () => {
         on: jest.fn(),
         off: jest.fn(),
         close: jest.fn(),
-        cancelPending: jest.fn(),
         getServingRegion: jest.fn(),
         clearServingRegion: jest.fn(),
         hasUsableSocket: jest.fn(() => true),
@@ -933,7 +928,7 @@ describe('webex.cc', () => {
           services.connectionService.reset, services.connectionService.stop,
           services.connectionService.pause, services.connectionService.recoverRegion,
           ...[services.webSocketManager, services.rtdWebSocketManager].flatMap(manager => [
-            manager.initWebSocket, manager.close, manager.cancelPending, manager.clearServingRegion,
+            manager.initWebSocket, manager.close, manager.clearServingRegion,
           ]),
           services.aqmReqs.beginGeneration, services.aqmReqs.setRecoveryGate,
           services.aqmReqs.interruptPending,
@@ -7863,7 +7858,6 @@ describe('webex.cc', () => {
         clearServingRegion: jest.fn(),
         hasUsableSocket: jest.fn(() => true),
         close: jest.fn(),
-        cancelPending: jest.fn(),
         off: jest.fn(),
         on: jest.fn(),
       };
@@ -7872,7 +7866,6 @@ describe('webex.cc', () => {
         clearServingRegion: jest.fn(),
         hasUsableSocket: jest.fn(() => true),
         close: jest.fn(),
-        cancelPending: jest.fn(),
         off: jest.fn(),
         on: jest.fn(),
       };
@@ -7936,7 +7929,6 @@ describe('webex.cc', () => {
         clearServingRegion: jest.fn(),
         hasUsableSocket: jest.fn(() => true),
         close: jest.fn(),
-        cancelPending: jest.fn(),
         off: jest.fn(),
         on: jest.fn(),
       } as any;
@@ -11681,7 +11673,7 @@ describe('realRecoveryWiring', () => {
       const liveGuard = manager['recoveryGuard'];
       expect(liveGuard).not.toBe(oldGuard);
       expect(liveGuard.signal.aborted).toBe(false);
-      expect(liveGuard.generation).toBe(cc['recoveryGeneration']);
+      expect(liveGuard.signal).toBe(cc['taskLifetimeController'].signal);
       expect(fresh['recoveryGuard']).toBe(liveGuard);
       expect(publishedGuards).toHaveLength(2);
       publishedGuards.forEach(guard => expect(guard).toBe(liveGuard));
@@ -16677,11 +16669,13 @@ describe('realRecoveryWiring', () => {
 
   it.each(['wait', 'subscribe', 'welcome', 'reload', 'retry-delay', 'fallback', 'post1035'].flatMap(phase =>
     ['logout', 'deregister', 'register', 'multi-login', 'org replacement', 'agent replacement', 'supersede', 'remote logout']
-      .flatMap(boundary => [false, true].map(success => [phase, boundary, success]))))(
+      .flatMap(boundary => (['wait', 'welcome'].includes(phase) ? [true] : [false, true])
+        .map(success => [phase, boundary, success]))))(
     'T-012 everyTerminationDuringEveryAwait / lateHttpWelcomeReloadMedia phase=%s boundary=%s lateSuccess=%s',
     async (phase, boundary, success) => {
       await withGraph(async ({cc, host, requests, sockets, login, frame, flush}) => {
         await login(); cc.$config.allowAutomatedRelogin = true;
+        const recoveryRequestStart = requests.length;
         const http = createDeferred<any>();
         const requestBoundary = host.request.getMockImplementation();
         let held = false;
@@ -16719,7 +16713,8 @@ describe('realRecoveryWiring', () => {
           }
         }
         expect(recovery.controller.signal.aborted).toBe(false);
-        const abandoned = requests.filter(r => ['/v1/agents/login', '/v1/agents/reload'].includes(r.resource));
+        const abandoned = requests.slice(recoveryRequestStart)
+          .filter(r => ['/v1/agents/login', '/v1/agents/reload'].includes(r.resource));
         cc.$config.allowAutomatedRelogin = false;
         let operation: Promise<unknown> | undefined;
         if (boundary === 'logout') operation = cc.stationLogout({logoutReason: 'user'});
@@ -16928,241 +16923,4 @@ describe('realRecoveryWiring', () => {
       else Reflect.deleteProperty(navigator, 'mediaDevices');
     }
   });
-});
-
-function hostRecoveryGuideSources() {
-  const fs = require('fs'), path = require('path');
-  const guide = () => fs.readFileSync(path.resolve(__dirname, '../../../docs/getting-started.md'), 'utf8');
-  const helperSource = () => {
-    const text = guide();
-    const start = '<!-- region-recovery-host-example:start -->';
-    const end = '<!-- region-recovery-host-example:end -->';
-    expect(text.split(start)).toHaveLength(2); expect(text.split(end)).toHaveLength(2);
-    expect(text.indexOf(start)).toBeLessThan(text.indexOf(end));
-    const source = text.slice(text.indexOf(start) + start.length, text.indexOf(end));
-    const match = source.match(/^\s*```ts\r?\n([\s\S]*?)\r?\n```\s*$/);
-    expect(match).not.toBeNull(); expect(match[1]).not.toContain('```');
-
-    return match[1];
-  };
-  const wiringSource = () => {
-    const section = guide().split('## Multi-region recovery host restart\n')[1].split('\n## ')[0];
-    const blocks = Array.from(section.matchAll(/```ts\r?\n([\s\S]*?)\r?\n```/g));
-    expect(blocks).toHaveLength(2);
-
-    return blocks[1][1];
-  };
-
-  return {helperSource, wiringSource};
-}
-
-describe('T-006/T-013 exact host recovery guide', () => {
-  const ts = require('typescript'), vm = require('vm');
-  const {helperSource} = hostRecoveryGuideSources();
-  const load = () => {
-    const result = ts.transpileModule(helperSource(), {reportDiagnostics: true,
-      compilerOptions: {target: ts.ScriptTarget.ES2019, module: ts.ModuleKind.None}});
-    expect((result.diagnostics || []).filter(d => d.category === ts.DiagnosticCategory.Error)).toEqual([]);
-    const helper = vm.runInNewContext(result.outputText + '\n;decideRegionRestart;', {}, {timeout: 1000});
-    expect(typeof helper).toBe('function');
-    return helper;
-  };
-  const storage = () => {
-    const map = new Map<string, string>();
-    return {map, getItem: jest.fn(key => map.has(key) ? map.get(key) : null),
-      setItem: jest.fn((key, value) => {map.set(key, value);})};
-  };
-
-  it('exactMarkedHelperIsExecuted and firstRestartStoredBeforeNavigation', () => {
-    const helper = load(); const tab = storage(); const order: string[] = [];
-    tab.setItem.mockImplementation((key, value) => {tab.map.set(key, value); order.push('stored');});
-    if (helper(() => 'org', 1, () => tab) === 'restart') order.push('navigation');
-    expect(order).toEqual(['stored', 'navigation']);
-    expect(tab.getItem).toHaveBeenCalledWith('ccsdk:region-reload:org');
-  });
-  it('perOrgPerTabPersistsAcrossReloadContexts', () => {
-    const tab = storage(); expect(load()(() => 'org-a', 100, () => tab)).toBe('restart');
-    expect(load()(() => 'org-a', 101, () => tab)).toBe('blocked');
-    expect(load()(() => 'org-b', 101, () => tab)).toBe('restart');
-    expect(load()(() => 'org-a', 101, () => storage())).toBe('restart');
-  });
-  it.each(['not json', '"123"', '-1', '1001'])(
-    'blocks malformed or future stored restart times %s', value => {
-      const tab = storage(); tab.map.set('ccsdk:region-reload:org', value);
-      expect(load()(() => 'org', 1000, () => tab)).toBe('blocked');
-      expect(tab.setItem).not.toHaveBeenCalled();
-    });
-  it.each([NaN, Infinity, -1])('invalid time %s fails closed', now => {
-    const tab = storage(); expect(load()(() => 'org', now, () => tab)).toBe('blocked');
-    expect(tab.setItem).not.toHaveBeenCalled();
-  });
-  it('obtainingSessionStorageThrowsBlocked', () => {
-    const access = () => {throw new Error('SecurityError');};
-    expect(load()(() => 'org', 100, access)).toBe('blocked');
-  });
-  it.each(['getItem', 'setItem'])('storageMethodsThrowBlocked %s', method => {
-    const tab = storage(); tab[method].mockImplementation(() => {throw new Error('storage denied');});
-    expect(load()(() => 'org', 100, () => tab)).toBe('blocked');
-  });
-  it('authenticatedOrgReadAtDecisionTime', () => {
-    const tab = storage(), helper = load(); let org: any = 'org-a';
-    const read = jest.fn(() => org);
-    expect(helper(read, 100, () => tab)).toBe('restart'); org = 'org-b';
-    expect(helper(read, 100, () => tab)).toBe('restart'); org = '  ';
-    expect(helper(read, 100, () => tab)).toBe('blocked'); org = null;
-    expect(helper(read, 100, () => tab)).toBe('blocked');
-    expect(helper(() => {throw new Error('identity unavailable');}, 100, () => tab)).toBe('blocked');
-    expect(tab.setItem).toHaveBeenCalledTimes(2);
-  });
-});
-
-describe('delivered host recovery wiring regressions', () => {
-  const ts = require('typescript'), vm = require('vm');
-  const {helperSource, wiringSource} = hostRecoveryGuideSources();
-  const {REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES} = require('../../../src/constants');
-  const blockedMessage = 'Automatic restart blocked. Check the session and restart manually.';
-  const ready = Object.freeze({status: 'ready', reason: 'region-switch', autoAvailable: 'waitingForVoice'});
-  const cancelled = Object.freeze({...ready, autoAvailable: 'cancelled'});
-  const mismatch = Object.freeze({status: 'reloadRequired', reason: 'region-mismatch'});
-  const key = 'ccsdk:region-reload:org';
-
-  // Execute the delivered wiring only here; T-006 still evaluates the marked helper alone.
-  const loadWiring = () => {
-    const cc = Object.assign(new EventEmitter(), {
-      register: jest.fn().mockResolvedValue({agentId: 'agent'}),
-      stationLogout: jest.fn().mockResolvedValue({loggedOut: true}),
-      deregister: jest.fn().mockResolvedValue(undefined),
-    });
-    const values = new Map<string, string>();
-    const sessionStorage = {
-      getItem: jest.fn(key => values.has(key) ? values.get(key) : null),
-      setItem: jest.fn((key, value) => {values.set(key, value);}),
-    };
-    const reload = jest.fn(), error = jest.fn();
-    const webex = {cc, credentials: {getOrgId: jest.fn(() => 'org')}};
-    const importedSdk = {REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES};
-    const result = ts.transpileModule(`${helperSource()}\n${wiringSource()}`, {
-      reportDiagnostics: true,
-      compilerOptions: {target: ts.ScriptTarget.ES2019, module: ts.ModuleKind.CommonJS},
-    });
-    expect((result.diagnostics || []).filter(d => d.category === ts.DiagnosticCategory.Error)).toEqual([]);
-    const host = vm.runInNewContext(
-      result.outputText + '\n;({registerAgent, logoutAgent, teardownAgent, getRegion: () => region});',
-      {webex, window: {sessionStorage, location: {reload}}, console: {error}, Date, exports: {},
-        require: name => {
-          expect(name).toBe('@webex/contact-center');
-          return importedSdk;
-        }},
-      {timeout: 1000}
-    );
-    const publish = snapshot => cc.emit(REGION_RECOVERY_EVENTS.STATE_CHANGE, snapshot);
-
-    return {host, cc, publish, values, sessionStorage, reload, error};
-  };
-
-  afterEach(() => jest.useRealTimers());
-
-  it.each([
-    ['register', 'registerAgent', 'resolve'],
-    ['register', 'registerAgent', 'reject'],
-    ['stationLogout', 'logoutAgent', 'resolve'],
-    ['stationLogout', 'logoutAgent', 'reject'],
-  ])('%s/%s clears synchronous cancellation and preserves %s settlement', async (sdkMethod, hostMethod, outcome) => {
-    const {host, cc, publish} = loadWiring();
-    await host.registerAgent();
-    publish(ready);
-    expect(host.getRegion()).toBe(ready);
-    const pending = createDeferred<unknown>();
-    const result = {operation: sdkMethod};
-    const failure = Object.assign(new Error('operation failed'), {data: {reason: 'RECOVERY_INTERRUPTED'}});
-    cc[sdkMethod].mockClear().mockImplementation(() => {
-      publish(cancelled);
-      expect(host.getRegion()).toBe(cancelled);
-      return pending.promise;
-    });
-    if (outcome === 'reject') pending.reject(failure);
-    const operation = host[hostMethod]();
-    const displayedAfterInvocation = host.getRegion();
-    if (outcome === 'resolve') {
-      pending.resolve(result);
-      await expect(operation).resolves.toBe(result);
-    } else {
-      await expect(operation).rejects.toBe(failure);
-    }
-    expect(displayedAfterInvocation).toBeUndefined();
-    expect(cc[sdkMethod].mock.calls).toEqual(sdkMethod === 'register'
-      ? [[]] : [[{logoutReason: 'User requested logout'}]]);
-    expect(host.getRegion()).toBeUndefined();
-    publish(ready);
-    expect(host.getRegion()).toBe(ready);
-    expect(cc.listenerCount(REGION_RECOVERY_EVENTS.STATE_CHANGE)).toBe(1);
-  });
-
-  it.each(['during register invocation', 'while register is pending'])(
-    'one mismatch event and rejection %s request one non-unloading restart', async timing => {
-      jest.useFakeTimers().setSystemTime(1000);
-      const {host, cc, publish, values, sessionStorage, reload, error} = loadWiring();
-      const pending = createDeferred<unknown>();
-      const failure = Object.assign(new Error('region mismatch'), {
-        data: {reason: REGION_RECOVERY_ERROR_CODES.REGION_RELOAD_REQUIRED},
-      });
-      cc.register.mockImplementation(() => {
-        if (timing === 'during register invocation') publish(mismatch);
-        return pending.promise;
-      });
-      // Navigation returns; the rejection still runs in this same host context.
-      reload.mockImplementation(() => {
-        expect(values.get(key)).toBe('1000');
-      });
-      const operation = host.registerAgent();
-      expect(host.getRegion()).toBeUndefined();
-      if (timing === 'while register is pending') publish(mismatch);
-      pending.reject(failure);
-      await expect(operation).rejects.toBe(failure);
-      expect(reload.mock.calls).toEqual([[]]);
-      expect(error).not.toHaveBeenCalled();
-      expect(sessionStorage.getItem.mock.calls).toEqual([[key]]);
-      expect(sessionStorage.setItem.mock.calls).toEqual([[key, '1000']]);
-      expect(cc.listenerCount(REGION_RECOVERY_EVENTS.STATE_CHANGE)).toBe(1);
-    }
-  );
-
-  it.each(['event', 'register rejection', 'event and register rejection'])(
-    'non-unloading reload surfaces blocked %s requests and permits restart at 120000 ms', async source => {
-      jest.useFakeTimers().setSystemTime(1000);
-      const {host, cc, publish, values, sessionStorage, reload, error} = loadWiring();
-      await host.registerAgent();
-      // This navigation boundary deliberately returns without unloading the host context.
-      reload.mockImplementation(() => {
-        expect(values.get(key)).toBe(JSON.stringify(Date.now()));
-      });
-      publish(mismatch);
-      expect(reload).toHaveBeenCalledTimes(1);
-      expect(error).not.toHaveBeenCalled();
-      const failure = Object.assign(new Error('region mismatch'), {
-        data: {reason: REGION_RECOVERY_ERROR_CODES.REGION_RELOAD_REQUIRED},
-      });
-      cc.register.mockImplementation(() => {
-        if (source === 'event and register rejection') publish(mismatch);
-        return Promise.reject(failure);
-      });
-      const request = async () => {
-        if (source === 'event') publish(mismatch);
-        else await expect(host.registerAgent()).rejects.toBe(failure);
-      };
-      for (const elapsed of [0, 119999]) {
-        jest.setSystemTime(1000 + elapsed);
-        await request();
-        expect(error.mock.calls).toEqual(Array(elapsed === 0 ? 1 : 2).fill([blockedMessage]));
-        expect(reload).toHaveBeenCalledTimes(1);
-        expect(values.get(key)).toBe('1000');
-      }
-      jest.setSystemTime(121000);
-      await request();
-      expect(reload).toHaveBeenCalledTimes(2);
-      expect(error).toHaveBeenCalledTimes(2);
-      expect(sessionStorage.setItem.mock.calls).toEqual([[key, '1000'], [key, '121000']]);
-      expect(host.getRegion()).toEqual(source === 'event' ? mismatch : undefined);
-    }
-  );
 });

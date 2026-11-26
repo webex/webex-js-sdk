@@ -142,18 +142,15 @@ export const METHODS = {
   ON_MESSAGE: 'onMessage',
 
   // WebSocketManager methods
-  INIT_WEB_SOCKET: 'initWebSocket',
   DISPOSE_ATTEMPT: 'disposeAttempt',
   DELIVER_MESSAGE: 'deliverMessage',
   CLOSE: 'close',
   HANDLE_CONNECTION_LOST: 'handleConnectionLost',
   REGISTER: 'register',
-  CONNECT: 'connect',
   WEB_SOCKET_ON_CLOSE_HANDLER: 'webSocketOnCloseHandler',
 
   // ConnectionService methods
   SETUP_EVENT_LISTENERS: 'setupEventListeners',
-  DISPATCH_CONNECTION_EVENT: 'dispatchConnectionEvent',
   CS_HANDLE_CONNECTION_LOST: 'handleConnectionLost',
   CLEAR_TIMER_ON_RESTORE_FAILED: 'clearTimerOnRestoreFailed',
   HANDLE_RESTORE_FAILED: 'handleRestoreFailed',
