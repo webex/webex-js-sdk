@@ -35,6 +35,19 @@ export type RegionRecoveryOptions = {
   afterWelcome: (welcome: WelcomeResponse, signal: AbortSignal) => Promise<void | (() => void)>;
 };
 
+/** @internal One socket attempt, including its reconnect decision if the socket closes. */
+export type ConnectionFlight = {
+  controller: AbortController;
+  reconnectOnClose?: boolean;
+};
+
+/** @internal A regional recovery owns its promise and retry count across socket attempts. */
+export type RegionRecoveryInvocation = RegionRecoveryOptions & {
+  attempt: number;
+  resolve: () => void;
+  reject: (error: ConnectionRecoveryError) => void;
+};
+
 /**
  * Details about the state of a lost connection and recovery attempts.
  * @typedef ConnectionLostDetails

@@ -537,6 +537,8 @@ bind checks apply only to admitted requests. See CORE-R-018 and Verification.
   the listeners.
 - `recoverRegion(options)` runs one attempt at a time. It passes accepted Welcome to `afterWelcome`,
   then adopts the current socket and resumes ordinary monitoring before publishing its outcome.
+- A `RegionRecoveryInvocation` owns the retry count and result across attempts. Each
+  `ConnectionFlight` owns its cancellation signal, which stays with the socket after adoption.
 - A terminal error stops and cleans up the failed invocation before notifying observers. The
   captured rejection belongs to that invocation even if an observer starts another registration.
 

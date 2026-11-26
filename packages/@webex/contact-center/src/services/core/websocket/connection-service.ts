@@ -1,9 +1,11 @@
 import {EventEmitter} from 'events';
 import type {WebSocketManager} from './WebSocketManager';
 import type {
+  ConnectionFlight,
   ConnectionLostDetails,
   ConnectionResetOptions,
   RegionRecoveryOptions,
+  RegionRecoveryInvocation,
   ConnectionRecoveryError,
   ConnectionRecoveryFailureKind,
 } from './types';
@@ -27,17 +29,6 @@ import {
   isRecord,
   normalizeRecoveryFailure,
 } from '../Utils';
-
-type Flight = {
-  controller: AbortController;
-  close?: 'retry' | 'stop';
-};
-type Invocation = RegionRecoveryOptions & {
-  attempt: number;
-  resolve: () => void;
-  reject: (error: ConnectionRecoveryError) => void;
-  onAbort: () => void;
-};
 
 const REGION_RETRY_DELAYS = [100000, 60000, 30000, 15000];
 const SAFE_REASONS = new Set([
@@ -75,13 +66,14 @@ export class ConnectionService extends EventEmitter {
   private isRestoreFailed = false;
   private isKeepAlive = false;
   private lossEpisode?: {startedAt: number; attempt: number};
-  private flight?: Flight;
-  private socketOwner?: Flight;
-  private invocation?: Invocation;
+  private flight?: ConnectionFlight;
+  private socketOwner?: ConnectionFlight;
+  private invocation?: RegionRecoveryInvocation;
   private registrationSignal?: AbortSignal;
   private onTerminalFailure?: ConnectionResetOptions['onTerminalFailure'];
   private subscribeRequest: SubscribeRequest;
   private readonly onRegistrationAbort = () => this.stop();
+  private readonly onRegionAbort = () => this.pause();
 
   constructor(private readonly webSocketManager: WebSocketManager) {
     super();
@@ -134,16 +126,15 @@ export class ConnectionService extends EventEmitter {
     this.mode = 'region';
 
     return new Promise((resolve, reject) => {
-      const invocation: Invocation = {
+      const invocation: RegionRecoveryInvocation = {
         ...options,
         attempt: 0,
         resolve,
         reject,
-        onAbort: () => this.pause(),
       };
       this.invocation = invocation;
-      options.signal.addEventListener('abort', invocation.onAbort, {once: true});
-      if (options.signal.aborted) invocation.onAbort();
+      options.signal.addEventListener('abort', this.onRegionAbort, {once: true});
+      if (options.signal.aborted) this.pause();
       else this.scheduleRegion(invocation);
     });
   }
@@ -163,7 +154,7 @@ export class ConnectionService extends EventEmitter {
     this.lossEpisode = undefined;
   }
 
-  private disposeFlight(flight?: Flight): void {
+  private disposeFlight(flight?: ConnectionFlight): void {
     if (!flight) return;
     if (this.flight === flight) this.flight = undefined;
     if (this.socketOwner === flight) this.socketOwner = undefined;
@@ -179,23 +170,23 @@ export class ConnectionService extends EventEmitter {
     invocation?.reject(terminalError('cancelled'));
   }
 
-  private detachInvocation(): Invocation | undefined {
+  private detachInvocation(): RegionRecoveryInvocation | undefined {
     const invocation = this.invocation;
     this.invocation = undefined;
-    invocation?.signal.removeEventListener('abort', invocation.onAbort);
+    invocation?.signal.removeEventListener('abort', this.onRegionAbort);
 
     return invocation;
   }
 
-  private createFlight(): Flight {
+  private createFlight(): ConnectionFlight {
     this.disposeFlight(this.socketOwner);
-    const flight: Flight = {controller: new AbortController()};
+    const flight: ConnectionFlight = {controller: new AbortController()};
     this.flight = flight;
 
     return flight;
   }
 
-  private adoptFlight(flight: Flight): void {
+  private adoptFlight(flight: ConnectionFlight): void {
     this.flight = undefined;
     this.socketOwner = flight;
     this.updateConnectionData();
@@ -211,7 +202,7 @@ export class ConnectionService extends EventEmitter {
       });
   }
 
-  private ownsInvocation(invocation: Invocation): boolean {
+  private ownsInvocation(invocation: RegionRecoveryInvocation): boolean {
     return (
       this.mode === 'region' &&
       this.invocation === invocation &&
@@ -220,7 +211,7 @@ export class ConnectionService extends EventEmitter {
     );
   }
 
-  private scheduleRegion(invocation: Invocation): void {
+  private scheduleRegion(invocation: RegionRecoveryInvocation): void {
     if (!this.ownsInvocation(invocation)) return;
     invocation.attempt += 1;
     const attempt = invocation.attempt;
@@ -241,7 +232,7 @@ export class ConnectionService extends EventEmitter {
     }, wait);
   }
 
-  private async runRegionAttempt(invocation: Invocation): Promise<void> {
+  private async runRegionAttempt(invocation: RegionRecoveryInvocation): Promise<void> {
     if (!this.ownsInvocation(invocation)) return;
     let canAttempt: boolean;
     try {
@@ -281,12 +272,14 @@ export class ConnectionService extends EventEmitter {
       const mismatch = welcomed ? undefined : getSubscriptionMismatchReason(error);
       const failure = safeFailure(error, mismatch);
       const auth = failure.status === 401 || failure.status === 403;
-      const cancelled = flight.close === 'stop' || (signal.aborted && !flight.close);
+      const {reconnectOnClose} = flight;
+      const cancelled =
+        reconnectOnClose === false || (signal.aborted && reconnectOnClose === undefined);
       let kind: ConnectionRecoveryFailureKind | undefined;
       if (cancelled) kind = 'cancelled';
       else if (auth) kind = 'authentication-failed';
       else if (mismatch) kind = 'region-mismatch';
-      else if (welcomed && !flight.close) kind = 'after-welcome-failed';
+      else if (welcomed && reconnectOnClose === undefined) kind = 'after-welcome-failed';
       if (kind) {
         this.failRegion(
           invocation,
@@ -305,7 +298,7 @@ export class ConnectionService extends EventEmitter {
     }
   }
 
-  private failRegion(invocation: Invocation, error: ConnectionRecoveryError): void {
+  private failRegion(invocation: RegionRecoveryInvocation, error: ConnectionRecoveryError): void {
     if (this.invocation !== invocation) return;
     const {kind, ...failure} = error.data;
     // Commit old-owner cleanup before observers can cancel or replace the registration.
@@ -450,7 +443,7 @@ export class ConnectionService extends EventEmitter {
     } catch (error) {
       if (this.mode !== 'ordinary' || this.flight !== flight) return;
       this.disposeFlight(flight);
-      if (flight.close === 'stop' || !this.webSocketManager.shouldReconnect) {
+      if (flight.reconnectOnClose === false || !this.webSocketManager.shouldReconnect) {
         this.stop();
 
         return;
@@ -502,7 +495,7 @@ export class ConnectionService extends EventEmitter {
       event?.shouldReconnect !== false && this.webSocketManager.shouldReconnect;
     const flight = this.flight;
     if (flight) {
-      flight.close = shouldReconnect ? 'retry' : 'stop';
+      flight.reconnectOnClose = shouldReconnect;
       flight.controller.abort();
 
       return;
