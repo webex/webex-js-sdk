@@ -714,6 +714,7 @@ Use `test/unit/spec/metrics/MetricsManager.ts` for readiness queues, timing/trac
 | `METRICS-R-008`, `METRICS-R-010` | Unit | `test/unit/spec/metrics/MetricsManager.ts` three-category case | `test/unit/spec/metrics/MetricsManager.ts` invalid-type case | None. |
 | `METRICS-R-009` | Unit (partial) | `test/unit/spec/metrics/MetricsManager.ts` | None found | Empty-value stripping, key rewriting, and `tabHidden` are not asserted. |
 | `METRICS-R-011` | Unit | `test/unit/spec/metrics/MetricsManager.ts` nested and flat AQM cases | `test/unit/spec/metrics/MetricsManager.ts` missing-field cases | None. |
+| `METRICS-R-012` | Unit | `test/unit/spec/cc.ts` T-012/T-013 restore outcomes and station metrics. | The same suite verifies elapsed time ownership, bounded diagnostic fields and throwing sinks. | Deployed telemetry remains separate. |
 | `INV-003` | Unit | `test/unit/spec/metrics/MetricsManager.ts` lock case | None found | None. |
 
 Run `yarn workspace @webex/contact-center build:src` and `yarn workspace @webex/contact-center test:unit` from the workspace root. On 2026-11-16 the two metrics test files passed 33 of 33 jest cases. A module specification is complete only when its public surface, invariants, failure modes, and test evidence agree with the implementation; this module stays Partial until a fresh coverage review and independent validation run.

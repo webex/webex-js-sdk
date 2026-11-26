@@ -1562,6 +1562,7 @@ Use `test/unit/spec/services/task/Task.ts`, `TaskFactory.ts`, `TaskManager.ts`, 
 | `TASK-R-012` | Unit | `test/unit/spec/services/task/Task.ts` stale media and participants case | `test/unit/spec/services/task/Task.ts` partial-update case | `normalizeTaskData` has no dedicated suite |
 | `TASK-R-013` | Unit | `test/unit/spec/services/task/Task.ts` (Task AI summary APIs), `test/unit/spec/services/ApiAiAssistant.ts` | `test/unit/spec/services/task/Task.ts` disabled and timeout cases | None |
 | `TASK-R-014` | Unit | `test/unit/spec/services/task/TaskManager.ts` | `test/unit/spec/services/task/TaskManager.ts` case dropping a receiving summary held for a ringing task | No expiry bounds the pending maps |
+| `TASK-R-015` | Unit | `test/unit/spec/services/task/TaskManager.ts` checks that replacement Tasks hydrate under the current guard. | `test/unit/spec/services/task/Task.ts` and `test/unit/spec/cc.ts` cover stale actions, disabled controls and interruption across recovery attempts. | Active-call continuity requires live verification. |
 
 The focused TaskManager tests cover owner-changing versus data-only
 `ContactUpdated`, exact and child-keyed correlation, collection-key and
@@ -1571,7 +1572,6 @@ later `AgentContact` and `ContactMerged` reuse, exact-child/main-task collision
 protection, and both owner-change/participant-left orders (the Contact owner propagation block of
 `test/unit/spec/services/task/TaskManager.ts`).
 
-Unit tests run with `yarn workspace @webex/contact-center test:unit` from the workspace root. On 2026-11-16 jest ran 191 tests in `TaskManager.ts`, 105 in `Task.ts`, 92 in
-`voice/Voice.ts`, and 6 in `TaskFactory.ts`, all passing. Coverage measurement and independent
-validation are pending. A module specification is complete only when its public surface, invariants,
+Run `yarn workspace @webex/contact-center test:unit` from the workspace root. Coverage review and
+independent validation are pending. A module specification is complete only when its public surface, invariants,
 failure modes, and test evidence agree with the implementation.

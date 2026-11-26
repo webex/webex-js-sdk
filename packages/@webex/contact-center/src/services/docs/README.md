@@ -760,6 +760,7 @@ Unit tests mirror module paths under `test/unit/spec/services`. Preserve positiv
 | `SERVICES-R-014` | Unit | `test/unit/spec/services/WxAppTelephonyMercurySync.ts` subscribe and callback cases | `test/unit/spec/services/WxAppTelephonyMercurySync.ts` mismatch, missing fields, no Mercury | None |
 | `SERVICES-R-015` | Unit | `test/unit/spec/services/UserPreference.ts` CRUD success cases | `test/unit/spec/services/UserPreference.ts` missing user id and API error cases | None |
 | `SERVICES-R-016` | Unit | `test/unit/spec/services/AddressBook.ts` default and custom parameter cases | `test/unit/spec/services/AddressBook.ts` API error case | The missing-address-book-id error has no direct case |
+| `SERVICES-R-017` | Unit | `test/unit/spec/cc.ts` verifies that recovery fences primary AQM work. | `test/unit/spec/services/ApiAiAssistant.ts` covers RTD interruption and continued HTTP work with a matching generation and signal. | None |
 
 A module specification is complete only when its public surface, invariants, failure modes, and
 test evidence agree with the implementation.

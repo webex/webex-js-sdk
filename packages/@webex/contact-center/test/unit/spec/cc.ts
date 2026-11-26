@@ -9761,16 +9761,29 @@ describe('realRecoveryWiring', () => {
     lost() { this.readyState = 3; this.onclose?.(); }
   }
 
+  let reusableGraph: any;
   const orgDesktopLogin = 'organization/org/desktop-login';
-  const withGraph = async (scenario: (h: any) => Promise<void>, wireSettings: any = {multiRegionEnabled: true, homeRegion: 'produs1'}, rtdOptions: {enabled?: boolean; aiFeature?: AIFeatureFlags; pending?: Promise<unknown>; browserVoice?: boolean} = {}, registrationOptions: {beforeRegister?: (h: any) => void; autoRegister?: boolean; allowAutomatedRelogin?: boolean} = {}) => {
+  const withGraph = async (
+    scenario: (h: any) => Promise<void>,
+    wireSettings: any = {multiRegionEnabled: true, homeRegion: 'produs1'},
+    rtdOptions: {enabled?: boolean; aiFeature?: AIFeatureFlags; pending?: Promise<unknown>; browserVoice?: boolean} = {},
+    registrationOptions: {
+      beforeRegister?: (h: any) => void;
+      autoRegister?: boolean;
+      allowAutomatedRelogin?: boolean;
+      isolateCallingMock?: boolean;
+    } = {}
+  ) => {
     const saved = sourceMocks.map(name => [name, jest.requireMock(name)] as const);
     const original = {socket: global.WebSocket, worker: global.Worker,
       create: URL.createObjectURL, revoke: URL.revokeObjectURL, crypto: Object.getOwnPropertyDescriptor(global, 'crypto'),
       location: Object.getOwnPropertyDescriptor(window, 'location')};
     const navigationReload = jest.fn();
-    let graph: any;
+    // Case-specific Calling mocks must be installed in a fresh module graph.
+    const reuseGraph = !registrationOptions.isolateCallingMock;
+    let graph = reuseGraph ? reusableGraph : undefined;
     let host: any;
-    const jitter = jest.spyOn(Math, 'random').mockReturnValue(0.1);
+    jest.spyOn(Math, 'random').mockReturnValue(0.1);
     jest.useFakeTimers();
     NativeSocket.instances = [];
     try {
@@ -9778,8 +9791,8 @@ describe('realRecoveryWiring', () => {
       // The documented host restart example executes separately in its own VM context.
       Object.defineProperty(window, 'location', {configurable: true, enumerable: original.location?.enumerable,
         value: {...window.location, reload: navigationReload}});
-      jest.isolateModules(() => {
-        sourceMocks.forEach(name => jest.dontMock(name));
+      sourceMocks.forEach(name => jest.dontMock(name));
+      if (!graph) jest.isolateModules(() => {
         graph = {
           ContactCenter: jest.requireActual('../../../src/cc').default,
           Services: jest.requireActual('../../../src/services').default,
@@ -9795,6 +9808,7 @@ describe('realRecoveryWiring', () => {
           LoggerProxy: jest.requireActual('../../../src/logger-proxy').default,
         };
       });
+      if (reuseGraph) reusableGraph = graph;
       graph.Services.instance = undefined; graph.TaskManager.taskManager = undefined;
       graph.WebexRequest.instance = undefined; graph.MetricsManager.resetInstance();
       Object.defineProperty(global, 'crypto', {value: require('crypto').webcrypto, configurable: true});
@@ -9897,7 +9911,7 @@ describe('realRecoveryWiring', () => {
         else Reflect.deleteProperty(global, 'crypto');
         if (original.location) Object.defineProperty(window, 'location', original.location);
         else Reflect.deleteProperty(window, 'location');
-        jitter.mockRestore();
+        jest.restoreAllMocks();
         jest.clearAllTimers(); jest.useRealTimers();
       }
     }
@@ -10351,7 +10365,7 @@ describe('realRecoveryWiring', () => {
           };
           await scenario({...h, calling, line, client, createClient, api, spy,
             reply, recover, observePreservation});
-        }, wireSettings, {...rtdOptions, browserVoice: true});
+        }, wireSettings, {...rtdOptions, browserVoice: true}, {isolateCallingMock: true});
       } finally {
         spies.reverse().forEach(observation => observation.mockRestore());
         jest.dontMock('@webex/calling');

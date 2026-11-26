@@ -531,6 +531,7 @@ try {
 | `CONFIG-R-008` | Unit | `test/unit/spec/cc.ts` (known type emitted), `test/unit/spec/index.ts` (exports) | `test/unit/spec/cc.ts` (unknown type not emitted) | None |
 | `CONFIG-R-010` | Unit | `test/unit/spec/services/config/index.ts` (minimal, full, partial parameters) | `test/unit/spec/services/config/index.ts` (rejection, 404, 500, missing body) | None |
 | `CONFIG-R-011`, `CONFIG-R-012` | Unit | `test/unit/spec/services/config/Util.ts` (aux codes, dial plan) | `test/unit/spec/services/config/Util.ts` (no default code, dial planning disabled) | None |
+| `CONFIG-R-013` | Unit | `test/unit/spec/services/config/index.ts` checks both boolean values and region normalization on the existing desktop-login request. | The same cases cover absent and malformed flags and invalid regions. `test/unit/spec/cc.ts` T-001 checks stale registration ownership. | None |
 
 Run `yarn workspace @webex/contact-center test:unit` from the workspace root. A module specification is complete only when its public surface,
 invariants, failure modes, and test evidence agree with the implementation; coverage is pending a fresh
