@@ -217,6 +217,8 @@ export type {
   ChannelStateChangeRequest,
   /** V2: Agent state control status for diagnostics */
   AgentStateControlStatus,
+  /** V2: Selectable channel types for per-channel state control */
+  SELECTABLE_CHANNEL_TYPES,
 } from './services/agent/types';
 
 /** Agent event payload types (V1 base + optional V2 per-channel enrichment) */

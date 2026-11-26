@@ -476,6 +476,30 @@ export interface IContactCenter {
    * @public
    */
   getVoiceConnectionState(): VoiceConnectionState;
+
+  /**
+   * Returns a snapshot of the current per-channel agent states (V2 sessions only).
+   * @returns A Record mapping each active channel type to its state detail.
+   *          Empty object when V2 is not active or the agent is not logged in.
+   * @public
+   */
+  getChannelStates(): Record<Agent.ChannelType, Agent.AgentChannelTypeStates>;
+
+  /**
+   * Returns the channel capacity for each active channel type.
+   * @returns A Record mapping each channel type to its capacity (number of channel slots).
+   *          Empty object when the agent is not logged in.
+   * @public
+   */
+  getChannelCapacity(): Record<Agent.ChannelType, number>;
+
+  /**
+   * Returns the V2 agent state control status for diagnostics and feature detection.
+   * @returns An object with `declared` (profile-derived V2 eligibility) and
+   *          `active` (whether V2 is active for the current session).
+   * @public
+   */
+  getAgentStateControl(): Agent.AgentStateControlStatus;
 }
 
 /**

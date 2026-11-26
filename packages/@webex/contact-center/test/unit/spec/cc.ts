@@ -1026,6 +1026,59 @@ describe('webex.cc', () => {
       );
     });
 
+    it('should pre-load wellness idle code before silentRelogin when wellness is enabled', async () => {
+      const wellbeingCode = {id: 'wb-1', name: 'WellbeingBreak', isSystem: true, isDefault: false};
+      mockAgentProfile.isWellnessBreakEnabled = true;
+      mockAgentProfile.aiFeature = {realtimeTranscripts: {enable: false}} as any;
+
+      jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
+      const configLookup = jest
+        .spyOn(webex.cc.services.config, 'getWellbeingBreakIdleCode')
+        .mockResolvedValue(wellbeingCode);
+      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
+        data: {
+          auxCodeId: 'auxCodeId',
+          agentId: 'agentId',
+          deviceType: LoginOption.EXTENSION,
+          dn: '12345',
+        },
+      });
+      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(mockAgentProfile);
+      mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
+
+      await webex.cc.register();
+
+      // Wellness code fetched during registration (before silentRelogin)
+      expect(configLookup).toHaveBeenCalledTimes(1);
+      expect(webex.cc['wellbeingBreakIdleCode']).toEqual(wellbeingCode);
+      // silentRelogin still ran
+      expect(reloadSpy).toHaveBeenCalled();
+    });
+
+    it('should not block registration when wellness idle code pre-load fails', async () => {
+      mockAgentProfile.isWellnessBreakEnabled = true;
+      mockAgentProfile.aiFeature = {realtimeTranscripts: {enable: false}} as any;
+
+      jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
+      jest
+        .spyOn(webex.cc.services.config, 'getWellbeingBreakIdleCode')
+        .mockRejectedValue(new Error('service unavailable'));
+      jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
+        data: {
+          auxCodeId: 'auxCodeId',
+          agentId: 'agentId',
+          deviceType: LoginOption.EXTENSION,
+          dn: '12345',
+        },
+      });
+      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(mockAgentProfile);
+      mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
+
+      // Registration must succeed despite wellness code fetch failure
+      await expect(webex.cc.register()).resolves.toBeDefined();
+      expect(webex.cc['wellbeingBreakIdleCode']).toBeUndefined();
+    });
+
     it('should not connect RTD websocket when transcripts, suggestions, and wellness are disabled', async () => {
       mockAgentProfile.aiFeature = {
         realtimeTranscripts: {enable: false},
@@ -3356,6 +3409,99 @@ describe('webex.cc', () => {
         // Set guard: pendingLoginV2 not overwritten (was already true)
         // Catch guard: Pending rejection does not clear the first attempt's hint
         expect(webex.cc['pendingLoginV2']).toBe(true);
+      });
+
+      it('does not overwrite owning login voice guard when duplicate is rejected as Pending', async () => {
+        // Simulate: Login #1 already claimed the AQM bind and set voice guard.
+        webex.cc.agentConfig.webRtcEnabled = true;
+        webex.cc.agentConfig.manageChannelAvailability = false;
+        webex.cc['pendingLoginV2'] = true; // Login #1 owns the bind
+
+        // Login #1 eagerly set calling context (use direct property + mock)
+        webex.cc.webCallingService.loginOption = LoginOption.BROWSER;
+        jest
+          .spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired')
+          .mockReturnValue(true);
+
+        // Spies on mutators; mockClear() so the setup calls above aren't counted.
+        const setBrowserVoiceSpy = jest.spyOn(
+          webex.cc.webCallingService,
+          'setBrowserVoiceRequired'
+        );
+        setBrowserVoiceSpy.mockClear();
+        const setLoginOptionSpy = jest.spyOn(webex.cc.webCallingService, 'setLoginOption');
+        setLoginOptionSpy.mockClear();
+
+        // Profile refresh for the second click
+        jest
+          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
+          .mockResolvedValue({agentProfile: {manageChannelAvailability: true}} as any);
+
+        // AqmReqs rejects the duplicate
+        const pendingError = Object.assign(new Error(), {
+          id: 'Service.aqm.reqs.Pending',
+          details: {key: 'bind-key', msg: 'The request has been already created'},
+        });
+        jest.spyOn(webex.cc.services.agent, 'stationLoginV2').mockRejectedValue(pendingError);
+
+        await expect(
+          webex.cc.stationLogin({teamId: 'teamId', loginOption: LoginOption.BROWSER})
+        ).rejects.toThrow();
+
+        // The duplicate must NOT have touched the calling context at all:
+        // - no eager set (ownsRequest was false)
+        // - no rollback (isPendingDuplicate was true)
+        expect(setLoginOptionSpy).not.toHaveBeenCalled();
+        expect(setBrowserVoiceSpy).not.toHaveBeenCalled();
+
+        // The owning login's voice guard survives untouched
+        expect(webex.cc.webCallingService.isBrowserVoiceRequired()).toBe(true);
+        expect(webex.cc.webCallingService.loginOption).toBe(LoginOption.BROWSER);
+      });
+
+      it('does not overwrite owning BROWSER voice guard when duplicate EXTENSION login is Pending', async () => {
+        // Login #1 is BROWSER with voice guard enabled
+        webex.cc.agentConfig.webRtcEnabled = true;
+        webex.cc.agentConfig.manageChannelAvailability = false;
+        webex.cc['pendingLoginV2'] = true;
+
+        webex.cc.webCallingService.loginOption = LoginOption.BROWSER;
+        jest
+          .spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired')
+          .mockReturnValue(true);
+
+        const setBrowserVoiceSpy = jest.spyOn(
+          webex.cc.webCallingService,
+          'setBrowserVoiceRequired'
+        );
+        setBrowserVoiceSpy.mockClear();
+        const setLoginOptionSpy = jest.spyOn(webex.cc.webCallingService, 'setLoginOption');
+        setLoginOptionSpy.mockClear();
+
+        // Login #2 is EXTENSION (different device type, same double-click race)
+        jest
+          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
+          .mockResolvedValue({agentProfile: {manageChannelAvailability: true}} as any);
+
+        const pendingError = Object.assign(new Error(), {
+          id: 'Service.aqm.reqs.Pending',
+          details: {key: 'bind-key', msg: 'The request has been already created'},
+        });
+        jest.spyOn(webex.cc.services.agent, 'stationLoginV2').mockRejectedValue(pendingError);
+
+        await expect(
+          webex.cc.stationLogin({
+            teamId: 'teamId',
+            loginOption: LoginOption.EXTENSION,
+            dialNumber: '1001',
+          })
+        ).rejects.toThrow();
+
+        // EXTENSION attempt must not have corrupted BROWSER's calling context
+        expect(setLoginOptionSpy).not.toHaveBeenCalled();
+        expect(setBrowserVoiceSpy).not.toHaveBeenCalled();
+        expect(webex.cc.webCallingService.loginOption).toBe(LoginOption.BROWSER);
+        expect(webex.cc.webCallingService.isBrowserVoiceRequired()).toBe(true);
       });
 
       it('commits refreshed profile flag on successful login', async () => {
@@ -7287,6 +7433,30 @@ describe('webex.cc', () => {
         );
       });
 
+      it('should suppress V2 failure with matching agentId but different agentSessionId', () => {
+        setV2();
+        webex.cc.agentConfig = {agentId: 'agent-1', manageChannelAvailability: true} as Profile;
+        webex.cc['currentAgentSessionId'] = 'session-1';
+
+        const failure = {
+          type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED,
+          channelType: 'chat',
+          agentId: 'agent-1',
+          agentSessionId: 'session-different',
+          reason: 'NOT_ALLOWED',
+          reasonCode: 400,
+        };
+
+        messageCallback(
+          JSON.stringify({type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE, data: failure})
+        );
+
+        expect(emitSpy).not.toHaveBeenCalledWith(
+          AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED,
+          expect.anything()
+        );
+      });
+
       it('should ignore events for another agent', () => {
         setV2();
         webex.cc.agentConfig = {agentId: 'agent-1'} as Profile;
@@ -7576,6 +7746,313 @@ describe('webex.cc', () => {
           expect.anything()
         );
         expect((webex.cc['channelStatesMap'] as any).workItem).toBeUndefined();
+      });
+
+      it('should forward isClientInitiated in enriched event (immediate emit)', () => {
+        setV2();
+        const detail = makeChannelState('Available');
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            data: {
+              channelType: 'telephony',
+              agentChannelStateDetail: detail,
+              agentId: 'agent-1',
+              agentSessionId: 'session-1',
+              orgId: 'org-1',
+              isClientInitiated: false,
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            },
+          })
+        );
+
+        expect(emitSpy).toHaveBeenCalledWith(
+          AGENT_EVENTS.AGENT_STATE_CHANGE,
+          expect.objectContaining({isClientInitiated: false})
+        );
+      });
+    });
+
+    describe('handleChannelStateChanged batching', () => {
+      let emitSpy: jest.SpyInstance;
+      let messageCallback: (msg: string) => void;
+
+      beforeEach(() => {
+        jest.useFakeTimers();
+        emitSpy = jest.spyOn(webex.cc, 'emit');
+        messageCallback = webex.cc['handleWebsocketMessage'];
+        setV2();
+        webex.cc['loginChannelsMap'] = {
+          telephony: ['t1'],
+          chat: ['c1'],
+          email: ['e1'],
+        };
+        webex.cc['channelStatesMap'] = {} as any;
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      it('should batch events by trackingId and emit one event when all channels arrive', () => {
+        const chatDetail = makeChannelState('Idle', {auxCodeId: 'idle-1'});
+        const telephonyDetail = makeChannelState('Idle', {auxCodeId: 'idle-1'});
+        const emailDetail = makeChannelState('Idle', {auxCodeId: 'idle-1'});
+
+        // Send 3 events with the same trackingId — matching the 3 active channels
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            data: {
+              channelType: 'chat',
+              agentChannelStateDetail: chatDetail,
+              agentId: 'agent-1',
+              agentSessionId: 'session-1',
+              orgId: 'org-1',
+              trackingId: 'batch-001',
+              isClientInitiated: true,
+              changedBy: 'self',
+              changedById: 'agent-1',
+              changedByName: 'Agent One',
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            },
+          })
+        );
+
+        // After first event, no emit yet — batch not complete
+        expect(emitSpy).not.toHaveBeenCalledWith(
+          AGENT_EVENTS.AGENT_STATE_CHANGE,
+          expect.anything()
+        );
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            data: {
+              channelType: 'telephony',
+              agentChannelStateDetail: telephonyDetail,
+              agentId: 'agent-1',
+              agentSessionId: 'session-1',
+              orgId: 'org-1',
+              trackingId: 'batch-001',
+              isClientInitiated: true,
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            },
+          })
+        );
+
+        // Still not emitted — 2 of 3 channels
+        expect(emitSpy).not.toHaveBeenCalledWith(
+          AGENT_EVENTS.AGENT_STATE_CHANGE,
+          expect.anything()
+        );
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            data: {
+              channelType: 'email',
+              agentChannelStateDetail: emailDetail,
+              agentId: 'agent-1',
+              agentSessionId: 'session-1',
+              orgId: 'org-1',
+              trackingId: 'batch-001',
+              isClientInitiated: true,
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            },
+          })
+        );
+
+        // 3 of 3 — count-based flush triggers immediately
+        expect(emitSpy).toHaveBeenCalledWith(
+          AGENT_EVENTS.AGENT_STATE_CHANGE,
+          expect.objectContaining({
+            changedChannels: ['chat', 'telephony', 'email'],
+            requestTrackingId: 'batch-001',
+            isClientInitiated: true,
+            changedBy: 'self',
+          })
+        );
+
+        // Exactly one emit for this batch
+        const stateChangeCalls = emitSpy.mock.calls.filter(
+          (c: any[]) => c[0] === AGENT_EVENTS.AGENT_STATE_CHANGE
+        );
+        expect(stateChangeCalls).toHaveLength(1);
+      });
+
+      it('should flush partial batch after 50ms timer', () => {
+        const chatDetail = makeChannelState('Idle');
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            data: {
+              channelType: 'chat',
+              agentChannelStateDetail: chatDetail,
+              agentId: 'agent-1',
+              agentSessionId: 'session-1',
+              orgId: 'org-1',
+              trackingId: 'batch-002',
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            },
+          })
+        );
+
+        // Not emitted yet — only 1 of 3 channels
+        expect(emitSpy).not.toHaveBeenCalledWith(
+          AGENT_EVENTS.AGENT_STATE_CHANGE,
+          expect.anything()
+        );
+
+        // Advance timer past 50ms
+        jest.advanceTimersByTime(50);
+
+        // Timer-based flush fires
+        expect(emitSpy).toHaveBeenCalledWith(
+          AGENT_EVENTS.AGENT_STATE_CHANGE,
+          expect.objectContaining({
+            changedChannels: ['chat'],
+            requestTrackingId: 'batch-002',
+          })
+        );
+      });
+
+      it('should flush older batches before the completing batch for ordering', () => {
+        const chatDetail = makeChannelState('Idle');
+        const telephonyDetail = makeChannelState('Idle');
+        const emailDetail = makeChannelState('Idle');
+
+        // Start batch A with one event
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            data: {
+              channelType: 'chat',
+              agentChannelStateDetail: chatDetail,
+              agentId: 'agent-1',
+              agentSessionId: 'session-1',
+              orgId: 'org-1',
+              trackingId: 'batch-A',
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            },
+          })
+        );
+
+        // Start batch B with all 3 channels → completes immediately
+        for (const ct of ['chat', 'telephony', 'email'] as const) {
+          messageCallback(
+            JSON.stringify({
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+              data: {
+                channelType: ct,
+                agentChannelStateDetail: ct === 'telephony' ? telephonyDetail : ct === 'email' ? emailDetail : chatDetail,
+                agentId: 'agent-1',
+                agentSessionId: 'session-1',
+                orgId: 'org-1',
+                trackingId: 'batch-B',
+                type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+              },
+            })
+          );
+        }
+
+        // Both batches should have flushed: A first, then B
+        const stateChangeCalls = emitSpy.mock.calls.filter(
+          (c: any[]) => c[0] === AGENT_EVENTS.AGENT_STATE_CHANGE
+        );
+        expect(stateChangeCalls).toHaveLength(2);
+        expect(stateChangeCalls[0][1].requestTrackingId).toBe('batch-A');
+        expect(stateChangeCalls[1][1].requestTrackingId).toBe('batch-B');
+      });
+
+      it('should handle concurrent batches for different trackingIds', () => {
+        const chatDetail = makeChannelState('Idle');
+        const telephonyDetail = makeChannelState('Available');
+
+        // Start two separate batches
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            data: {
+              channelType: 'chat',
+              agentChannelStateDetail: chatDetail,
+              agentId: 'agent-1',
+              agentSessionId: 'session-1',
+              orgId: 'org-1',
+              trackingId: 'batch-X',
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            },
+          })
+        );
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            data: {
+              channelType: 'telephony',
+              agentChannelStateDetail: telephonyDetail,
+              agentId: 'agent-1',
+              agentSessionId: 'session-1',
+              orgId: 'org-1',
+              trackingId: 'batch-Y',
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            },
+          })
+        );
+
+        // Neither has completed count-based — advance both timers
+        expect(emitSpy).not.toHaveBeenCalledWith(
+          AGENT_EVENTS.AGENT_STATE_CHANGE,
+          expect.anything()
+        );
+
+        jest.advanceTimersByTime(50);
+
+        // Both batches flushed independently
+        const stateChangeCalls = emitSpy.mock.calls.filter(
+          (c: any[]) => c[0] === AGENT_EVENTS.AGENT_STATE_CHANGE
+        );
+        expect(stateChangeCalls).toHaveLength(2);
+
+        const trackingIds = stateChangeCalls.map((c: any[]) => c[1].requestTrackingId);
+        expect(trackingIds).toContain('batch-X');
+        expect(trackingIds).toContain('batch-Y');
+      });
+
+      it('should include full channelStates snapshot in batched event', () => {
+        // Pre-seed a telephony state
+        webex.cc['channelStatesMap'] = {
+          telephony: makeChannelState('Available'),
+        } as any;
+
+        const chatDetail = makeChannelState('Idle');
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            data: {
+              channelType: 'chat',
+              agentChannelStateDetail: chatDetail,
+              agentId: 'agent-1',
+              agentSessionId: 'session-1',
+              orgId: 'org-1',
+              trackingId: 'batch-snap',
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            },
+          })
+        );
+
+        jest.advanceTimersByTime(50);
+
+        const payload = emitSpy.mock.calls.find(
+          (c: any[]) => c[0] === AGENT_EVENTS.AGENT_STATE_CHANGE
+        )?.[1];
+
+        // channelStates snapshot should include both telephony and chat
+        expect(payload.channelStates.telephony).toBeDefined();
+        expect(payload.channelStates.chat).toEqual(chatDetail);
       });
     });
 
@@ -8000,6 +8477,61 @@ describe('webex.cc', () => {
         } finally {
           jest.useRealTimers();
         }
+      });
+
+      it('should include wellbeingBreakIdleCode in relogin payload when pre-loaded', () => {
+        const wellbeingCode = {id: 'wb-1', name: 'WellbeingBreak', isSystem: true, isDefault: false};
+        webex.cc['wellbeingBreakIdleCode'] = wellbeingCode;
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            data: {
+              agentId: 'agent-1',
+              agentSessionId: 'sess-1',
+              orgId: 'org-1',
+              agentChannelStateDetailMap: {
+                telephony: makeChannelState('Idle', {auxCodeId: 'lunch-code'}),
+                chat: makeChannelState('Idle', {auxCodeId: 'wb-1'}),
+              },
+              channelsMap: {telephony: ['t1'], chat: ['c1']},
+              type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            },
+          })
+        );
+
+        const payload = emitSpy.mock.calls.find(
+          (c: any[]) => c[0] === AGENT_EVENTS.AGENT_RELOGIN_SUCCESS
+        )?.[1];
+
+        expect(payload.wellbeingBreakIdleCode).toEqual(wellbeingCode);
+        expect(payload.channelStates).toBeDefined();
+      });
+
+      it('should omit wellbeingBreakIdleCode from relogin payload when not pre-loaded', () => {
+        webex.cc['wellbeingBreakIdleCode'] = undefined;
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            data: {
+              agentId: 'agent-1',
+              agentSessionId: 'sess-1',
+              orgId: 'org-1',
+              agentChannelStateDetailMap: {
+                telephony: makeChannelState('Idle', {auxCodeId: 'lunch-code'}),
+              },
+              channelsMap: {telephony: ['t1']},
+              type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            },
+          })
+        );
+
+        const payload = emitSpy.mock.calls.find(
+          (c: any[]) => c[0] === AGENT_EVENTS.AGENT_RELOGIN_SUCCESS
+        )?.[1];
+
+        expect(payload.wellbeingBreakIdleCode).toBeUndefined();
       });
 
       it('preserves live updates from same session during reload', () => {
@@ -9023,6 +9555,133 @@ describe('webex.cc', () => {
         expect(result.data.agentId).toBe('agent-1');
         expect(result.data.changedBy).toBe('AGENT');
         expect(result.trackingId).toBe('track-v2');
+      });
+    });
+
+    describe('wellnessRestoration channel scoping', () => {
+      let stateChangeV2Spy: jest.SpyInstance;
+
+      const mockV2WellnessResponse = {
+        type: 'AgentChannelStateChange',
+        orgId: 'org-1',
+        trackingId: 'track-v2',
+        data: {
+          type: 'AgentChannelStateChanged',
+          channelType: 'chat',
+          agentChannelStateDetail: {
+            agentState: 'Available',
+            auxCodeId: '0',
+            stateChangeTimestamp: 1700000000000,
+            lastIdleCodeChangeTimestamp: 1700000000001,
+            stateChangeReason: 'wellness-restore',
+            pendingIdle: false,
+            availableChannelCount: 1,
+            totalChannelCount: 1,
+          },
+          agentId: 'agent-1',
+          agentSessionId: 'session-1',
+          orgId: 'org-1',
+          status: 'LoggedIn',
+          subStatus: 'Available',
+          changedBy: 'AGENT',
+          changedById: 'agent-1',
+          changedByName: 'Test Agent',
+        },
+      };
+
+      beforeEach(() => {
+        webex.cc.agentConfig = {
+          agentId: 'agent-1',
+          teams: [],
+          manageChannelAvailability: true,
+        } as Profile;
+        webex.cc['currentAgentSessionId'] = 'session-1';
+        webex.cc['loginChannelsMap'] = {telephony: ['t1'], chat: ['c1'], email: [], social: []};
+        webex.cc['wellbeingBreakIdleCode'] = {
+          id: 'wb-code',
+          name: 'WellbeingBreak',
+          isSystem: true,
+          isDefault: false,
+        };
+        // Voice manually changed to Lunch, Chat still in WellbeingBreak
+        webex.cc['channelStatesMap'] = {
+          telephony: makeChannelState('Idle', {auxCodeId: 'lunch-code'}),
+          chat: makeChannelState('Idle', {auxCodeId: 'wb-code'}),
+        } as any;
+        stateChangeV2Spy = jest
+          .spyOn(webex.cc.services.agent, 'stateChangeV2')
+          .mockResolvedValue(mockV2WellnessResponse as any);
+        jest.spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired').mockReturnValue(false);
+      });
+
+      it('scopes to wellness channels only when wellnessRestoration is true', async () => {
+        await webex.cc.setAgentState({
+          state: 'Available',
+          auxCodeId: '0',
+          wellnessRestoration: true,
+        });
+
+        // Only chat carries the wellness code — voice (Lunch) must be excluded
+        expect(stateChangeV2Spy).toHaveBeenCalledWith({
+          data: expect.objectContaining({channelType: ['chat']}),
+        });
+      });
+
+      it('targets all channels when wellnessRestoration is false', async () => {
+        await webex.cc.setAgentState({
+          state: 'Available',
+          auxCodeId: '0',
+        });
+
+        // Both selectable channels with capacity: telephony and chat
+        expect(stateChangeV2Spy).toHaveBeenCalledWith({
+          data: expect.objectContaining({channelType: ['telephony', 'chat']}),
+        });
+      });
+
+      it('ignores wellnessRestoration when explicit channelType is provided', async () => {
+        await webex.cc.setAgentState({
+          state: 'Available',
+          auxCodeId: '0',
+          channelType: ['telephony', 'chat'],
+          wellnessRestoration: true,
+        });
+
+        expect(stateChangeV2Spy).toHaveBeenCalledWith({
+          data: expect.objectContaining({channelType: ['telephony', 'chat']}),
+        });
+      });
+
+      it('rejects when no channels still carry the wellness code', async () => {
+        // Both channels changed away from WellbeingBreak
+        webex.cc['channelStatesMap'] = {
+          telephony: makeChannelState('Idle', {auxCodeId: 'lunch-code'}),
+          chat: makeChannelState('Idle', {auxCodeId: 'meeting-code'}),
+        } as any;
+
+        // Wellness filter produces [] → hits the "No eligible channels" guard
+        await expect(
+          webex.cc.setAgentState({
+            state: 'Available',
+            auxCodeId: '0',
+            wellnessRestoration: true,
+          })
+        ).rejects.toThrow('No eligible channels');
+      });
+
+      it('ignores wellnessRestoration when wellness idle code is not cached', async () => {
+        webex.cc['wellbeingBreakIdleCode'] = undefined;
+
+        await webex.cc.setAgentState({
+          state: 'Available',
+          auxCodeId: '0',
+          wellnessRestoration: true,
+        });
+
+        // No wellness code → all selectable channels targeted (graceful fallback)
+        expect(stateChangeV2Spy).toHaveBeenCalledWith({
+          data: expect.objectContaining({channelType: ['telephony', 'chat']}),
+        });
       });
     });
 

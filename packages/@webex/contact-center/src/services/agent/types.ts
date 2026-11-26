@@ -235,6 +235,8 @@ export type StationLoginSuccessResponse = {
   type: 'AgentStationLoginSuccess';
   /** Tracking ID for notifications */
   notifsTrackingId: string;
+  /** Full snapshot of ALL channel states after login (V2 sessions only). */
+  channelStates?: Record<ChannelType, AgentChannelTypeStates>;
 };
 
 /**
@@ -296,6 +298,16 @@ export type StateChange = {
    * to a single-element array internally, but the canonical form is an array.
    */
   channelType?: ChannelType | ChannelType[];
+  /**
+   * When true the auto-selected channels (no explicit `channelType`) are
+   * narrowed to only those whose current `auxCodeId` matches the cached
+   * system WellbeingBreak idle code.  Channels that were manually changed
+   * (e.g. Voice moved to Idle/Lunch while Chat stays in WellbeingBreak)
+   * are excluded so the restoration does not undo explicit selections.
+   * Has no effect when `channelType` is explicitly provided, the session
+   * is V1, or the wellness idle code has not been loaded.
+   */
+  wellnessRestoration?: boolean;
 };
 
 /**
@@ -470,6 +482,13 @@ export type ChannelType =
   | 'social'
   | 'workItem'
   | 'customMessaging';
+
+/**
+ * Channel types that are selectable by agents for V2 per-channel state control.
+ * `workItem` and `customMessaging` are internal channel types excluded from selection.
+ * @public
+ */
+export const SELECTABLE_CHANNEL_TYPES: ChannelType[] = ['telephony', 'chat', 'email', 'social'];
 
 /**
  * Per-channel state change request input for granular (V2) agent state.

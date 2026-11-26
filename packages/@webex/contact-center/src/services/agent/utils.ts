@@ -1,4 +1,5 @@
 import {AgentChannelTypeStates, ChannelType} from './types';
+import {Entity} from '../config/types';
 
 // ─── V1 Bridge Types ─────────────────────────────────────────────────────────
 
@@ -48,6 +49,10 @@ export interface AgentStateChangeEvent extends BridgedV1StateChange {
   /** Backend request correlation ID — shared across all channel
    *  notifications from the same setAgentState() call. */
   requestTrackingId?: string;
+
+  /** Whether the state change was initiated by the agent (true) or
+   *  by a supervisor/system (false). Undefined in V1 sessions. */
+  isClientInitiated?: boolean;
 }
 
 /**
@@ -100,6 +105,12 @@ export interface AgentReloginSuccessEvent {
   notifsTrackingId?: string;
   /** Full snapshot of ALL channel states after relogin (V2 sessions only). */
   channelStates?: Record<ChannelType, AgentChannelTypeStates>;
+  /**
+   * System WellbeingBreak idle code, included when the code was pre-loaded
+   * before the relogin emit.  Consumers can compare channel auxCodeIds against
+   * this to identify wellness-break channels without an independent fetch.
+   */
+  wellbeingBreakIdleCode?: Entity;
 }
 
 /**
@@ -241,6 +252,7 @@ export interface V2EnrichmentContext {
   channelDetail: AgentChannelTypeStates;
   requestTrackingId?: string;
   changedChannels: ChannelType[];
+  isClientInitiated?: boolean;
 }
 
 /**
@@ -272,6 +284,7 @@ export function buildAgentStateChangeEvent(
       channelDetail: enrichment.channelDetail,
       channelStates: enrichment.channelStates,
       requestTrackingId: enrichment.requestTrackingId,
+      isClientInitiated: enrichment.isClientInitiated,
     };
   }
 
@@ -301,5 +314,6 @@ export function buildAgentStateChangeEvent(
     channelDetail: enrichment.channelDetail,
     channelStates: enrichment.channelStates,
     requestTrackingId: enrichment.requestTrackingId,
+    isClientInitiated: enrichment.isClientInitiated,
   };
 }

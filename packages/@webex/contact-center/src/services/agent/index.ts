@@ -186,7 +186,24 @@ export default function routingAgent(routing: AqmReqs) {
     ),
 
     /**
-     * V2 per-channel state change
+     * V2 per-channel state change.
+     *
+     * Uses a `__typeMap` conditional bind in `notifSuccess` to match the
+     * WebSocket confirmation correctly for Idle requests. `__typeMap` tells
+     * `aqm-reqs.bindCheck` to route by the value of a discriminator field
+     * (`typeField`) instead of doing a flat equality check. When the
+     * discriminator value matches a condition key, bindCheck applies the
+     * sub-conditions for that key. This handles the case where an Idle
+     * request's confirmation may arrive as `agentState: 'Available'` with
+     * `pendingIdle: true` (queued Idle while still handling a task), rather
+     * than as a direct `agentState: 'Idle'`.
+     *
+     * For non-Idle requests, plain array filters are used instead:
+     * `agentState: [targetState, 'Engaged', ...]` accepts any of those
+     * states, and `pendingIdle: [false]` uses the array path in bindCheck
+     * to correctly match boolean false (the primitive path would treat
+     * false as absent/missing).
+     *
      * @param p.data - V2 state change parameters with channelType array
      * @public
      */

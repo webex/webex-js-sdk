@@ -57,6 +57,7 @@ import {
   StateChangeSuccess,
   AGENT_EVENTS,
   ChannelType,
+  SELECTABLE_CHANNEL_TYPES,
   AgentChannelTypeStates,
   AgentChannelStateChanged,
   AgentChannelReloginSuccess,
@@ -222,12 +223,6 @@ const CC_EVENT_ALLOW_LIST = new Set<string>(Object.values(CC_EVENTS));
  * @public
  */
 
-/**
- * Channel types selectable for V2 per-channel state changes.
- * Excludes internal channel types like 'workItem' and 'customMessaging'.
- */
-const SELECTABLE_CHANNEL_TYPES: ChannelType[] = ['telephony', 'chat', 'email', 'social'];
-
 /** stateChangeReason set by the backend when channels go idle due to WSS disconnect. */
 const WSS_DISCONNECT_REASON = 'agent-wss-disconnect';
 
@@ -357,6 +352,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /**
    * V2 per-channel state map. Populated when V2 session is active.
+   * Typed as a full Record for public-API compatibility, but at runtime only
+   * the channels with capacity are populated — always use optional chaining
+   * (`this.channelStatesMap[ct]?.`) when accessing individual entries.
    * @private
    */
   private channelStatesMap: Record<ChannelType, AgentChannelTypeStates> = {} as Record<
@@ -412,6 +410,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       agentSessionId: string;
       orgId: string;
       attribution: {changedBy: string; changedById: string | null; changedByName: string | null};
+      isClientInitiated?: boolean;
     }
   >();
 
@@ -1214,6 +1213,26 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         );
       }
 
+      // Pre-load the wellness idle code before silentRelogin can fire scalar
+      // projections.  Without this, a mixed-state recovery (Voice Idle/Lunch +
+      // Chat Idle/WellbeingBreak) promotes the telephony scalar (Lunch) to
+      // agentConfig before the consumer can evaluate the wellness marker.
+      // Once the code loads later, recoverWellnessBreakIfNeeded() clears the
+      // marker without sending restoration because the committed scalar is
+      // Lunch rather than the WellbeingBreak idle code.  Pre-loading ensures
+      // the code is cached and included in the relogin payload so the consumer
+      // can evaluate correctly.
+      if (this.agentConfig.isWellnessBreakEnabled) {
+        try {
+          await this.getWellbeingBreakIdleCode();
+        } catch (error) {
+          LoggerProxy.warn(`Could not pre-load wellness idle code during registration: ${error}`, {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
+          });
+        }
+      }
+
       if (this.$config && this.$config.allowAutomatedRelogin) {
         await this.silentRelogin();
       } else {
@@ -1345,7 +1364,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // Guard: if another login attempt already set this hint (its AQM bind
       // is the one the server will respond to), do not overwrite — that
       // attempt's value is authoritative.
-      if (this.pendingLoginV2 === undefined) {
+      // ownsRequest tracks whether *this* call is the first to claim the AQM
+      // bind. When false, a prior attempt's bind is still live and its
+      // calling-context (loginOption / browserVoiceRequired) must not be
+      // touched — neither eagerly nor during rollback.
+      const ownsRequest = this.pendingLoginV2 === undefined;
+      if (ownsRequest) {
         this.pendingLoginV2 = requestManageChannelAvailability === true;
       }
 
@@ -1354,13 +1378,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           requestManageChannelAvailability === true
             ? 'V2 (/v2/agents/login)'
             : 'V1 (/v1/agents/login)'
-        }`,
+        } | ownsRequest: ${ownsRequest}`,
         loggerContext
       );
 
       // Set voice guard BEFORE await so WS-handler listeners can't bypass it.
-      this.webCallingService.setLoginOption(data.loginOption);
-      this.webCallingService.setBrowserVoiceRequired(this.isBrowserVoiceRequired(data.loginOption));
+      // Only when this attempt owns the AQM bind — a duplicate must not
+      // overwrite the first attempt's eagerly applied calling context.
+      if (ownsRequest) {
+        this.webCallingService.setLoginOption(data.loginOption);
+        this.webCallingService.setBrowserVoiceRequired(
+          this.isBrowserVoiceRequired(data.loginOption)
+        );
+      }
 
       const loginResponse =
         requestManageChannelAvailability === true
@@ -1450,13 +1480,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // Only clear the V2 hint if this attempt owned the AQM request.
       // Service.aqm.reqs.Pending means a prior login's bind is still active;
       // clearing would corrupt its V2 hint for the WS handler.
-      if (error?.id !== 'Service.aqm.reqs.Pending') {
+      const isPendingDuplicate = error?.id === 'Service.aqm.reqs.Pending';
+      if (!isPendingDuplicate) {
         this.pendingLoginV2 = undefined;
       }
 
-      // Only rollback calling context if login itself failed (not post-login steps).
-      // V2 flag was never committed before acceptance, so no routing rollback needed.
-      if (!loginAccepted) {
+      // Only rollback calling context if this attempt owned the request AND
+      // login itself failed (not post-login steps). A Pending duplicate
+      // never touched the calling context (guarded above), so rolling back
+      // would overwrite the owning request's eagerly applied voice guard
+      // with a stale snapshot — allowing telephony Available while
+      // isVoiceReady() is false.
+      if (!loginAccepted && !isPendingDuplicate) {
         this.webCallingService.setLoginOption(previousLoginOption);
         this.webCallingService.setBrowserVoiceRequired(previousBrowserVoiceRequired);
       }
@@ -1616,6 +1651,24 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           normalizedChannelType && normalizedChannelType.length > 0
             ? normalizedChannelType
             : SELECTABLE_CHANNEL_TYPES.filter((ct) => this.loginChannelsMap[ct]?.length > 0);
+
+        // Wellness-scoped restoration: narrow auto-selected channels to only
+        // those whose current auxCodeId matches the cached WellbeingBreak idle
+        // code.  Channels manually changed (e.g. Voice→Lunch while Chat stays
+        // in WellbeingBreak) are excluded so the timer-driven Available does
+        // not undo explicit selections.
+        if (
+          data.wellnessRestoration &&
+          this.wellbeingBreakIdleCode &&
+          !(normalizedChannelType && normalizedChannelType.length > 0)
+        ) {
+          const wellnessCodeId = this.wellbeingBreakIdleCode.id;
+          channels = channels.filter((ct) => {
+            const channelState = this.channelStatesMap[ct];
+
+            return channelState?.auxCodeId === wellnessCodeId;
+          });
+        }
 
         // Validate: at least one eligible channel after selection.
         // When loginChannelsMap is empty (no capacity), auto-select produces []
@@ -1980,7 +2033,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @param {string} event The raw websocket event message
    */
   private handleWebsocketMessage = (event: string) => {
-    const eventData = JSON.parse(event);
+    let eventData: any;
+    try {
+      eventData = JSON.parse(event);
+    } catch (error) {
+      LoggerProxy.error(`Failed to parse WebSocket message: ${error}`, {
+        module: CC_FILE,
+        method: METHODS.HANDLE_WEBSOCKET_MESSAGE,
+      });
+
+      return;
+    }
     // Re-emit all the events related to agent except keep-alives. Only event names present in
     // the typed CC_EVENTS allow-list are emitted; unknown/server-injected types are ignored.
     if (
@@ -2093,6 +2156,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             telephony: channelsMap.telephony?.length,
           },
           notifsTrackingId: eventData.trackingId,
+          ...(earlyV2
+            ? {
+                channelStates: {...this.channelStatesMap} as Record<
+                  ChannelType,
+                  AgentChannelTypeStates
+                >,
+              }
+            : {}),
         };
         this.webCallingService.setLoginOption(loginData.deviceType as LoginOption);
         // @ts-ignore
@@ -2814,11 +2885,23 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
-  /** Flush a trackingId batch → one enriched agent:stateChange emit. @private */
+  /**
+   * Flush a trackingId batch into one enriched `agent:stateChange` emit.
+   *
+   * Batches are flushed either by count-based completion (all active channels
+   * received for the batch) or by a 50ms timeout. If the timeout fires before
+   * all channels arrive, a partial batch is emitted — consumers may receive a
+   * second event for the same `requestTrackingId` when late channels arrive
+   * and start a fresh batch. Consumers should use `requestTrackingId` to
+   * group events from the same `setAgentState()` request and treat the
+   * `channelStates` snapshot as the authoritative state.
+   * @private
+   */
   private flushBatch(batchKey: string): void {
     const batch = this.pendingBatches.get(batchKey);
     this.pendingBatches.delete(batchKey);
     if (!batch || batch.channels.length === 0) return;
+    if (!this.currentAgentSessionId) return; // Session ended — discard stale batch
 
     const changedChannels = batch.channels.map((c) => c.channelType);
     const lastChannel = batch.channels[batch.channels.length - 1];
@@ -2838,6 +2921,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         channelDetail: reconciledDetail,
         requestTrackingId: batchKey,
         changedChannels,
+        isClientInitiated: batch.isClientInitiated,
       }
     );
 
@@ -2894,6 +2978,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           agentSessionId,
           orgId,
           attribution,
+          isClientInitiated: data.isClientInitiated,
         });
       }
       const batch = this.pendingBatches.get(batchKey)!;
@@ -2930,6 +3015,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           changedChannelType: channelType,
           channelDetail: data.agentChannelStateDetail,
           changedChannels: [channelType],
+          isClientInitiated: data.isClientInitiated,
         }
       );
       // @ts-ignore
@@ -3017,6 +3103,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       },
       notifsTrackingId: eventData.trackingId,
       channelStates: {...this.channelStatesMap} as Record<ChannelType, AgentChannelTypeStates>,
+      ...(this.wellbeingBreakIdleCode ? {wellbeingBreakIdleCode: this.wellbeingBreakIdleCode} : {}),
     };
     // @ts-ignore
     this.emit(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, reloginPayload);
@@ -3473,6 +3560,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           lastStateChangeReason: WSS_DISCONNECT_REASON,
           agentId,
           channelType: deferred,
+        });
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_CONNECTION_RECONNECTED, {
+          recoveryStatus: 'recovered' as const,
         });
       } catch (error) {
         LoggerProxy.error(

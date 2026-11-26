@@ -4285,6 +4285,14 @@ function captureWellnessSession(event) {
   }
   wellnessState.agentSessionId = event.agentSessionId;
 
+  // The SDK pre-loads the wellness idle code during registration and
+  // includes it in the relogin payload.  Seed it here so the mixed-channel
+  // detection below works even on the first relogin before
+  // initializeWellnessProfile() runs.
+  if (event.wellbeingBreakIdleCode?.id && !wellnessState.idleCode) {
+    wellnessState.idleCode = event.wellbeingBreakIdleCode;
+  }
+
   // V2 relogin payloads carry channelStates (per-channel snapshot) plus
   // bridge-computed scalar fields (auxCodeId, subStatus).  When all channels
   // are non-bridgeable (Engaged/WrapUp), the bridge returns null and the
@@ -4316,28 +4324,29 @@ function captureWellnessSession(event) {
       // let getRecoveryDecision return 'clear', deleting the marker while
       // those channels remain in WellbeingBreak without a timer.
       const bridgeAuxCodeId = event.auxCodeId?.trim() || '0';
-      let mixedWellnessChannels;
+      let hasMixedWellnessChannels = false;
       if (wellnessState.idleCode?.id && bridgeAuxCodeId !== wellnessState.idleCode.id) {
-        const remaining = [];
         for (const ct of SELECTABLE_ORDER) {
           const ch = event.channelStates[ct];
           if (ch && ch.auxCodeId === wellnessState.idleCode.id) {
-            remaining.push(ct);
+            hasMixedWellnessChannels = true;
+            break;
           }
         }
-        if (remaining.length > 0) mixedWellnessChannels = remaining;
       }
-      if (mixedWellnessChannels) {
+      if (hasMixedWellnessChannels) {
         // Don't promote legacyStateKnown — keep recovery marker armed.
         // Restore only the channels still on the wellness break so they
         // don't stay in WellbeingBreak indefinitely; the agent's manual
-        // state (e.g. Voice/Lunch) is preserved.
+        // state (e.g. Voice/Lunch) is preserved.  The SDK's
+        // wellnessRestoration flag narrows auto-selected channels to those
+        // whose auxCodeId matches the cached WellbeingBreak idle code.
         webex.cc.setAgentState({
           state: 'Available',
           auxCodeId: '0',
           lastStateChangeReason: 'wellness-break-complete',
           agentId,
-          channelType: mixedWellnessChannels,
+          wellnessRestoration: true,
         }).catch((err) => {
           console.warn('[Wellness] Failed to restore remaining wellness channels:', err);
         });
@@ -4418,7 +4427,12 @@ async function initializeWellnessProfile(agentProfile) {
     return;
   }
 
-  wellnessCodeStatusElm.textContent = 'Loading…';
+  // The SDK pre-loads the wellness code during registration and includes
+  // it in the relogin payload; captureWellnessSession may have seeded it
+  // already.  getWellbeingBreakIdleCode() returns the cached value
+  // instantly in that case, but we still call it so the sample works even
+  // when the pre-load was skipped (e.g. wellness enabled after register).
+  wellnessCodeStatusElm.textContent = wellnessState.idleCode ? 'Cached' : 'Loading…';
   try {
     wellnessState.idleCode = await webex.cc.getWellbeingBreakIdleCode();
     if (!WELLNESS_OWNED_LIFECYCLES.has(wellnessState.lifecycle)) {
@@ -4614,6 +4628,7 @@ async function requestWellnessBreak() {
 }
 
 async function setWellnessAgentState(state, options = {}) {
+  const isRestore = state === 'Available';
   return webex.cc.setAgentState({
     state,
     auxCodeId: state === 'Idle' ? options.auxCodeId || wellnessState.idleCode?.id || '0' : '0',
@@ -4621,6 +4636,11 @@ async function setWellnessAgentState(state, options = {}) {
       options.reason ||
       (state === 'Idle' ? 'wellness-break' : 'wellness-break-complete'),
     agentId,
+    // When restoring from a wellness break, narrow auto-selected channels
+    // to only those still carrying the WellbeingBreak idle code.  Channels
+    // manually changed (e.g. Voice→Lunch) are excluded so the timer-driven
+    // Available does not undo explicit selections.
+    ...(isRestore ? {wellnessRestoration: true} : {}),
   });
 }
 
