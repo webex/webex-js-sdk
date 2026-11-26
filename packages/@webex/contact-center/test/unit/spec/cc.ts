@@ -3332,6 +3332,32 @@ describe('webex.cc', () => {
         expect(webex.cc['pendingLoginV2']).toBeUndefined();
       });
 
+      it('preserves in-flight login V2 hint when a duplicate attempt is rejected as Pending', async () => {
+        // First attempt already set pendingLoginV2 = true (its AQM bind is live)
+        webex.cc.agentConfig.manageChannelAvailability = false;
+        webex.cc['pendingLoginV2'] = true;
+
+        // Profile refresh for the second click also enables V2
+        jest
+          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
+          .mockResolvedValue({agentProfile: {manageChannelAvailability: true}} as any);
+
+        // AqmReqs rejects the duplicate with Pending (first attempt's bind is still live)
+        const pendingError = Object.assign(new Error(), {
+          id: 'Service.aqm.reqs.Pending',
+          details: {key: 'bind-key', msg: 'The request has been already created'},
+        });
+        jest.spyOn(webex.cc.services.agent, 'stationLoginV2').mockRejectedValue(pendingError);
+
+        await expect(
+          webex.cc.stationLogin({teamId: 'teamId', loginOption: LoginOption.BROWSER})
+        ).rejects.toThrow();
+
+        // Set guard: pendingLoginV2 not overwritten (was already true)
+        // Catch guard: Pending rejection does not clear the first attempt's hint
+        expect(webex.cc['pendingLoginV2']).toBe(true);
+      });
+
       it('commits refreshed profile flag on successful login', async () => {
         // Previous session was V1
         webex.cc.agentConfig.manageChannelAvailability = false;
@@ -8806,6 +8832,178 @@ describe('webex.cc', () => {
 
         // Both dispatched — telephony was still disconnected
         expect(stateChangeV2Spy).toHaveBeenCalledTimes(2);
+      });
+
+      it('narrows multi-channel recovery to only channels still disconnected at dispatch', async () => {
+        let resolveFirst!: (v: any) => void;
+        const firstPromise = new Promise((resolve) => {
+          resolveFirst = resolve;
+        });
+
+        stateChangeV2Spy.mockReturnValueOnce(firstPromise).mockResolvedValueOnce(mockV2Response);
+
+        // Seed chat + social in disconnect-idle state
+        webex.cc['channelStatesMap'] = {
+          chat: {
+            agentState: 'Idle',
+            pendingIdle: false,
+            auxCodeId: '0',
+            stateChangeReason: 'agent-wss-disconnect',
+            stateChangeTimestamp: Date.now(),
+            availableChannelCount: 1,
+            totalChannelCount: 1,
+          },
+          social: {
+            agentState: 'Idle',
+            pendingIdle: false,
+            auxCodeId: '0',
+            stateChangeReason: 'agent-wss-disconnect',
+            stateChangeTimestamp: Date.now(),
+            availableChannelCount: 1,
+            totalChannelCount: 1,
+          },
+        } as any;
+
+        // First: manual Chat→Idle/Lunch enters the chain
+        const call1 = webex.cc.setAgentState({
+          state: 'Idle',
+          auxCodeId: 'lunch-code',
+          lastStateChangeReason: 'Lunch',
+          channelType: ['chat'],
+        });
+        await Promise.resolve();
+
+        // Second: recovery for chat+social queues behind
+        const call2 = webex.cc.setAgentState({
+          state: 'Available',
+          auxCodeId: '0',
+          lastStateChangeReason: 'agent-wss-disconnect',
+          channelType: ['chat', 'social'],
+        });
+        await Promise.resolve();
+
+        // Manual Lunch confirmed — chat no longer disconnected
+        webex.cc['channelStatesMap'].chat = {
+          agentState: 'Idle',
+          pendingIdle: false,
+          auxCodeId: 'lunch-code',
+          stateChangeReason: 'Lunch',
+          stateChangeTimestamp: Date.now(),
+          availableChannelCount: 1,
+          totalChannelCount: 1,
+        } as any;
+
+        // Complete call1 → call2 dequeues
+        resolveFirst(mockV2Response);
+        await call1;
+        await call2;
+
+        // Recovery dispatched for social only — chat was filtered out
+        expect(stateChangeV2Spy).toHaveBeenCalledTimes(2);
+        const recoveryPayload = stateChangeV2Spy.mock.calls[1][0].data;
+        expect(recoveryPayload.channelType).toEqual(['social']);
+      });
+
+      it('rejects queued disconnect-recovery when reload generation changes (second socket loss)', async () => {
+        let resolveFirst!: (v: any) => void;
+        const firstPromise = new Promise((resolve) => {
+          resolveFirst = resolve;
+        });
+
+        stateChangeV2Spy.mockReturnValueOnce(firstPromise);
+
+        // Seed telephony in disconnect-idle state
+        webex.cc['channelStatesMap'] = {
+          telephony: {
+            agentState: 'Idle',
+            pendingIdle: false,
+            auxCodeId: '0',
+            stateChangeReason: 'agent-wss-disconnect',
+            stateChangeTimestamp: Date.now(),
+            availableChannelCount: 1,
+            totalChannelCount: 1,
+          },
+        } as any;
+
+        // First: a regular (non-recovery) request enters the chain
+        const call1 = webex.cc.setAgentState({
+          state: 'Available',
+          auxCodeId: '0',
+          channelType: ['chat'],
+        });
+        await Promise.resolve();
+
+        // Second: telephony recovery queues behind it
+        const call2 = webex.cc.setAgentState({
+          state: 'Available',
+          auxCodeId: '0',
+          lastStateChangeReason: 'agent-wss-disconnect',
+          channelType: ['telephony'],
+        });
+        await Promise.resolve();
+
+        // Simulate a second socket loss — increments reloadGeneration
+        webex.cc['reloadGeneration'] += 1;
+
+        // Complete call1 → call2 dequeues into the new generation
+        resolveFirst(mockV2Response);
+        await call1;
+
+        // call2 should reject: recovery was for the prior disconnect cycle
+        await expect(call2).rejects.toThrow('recovery_invalidated_by_socket_loss');
+        expect(stateChangeV2Spy).toHaveBeenCalledTimes(1);
+      });
+
+      it('rejects queued disconnect-recovery when socket is closed at dispatch time', async () => {
+        let resolveFirst!: (v: any) => void;
+        const firstPromise = new Promise((resolve) => {
+          resolveFirst = resolve;
+        });
+
+        stateChangeV2Spy.mockReturnValueOnce(firstPromise);
+
+        // Seed telephony in disconnect-idle state
+        webex.cc['channelStatesMap'] = {
+          telephony: {
+            agentState: 'Idle',
+            pendingIdle: false,
+            auxCodeId: '0',
+            stateChangeReason: 'agent-wss-disconnect',
+            stateChangeTimestamp: Date.now(),
+            availableChannelCount: 1,
+            totalChannelCount: 1,
+          },
+        } as any;
+
+        // First: a regular (non-recovery) request enters the chain
+        const call1 = webex.cc.setAgentState({
+          state: 'Available',
+          auxCodeId: '0',
+          channelType: ['chat'],
+        });
+        await Promise.resolve();
+
+        // Second: telephony recovery queues behind
+        const call2 = webex.cc.setAgentState({
+          state: 'Available',
+          auxCodeId: '0',
+          lastStateChangeReason: 'agent-wss-disconnect',
+          channelType: ['telephony'],
+        });
+        await Promise.resolve();
+
+        // Socket drops — isSocketClosed goes true (reloadGeneration unchanged here
+        // to isolate the isSocketClosed check)
+        webex.cc.services.webSocketManager.isSocketClosed = true;
+
+        resolveFirst(mockV2Response);
+        await call1;
+
+        await expect(call2).rejects.toThrow('recovery_invalidated_by_socket_loss');
+        expect(stateChangeV2Spy).toHaveBeenCalledTimes(1);
+
+        // Restore for other tests
+        webex.cc.services.webSocketManager.isSocketClosed = false;
       });
 
       it('bridges V2 AgentChannelStateChanged response to V1 StateChangeSuccess shape', async () => {

@@ -4310,9 +4310,43 @@ function captureWellnessSession(event) {
     }
     const aggregateStatus = hasAvailable ? 'Available' : (hasIdle && !hasNonBridgeable) ? 'Idle' : null;
     if (aggregateStatus) {
-      // Bridgeable: the SDK's bridge-computed auxCodeId is valid.
-      wellnessState.legacyStateKnown = true;
-      wellnessState.legacyAuxCodeId = event.auxCodeId?.trim() || '0';
+      // Partial wellness exit guard (matches handleWellnessLegacyStateChanged):
+      // when the bridge's scalar auxCodeId is non-wellness but some channels
+      // still carry the wellness idle code, promoting legacyStateKnown would
+      // let getRecoveryDecision return 'clear', deleting the marker while
+      // those channels remain in WellbeingBreak without a timer.
+      const bridgeAuxCodeId = event.auxCodeId?.trim() || '0';
+      let mixedWellnessChannels;
+      if (wellnessState.idleCode?.id && bridgeAuxCodeId !== wellnessState.idleCode.id) {
+        const remaining = [];
+        for (const ct of SELECTABLE_ORDER) {
+          const ch = event.channelStates[ct];
+          if (ch && ch.auxCodeId === wellnessState.idleCode.id) {
+            remaining.push(ct);
+          }
+        }
+        if (remaining.length > 0) mixedWellnessChannels = remaining;
+      }
+      if (mixedWellnessChannels) {
+        // Don't promote legacyStateKnown — keep recovery marker armed.
+        // Restore only the channels still on the wellness break so they
+        // don't stay in WellbeingBreak indefinitely; the agent's manual
+        // state (e.g. Voice/Lunch) is preserved.
+        webex.cc.setAgentState({
+          state: 'Available',
+          auxCodeId: '0',
+          lastStateChangeReason: 'wellness-break-complete',
+          agentId,
+          channelType: mixedWellnessChannels,
+        }).catch((err) => {
+          console.warn('[Wellness] Failed to restore remaining wellness channels:', err);
+        });
+      } else {
+        // Bridgeable with no mixed wellness — the SDK's bridge-computed
+        // auxCodeId is valid for the recovery decision.
+        wellnessState.legacyStateKnown = true;
+        wellnessState.legacyAuxCodeId = bridgeAuxCodeId;
+      }
     } else {
       // Non-bridgeable aggregate — explicitly invalidate the cached legacy
       // projection.  On a same-session reconnect, legacyStateKnown may

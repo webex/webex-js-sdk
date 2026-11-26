@@ -1342,7 +1342,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
 
       // Signal WS handler: true→V2, false→V1, undefined→no login in-flight.
-      this.pendingLoginV2 = requestManageChannelAvailability === true;
+      // Guard: if another login attempt already set this hint (its AQM bind
+      // is the one the server will respond to), do not overwrite — that
+      // attempt's value is authoritative.
+      if (this.pendingLoginV2 === undefined) {
+        this.pendingLoginV2 = requestManageChannelAvailability === true;
+      }
 
       LoggerProxy.log(
         `Resolved routing version for login | manageChannelAvailability: ${requestManageChannelAvailability} => ${
@@ -1442,7 +1447,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return response;
     } catch (error) {
-      this.pendingLoginV2 = undefined;
+      // Only clear the V2 hint if this attempt owned the AQM request.
+      // Service.aqm.reqs.Pending means a prior login's bind is still active;
+      // clearing would corrupt its V2 hint for the WS handler.
+      if (error?.id !== 'Service.aqm.reqs.Pending') {
+        this.pendingLoginV2 = undefined;
+      }
 
       // Only rollback calling context if login itself failed (not post-login steps).
       // V2 flag was never committed before acceptance, so no routing rollback needed.
@@ -1683,6 +1693,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         // Capture session+generation at enqueue; dequeue guard rejects stale closures.
         const capturedSessionId = this.currentAgentSessionId;
         const capturedChainGeneration = this.v2ChainGeneration;
+        const capturedReloadGeneration = this.reloadGeneration;
         const previousChain = this.v2StateChangeChain;
         const thisRequest = previousChain
           .catch(() => {})
@@ -1729,15 +1740,39 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             // queued while a manual Idle/Lunch was in-flight. By the time this
             // closure dequeues, the confirmation has updated channelStatesMap
             // and the agent's deliberate choice must not be overridden.
+            //
+            // Additionally, a second socket loss changes reloadGeneration but
+            // does NOT invalidate v2ChainGeneration. If the generation moved
+            // or the socket is currently closed, this recovery was for a prior
+            // disconnect — a new reload will schedule its own recovery.
             if (channelStateChangeData.reason === WSS_DISCONNECT_REASON) {
+              if (
+                this.reloadGeneration !== capturedReloadGeneration ||
+                this.services.webSocketManager.isSocketClosed
+              ) {
+                throw Object.assign(
+                  new Error('Disconnect recovery invalidated by subsequent socket loss'),
+                  {
+                    details: {
+                      type: 'SDK_VALIDATION_ERROR',
+                      trackingId: '',
+                      data: {reason: 'recovery_invalidated_by_socket_loss'},
+                    },
+                  }
+                );
+              }
+
               const targetChannels =
                 channelStateChangeData.channelType.length > 0
                   ? channelStateChangeData.channelType
                   : SELECTABLE_CHANNEL_TYPES;
-              const stillDisconnected = targetChannels.some(
+              // Filter — not some() — so channels whose agent manually changed
+              // state (e.g. Chat→Idle/Lunch) are excluded from the recovery PUT
+              // while channels still at disconnect-idle (e.g. Email) proceed.
+              const stillDisconnected = targetChannels.filter(
                 (ct) => this.channelStatesMap[ct]?.stateChangeReason === WSS_DISCONNECT_REASON
               );
-              if (!stillDisconnected) {
+              if (stillDisconnected.length === 0) {
                 throw Object.assign(
                   new Error('Disconnect-idle recovery superseded by manual state change'),
                   {
@@ -1749,6 +1784,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
                   }
                 );
               }
+              // Narrow the request to only channels still eligible.
+              channelStateChangeData.channelType = stillDisconnected;
             }
 
             return this.services.agent.stateChangeV2({data: channelStateChangeData});
