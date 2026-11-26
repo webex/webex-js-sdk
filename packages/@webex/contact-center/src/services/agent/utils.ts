@@ -1,5 +1,5 @@
 import {AgentChannelTypeStates, ChannelType} from './types';
-import {Entity} from '../config/types';
+import {CC_AGENT_EVENTS, Entity} from '../config/types';
 
 // ─── V1 Bridge Types ─────────────────────────────────────────────────────────
 
@@ -227,7 +227,7 @@ export function bridgeStateChangeSuccess(
   const primaryState = channelStates[aggregate.primaryChannel];
 
   return {
-    type: 'AgentStateChangeSuccess',
+    type: CC_AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS,
     agentId,
     agentSessionId,
     orgId,
@@ -296,7 +296,7 @@ export function buildAgentStateChangeEvent(
   const detail = enrichment.channelDetail;
 
   return {
-    type: 'AgentStateChangeSuccess',
+    type: CC_AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS,
     agentId,
     agentSessionId,
     orgId,

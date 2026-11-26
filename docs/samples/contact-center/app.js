@@ -4932,6 +4932,30 @@ async function restoreWellnessState(options = {}) {
         ) {
           return false;
         }
+
+        // V2 resolves on the first channel's success; verify that every
+        // targeted channel has actually left the wellness idle code.
+        // If any channel still carries it (e.g. Chat failed while Voice
+        // succeeded), treat this as a partial failure and retry instead
+        // of releasing recovery ownership.
+        const channelStates = webex.cc.getChannelStates?.() || {};
+        const wellnessCodeId = wellnessState.idleCode?.id;
+        if (wellnessCodeId) {
+          const SELECTABLE_ORDER = ['telephony', 'chat', 'email', 'social'];
+          const stillOnBreak = SELECTABLE_ORDER.filter(
+            (ct) => channelStates[ct]?.auxCodeId === wellnessCodeId
+          );
+          if (stillOnBreak.length > 0) {
+            console.warn(
+              '[Wellness] Partial restore: channels still on break after SDK resolved:',
+              stillOnBreak
+            );
+            throw new Error(
+              `Partial restore: ${stillOnBreak.join(', ')} still carry the wellness code`
+            );
+          }
+        }
+
         clearWellnessLifecycleOwnership();
         wellnessState.lifecycle = isWellnessReady() ? 'Ready' : 'Unavailable';
         setWellnessMessage(options.completionMessage || 'Previous agent state restored.');

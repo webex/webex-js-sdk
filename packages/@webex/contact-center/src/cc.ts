@@ -70,6 +70,7 @@ import {
   getErrorDetails,
   isRecord,
   isValidDialNumber,
+  normalizeChannelType,
   sanitizeForObservability,
 } from './services/core/Utils';
 import {
@@ -1293,6 +1294,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const previousLoginOption = this.webCallingService.loginOption;
     const previousBrowserVoiceRequired = this.webCallingService.isBrowserVoiceRequired();
     let loginAccepted = false;
+    let ownsRequest = false;
 
     try {
       LoggerProxy.log(
@@ -1368,7 +1370,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // bind. When false, a prior attempt's bind is still live and its
       // calling-context (loginOption / browserVoiceRequired) must not be
       // touched — neither eagerly nor during rollback.
-      const ownsRequest = this.pendingLoginV2 === undefined;
+      ownsRequest = this.pendingLoginV2 === undefined;
       if (ownsRequest) {
         this.pendingLoginV2 = requestManageChannelAvailability === true;
       }
@@ -1477,21 +1479,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return response;
     } catch (error) {
-      // Only clear the V2 hint if this attempt owned the AQM request.
-      // Service.aqm.reqs.Pending means a prior login's bind is still active;
-      // clearing would corrupt its V2 hint for the WS handler.
-      const isPendingDuplicate = error?.id === 'Service.aqm.reqs.Pending';
-      if (!isPendingDuplicate) {
+      // Only clear the V2 hint when this invocation owns it.  A second
+      // login attempt that fails validation before reaching AQM (e.g.
+      // INVALID_DIAL_NUMBER) or is rejected as a pending duplicate must
+      // not erase the first attempt's hint — the WS handler needs it to
+      // choose the correct V1/V2 branch when the first attempt's
+      // acceptance notification arrives.
+      if (ownsRequest) {
         this.pendingLoginV2 = undefined;
       }
 
-      // Only rollback calling context if this attempt owned the request AND
-      // login itself failed (not post-login steps). A Pending duplicate
-      // never touched the calling context (guarded above), so rolling back
-      // would overwrite the owning request's eagerly applied voice guard
-      // with a stale snapshot — allowing telephony Available while
-      // isVoiceReady() is false.
-      if (!loginAccepted && !isPendingDuplicate) {
+      // Only rollback calling context if this attempt owned the request
+      // AND login itself failed (not post-login steps).
+      if (!loginAccepted && ownsRequest) {
         this.webCallingService.setLoginOption(previousLoginOption);
         this.webCallingService.setBrowserVoiceRequired(previousBrowserVoiceRequired);
       }
@@ -1642,9 +1642,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         // Normalize channelType: the TypeScript type is ChannelType[] but
         // JavaScript consumers following the docs may pass a scalar string.
         // Wrap it in an array so .filter() / .includes() work correctly.
-        const rawChannelType = data.channelType;
-        const normalizedChannelType: ChannelType[] | undefined =
-          typeof rawChannelType === 'string' ? [rawChannelType as ChannelType] : rawChannelType;
+        const normalizedChannelType = normalizeChannelType(data.channelType);
 
         // V2 per-channel state change — auto-select all selectable channels if none specified
         channels =
@@ -1746,8 +1744,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         // True when channels were auto-selected via wellnessRestoration (no
         // explicit channelType).  Used at dequeue to know whether the dequeue
         // refilter should run.
-        const explicitChannels =
-          typeof data.channelType === 'string' ? [data.channelType] : data.channelType;
+        const explicitChannels = normalizeChannelType(data.channelType);
         const wellnessAutoSelected =
           data.wellnessRestoration === true &&
           !!this.wellbeingBreakIdleCode &&
@@ -1935,7 +1932,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           trackingId: agentStatusResponse.trackingId,
           data: {
             eventType: 'AgentDesktopMessage',
-            type: 'AgentStateChangeSuccess',
+            type: CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS,
             agentId: v2Data.agentId,
             agentSessionId: v2Data.agentSessionId,
             orgId: v2Data.orgId,
@@ -2975,8 +2972,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const channelType = data.channelType as ChannelType;
 
     if (this.agentConfig?.manageChannelAvailability !== true) return; // Not V2
-    if (!this.currentAgentSessionId) return; // Session ended
-    if (data.agentSessionId && data.agentSessionId !== this.currentAgentSessionId) return;
+
+    // Session guard: discard notifications for ended or mismatched sessions.
+    // During initial registration, currentAgentSessionId is undefined until
+    // the reload notification sets it.  Live channel updates that arrive in
+    // that window must still be applied to channelStatesMap and tracked via
+    // liveUpdatedChannels so the reload's gap-fill does not overwrite them
+    // with the stale snapshot.  When agentConfig exists the session is live
+    // (register in progress or active); when it is null the session ended.
+    if (this.currentAgentSessionId) {
+      if (data.agentSessionId && data.agentSessionId !== this.currentAgentSessionId) {
+        return; // Different session
+      }
+    } else if (!this.agentConfig) {
+      return; // Session ended (deregistered/logged out)
+    }
 
     const ownAgentId = this.agentConfig?.agentId;
     if (ownAgentId && data.agentId && data.agentId !== ownAgentId) return; // Other agent
@@ -3216,7 +3226,42 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.liveUpdatedChannels.clear(); // Reset for this reload window
 
       // reloadV2 accepts both V1 and V2 responses; server session type drives routing.
-      const reLoginResponse = await this.services.agent.reloadV2();
+      // If a prior reload's AQM bind is still live (Service.aqm.reqs.Pending),
+      // wait briefly and retry once so recovery is not lost between two
+      // overlapping reconnects.
+      let reLoginResponse;
+      try {
+        reLoginResponse = await this.services.agent.reloadV2();
+      } catch (reloadErr: unknown) {
+        const isPending =
+          reloadErr &&
+          typeof reloadErr === 'object' &&
+          (reloadErr as {id?: string}).id === 'Service.aqm.reqs.Pending';
+        if (!isPending) throw reloadErr;
+
+        LoggerProxy.log(
+          'event=silentRelogin | reloadV2 rejected as Pending; waiting for prior reload to settle before retrying',
+          {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
+        );
+
+        // Wait for the pending request to settle (success/failure/timeout).
+        // 5s is well under TIMEOUT_REQ (20s) but enough for typical WS latency.
+        await new Promise<void>((r) => {
+          setTimeout(r, 5000);
+        });
+
+        // Abort if another reconnect cycle superseded this one while waiting.
+        if (this.reloadGeneration !== myGeneration) {
+          LoggerProxy.log(
+            'event=silentRelogin | reload generation changed during Pending retry wait, aborting',
+            {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
+          );
+
+          return;
+        }
+
+        reLoginResponse = await this.services.agent.reloadV2();
+      }
       this.updateWellnessSession(reLoginResponse.data.agentSessionId);
 
       const responseType = reLoginResponse.data?.type;

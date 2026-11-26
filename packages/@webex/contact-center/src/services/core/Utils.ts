@@ -20,6 +20,26 @@ import {DialPlan} from '../config/types';
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
+/**
+ * Normalizes a scalar-or-array channel type input to a uniform array form.
+ * JavaScript consumers may pass a bare string (`'chat'`) instead of the
+ * canonical `ChannelType[]` array; this guard wraps the scalar so
+ * downstream `.filter()` / `.includes()` calls work safely.
+ *
+ * @param value - A scalar string, an array, or undefined.
+ * @returns The value wrapped in a single-element array when it is a string,
+ *   the original array when already an array, or `undefined` when absent.
+ * @private
+ * @ignore
+ */
+export function normalizeChannelType<T extends string>(
+  value: T | T[] | undefined
+): T[] | undefined {
+  if (typeof value === 'string') return [value];
+
+  return value;
+}
+
 const MAX_SANITIZED_OBSERVABILITY_VALUE_LENGTH = 200;
 
 /**

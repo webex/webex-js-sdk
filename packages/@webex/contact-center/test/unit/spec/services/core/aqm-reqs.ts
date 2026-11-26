@@ -772,14 +772,17 @@ describe('AqmReqs', () => {
           makeV2StateConfig('Available', ['telephony', 'chat'])
         );
 
-        // Voice succeeds (from request A) → promise A resolves
+        // Voice succeeds (from request A) → promise A resolves.
+        // Each per-channel notification has a unique envelope trackingId
+        // but shares data.trackingId as the request correlation key.
         webSocketManagerInstance.emit(
           'message',
           JSON.stringify({
             type: 'AgentChannelStateChange',
-            trackingId: 'req-A-track',
+            trackingId: 'envelope-A1',
             data: {
               type: 'AgentChannelStateChanged',
+              trackingId: 'req-A',
               channelType: 'telephony',
               isClientInitiated: true,
             },
@@ -792,14 +795,16 @@ describe('AqmReqs', () => {
           makeV2StateConfig('Idle', ['telephony', 'chat'])
         );
 
-        // Chat failure from request A arrives (stale — trackingId matches A)
+        // Chat failure from request A arrives with a different envelope
+        // trackingId but the same data.trackingId — must be absorbed.
         webSocketManagerInstance.emit(
           'message',
           JSON.stringify({
             type: 'AgentChannelStateChange',
-            trackingId: 'req-A-track',
+            trackingId: 'envelope-A2',
             data: {
               type: 'AgentChannelStateChangeFailed',
+              trackingId: 'req-A',
               channelType: 'chat',
               isClientInitiated: true,
             },
@@ -812,9 +817,10 @@ describe('AqmReqs', () => {
           'message',
           JSON.stringify({
             type: 'AgentChannelStateChange',
-            trackingId: 'req-B-track',
+            trackingId: 'envelope-B1',
             data: {
               type: 'AgentChannelStateChanged',
+              trackingId: 'req-B',
               channelType: 'telephony',
               isClientInitiated: true,
             },
@@ -837,20 +843,93 @@ describe('AqmReqs', () => {
           makeV2StateConfig('Available', ['telephony', 'chat'])
         );
 
-        // Chat failure with its own trackingId (not drained) → rejects
+        // Chat failure from request A's own data.trackingId (not
+        // drained — the request never resolved) → correctly rejects.
         webSocketManagerInstance.emit(
           'message',
           JSON.stringify({
             type: 'AgentChannelStateChange',
-            trackingId: 'req-A-track',
+            trackingId: 'envelope-A2',
             data: {
               type: 'AgentChannelStateChangeFailed',
+              trackingId: 'req-A',
               channelType: 'chat',
               isClientInitiated: true,
             },
           })
         );
         await expect(promiseA).rejects.toBeDefined();
+      } finally {
+        jest.useRealTimers();
+        (global.window as any).setTimeout = global.setTimeout;
+      }
+    });
+
+    it('absorbs a stale success after a failure-rejected request so it does not resolve a retry', async () => {
+      jest.useFakeTimers();
+      (global.window as any).setTimeout = global.setTimeout;
+      try {
+        webexRequestInstance.request.mockResolvedValue(mockWebexRequestResolvedValue);
+
+        // Request A: bulk Available for telephony + chat
+        const promiseA = aqm['createPromise'](
+          makeV2StateConfig('Available', ['telephony', 'chat'])
+        );
+
+        // Voice failure from request A → promise A rejects
+        webSocketManagerInstance.emit(
+          'message',
+          JSON.stringify({
+            type: 'AgentChannelStateChange',
+            trackingId: 'envelope-A1',
+            data: {
+              type: 'AgentChannelStateChangeFailed',
+              trackingId: 'req-A',
+              channelType: 'telephony',
+              isClientInitiated: true,
+            },
+          })
+        );
+        await expect(promiseA).rejects.toBeDefined();
+
+        // Request B: retry the same Available (same success bind key)
+        const promiseB = aqm['createPromise'](
+          makeV2StateConfig('Available', ['telephony', 'chat'])
+        );
+
+        // Chat success from the failed request A arrives — must be
+        // absorbed; it must NOT resolve request B.
+        webSocketManagerInstance.emit(
+          'message',
+          JSON.stringify({
+            type: 'AgentChannelStateChange',
+            trackingId: 'envelope-A2',
+            data: {
+              type: 'AgentChannelStateChanged',
+              trackingId: 'req-A',
+              channelType: 'chat',
+              isClientInitiated: true,
+            },
+          })
+        );
+
+        // Promise B should still be pending — resolve it with its own
+        // request's notification:
+        webSocketManagerInstance.emit(
+          'message',
+          JSON.stringify({
+            type: 'AgentChannelStateChange',
+            trackingId: 'envelope-B1',
+            data: {
+              type: 'AgentChannelStateChanged',
+              trackingId: 'req-B',
+              channelType: 'telephony',
+              isClientInitiated: true,
+            },
+          })
+        );
+        const result = await promiseB;
+        expect(result.data.trackingId).toBe('req-B');
       } finally {
         jest.useRealTimers();
         (global.window as any).setTimeout = global.setTimeout;
@@ -867,25 +946,26 @@ describe('AqmReqs', () => {
           makeV2StateConfig('Available', ['telephony', 'chat'])
         );
 
-        // Resolve A
+        // Resolve A — keyed by data.trackingId
         webSocketManagerInstance.emit(
           'message',
           JSON.stringify({
             type: 'AgentChannelStateChange',
-            trackingId: 'req-A-track',
+            trackingId: 'envelope-A1',
             data: {
               type: 'AgentChannelStateChanged',
+              trackingId: 'req-A',
               channelType: 'telephony',
               isClientInitiated: true,
             },
           })
         );
         await promiseA;
-        expect(aqm['resolvedTrackingIds'].has('req-A-track')).toBe(true);
+        expect(aqm['resolvedTrackingIds'].has('req-A')).toBe(true);
 
         // Advance past TIMEOUT_REQ (20s)
         jest.advanceTimersByTime(20001);
-        expect(aqm['resolvedTrackingIds'].has('req-A-track')).toBe(false);
+        expect(aqm['resolvedTrackingIds'].has('req-A')).toBe(false);
       } finally {
         jest.useRealTimers();
         (global.window as any).setTimeout = global.setTimeout;
