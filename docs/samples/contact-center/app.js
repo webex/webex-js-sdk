@@ -4807,6 +4807,17 @@ function setRegionRecoveryDialog(open) {
   if (!open && regionRecoveryDialog.open) regionRecoveryDialog.close();
 }
 
+function cancelRegionRestart() {
+  if (regionRestartTimer === undefined) return;
+  clearTimeout(regionRestartTimer);
+  regionRestartTimer = undefined;
+  try {
+    sessionStorage.removeItem(REGION_RESUME_KEY);
+  } catch {
+    // Resume metadata expires even if storage becomes unavailable.
+  }
+}
+
 function takeRegionRecoveryResume() {
   try {
     const saved = sessionStorage.getItem(REGION_RESUME_KEY);
@@ -4830,41 +4841,36 @@ function takeRegionRecoveryResume() {
 function restartSampleForRegion(automatic = true) {
   if (regionRestartTimer !== undefined) return true;
   try {
+    const saved = getSavedSampleCredentials();
     const orgId = webex.credentials.getOrgId()?.trim();
-    if (!orgId) return false;
+    if (!orgId || !saved || saved.access_token !== webex.credentials.supertoken?.access_token) {
+      return false;
+    }
 
     const now = Date.now();
     const guardKey = `cc-sample-region-reload:${sampleEnvironment}:${orgId}`;
-    if (automatic) {
-      const previous = sessionStorage.getItem(guardKey);
-      if (previous !== null) {
-        const last = JSON.parse(previous);
-        if (!Number.isFinite(last) || last < 0 || last > now ||
-          now - last < REGION_RESTART_WINDOW_MS) return false;
-      }
+    const previous = automatic ? sessionStorage.getItem(guardKey) : null;
+    if (previous !== null) {
+      const last = JSON.parse(previous);
+      if (!Number.isFinite(last) || last < 0 || last > now ||
+        now - last < REGION_RESTART_WINDOW_MS) return false;
     }
 
     sessionStorage.setItem(guardKey, String(now));
-    const saved = getSavedSampleCredentials();
-    if (saved && saved.access_token === webex.credentials.supertoken?.access_token) {
-      // The token stays in the sample's existing auth cache. Only resume metadata goes here.
-      sessionStorage.setItem(REGION_RESUME_KEY, JSON.stringify({
-        orgId,
-        environment: sampleEnvironment,
-        authType: authTypeElm.value,
-        requestedAt: now,
-      }));
-    }
+    sessionStorage.setItem(REGION_RESUME_KEY, JSON.stringify({
+      orgId,
+      environment: sampleEnvironment,
+      authType: authTypeElm.value,
+      requestedAt: now,
+    }));
   } catch {
     return false;
   }
 
   const showManualRestart = () => {
-    clearTimeout(regionRestartTimer);
-    regionRestartTimer = undefined;
+    cancelRegionRestart();
     setRegionRecoveryDialog(false);
     regionRecoveryReloadBtn.hidden = false;
-    regionRecoveryStatus.textContent = regionRecoveryMessages.reloadRequired;
   };
 
   setRegionRecoveryDialog(true);
@@ -4881,29 +4887,18 @@ function restartSampleForRegion(automatic = true) {
 function showRegionRecoveryState(state, keepDialogOpen = false) {
   const status = state?.status;
   const mismatchAlreadyShown = regionRecoveryStatus.dataset.status === 'reloadRequired';
+  if (status !== 'reloadRequired') cancelRegionRestart();
   regionRecoveryStatus.dataset.status = status ?? '';
-  regionRecoveryReloadBtn.hidden = status !== 'reloadRequired' && status !== 'unavailable';
-  setRegionRecoveryDialog(status === 'recovering' || keepDialogOpen === true || regionRestartTimer !== undefined);
-  if (regionRestartTimer !== undefined) regionRecoveryReloadBtn.hidden = true;
-  if (!state) {
-    regionRecoveryStatus.textContent = '';
-    return;
-  }
-
-  const details = [
-    state.operation,
-    state.homeRegion && `Home: ${state.homeRegion}`,
-    state.servingRegion && `Serving: ${state.servingRegion}`,
-    state.limitedService && 'Limited service',
-    state.retryAfterMs > 0 && `Retry in ${Math.ceil(state.retryAfterMs / 1000)}s`,
-    state.autoAvailable && `Automatic availability: ${state.autoAvailable}`,
-    status === 'unavailable' && state.reason,
-  ].filter(Boolean);
-  const prefix = details.length ? ` (${details.join(', ')})` : '';
-  regionRecoveryStatus.textContent = `Regional recovery${prefix}. ${regionRecoveryMessages[status]}`;
+  regionRecoveryStatus.textContent = regionRecoveryMessages[status] ?? '';
+  const restarting = regionRestartTimer !== undefined;
+  regionRecoveryReloadBtn.hidden = restarting || !['reloadRequired', 'unavailable'].includes(status);
+  setRegionRecoveryDialog(restarting || status === 'recovering' || keepDialogOpen === true);
+  if (!state) return;
 
   if (status === 'ready') {
-    setAgentStatusButton.disabled = !idleCodesDropdown.options.length;
+    setAgentStatusButton.disabled = !Array.from(idleCodesDropdown.options).some(
+      (option) => option.value && !option.disabled && !option.hidden
+    );
     if (state.reason === 'region-switch') updateTaskList();
     return;
   }
@@ -5002,11 +4997,9 @@ function register(resumingRegion = false) {
           updateUnregisterButtonState();
         }
 
-        const idleCodesList = agentProfile.idleCodes;
-        if(idleCodesList.length > 0) {
-           setAgentStatusButton.disabled = false;
-        }
-        getSelectableIdleCodes(idleCodesList).forEach((idleCodes) => {
+        const idleCodesList = getSelectableIdleCodes(agentProfile.idleCodes);
+        setAgentStatusButton.disabled = idleCodesList.length === 0;
+        idleCodesList.forEach((idleCodes) => {
             const option  = document.createElement('option');
             option.text = idleCodes.name;
             option.value = idleCodes.id;
