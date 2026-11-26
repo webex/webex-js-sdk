@@ -87,6 +87,7 @@ Before changing code or documentation, start with:
 | `CallingClient` | register, line, call lifecycle, hold/resume, transfer, media, keepalive   | [CallingClient spec](src/CallingClient/docs/README.md) with sub-module specs [calling](src/CallingClient/calling/docs/README.md), [CallerId](src/CallingClient/calling/CallerId/docs/README.md), [line](src/CallingClient/line/docs/README.md), [registration](src/CallingClient/registration/docs/README.md) |
 | `CallHistory`   | sessions, viewed/deleted records, Janus history events                    | [CallHistory spec](src/CallHistory/docs/README.md) + tests |
 | `CallRecording` | recordings list, metadata, delete, recording events                       | [CallRecording spec](src/CallRecording/docs/README.md) + tests |
+| `CallQueue`     | agent status, queue membership, and queue events                         | [CallQueue spec](src/CallQueue/docs/README.md) + tests |
 | `CallSettings`  | forwarding, DND, voicemail settings, backend connectors                   | [CallSettings spec](src/CallSettings/docs/README.md) + connector tests |
 | `Contacts`      | people lookup, SCIM, groups                                               | [Contacts spec](src/Contacts/docs/README.md) + `src/Contacts/ContactsClient.test.ts` |
 | `Voicemail`     | voicemail list/content/update/delete/summary/transcript                   | [Voicemail spec](src/Voicemail/docs/README.md) + backend connector tests |
