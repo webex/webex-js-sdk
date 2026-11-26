@@ -49,11 +49,11 @@ describes `clear()` as namespace-scoped; it is not). Use `src/docs/README.md` fo
 ## 1. Commands (Run First)
 
 Use only documented commands. Do not invent alternatives when a command is missing. Run them from
-the repository root with Node 22.14 (`nvm use 22.14`).
+the repository root with Node 22.14.
 
 | Task                   | Command             |
 | ---------------------- | ------------------- |
-| Install dependencies   | `yarn install` (repository root) |
+| Install dependencies   | `yarn` (repository root) |
 | Start dev environment  | Not applicable — this is a library with no runnable entry point |
 | Run tests              | `yarn workspace @webex/storage-adapter-local-storage test:unit` — but see section 4; it executes no case |
 | Run linters            | `yarn workspace @webex/storage-adapter-local-storage test:style` |

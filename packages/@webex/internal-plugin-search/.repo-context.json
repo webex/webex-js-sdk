@@ -7,10 +7,8 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild": "yarn prebuild:modules",
     "compile": "yarn workspace @webex/internal-plugin-search build",
     "build": "yarn workspace @webex/internal-plugin-search build:src",
-    "unit-test": "[NEEDS HUMAN INPUT] -- package.json defines no test:unit script and the package has no test/unit directory; its only spec, test/integration/spec/search.js, is wrapped in xdescribe and runs only under test:browser, which currently bundles nothing. Add a unit suite and script before recording a command here.",
     "lint": "yarn workspace @webex/internal-plugin-search test:style",
     "deploy": "yarn workspace @webex/internal-plugin-search deploy:npm"
   },

@@ -50,7 +50,7 @@ Generator-side field measurement is complete (100%, assessed 2026-11-16). Indepe
 
 | Change affects | Load and update | Verification route |
 | -------------- | --------------- | ------------------ |
-| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn build:src`, `test:unit`, and `test:style`, and the module spec |
+| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn workspace @webex/plugin-encryption build:src`, `test:unit`, and `test:style`, and the module spec |
 | A stable code, package, or component boundary | `src/docs/README.md` | Build, unit tests with coverage, and lint |
 | `downloadAndDecryptFile`, its options, or its errors | `src/docs/README.md` (MOD-005 to MOD-008, INV-001, INV-003, and the download-error and progress-event known defects), `src/cypher/index.ts`, `src/cypher/types.ts` | Build, then `test/unit/spec/cypher/index.ts`; add cases for the untested paths |
 | `register`, `deregister`, or the registered flag | The module spec (MOD-003, MOD-004, INV-002, State machine), `src/cypher/index.ts` | Build, unit tests, and lint |

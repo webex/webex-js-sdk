@@ -50,7 +50,7 @@ Generator-side field measurement is complete (100%, assessed 2026-11-16). Indepe
 
 | Change affects | Load and update | Verification route |
 | -------------- | --------------- | ------------------ |
-| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn build:src`, `test:unit`, and `test:style`, and the module spec |
+| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn workspace @webex/internal-plugin-encryption build:src`, `test:unit`, and `test:style`, and the module spec |
 | A stable code, package, or component boundary | `src/docs/README.md` | Build, unit tests, and lint |
 | Certificate validation, CA roots, or the shipped bundle | `src/docs/README.md` (MOD-023 to MOD-026, INV-001 to INV-003, INV-007), `src/kms.js`, `src/kms-certificate-validation.js`, `src/union-bundle.js` | Build, then `test/unit/spec/kms.js` and `test/unit/spec/kms-certificate-validation.js` |
 | A KMS request, retries, batching, or the context | The module spec's requirements and State machine, `src/kms.js`, `src/kms-batcher.js` | Build, unit tests, and lint; add unit cases, since batching and retries have none; integration in CI |

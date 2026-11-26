@@ -46,7 +46,7 @@ commands from the monorepo root.
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn` (workspace root; the deploy workflow runs the same command); on a fresh checkout run `yarn prebuild:modules` once, because `yarn` does not build `@webex/legacy-tools` or sibling `dist/` |
+| Install dependencies   | `yarn` (workspace root; the deploy workflow runs the same command) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
 | Run tests              | `yarn workspace @webex/internal-plugin-voicea test:unit` (jest) |
 | Run linters            | `yarn workspace @webex/internal-plugin-voicea test:style` |
@@ -129,8 +129,9 @@ Run checks in this order:
 
 Step 1 type-checks the sources through `tsc` and keeps `dist/` current for packages that depend on
 this one. The specs import `src` directly, but they load `@webex/internal-plugin-mercury` and
-`@webex/internal-plugin-llm` from those packages' `dist/`, so run `yarn prebuild:modules` once on a
-fresh checkout.
+`@webex/internal-plugin-llm` from those packages' `dist/`. Fresh-checkout workspace setup (building
+`webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see
+[Prebuilding](../../../CONTRIBUTING.md#prebuilding).
 
 Testing rules:
 

@@ -7,13 +7,12 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild": "yarn prebuild:modules",
-    "compile": "yarn build",
-    "build": "yarn build:src",
-    "unit-test": "yarn test:unit",
-    "lint": "yarn test:style",
-    "browser-test": "yarn test:browser",
-    "deploy": "yarn deploy:npm"
+    "compile": "yarn workspace @webex/plugin-device-manager build",
+    "build": "yarn workspace @webex/plugin-device-manager build:src",
+    "unit-test": "yarn workspace @webex/plugin-device-manager test:unit",
+    "lint": "yarn workspace @webex/plugin-device-manager test:style",
+    "browser-test": "yarn workspace @webex/plugin-device-manager test:browser",
+    "deploy": "yarn workspace @webex/plugin-device-manager deploy:npm"
   },
   "public_interfaces": [
     {
@@ -88,11 +87,11 @@
         "dist"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-device-manager build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-device-manager test:unit",
+        "yarn workspace @webex/plugin-device-manager test:style"
       ]
     },
     {
@@ -113,7 +112,7 @@
     {
       "path": "dist",
       "generated_from": "src",
-      "refresh_with": "yarn build:src"
+      "refresh_with": "yarn workspace @webex/plugin-device-manager build:src"
     },
     {
       "path": "../../../.sdd/templates/repo-standards/template-map.json",
@@ -127,9 +126,9 @@
         "src/**"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-device-manager build:src",
+        "yarn workspace @webex/plugin-device-manager test:unit",
+        "yarn workspace @webex/plugin-device-manager test:style"
       ],
       "recommended": [
         "add a test/unit/spec case for the changed behavior; most methods have none"
@@ -141,9 +140,9 @@
         "src/collection.js"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-device-manager build:src",
+        "yarn workspace @webex/plugin-device-manager test:unit",
+        "yarn workspace @webex/plugin-device-manager test:style"
       ],
       "recommended": [
         "pin the guards, the pairing transitions, the WDM requests, and the refresh result with unit cases before changing them; reset DeviceCollection between cases"
@@ -154,9 +153,9 @@
         "src/index.js"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-device-manager build:src",
+        "yarn workspace @webex/plugin-device-manager test:unit",
+        "yarn workspace @webex/plugin-device-manager test:style"
       ],
       "recommended": [
         "check the bundles that register the plugin (webex, webex-node) when the registered name or the side-effect imports change"
@@ -176,11 +175,11 @@
         "the DeviceManager#method log and error messages"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-device-manager build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-device-manager test:unit",
+        "yarn workspace @webex/plugin-device-manager test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -195,11 +194,11 @@
         "the device list shared by every instance in the process"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-device-manager build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-device-manager test:unit",
+        "yarn workspace @webex/plugin-device-manager test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -214,11 +213,11 @@
         "the registered plugin name and the side-effect imports"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-device-manager build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-device-manager test:unit",
+        "yarn workspace @webex/plugin-device-manager test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -347,7 +346,7 @@
           "dist"
         ],
         "generated_from": "src",
-        "refresh_with": "yarn build:src",
+        "refresh_with": "yarn workspace @webex/plugin-device-manager build:src",
         "notes": "JavaScript and source maps from webex-legacy-tools; no type declarations. Do not edit by hand."
       },
       {
@@ -363,19 +362,19 @@
     "validation_entrypoints": [
       {
         "name": "compile",
-        "command": "yarn build",
+        "command": "yarn workspace @webex/plugin-device-manager build",
         "scope": "src",
         "notes": "Runs build:src."
       },
       {
         "name": "unit-test",
-        "command": "yarn test:unit",
+        "command": "yarn workspace @webex/plugin-device-manager test:unit",
         "scope": "test/unit/spec",
         "notes": "Jest through webex-legacy-tools; imports src by relative path."
       },
       {
         "name": "lint",
-        "command": "yarn test:style",
+        "command": "yarn workspace @webex/plugin-device-manager test:style",
         "scope": "src",
         "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
       }

@@ -170,11 +170,11 @@ The contracts this package requires, `webex-core-store-adapter-interface` and
 
 | Command or artifact | Owner | Inputs | Output or side effect | Compatibility boundary |
 | ------------------- | ----- | ------ | --------------------- | ---------------------- |
-| `yarn build:src` | Package scripts | `src` | Writes `dist/` (JavaScript and source map) through `webex-legacy-tools` | `dist/` is generated and ignored by Git |
-| `yarn build` | Package scripts | `src` | Runs `build:src` | Same output |
-| `yarn test:unit` | Package scripts | `test/unit/spec` | Jest through `webex-legacy-tools`; the spec loads `dist/` | Currently skips every case under Node |
-| `yarn test:style` | Package scripts | `src` | ESLint run | The shared config ignores `docs/**` and `*.md` |
-| `yarn test:browser` | Package scripts | `test/unit/spec` | Karma in headless Chrome and Firefox | Currently completes 0 tests and exits 0 |
+| `yarn workspace @webex/storage-adapter-session-storage build:src` | Package scripts | `src` | Writes `dist/` (JavaScript and source map) through `webex-legacy-tools` | `dist/` is generated and ignored by Git |
+| `yarn workspace @webex/storage-adapter-session-storage build` | Package scripts | `src` | Runs `build:src` | Same output |
+| `yarn workspace @webex/storage-adapter-session-storage test:unit` | Package scripts | `test/unit/spec` | Jest through `webex-legacy-tools`; the spec loads `dist/` | Currently skips every case under Node |
+| `yarn workspace @webex/storage-adapter-session-storage test:style` | Package scripts | `src` | ESLint run | The shared config ignores `docs/**` and `*.md` |
+| `yarn workspace @webex/storage-adapter-session-storage test:browser` | Package scripts | `test/unit/spec` | Karma in headless Chrome and Firefox | Currently completes 0 tests and exits 0 |
 
 ## Security architecture
 

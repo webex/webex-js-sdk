@@ -194,6 +194,9 @@ events during batch preparation rather than at build time. Locus sync latencies 
 record-per-sync lifecycle keyed by meeting, dataset and tracking identifier, with skew rejection, a
 pending TTL and a per-dataset cap.
 
+The next diagnostic log includes the full `latencies` snapshot after the timestamp map changes.
+An empty snapshot marks a clear. Each diagnostic log still includes its prepared event.
+
 **The batcher** (`src/call-diagnostic/call-diagnostic-metrics-batcher.ts`) inherits queueing and
 backoff from `src/batcher.js`, runs the shared preparation step, stamps the send time on each item and
 posts to the client-metrics resource.

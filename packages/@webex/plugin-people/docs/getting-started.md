@@ -16,9 +16,7 @@ validation_status: pass-with-warnings
 # Getting started
 
 Onboarding for **@webex/plugin-people**, a package inside the `webex-js-sdk` Yarn workspace.
-Run `yarn` and `yarn prebuild:modules` at the workspace root, and the package scripts from this
-package directory, `packages/@webex/plugin-people`, where `package.json` defines them.
-From the workspace root, `yarn workspace @webex/plugin-people <script>` runs the same script.
+Run `yarn` and the package scripts from the workspace root, as `yarn workspace @webex/plugin-people <script>`.
 
 ## Prerequisites
 
@@ -36,29 +34,20 @@ yarn
 
 The workspace `deploy.yml` workflow installs with the same command.
 
-On a fresh checkout, prebuild the workspace before the first package build. `yarn` does not build
-`@webex/legacy-tools`, whose `webex-legacy-tools` binary runs this package's build and tests, or the
-sibling packages' `dist/`:
-
-```bash
-yarn prebuild:modules
-```
-
-It runs `yarn`, then builds the tools, the legacy tools, `@webex/webex-core`, and every package, in
-that order (root `package.json`; see the workspace `CONTRIBUTING.md` "Prebuilding").
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see [Prebuilding](../../../../CONTRIBUTING.md#prebuilding).
 
 ## Build
 
 ```bash
-yarn build:src
+yarn workspace @webex/plugin-people build:src
 ```
 
 `build:src` writes JavaScript and source maps for the four source files to `dist/` through
-`webex-legacy-tools`. `dist/` is ignored by Git. The `build` script runs `yarn build:src`; the package
+`webex-legacy-tools`. `dist/` is ignored by Git. The `build` script runs `build:src`; the package
 emits no type declarations.
 
 ```bash
-yarn build
+yarn workspace @webex/plugin-people build
 ```
 
 ## Run
@@ -69,16 +58,16 @@ N/A — this is a library with no start script. Importing `@webex/plugin-people`
 ## Tests
 
 ```bash
-yarn test:unit
+yarn workspace @webex/plugin-people test:unit
 ```
 
 ```bash
-yarn test:style
+yarn workspace @webex/plugin-people test:style
 ```
 
 | Tier | Command | Test location | Framework | External dependencies |
 | ---- | ------- | ------------- | --------- | --------------------- |
-| Unit | `yarn test:unit` | `test/unit/spec` | jest through `webex-legacy-tools` and `@webex/jest-config-legacy` | None; `@webex/test-helper-mock-webex` and sinon stubs |
+| Unit | `yarn workspace @webex/plugin-people test:unit` | `test/unit/spec` | jest through `webex-legacy-tools` and `@webex/jest-config-legacy` | None; `@webex/test-helper-mock-webex` and sinon stubs |
 
 Run `build:src` before `test:unit`. The unit specs import `@webex/plugin-people` by name, which
 resolves to `dist/index.js`, so a stale build tests old code.
@@ -90,7 +79,7 @@ resolves to `dist/index.js`, so a stale build tests old code.
 - Enforcement source: N/A
 - Test environment or QA dependencies: none for unit tests and lint
 
-`yarn test:browser:broken` (manifest command `browser-test`) runs `webex-legacy-tools test
+`yarn workspace @webex/plugin-people test:browser:broken` (manifest command `browser-test`) runs `webex-legacy-tools test
 --integration --runner karma` over `test/integration/spec/people.js`, whose 13 cases (1 skipped) create
 test users and call the live service. On 2026-11-12 under Node 22.14 the karma bundle failed to parse
 `isbot` (an ES module in the workspace `node_modules`), so the run reported "0 tests completed" and
@@ -117,9 +106,9 @@ run the commands above instead.
 
 ## First-run verification
 
-1. Run `yarn build:src` and check that it reports `Built plugin-people: 4 files`.
-2. Run `yarn test:unit`.
-3. Run `yarn test:style`.
+1. Run `yarn workspace @webex/plugin-people build:src` and check that it reports `Built plugin-people: 4 files`.
+2. Run `yarn workspace @webex/plugin-people test:unit`.
+3. Run `yarn workspace @webex/plugin-people test:style`.
 
 Expected result: all three commands exit zero. The unit run reports 5 passing tests in 2 suites.
 `test:style` prints warnings but no errors: 3 in `src/` (missing JSDoc in `src/people-batcher.js` and

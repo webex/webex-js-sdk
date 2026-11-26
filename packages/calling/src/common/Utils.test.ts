@@ -1,4 +1,6 @@
 /* eslint-disable no-underscore-dangle */
+import fs from 'fs';
+import path from 'path';
 import {v4 as uuid} from 'uuid';
 import {CallingPartyInfo, MessageInfo} from '../Voicemail/types';
 import {Call} from '../CallingClient/calling';
@@ -84,6 +86,12 @@ const mockEmitterCb = jest.fn();
 const mockRestoreCb = jest.fn();
 const mock429RetryCb = jest.fn();
 const mockSessionSupersededCb = jest.fn();
+
+const retryAfterCases = [
+  {headers: {'retry-after': '120'}, retryAfter: 120},
+  {headers: {'Retry-After': '120'}, retryAfter: 120},
+  {headers: {'retry-after': '0', 'Retry-After': '120'}, retryAfter: 0},
+];
 
 const webex = getTestUtilsWebex();
 SDKConnector.setWebex(webex);
@@ -220,14 +228,14 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
     expect(retrySpy).not.toHaveBeenCalled();
   });
 
-  it('500 during keepalive with retry-after triggers retryCb with interval', async () => {
+  it.each(retryAfterCases)('500 keepalive honors $headers', async ({headers, retryAfter}) => {
     let emitted = false;
     const endSpy = jest.fn();
     const retrySpy = jest.fn();
 
     const payload = <WebexRequestPayload>(<unknown>{
       statusCode: 500,
-      headers: {trackingid: 't', 'retry-after': 2},
+      headers: {trackingid: 't', ...headers},
       body: {device: {deviceId: 'd'}, errorCode: 0},
     });
 
@@ -246,7 +254,7 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
 
     expect(emitted).toBe(true);
     expect(endSpy).not.toHaveBeenCalled();
-    expect(retrySpy).toHaveBeenCalledWith(2);
+    expect(retrySpy).toBeCalledOnceWith(retryAfter);
   });
 
   it('500 during keepalive without retry-after triggers retryCb without args', async () => {
@@ -303,13 +311,13 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
     expect(retrySpy).not.toHaveBeenCalled();
   });
 
-  it('503 during keepalive with retry-after does not invoke emitterCb and retries with interval', async () => {
+  it.each(retryAfterCases)('503 keepalive honors $headers', async ({headers, retryAfter}) => {
     let emitted = false;
     const retrySpy = jest.fn();
 
     const payload = <WebexRequestPayload>(<unknown>{
       statusCode: 503,
-      headers: {trackingid: 't', 'retry-after': 7},
+      headers: {trackingid: 't', ...headers},
       body: {device: {deviceId: 'd'}, errorCode: 0},
     });
 
@@ -327,7 +335,7 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
 
     expect(abort).toBe(false);
     expect(emitted).toBe(false);
-    expect(retrySpy).toHaveBeenCalledWith(7);
+    expect(retrySpy).toBeCalledOnceWith(retryAfter);
   });
 
   it('503 during keepalive without retry-after invokes emitterCb and triggers retryCb without args', async () => {
@@ -639,6 +647,20 @@ describe('Registration Tests', () => {
 
     expect(logSpy).toHaveBeenCalledWith(`Status code: -> ${codeObj.statusCode}`, logObj);
     expect(logSpy).toHaveBeenCalledWith(codeObj.logMsg, logObj);
+  });
+
+  it.each(retryAfterCases)('429 honors $headers', async ({headers, retryAfter}) => {
+    const webexPayload = <WebexRequestPayload>(<unknown>{
+      statusCode: ERROR_CODE.TOO_MANY_REQUESTS,
+      headers,
+    });
+
+    await handleRegistrationErrors(webexPayload, mockEmitterCb, logObj, {
+      retry429Cb: mock429RetryCb,
+    });
+
+    expect(mock429RetryCb).toBeCalledOnceWith(retryAfter, logObj.method);
+    expect(mockEmitterCb).not.toHaveBeenCalled();
   });
 
   it('verify 409 response for a caller that does not handle a superseded session', async () => {
@@ -1741,6 +1763,38 @@ describe('Store and Fetch voicemail tests', () => {
       vmListStorage[key] = value;
     });
     global.Storage.prototype.getItem = jest.fn((key) => vmListStorage[key]);
+  });
+
+  it('storeVoicemailList/fetchVoicemailList JSDoc omits encrypted/decrypted labeling', () => {
+    const utilsSource = fs.readFileSync(path.resolve(__dirname, 'Utils.ts'), 'utf8');
+
+    const extractJsDoc = (functionName: string): string => {
+      const exportIndex = utilsSource.indexOf(`export function ${functionName}(`);
+
+      if (exportIndex === -1) {
+        return '';
+      }
+
+      const beforeExport = utilsSource.slice(0, exportIndex);
+      const jsDocStart = beforeExport.lastIndexOf('/**');
+      const jsDocEnd = beforeExport.lastIndexOf('*/');
+
+      if (jsDocStart === -1 || jsDocEnd === -1 || jsDocEnd < jsDocStart) {
+        return '';
+      }
+
+      return beforeExport.slice(jsDocStart, jsDocEnd + 2);
+    };
+
+    const storeJsDoc = extractJsDoc('storeVoicemailList');
+    const fetchJsDoc = extractJsDoc('fetchVoicemailList');
+
+    expect(storeJsDoc).not.toEqual('');
+    expect(fetchJsDoc).not.toEqual('');
+    expect(storeJsDoc.toLowerCase()).not.toContain('encrypted');
+    expect(storeJsDoc.toLowerCase()).not.toContain('decrypted');
+    expect(fetchJsDoc.toLowerCase()).not.toContain('encrypted');
+    expect(fetchJsDoc.toLowerCase()).not.toContain('decrypted');
   });
 
   it('verify saving Voicemails in session storage', () => {

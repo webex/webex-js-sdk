@@ -6,7 +6,7 @@
     "purpose": "Internal Webex JS SDK plugin that keeps the client's Mercury WebSocket connections open. It registers webex.internal.mercury, connects one socket per session id after device registration, authorizes and keeps each socket alive with ping/pong, reconnects with exponential backoff according to close codes, routes incoming envelopes to autowired plugin handlers and to session-suffixed events, and switches sockets make-before-break when the server announces shutdown."
   },
   "commands": {
-    "install": "yarn install",
+    "install": "yarn",
     "compile": "yarn workspace @webex/internal-plugin-mercury build:src",
     "build": "yarn workspace @webex/internal-plugin-mercury build",
     "unit-test": "yarn workspace @webex/internal-plugin-mercury test:unit",

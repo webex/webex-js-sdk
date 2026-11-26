@@ -6,7 +6,7 @@
     "purpose": "Node.js build of the Webex JS SDK. Loading the package installs @babel/polyfill when no polyfill is present, loads 17 Webex plugin packages for their registration side effects, and exports WebexNode, a WebexCore subclass with a static init factory that merges sdkType 'webex-node', the package configuration object, and the caller's config before constructing an instance. The package configuration in src/config.js is currently nested under config.default and not applied."
   },
   "commands": {
-    "install": "yarn install",
+    "install": "yarn",
     "compile": "yarn workspace webex-node build:src",
     "build": "yarn workspace webex-node build",
     "unit-test": "yarn workspace webex-node test:unit",

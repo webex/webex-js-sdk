@@ -37,7 +37,7 @@ The repository is already cloned when you are reading this file. Dependencies ar
 whole workspace:
 
 ```bash
-yarn install
+yarn
 ```
 
 ## Build
@@ -102,7 +102,7 @@ yarn workspace @webex/internal-plugin-flag test:unit
   Tests. `src/` reads no config key, environment variable, or feature toggle.
 - Secret source: none in this package; see the architecture Security architecture. Supply the
   integration-tier client credentials from your environment, never from a committed file.
-- Package or artifact access: no private registry or credentials. `yarn install` needs network access
+- Package or artifact access: no private registry or credentials. `yarn` needs network access
   to the public npm registry set in the workspace root `.yarnrc.yml`, because the Yarn cache is not
   committed.
 - Required neighboring repositories or workspace layout: the webex-js-sdk workspace, because sibling
@@ -119,7 +119,7 @@ yarn workspace @webex/internal-plugin-flag test:unit
    requires. Installing alone is not enough: the `webex-legacy-tools` CLI that this package's
    scripts call is untracked build output of the workspace legacy tools package, and the unit spec
    imports the built output of this package and of the workspace packages it loads. The root
-   `prebuild:modules` script named there builds all of them.
+   Prebuilding setup builds all of them.
 2. Run `yarn workspace @webex/internal-plugin-flag build` and check that the build output contains
    `index.js`. See Tests for rebuilding after `src/` changes.
 3. Run `yarn workspace @webex/internal-plugin-flag test:unit`.

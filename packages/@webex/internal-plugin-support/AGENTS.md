@@ -45,7 +45,7 @@ commands from the monorepo root.
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn` (workspace root; the deploy workflow runs the same command); on a fresh checkout run `yarn prebuild:modules` once, because `yarn` does not build `@webex/legacy-tools` or sibling `dist/` |
+| Install dependencies   | `yarn` (workspace root; the deploy workflow runs the same command). Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see [Prebuilding](../../../CONTRIBUTING.md#prebuilding) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
 | Run tests              | `yarn workspace @webex/internal-plugin-support test:unit` (after `build:src`; the spec imports the package by name, so it tests `dist/`) |
 | Run linters            | `yarn workspace @webex/internal-plugin-support test:style` |
@@ -119,9 +119,6 @@ Run checks in this order:
 1. `yarn workspace @webex/internal-plugin-support build:src`
 2. `yarn workspace @webex/internal-plugin-support test:unit`
 3. `yarn workspace @webex/internal-plugin-support test:style`
-
-Run `yarn prebuild:modules` once on a fresh checkout so `webex-legacy-tools` and the sibling packages'
-`dist/` exist.
 
 Testing rules:
 

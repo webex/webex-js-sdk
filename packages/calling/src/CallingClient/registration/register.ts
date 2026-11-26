@@ -1288,7 +1288,7 @@ export class Registration implements IRegistration {
                 const error = {
                   headers: {
                     trackingid: err.headers?.trackingid,
-                    'retry-after': err.headers['retry-after'],
+                    'retry-after': err.headers['retry-after'] ?? err.headers['Retry-After'],
                   },
                   statusCode: err.statusCode,
                   statusText: err.statusText,

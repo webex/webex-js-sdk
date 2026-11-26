@@ -38,20 +38,21 @@ It serves no HTTP API; the Webex endpoints it calls are external contracts.
 
 ## 1. Commands (Run First)
 
-Use only documented commands. Do not invent alternatives when a command is missing. Package commands
-run from `packages/byods`; `yarn workspace @webex/byods <script>` from the workspace root is
-equivalent.
+Use only documented commands. Do not invent alternatives when a command is missing. Run every
+command from the workspace root, as `yarn workspace @webex/byods <script>`. Fresh-checkout workspace
+setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see
+[Prebuilding](../../CONTRIBUTING.md#prebuilding).
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn` (workspace root), then `yarn prebuild:modules` (workspace root) |
+| Install dependencies   | `yarn` (workspace root) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
-| Run tests              | `yarn test:unit` (Jest, with a coverage threshold) |
-| Run linters            | `yarn test:style` |
-| Build/release artifact | `yarn build:src` (also runs `yarn build` for declarations) |
-| Format code            | `yarn fix:prettier` (rewrites `src/**/*.ts`) |
+| Run tests              | `yarn workspace @webex/byods test:unit` (Jest, with a coverage threshold) |
+| Run linters            | `yarn workspace @webex/byods test:style` |
+| Build/release artifact | `yarn workspace @webex/byods build:src` (also runs the `build` script for declarations) |
+| Format code            | `yarn workspace @webex/byods fix:prettier` (rewrites `src/**/*.ts`) |
 
-`yarn test` chains `test:style` and `test:unit`; run them separately to see each result. No
+`yarn workspace @webex/byods test` chains `test:style` and `test:unit`; run them separately to see each result. No
 integration or browser test script exists.
 
 If a required command is unknown, stop and ask for the exact command.
@@ -113,9 +114,9 @@ Definition of done:
 
 Run checks in this order:
 
-1. `yarn test:unit`
-2. `yarn test:style`
-3. `yarn build:src` when exports, types, or build configuration change
+1. `yarn workspace @webex/byods test:unit`
+2. `yarn workspace @webex/byods test:style`
+3. `yarn workspace @webex/byods build:src` when exports, types, or build configuration change
 
 Only a `unit` tier is recorded in `.sdd/manifest.json` `tests`; the SDD manifest `tests` schema
 allows `unit`, `integration`, `e2e`, and `qa`, and this package defines no other test command.

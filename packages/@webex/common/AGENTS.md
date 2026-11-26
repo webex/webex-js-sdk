@@ -43,7 +43,7 @@ monorepo root.
 
 | Task                   | Command             |
 | ---------------------- | ------------------- |
-| Install dependencies   | `yarn install` (workspace root) |
+| Install dependencies   | `yarn` (workspace root) |
 | Start dev environment  | N/A — library package with no runnable dev server |
 | Run tests              | `yarn workspace @webex/common test:unit` |
 | Run linters            | `yarn workspace @webex/common test:style` |

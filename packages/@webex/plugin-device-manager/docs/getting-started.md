@@ -16,9 +16,8 @@ validation_status: pass
 # Getting started
 
 Onboarding for **@webex/plugin-device-manager**, a package inside the `webex-js-sdk` Yarn workspace.
-Run `yarn` and `yarn prebuild:modules` at the workspace root, and the package scripts from this
-package directory, `packages/@webex/plugin-device-manager`, where `package.json` defines them. From
-the workspace root, `yarn workspace @webex/plugin-device-manager <script>` runs the same script.
+Run every command from the workspace root: `yarn` to install, and
+`yarn workspace @webex/plugin-device-manager <script>` for the package scripts.
 
 ## Prerequisites
 
@@ -36,29 +35,21 @@ yarn
 
 The workspace `deploy.yml` workflow installs with the same command.
 
-On a fresh checkout, prebuild the workspace before the first package build. `yarn` does not build
-`@webex/legacy-tools`, whose `webex-legacy-tools` binary runs this package's build and tests, or the
-sibling packages' `dist/`:
-
-```bash
-yarn prebuild:modules
-```
-
-It runs `yarn`, then builds the tools, the legacy tools, `@webex/webex-core`, and every package, in
-that order (root `package.json`; see the workspace `CONTRIBUTING.md` "Prebuilding").
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the
+workspace root; see [Prebuilding](../../../../CONTRIBUTING.md#prebuilding).
 
 ## Build
 
 ```bash
-yarn build:src
+yarn workspace @webex/plugin-device-manager build:src
 ```
 
 `build:src` writes JavaScript and source maps for the five source files to `dist/` through
-`webex-legacy-tools`. `dist/` is ignored by Git. The `build` script runs `yarn build:src`; the package
+`webex-legacy-tools`. `dist/` is ignored by Git. The `build` script runs `build:src`; the package
 emits no type declarations.
 
 ```bash
-yarn build
+yarn workspace @webex/plugin-device-manager build
 ```
 
 ## Run
@@ -71,16 +62,16 @@ no script builds or serves: the page loads `../webex.min.js`, which does not exi
 ## Tests
 
 ```bash
-yarn test:unit
+yarn workspace @webex/plugin-device-manager test:unit
 ```
 
 ```bash
-yarn test:style
+yarn workspace @webex/plugin-device-manager test:style
 ```
 
 | Tier | Command | Test location | Framework | External dependencies |
 | ---- | ------- | ------------- | --------- | --------------------- |
-| Unit | `yarn test:unit` | `test/unit/spec` | jest (`webex-legacy-tools test --unit --runner jest`), sinon, `@webex/test-helper-chai` | None |
+| Unit | `yarn workspace @webex/plugin-device-manager test:unit` | `test/unit/spec` | jest (`webex-legacy-tools test --unit --runner jest`), sinon, `@webex/test-helper-chai` | None |
 
 `test:style` lints `src/` with eslint through `@webex/eslint-config-legacy`.
 
@@ -93,7 +84,7 @@ The unit spec imports `src/` by relative path, so it does not need a fresh `dist
 `getPairedDevice` and the paired-method accessors; see the module specification's Verification
 section for the gaps.
 
-`yarn test:browser` (manifest command `browser-test`) runs `webex-legacy-tools test --integration
+`yarn workspace @webex/plugin-device-manager test:browser` (manifest command `browser-test`) runs `webex-legacy-tools test --integration
 --runner karma`, which collects `test/integration/spec`. This package has no such directory, so the
 command finds no file, starts no browser, prints nothing, and exits zero (checked 2026-11-13). It is
 not listed in the table above because it verifies nothing.
@@ -117,9 +108,9 @@ deliberately not a manifest command; run the commands above instead.
 
 ## First-run verification
 
-1. Run `yarn build:src` and check that it reports `Built plugin-device-manager: 5 files`.
-2. Run `yarn test:unit` and check that 14 tests pass.
-3. Run `yarn test:style`.
+1. Run `yarn workspace @webex/plugin-device-manager build:src` and check that it reports `Built plugin-device-manager: 5 files`.
+2. Run `yarn workspace @webex/plugin-device-manager test:unit` and check that 14 tests pass.
+3. Run `yarn workspace @webex/plugin-device-manager test:style`.
 
 Expected result: all three commands exit zero. `test:style` reports 5 `require-jsdoc` warnings and no
 error in `src/`; it also prints "File ignored" for `src/docs/README.md`.

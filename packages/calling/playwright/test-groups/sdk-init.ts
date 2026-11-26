@@ -20,6 +20,7 @@ import {
   CC_SERVICE_DOMAIN,
   REGION,
   COUNTRY,
+  REGION_DISCOVERY_HOST,
   EXPECTED_PRIMARY_REGION,
   EXPECTED_BACKUP_REGION,
 } from '../constants';
@@ -39,10 +40,10 @@ export function sdkInitTests() {
       if (isInt) await setEnvironmentToInt(page);
       await setServiceIndicator(page, 'calling');
 
-      // Track region auto-discovery request (ds.ciscospark.com/v1/region)
+      // Track region auto-discovery request (sqdiscovery.webex.com/region)
       const regionDiscoveryRequests: string[] = [];
       page.on('request', (request) => {
-        if (request.url().includes('/v1/region')) {
+        if (request.url().includes(REGION_DISCOVERY_HOST)) {
           regionDiscoveryRequests.push(request.url());
         }
       });
@@ -53,7 +54,7 @@ export function sdkInitTests() {
       await initializeCallingSDK(page, getToken(role, isInt));
       await verifySDKInitialized(page);
 
-      // Without explicit region, SDK must auto-discover via ds.ciscospark.com
+      // Without explicit region, SDK must auto-discover via sqdiscovery.webex.com
       expect(regionDiscoveryRequests.length).toBeGreaterThanOrEqual(1);
 
       // Verify discovery response includes primary and backup with regions and URIs.
@@ -121,7 +122,7 @@ export function sdkInitTests() {
       // Track any region discovery requests — there should be none when region is explicit
       const regionDiscoveryRequests: string[] = [];
       page.on('request', (request) => {
-        if (request.url().includes('/v1/region')) {
+        if (request.url().includes(REGION_DISCOVERY_HOST)) {
           regionDiscoveryRequests.push(request.url());
         }
       });

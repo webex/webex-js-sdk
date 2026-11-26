@@ -34,7 +34,7 @@ The repository is already cloned when you are reading this file. Dependencies ar
 whole workspace:
 
 ```bash
-yarn install
+yarn
 ```
 
 ## Build
@@ -84,7 +84,7 @@ yarn workspace @webex/internal-plugin-locus test:unit
   environment variable or feature toggle.
 - Secret source: none in this package. The access token is attached by the webex-core request
   pipeline at runtime.
-- Package or artifact access: `yarn install` needs network access to the configured npm registry (or a proxy), because registry packages such as `lodash`, `uuid`, and `eslint` are declared and no Yarn cache is committed.
+- Package or artifact access: `yarn` needs network access to the configured npm registry (or a proxy), because registry packages such as `lodash`, `uuid`, and `eslint` are declared and no Yarn cache is committed.
 - Required neighboring repositories or workspace layout: the webex-js-sdk workspace, because sibling
   packages such as webex-core and internal-plugin-mercury are `workspace:*` dependencies.
 - Platform, simulator, device, or SDK setup: N/A.

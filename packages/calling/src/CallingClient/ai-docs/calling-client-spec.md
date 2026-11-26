@@ -432,7 +432,7 @@ flowchart TB
         Mercury[Mercury WebSocket]
         Mobius[Mobius API]
         MobiusWss[Mobius WebSocket<br/>wss://...]
-        DS[ds.ciscospark.com<br/>Region Discovery]
+        DS[sqdiscovery.webex.com<br/>Region Discovery]
     end
 
     App -->|createClient| CC
@@ -490,7 +490,7 @@ sequenceDiagram
     participant API as APIRequest
     participant MS as MobiusSocket
     participant Line as Line
-    participant DS as ds.ciscospark.com
+    participant DS as sqdiscovery.webex.com
     participant Mobius as Mobius API
 
     App->>CC: createClient(webex, config)
@@ -799,7 +799,7 @@ const callingClient = await createClient(webex, {
 The `createClient` factory instantiates `CallingClient` and calls `init()`, which:
 
 1. Performs ICE warmup (Windows Chromium only)
-2. Discovers Mobius servers: requests the U2C `serviceLinks.mobius` host first (region/country from SDK config or `ds.ciscospark.com`), then remaining catalog clusters only on non-final failure
+2. Discovers Mobius servers: requests the U2C `serviceLinks.mobius` host first (region/country from SDK config or `sqdiscovery.webex.com`), then remaining catalog clusters only on non-final failure
 3. Creates a Line object internally, handing it `localAudioStream` so that it can discover the client's host ip addresses when it registers
 
 **Note:** `init()` does NOT register the line. The application must call `line.register()` explicitly after obtaining the line via `getLines()`.

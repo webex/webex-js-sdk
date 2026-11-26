@@ -16,9 +16,7 @@ validation_status: pass-with-warnings
 # Getting started
 
 Onboarding for **@webex/plugin-memberships**, a package inside the `webex-js-sdk` Yarn workspace.
-Run `yarn` and `yarn prebuild:modules` at the workspace root, and the package scripts from this
-package directory, `packages/@webex/plugin-memberships`, where `package.json` defines them.
-From the workspace root, `yarn workspace @webex/plugin-memberships <script>` runs the same script.
+Run every command from the workspace root; package scripts run as `yarn workspace @webex/plugin-memberships <script>`.
 
 ## Prerequisites
 
@@ -36,29 +34,20 @@ yarn
 
 The workspace `deploy.yml` workflow installs with the same command.
 
-On a fresh checkout, prebuild the workspace before the first package build. `yarn` does not build
-`@webex/legacy-tools`, whose `webex-legacy-tools` binary runs this package's build, or the sibling
-packages' `dist/`:
-
-```bash
-yarn prebuild:modules
-```
-
-It runs `yarn`, then builds the tools, the legacy tools, `@webex/webex-core`, and every package, in
-that order (root `package.json`; see the workspace `CONTRIBUTING.md` "Prebuilding").
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see [Prebuilding](../../../../CONTRIBUTING.md#prebuilding).
 
 ## Build
 
 ```bash
-yarn build:src
+yarn workspace @webex/plugin-memberships build:src
 ```
 
 `build:src` writes JavaScript and source maps for the two source files to `dist/` through
-`webex-legacy-tools`. `dist/` is ignored by Git. The `build` script runs `yarn build:src`; the package
+`webex-legacy-tools`. `dist/` is ignored by Git. The `build` script runs `build:src`; the package
 emits no type declarations.
 
 ```bash
-yarn build
+yarn workspace @webex/plugin-memberships build
 ```
 
 ## Run
@@ -69,7 +58,7 @@ N/A — this is a library with no start script. Importing `@webex/plugin-members
 ## Tests
 
 ```bash
-yarn test:style
+yarn workspace @webex/plugin-memberships test:style
 ```
 
 | Tier | Command | Test location | Framework | External dependencies |
@@ -87,7 +76,7 @@ This package has no unit tests: `package.json` defines no `test:unit` script and
 `test/unit` directory. Add both together when you add the first unit case; sibling legacy packages
 define `test:unit` as `webex-legacy-tools test --unit --runner jest`.
 
-`yarn test:browser:broken` (manifest command `browser-test`) runs `webex-legacy-tools test
+`yarn workspace @webex/plugin-memberships test:browser:broken` (manifest command `browser-test`) runs `webex-legacy-tools test
 --integration --runner karma` over `test/integration/spec/memberships.js`, whose 16 cases (none
 skipped) create test users and call the live services. On 2026-11-12 under Node 22.14 the karma bundle
 failed to parse `isbot` (an ES module in the workspace `node_modules`), so the run reported a bundle
@@ -115,8 +104,8 @@ command; run the commands above instead.
 
 ## First-run verification
 
-1. Run `yarn build:src` and check that it reports `Built plugin-memberships: 2 files`.
-2. Run `yarn test:style`.
+1. Run `yarn workspace @webex/plugin-memberships build:src` and check that it reports `Built plugin-memberships: 2 files`.
+2. Run `yarn workspace @webex/plugin-memberships test:style`.
 
 Expected result: both commands exit zero. `test:style` prints warnings but no errors: 1 in
 `src/memberships.js` (the `require` statement for `debug`) and "File ignored" for
