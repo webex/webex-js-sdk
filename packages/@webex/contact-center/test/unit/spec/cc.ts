@@ -766,12 +766,12 @@ describe('webex.cc', () => {
         type: 'SYSTEM_REGION_SWITCH', orgId: 'mockOrgId', trackingId,
         data: {operation: 'FAILOVER', scope: 'ORG'},
       });
-      const prepare = async (eligibility: MultiRegionSettings['eligibility'] | 'unknown' = 'enabled', restored = false, restoredResponse = result()) => {
+      const prepare = async (multiRegionEnabled: boolean | null = true, restored = false, restoredResponse = result()) => {
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: restored};
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
         webex.cc.services.config.getAgentConfig.mockResolvedValue({
           profile: createFreshAgentProfile({webRtcEnabled: false, loginVoiceOptions: [LoginOption.EXTENSION]}),
-          ...(eligibility === 'unknown' ? {} : {multiRegionSettings: {eligibility, homeRegion: 'produs1'}}),
+          ...(multiRegionEnabled === null ? {} : {multiRegionSettings: {multiRegionEnabled, homeRegion: 'produs1'}}),
         });
         webex.cc.services.agent.reload.mockResolvedValue(restoredResponse);
         webex.cc.services.agent.stationLogin.mockResolvedValue(result());
@@ -821,7 +821,7 @@ describe('webex.cc', () => {
       };
       it.each(['stationLogin', 'silentRelogin', 'stationLogout', 'setAgentState', 'updateAgentProfile', 'startOutdial'])(
         'T-008 lifecycleCallerCatchPreservesIdentityAndReason cc.%s', async operation => {
-          await prepare('enabled', true);
+          await prepare(true, true);
           const reason = REGION_RECOVERY_ERROR_CODES.RECOVERY_INTERRUPTED;
           const error = Utils.createRegionRecoveryError(reason, {trackingId: 'safe', status: 409});
           const data = error.data;
@@ -944,7 +944,7 @@ describe('webex.cc', () => {
             cc['sessionRequest'], cc['sessionRequest']?.controller.signal.aborted,
             cc['autoAvailable'] && {...cc['autoAvailable']}],
           rtd: [!cc['rtdEpoch']?.active, cc['rtdEpoch'], cc['rtdEpoch']?.controller.signal.aborted],
-          settings: {...cc['multiRegionSettings']},
+          settings: cc['multiRegionSettings'] && {...cc['multiRegionSettings']},
           history: [...cc['acceptedSwitchIds']],
           publication: [cc['lastPublishedRegionState'] && {...cc['lastPublishedRegionState']},
             {...cc['regionStateContext']}],
@@ -981,7 +981,7 @@ describe('webex.cc', () => {
         async stationCase => {
           const {deviceType, route} = stationCase;
           const browser = deviceType === LoginOption.BROWSER;
-          await prepare('enabled', true, result({deviceType, dn: '18005550111', teamId: 'saved-team',
+          await prepare(true, true, result({deviceType, dn: '18005550111', teamId: 'saved-team',
             agentSessionId: 'saved-session'}));
           const saved = stationPayload(deviceType, browser ? 'webrtc-agent123' : '18005550111', 'saved-team');
           expect(webex.cc['acceptedStation'].payload).toEqual(saved);
@@ -1050,7 +1050,7 @@ describe('webex.cc', () => {
             subStatus: 'Available', lastStateChangeReason: 'agent-wss-disconnect',
             lastStateChangeTimestamp: 20, lastIdleCodeChangeTimestamp: 21, ...extra}});
         const startAuto = async (voiceReady = true, onPrepared = () => {}) => {
-          await prepare('enabled', true);
+          await prepare(true, true);
           onPrepared();
           webex.cc.services.agent.reload.mockResolvedValue(result({lastStateChangeReason: 'agent-wss-disconnect',
             status: 'LoggedIn', subStatus: 'Idle'}));
@@ -1071,7 +1071,7 @@ describe('webex.cc', () => {
         it.each(['reload', 'post1035'].flatMap(stage =>
           ['agent-wss-disconnect', 'other-reason', undefined].map(reason => [stage, reason])))
         ('T-007 exactDisconnectAutoStateOnly / post1035ReloadArmsAutoAvailableFromOwnResult %s reason=%s', async (stage, reason) => {
-          await prepare('enabled', true);
+          await prepare(true, true);
           const restored = result({lastStateChangeReason: reason, status: 'LoggedIn', subStatus: 'Idle'});
           webex.cc.services.agent.reload.mockResolvedValue(restored);
           if (stage === 'post1035') {
@@ -1091,7 +1091,7 @@ describe('webex.cc', () => {
         });
 
         it.each(['fallback', 'manual'])('T-007 %s station login never arms auto-Available', async stage => {
-          await prepare('enabled', true);
+          await prepare(true, true);
           const disconnected = result({lastStateChangeReason: 'agent-wss-disconnect', status: 'LoggedIn', subStatus: 'Idle'});
           webex.cc.services.agent.stationLogin.mockResolvedValue(disconnected);
           if (stage === 'fallback') webex.cc.services.agent.reload.mockRejectedValue({data: {reasonCode: 1038}});
@@ -1110,7 +1110,7 @@ describe('webex.cc', () => {
         });
 
         it.each(['before Welcome', 'during reload', 'during fallback', 'during post1035 reload'])('T-007 explicitIntentBeforeArmAndDuringFlight %s prevents later DR arming', async timing => {
-          await prepare('enabled', true);
+          await prepare(true, true);
           const reload = createDeferred<any>();
           const fallback = createDeferred<any>();
           webex.cc.services.agent.reload.mockReturnValue(reload.promise);
@@ -1153,7 +1153,7 @@ describe('webex.cc', () => {
 
         it.each([LoginOption.AGENT_DN, LoginOption.EXTENSION])
         ('T-007 %s dispatches when browser voice is unready but not required', async deviceType => {
-          await prepare('enabled', true);
+          await prepare(true, true);
           webex.cc.services.agent.reload.mockResolvedValue(result({deviceType,
             lastStateChangeReason: 'agent-wss-disconnect', status: 'LoggedIn', subStatus: 'Idle'}));
           webex.cc.webCallingService.isBrowserVoiceRequired.mockReturnValue(false);
@@ -1282,7 +1282,7 @@ describe('webex.cc', () => {
 
         it.each(['superseding switch', 'deregister', 'terminal recovery', 'reload required'])
         ('T-012 %s before any ready never invents a cancellation snapshot', async boundary => {
-          await prepare('enabled', true);
+          await prepare(true, true);
           const reload = createDeferred<any>();
           webex.cc.services.agent.reload.mockReturnValue(reload.promise);
           const restoring = welcome(accept());
@@ -1411,7 +1411,7 @@ describe('webex.cc', () => {
             webex.cc['handleWebsocketMessage'](JSON.stringify(frame));
             return Promise.resolve(frame);
           });
-          await prepare('enabled', true, disconnected);
+          await prepare(true, true, disconnected);
           expect(dispatch.mock.calls.map(([, context]) => context.source)).toEqual(['relogin-auto']);
           expect(webex.cc['stateIntentRevision']).toBe(revision);
           expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
@@ -1437,9 +1437,9 @@ describe('webex.cc', () => {
           const disconnected = result({lastStateChangeReason: 'agent-wss-disconnect'});
           let operation: Promise<unknown>;
           const revision = webex.cc['stateIntentRevision'];
-          if (source === 'register relogin-auto') operation = prepare('enabled', true, disconnected);
+          if (source === 'register relogin-auto') operation = prepare(true, true, disconnected);
           else {
-            await prepare('enabled', true);
+            await prepare(true, true);
             webex.cc.services.agent.reload.mockResolvedValue(disconnected);
             operation = source === 'explicit'
               ? webex.cc.setAgentState({state: 'Idle', auxCodeId: 'manual'})
@@ -1551,7 +1551,7 @@ describe('webex.cc', () => {
         });
 
         it.each([true, false])('T-007 authoritativeStateReconciliation independentAfterDispatch=%s', async (after) => {
-          await prepare('enabled', true);
+          await prepare(true, true);
           const pending = createDeferred<any>(); webex.cc.services.agent.stateChange.mockReturnValue(pending.promise);
           const independent = ack('independent', {auxCodeId: 'independent', subStatus: 'Idle'});
           if (!after) webex.cc['handleWebsocketMessage'](JSON.stringify(independent));
@@ -1608,7 +1608,7 @@ describe('webex.cc', () => {
         });
 
         it.each([false, true])('T-007 local-only voice race rereads readiness on rearm: ready=%s', async (ready) => {
-          await prepare('enabled', true);
+          await prepare(true, true);
           const failure = jest.fn(); const specializedFailure = jest.fn();
           webex.cc.on(CC_EVENTS.AGENT_STATE_CHANGE_FAILED, failure);
           webex.cc.on(AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED, specializedFailure);
@@ -1646,7 +1646,7 @@ describe('webex.cc', () => {
         });
 
         it.each(['explicit', 'relogin-auto'])('T-007 local voice rejection preserves %s failure diagnostics', async source => {
-          await prepare('enabled', true);
+          await prepare(true, true);
           webex.cc.webCallingService.isBrowserVoiceRequired.mockReturnValue(true);
           webex.cc.webCallingService.isVoiceReady.mockReturnValue(false);
           mockMetricsManager.timeEvent.mockClear(); mockMetricsManager.trackEvent.mockClear();
@@ -1813,22 +1813,22 @@ describe('webex.cc', () => {
           expect(states.mock.calls).toEqual([[readySnapshot('cancelled')]]);
           expect(webex.cc['regionStateContext']).toEqual(context);
           expect(webex.cc['registrationAbortController'].signal.aborted).toBe(false);
-          expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'enabled', homeRegion: 'produs1'});
+          expect(webex.cc['multiRegionSettings']).toEqual({multiRegionEnabled: true, homeRegion: 'produs1'});
           webex.cc['handleAutoAvailableVoiceChange'](); await settle();
           expect(webex.cc['regionStateContext']).toEqual(context);
           expect(states).toHaveBeenCalledTimes(1);
         });
 
         it.each([
-          [{eligibility: 'enabled', homeRegion: 'produs1'}, undefined, {homeRegion: 'produs1'}],
-          [{eligibility: 'enabled'}, 'produs2', {servingRegion: 'produs2'}],
-          [{eligibility: 'unknown', homeRegion: 'produs1'}, undefined, {}],
-          [{eligibility: 'unknown', homeRegion: 'produs1'}, 'produs2', {servingRegion: 'produs2'}],
-          [{eligibility: 'enabled', homeRegion: 'produs2'}, 'produs2',
+          [{multiRegionEnabled: true, homeRegion: 'produs1'}, undefined, {homeRegion: 'produs1'}],
+          [{multiRegionEnabled: true}, 'produs2', {servingRegion: 'produs2'}],
+          [null, undefined, {}],
+          [null, 'produs2', {servingRegion: 'produs2'}],
+          [{multiRegionEnabled: true, homeRegion: 'produs2'}, 'produs2',
             {homeRegion: 'produs2', servingRegion: 'produs2', limitedService: false}],
-          [{eligibility: 'enabled', homeRegion: 'prodanz1'}, 'produs2',
+          [{multiRegionEnabled: true, homeRegion: 'prodanz1'}, 'produs2',
             {homeRegion: 'prodanz1', servingRegion: 'produs2', limitedService: true}],
-          [{eligibility: 'disabled', homeRegion: 'produs1'}, 'produs2',
+          [{multiRegionEnabled: false, homeRegion: 'produs1'}, 'produs2',
             {homeRegion: 'produs1', servingRegion: 'produs2'}],
         ])('T-011 cancellationProjectsCurrentMetadataAtPublication settings=%j serving=%s',
           async (settings, servingRegion, metadata) => {
@@ -1900,7 +1900,7 @@ describe('webex.cc', () => {
             webRtcEnabled: stage === 'mercury',
             loginVoiceOptions: stage === 'mercury' ? [LoginOption.BROWSER] : [LoginOption.EXTENSION],
           }),
-          multiRegionSettings: {eligibility: 'enabled', homeRegion: 'produs1'},
+          multiRegionSettings: {multiRegionEnabled: true, homeRegion: 'produs1'},
         });
         if (stage === 'mercury') jest.spyOn(webex.internal.mercury, 'connect').mockReturnValue(work.promise);
         else webex.cc.services.agent.reload.mockReturnValueOnce(work.promise);
@@ -1909,7 +1909,7 @@ describe('webex.cc', () => {
         registering.catch(() => undefined);
         await settle();
         expect(webex.cc['pendingRegistration'].controller).toBe(webex.cc['registrationAbortController']);
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'enabled', homeRegion: 'produs1'});
+        expect(webex.cc['multiRegionSettings']).toEqual({multiRegionEnabled: true, homeRegion: 'produs1'});
         if (stage === 'reload') expect(webex.cc.services.agent.reload).toHaveBeenCalledTimes(1);
         else expect(webex.internal.mercury.connect).toHaveBeenCalledTimes(1);
         return {work, driver, registering, controller: webex.cc['registrationAbortController']};
@@ -1939,7 +1939,7 @@ describe('webex.cc', () => {
             expect(recovery.controller.signal.aborted).toBe(true);
             expect(webex.cc['recovery']).toBeUndefined();
             expect(webex.cc['recoveryPhase']).toBe('unavailable');
-            expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
+            expect(webex.cc['multiRegionSettings']).toBeNull();
             expect(webex.cc.services.connectionService.stop).toHaveBeenCalledTimes(stops + 1);
             expect(mockWebSocketManager.close).toHaveBeenLastCalledWith(false, 'recoveryFailed');
             expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenLastCalledWith(false, 'recoveryFailed');
@@ -2029,7 +2029,7 @@ describe('webex.cc', () => {
           operation: 'FAILOVER', scope: 'ORG', homeRegion: 'produs1',
         }]] : []);
         expect(webex.cc['registrationAbortController'].signal.aborted).toBe(false);
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'enabled', homeRegion: 'produs1'});
+        expect(webex.cc['multiRegionSettings']).toEqual({multiRegionEnabled: true, homeRegion: 'produs1'});
         const current = accept();
         expect(current).not.toBe(options);
         const owner = captureSwitchOwner(); const actions = switchActions();
@@ -2057,7 +2057,7 @@ describe('webex.cc', () => {
         ['null tracking', {trackingId: null}],
         ['boolean tracking', {trackingId: true}],
       ])('invalidEnvelopeNoSocketAction: %s', async (_name, overrides) => {
-        await prepare('enabled', true);
+        await prepare(true, true);
         webex.cc['acceptedSwitchIds'].add('remembered');
         mockWebSocketManager.getServingRegion.mockReturnValue('produs2');
         webex.cc.services.rtdWebSocketManager.getServingRegion.mockReturnValue('produs2');
@@ -2078,8 +2078,8 @@ describe('webex.cc', () => {
         expect(LoggerProxy.info).toHaveBeenCalledTimes(logs + (overrides.orgId === 'foreign-org' ? 1 : 0));
       });
 
-      it.each(['enabled', 'disabled', 'unknown'])('preserves teardown for live credential replacement before rejecting a foreign envelope: %s', async eligibility => {
-        await prepare(eligibility, true);
+      it.each([true, false, null])('preserves teardown for live credential replacement before rejecting a foreign envelope: %s', async multiRegionEnabled => {
+        await prepare(multiRegionEnabled, true);
         webex.cc['acceptedSwitchIds'].add('remembered');
         const registration = webex.cc['registrationGeneration'];
         const controller = webex.cc['registrationAbortController'];
@@ -2102,11 +2102,11 @@ describe('webex.cc', () => {
         expect(mockWebSocketManager.close).toHaveBeenLastCalledWith(false, 'registrationEnded');
         expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenLastCalledWith(false, 'registrationEnded');
         expect(listener.mock.calls).toEqual([[{status: 'unavailable', reason: 'recovery-failed',
-          ...(eligibility !== 'unknown' ? {homeRegion: 'produs1'} : {})}]]);
+          ...(multiRegionEnabled !== null ? {homeRegion: 'produs1'} : {})}]]);
       });
 
       it('T-002 foreign envelope preserves an active recovery and its history', async () => {
-        await prepare('enabled', true); accept();
+        await prepare(true, true); accept();
         const owner = captureSwitchOwner(); const actions = switchActions();
         const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
         webex.cc['handleWebsocketMessage'](JSON.stringify({
@@ -2118,7 +2118,7 @@ describe('webex.cc', () => {
       });
 
       it.each([false, true])('T-002 aborted registration ignores switches with replaced credentials=%s', async replaced => {
-        await prepare('unknown', true);
+        await prepare(null, true);
         webex.cc['registrationAbortController'].abort();
         if (replaced) webex.credentials.getOrgId.mockReturnValue('replacement-org');
         const owner = captureSwitchOwner(); const actions = switchActions();
@@ -2138,7 +2138,7 @@ describe('webex.cc', () => {
         ['a'.repeat(201), 'a'.repeat(200), false],
         ['tracking', 'tracking', true],
       ])('T-002 unknown eligibility diagnostic tracking=%s, safe tracking=%s, throws=%s', async (trackingId, safeTrackingId, throws) => {
-        await prepare('unknown', true);
+        await prepare(null, true);
         const owner = captureSwitchOwner(); const actions = switchActions();
         const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
         LoggerProxy.info.mockClear();
@@ -2205,7 +2205,7 @@ describe('webex.cc', () => {
 
         agentConfig.resolve({
           profile: createFreshAgentProfile({webRtcEnabled: false, loginVoiceOptions: [LoginOption.EXTENSION]}),
-          multiRegionSettings: {eligibility: 'enabled'},
+          multiRegionSettings: {multiRegionEnabled: true},
         });
         if (['aborted', 'superseded'].includes(boundary))
           await expect(registering).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
@@ -2248,7 +2248,7 @@ describe('webex.cc', () => {
       };
 
       it('T-002 acceptedHistoryABAAnd129 retains A across B and evicts only the oldest', async () => {
-        await prepare('enabled', true);
+        await prepare(true, true);
         const driver = webex.cc.services.connectionService.recoverRegion;
         for (const id of ['A', 'B', 'A']) webex.cc['handleWebsocketMessage'](switchEvent(id));
         expect(driver).toHaveBeenCalledTimes(2);
@@ -2268,7 +2268,7 @@ describe('webex.cc', () => {
         'failed station logout', 'undispatchable station logout', 'authoritative backend logout',
         'RTD-only termination', 'distinct switch supersession'])(
         'T-002 switchHistoryAndStationSnapshotLifecycle: %s', async boundary => {
-          await prepare('enabled', true);
+          await prepare(true, true);
           const options = accept();
           if (boundary === 'RTD-only termination') {
             await welcome(options);
@@ -2335,13 +2335,13 @@ describe('webex.cc', () => {
               webex.cc.services.config.getAgentConfig.mockResolvedValue({profile: createFreshAgentProfile()});
               await webex.cc.register();
             }
-            expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
+            expect(webex.cc['multiRegionSettings']).toBeNull();
             webex.cc['handleWebsocketMessage'](switchEvent());
             expectHistoryAndStation([], undefined);
             expect(webex.cc.services.connectionService.recoverRegion).toHaveBeenCalledTimes(recoveries);
             webex.cc.services.config.getAgentConfig.mockResolvedValue({
               profile: createFreshAgentProfile({agentId: webex.cc['registrationAgentId']}),
-              multiRegionSettings: {eligibility: 'enabled', homeRegion: 'produs1'},
+              multiRegionSettings: {multiRegionEnabled: true, homeRegion: 'produs1'},
             });
             await webex.cc.register();
             expectHistoryAndStation([], undefined);
@@ -2362,7 +2362,7 @@ describe('webex.cc', () => {
       it.each(registrationBoundaries.flatMap(boundary => ['before Welcome', 'reload success', 'reload failure']
         .map(work => [boundary, work])))(
         'T-012 registrationTerminationClearsHistoryAndSnapshot: %s with late %s', async (boundary, work) => {
-          await prepare('enabled', true);
+          await prepare(true, true);
           const options = accept();
           const reload = createDeferred<any>();
           const registration = webex.cc['registrationAbortController'];
@@ -2403,7 +2403,7 @@ describe('webex.cc', () => {
         [true, false, false, 'automatic-relogin-disabled'],
         [true, true, false, 'session-restore-failed'],
       ])('T-007 orderedPolicyCombinedCases / noPriorStationResume / manualPriorStationDefers active=%s automate=%s usable=%s', async (active, automate, usable, reason) => {
-        await prepare('enabled', active);
+        await prepare(true, active);
         webex.cc.$config.allowAutomatedRelogin = automate;
         if (active && !usable) {
           webex.cc.services.aqmReqs.isLocalSessionTrackingId.mockReturnValue(false);
@@ -2457,7 +2457,7 @@ describe('webex.cc', () => {
       ])('T-007 reloadSnapshotMapping first-registration %j', async (fields, deviceType, number) => {
         expect(webex.cc['acceptedStation']).toBeUndefined();
         webex.cc.webCallingService.loginOption = undefined;
-        await prepare('enabled', true, result({...fields, roles: ['supervisor'], siteId: 'backend-site',
+        await prepare(true, true, result({...fields, roles: ['supervisor'], siteId: 'backend-site',
           teamName: undefined, usesOtherDN: true, auxCodeId: 'backend-aux'}));
         expect(webex.cc['priorStationActive']).toBe(true);
         if (!deviceType) {
@@ -2478,7 +2478,7 @@ describe('webex.cc', () => {
             dn: '18005550123', roles: ['supervisor'], siteId: 'backend-site', usesOtherDN: true,
             auxCodeId: 'backend-aux'});
           if (agentSessionId === undefined) delete response.data.agentSessionId;
-          await prepare('enabled', source === 'reload', response);
+          await prepare(true, source === 'reload', response);
           if (source === 'login') {
             webex.cc.services.agent.stationLogin.mockResolvedValueOnce(response);
             await webex.cc.stationLogin({teamId: 'requested-team', loginOption: LoginOption.AGENT_DN,
@@ -2632,7 +2632,7 @@ describe('webex.cc', () => {
       );
 
       it('T-007 registerRestoredCountsActive, registerRestoredSnapshotEnablesFallback and defaultAuxNotReplayed', async () => {
-        await prepare('enabled', true);
+        await prepare(true, true);
         expect(webex.cc.services.agent.stationLogin).not.toHaveBeenCalled();
         expectAcceptedStation({deviceType: LoginOption.EXTENSION, dialNumber: '1234', deviceId: '1234',
           isExtension: true, teamId: 'team', roles: [AGENT], teamName: '', siteId: '',
@@ -2649,7 +2649,7 @@ describe('webex.cc', () => {
       });
 
       it.each([false, true])('T-007 priorActiveWithoutUsableSnapshot hands off after any permitted reload automation=%s', async automate => {
-        await prepare('enabled', true, result({teamId: ''}));
+        await prepare(true, true, result({teamId: ''}));
         expect(webex.cc.services.agent.stationLogin).not.toHaveBeenCalled();
         expect(webex.cc['priorStationActive']).toBe(true);
         expect(webex.cc.agentConfig.isAgentLoggedIn).toBe(true);
@@ -2692,7 +2692,7 @@ describe('webex.cc', () => {
         {data: {reason: 'AGENT_NOT_FOUND'}}, {data: {reason: 'AGENT_DN_NOT_REGISTERED'}},
         {data: {reasonCode: 9999}, statusCode: 400},
       ])('T-007 nonTransientReloadFailureDirectFallback %j', async failure => {
-        jest.useFakeTimers(); await prepare('enabled', true);
+        jest.useFakeTimers(); await prepare(true, true);
         const saved = stationPayload(LoginOption.EXTENSION, '1234', 'team');
         const backend = createDeferred<any>();
         webex.cc.services.agent.reload.mockRejectedValueOnce(failure);
@@ -2725,7 +2725,7 @@ describe('webex.cc', () => {
       });
 
       it('T-007 allReloadAllowlistAnd1035Paths / recoveryFailureCategoryPrecedence reload pacing and fallback/post1035 budgets', async () => {
-        jest.useFakeTimers(); await prepare('enabled', true);
+        jest.useFakeTimers(); await prepare(true, true);
         webex.cc.services.agent.reload.mockRejectedValue({data: {reasonCode: 9999}, statusCode: 503});
         webex.cc.services.agent.stationLogin.mockRejectedValue({data: {reasonCode: 1035}});
         const options = accept(); const pending = welcome(options); await settle();
@@ -2764,7 +2764,7 @@ describe('webex.cc', () => {
       it.each(['success', 'failure', 'undispatchable'].flatMap(outcome =>
         ['before Welcome', 'reload success', 'reload failure'].map(work => [outcome, work])))(
         'T-012 stationLogoutKeepsHistoryClearsSnapshot outcome=%s late=%s', async (outcome, work) => {
-          await prepare('enabled', true);
+          await prepare(true, true);
           const options = accept();
           const accepted = webex.cc['acceptedStation'];
           const reload = createDeferred<any>();
@@ -2819,7 +2819,7 @@ describe('webex.cc', () => {
       );
 
       it('T-012 stationLogoutDuringDrWithoutPrimaryRejectsImmediately', async () => {
-        await prepare('enabled', true); accept();
+        await prepare(true, true); accept();
         mockWebSocketManager.hasUsableSocket.mockReturnValue(false);
         await expect(webex.cc.stationLogout({logoutReason: 'user'})).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
         expect(webex.cc.services.agent.logout).not.toHaveBeenCalled();
@@ -2836,7 +2836,7 @@ describe('webex.cc', () => {
       });
 
       it('T-012 stationLogoutCancellationSnapshotPolicy with no pending auto-state emits no event', async () => {
-        await prepare('enabled', true);
+        await prepare(true, true);
         const listener = jest.fn(() => { void webex.cc.stationLogout({logoutReason: 'observer'}); });
         webex.cc.on('region:stateChange', listener); accept(); await settle();
         expect(listener).toHaveBeenCalledTimes(1);
@@ -2845,7 +2845,7 @@ describe('webex.cc', () => {
       });
 
       it.each([undefined, 'AgentMultiLoginCloseSession', 'unknown'])('T-012 primaryMultiLoginCancelsBeforeForwarding %s', async (type) => {
-        await prepare('enabled', true); accept();
+        await prepare(true, true); accept();
         const registration = webex.cc['registrationGeneration'];
         const {stop} = webex.cc.services.connectionService;
         const {close} = webex.cc.services.rtdWebSocketManager;
@@ -2871,7 +2871,7 @@ describe('webex.cc', () => {
         ['region-switch', 'automatic-relogin-disabled', 'session-restore-failed'].map(reason => ({...stationCase, reason}))))(
         'T-007/T-011 manualDrLoginReadyMetadata and manualLoginFailureStaysManualAndSuccessReady %j', async stationCase => {
           const {reason, deviceType} = stationCase;
-          await prepare('enabled', reason !== 'region-switch');
+          await prepare(true, reason !== 'region-switch');
           if (reason === 'session-restore-failed') {
             webex.cc.services.aqmReqs.isLocalSessionTrackingId.mockReturnValue(false);
             webex.cc['handleWebsocketMessage'](JSON.stringify(result({teamId: '', trackingId: 'foreign'})));
@@ -2925,7 +2925,7 @@ describe('webex.cc', () => {
       );
 
       it.each(['backend', 'no-primary'])('T-007 failedLogoutPreservesAcceptedStation %s', async (kind) => {
-        await prepare('enabled', true);
+        await prepare(true, true);
         if (kind === 'backend') webex.cc.services.agent.logout.mockRejectedValue(Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED'));
         else mockWebSocketManager.hasUsableSocket.mockReturnValue(false);
         await expect(webex.cc.stationLogout({logoutReason: 'user'})).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
@@ -2941,7 +2941,7 @@ describe('webex.cc', () => {
         ['retained suppression', true, false, true],
         ['automation disabled at Welcome', false, false, false],
       ])('T-012 Welcome reevaluates current logout policy: %s', async (_name, prior, pending, automate) => {
-        await prepare('enabled', true);
+        await prepare(true, true);
         const accepted = webex.cc['acceptedStation'];
         webex.cc['suppressAutomaticRelogin'] = prior;
         const backend = createDeferred<any>();
@@ -2977,7 +2977,7 @@ describe('webex.cc', () => {
       });
 
       it.each([false, true])('T-012 failedLogoutRestoresPriorSuppression prior=%s', async prior => {
-        await prepare('enabled', true);
+        await prepare(true, true);
         webex.cc['suppressAutomaticRelogin'] = prior;
         webex.cc.services.agent.logout.mockRejectedValue(Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED'));
         await expect(webex.cc.stationLogout({logoutReason: 'user'})).rejects.toThrow();
@@ -2988,7 +2988,7 @@ describe('webex.cc', () => {
 
       it.each(['line', 'wxApp'].flatMap(stage => ['none', 'station', 'authoritative logout'].map(boundary => [stage, boundary])))(
         'T-012 confirmedLogoutCleanupFailurePreservesOwnedPolicy stage=%s boundary=%s', async (stage, boundary) => {
-          await prepare('enabled', true);
+          await prepare(true, true);
           const cleanup = createDeferred<void>();
           if (stage === 'line') webex.cc.webCallingService.deregisterWebCallingLine.mockReturnValue(cleanup.promise);
           else jest.spyOn(webex.cc as any, 'teardownWxAppLocalState').mockReturnValue(cleanup.promise);
@@ -3024,7 +3024,7 @@ describe('webex.cc', () => {
       it.each(['station', 'registration', 'deregister', 'authoritative logout']
         .flatMap(boundary => [false, true].map(success => [boundary, success])))(
         'T-012 oldLogoutReplyCannotOverwriteReplacement %s success=%s', async (boundary, success) => {
-          await prepare('enabled', true);
+          await prepare(true, true);
           const backend = createDeferred<any>();
           webex.cc.services.agent.logout.mockReturnValue(backend.promise);
           const logout = webex.cc.stationLogout({logoutReason: 'user'});
@@ -3057,7 +3057,7 @@ describe('webex.cc', () => {
 
       it.each(['logout', 'replacement login'])(
         'T-007 failedProfileLogoutPreservesAcceptedStation only until logout succeeds: failure at %s', async stage => {
-          await prepare('enabled', true);
+          await prepare(true, true);
           const accepted = webex.cc['acceptedStation'];
           const saved = {...accepted, payload: {...accepted.payload, roles: [...accepted.payload.roles]}};
           const fields = acceptedFields();
@@ -3090,15 +3090,15 @@ describe('webex.cc', () => {
       );
 
       it.each(['stationLogin', 'register-restored'].flatMap(source => [
-        {source, servingRegion: ' pRoDuS1 ', limitedService: false},
-        {source, servingRegion: ' PrODuS2 ', limitedService: true},
+        {source, servingRegion: 'produs1', limitedService: false},
+        {source, servingRegion: 'produs2', limitedService: true},
       ]))('T-011 first ready snapshot includes desktop login placement %j', async ({source, servingRegion, limitedService}) => {
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: source === 'register-restored'};
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
         mockWebSocketManager.getServingRegion.mockReturnValue(servingRegion);
         webex.cc.services.config.getAgentConfig.mockResolvedValue({
           profile: createFreshAgentProfile({webRtcEnabled: false}),
-          multiRegionSettings: {eligibility: 'enabled', homeRegion: ' ProDUs1 '},
+          multiRegionSettings: {multiRegionEnabled: true, homeRegion: 'produs1'},
         });
         webex.cc.services.agent.stationLogin.mockResolvedValue(result());
         webex.cc.services.agent.reload.mockResolvedValue(result());
@@ -3111,7 +3111,7 @@ describe('webex.cc', () => {
         }
 
         const snapshot = {status: 'ready', reason: 'initial-login',
-          homeRegion: ' ProDUs1 ', servingRegion, limitedService};
+          homeRegion: 'produs1', servingRegion, limitedService};
         expect(listener.mock.calls).toEqual([[snapshot]]);
         expect(webex.cc['lastPublishedRegionState']).toEqual(snapshot);
       });
@@ -3128,7 +3128,7 @@ describe('webex.cc', () => {
       });
 
       it.each([undefined, '', 'different-agent'])('T-003 primaryWelcomeIdentityFenced %s', async (agentId) => {
-        await prepare('enabled', true); accept();
+        await prepare(true, true); accept();
         expect(webex.cc['acceptedStation']).toBeDefined();
         expect(webex.cc['priorStationActive']).toBe(true);
         expect([...webex.cc['acceptedSwitchIds']]).toEqual(['switch']);
@@ -3141,7 +3141,7 @@ describe('webex.cc', () => {
       });
 
       it.each([true, false])('T-007 backendSessionNotificationsReconcile / backendSessionNotificationIdentityAndProvenance local=%s', async (local) => {
-        await prepare('enabled', true);
+        await prepare(true, true);
         webex.cc.services.aqmReqs.isLocalSessionTrackingId.mockReturnValue(local);
         webex.cc['handleWebsocketMessage'](JSON.stringify(result({teamId: 'other', dn: '987', trackingId: 'remote'})));
         expect(webex.cc['acceptedStation'].payload.teamId).toBe(local ? 'team' : 'other');
@@ -3149,7 +3149,7 @@ describe('webex.cc', () => {
       });
 
       it('T-007 remoteLogoutPreventsAutomaticRestore', async () => {
-        await prepare('enabled', true);
+        await prepare(true, true);
         webex.cc['handleWebsocketMessage'](JSON.stringify({type: CC_EVENTS.AGENT_LOGOUT,
           data: {orgId: 'mockOrgId', agentId: 'agent123', agentSessionId: 'session', type: CC_EVENTS.AGENT_LOGOUT_SUCCESS}}));
         await welcome(accept());
@@ -3190,8 +3190,8 @@ describe('webex.cc', () => {
         ].map(([name, data]) => [name, {data}, {}]),
       ])(
         'T-002/T-013 systemRegionSwitchNeverPublicRawEvent: %s', async (name, overrides, snapshotFields) => {
-          await prepare('enabled');
-          expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'enabled', homeRegion: 'produs1'});
+          await prepare(true);
+          expect(webex.cc['multiRegionSettings']).toEqual({multiRegionEnabled: true, homeRegion: 'produs1'});
           const trackingId = `envelope-${name.replace(/ /g, '-')}`;
           const frame = {type: 'SYSTEM_REGION_SWITCH', orgId: 'mockOrgId', trackingId, ...overrides};
           const raw = jest.fn(); webex.cc.on('SYSTEM_REGION_SWITCH', raw);
@@ -3469,15 +3469,15 @@ describe('webex.cc', () => {
       };
 
       it.each(['agent123', 'replacement-agent'])('binds config to the current Welcome identity %s', async (replacement) => {
-        const first = prepare('agent123', {eligibility: 'enabled', homeRegion: 'produs1'});
+        const first = prepare('agent123', {multiRegionEnabled: true, homeRegion: 'produs1'});
         webex.cc.agentConfig = createFreshAgentProfile({agentId: 'stale-agent'});
         await expect(webex.cc.register()).resolves.toBe(first.profile);
         const firstSignal = webex.cc['registrationAbortController'].signal;
         expect(webex.cc['registrationAgentId']).toBe('agent123');
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'enabled', homeRegion: 'produs1'});
+        expect(webex.cc['multiRegionSettings']).toEqual({multiRegionEnabled: true, homeRegion: 'produs1'});
 
         webex.credentials.getOrgId.mockReturnValue('replacement-org');
-        const next = prepare(replacement, {eligibility: 'disabled'});
+        const next = prepare(replacement, {multiRegionEnabled: false});
         await expect(webex.cc.register()).resolves.toBe(next.profile);
         expect(firstSignal.aborted).toBe(true);
         expect(webex.cc['registrationAbortController'].signal.aborted).toBe(false);
@@ -3485,7 +3485,7 @@ describe('webex.cc', () => {
           ['mockOrgId', 'agent123'], ['replacement-org', replacement],
         ]);
         expect(webex.cc['registrationAgentId']).toBe(replacement);
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'disabled'});
+        expect(webex.cc['multiRegionSettings']).toEqual({multiRegionEnabled: false});
       });
 
       it.each([undefined, null, '', ' '])('primary Welcome requires nonblank identity %#', async (agentId) => {
@@ -3499,18 +3499,18 @@ describe('webex.cc', () => {
         const {getAgentConfig} = prepare();
         getAgentConfig.mockResolvedValueOnce({
           profile: createFreshAgentProfile({agentId: 'other-agent'}),
-          multiRegionSettings: {eligibility: 'enabled'},
+          multiRegionSettings: {multiRegionEnabled: true},
         });
         await expect(webex.cc.register()).rejects.toThrow('identities differ');
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
+        expect(webex.cc['multiRegionSettings']).toBeNull();
 
         getAgentConfig.mockRejectedValueOnce(new Error('Profile failed'));
         await expect(webex.cc.register()).rejects.toThrow('Profile failed');
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
+        expect(webex.cc['multiRegionSettings']).toBeNull();
       });
 
       it('ignores settings arriving from a superseded desktop login response', async () => {
-        const {getAgentConfig, profile} = prepare('agent123', {eligibility: 'disabled'});
+        const {getAgentConfig, profile} = prepare('agent123', {multiRegionEnabled: false});
         const requested = createDeferred<void>();
         const pending = createDeferred<{profile: Profile; multiRegionSettings: MultiRegionSettings}>();
         getAgentConfig.mockImplementationOnce(() => {
@@ -3523,27 +3523,27 @@ describe('webex.cc', () => {
         expect(getAgentConfig).toHaveBeenCalledTimes(1);
         webex.credentials.getOrgId.mockReturnValue('replacement-org');
         await webex.cc.register();
-        pending.resolve({profile, multiRegionSettings: {eligibility: 'enabled', homeRegion: 'produs1'}});
+        pending.resolve({profile, multiRegionSettings: {multiRegionEnabled: true, homeRegion: 'produs1'}});
         await interrupted;
         await flushMicrotasks();
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'disabled'});
+        expect(webex.cc['multiRegionSettings']).toEqual({multiRegionEnabled: false});
         expect(getAgentConfig.mock.calls).toEqual([['mockOrgId', 'agent123'], ['replacement-org', 'agent123']]);
       });
 
       it('clears previous entitlement at replacement and still registers when the aggregate omits it', async () => {
-        const {getAgentConfig, profile} = prepare('agent123', {eligibility: 'enabled', homeRegion: 'produs1'});
+        const {getAgentConfig, profile} = prepare('agent123', {multiRegionEnabled: true, homeRegion: 'produs1'});
         await webex.cc.register();
-        expect(webex.cc['multiRegionSettings'].eligibility).toBe('enabled');
+        expect(webex.cc['multiRegionSettings']?.multiRegionEnabled).toBe(true);
         const pending = createDeferred<{profile: Profile}>();
         getAgentConfig.mockReturnValueOnce(pending.promise);
         const replacement = webex.cc.register();
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
+        expect(webex.cc['multiRegionSettings']).toBeNull();
         expect(webex.cc['lastPublishedRegionState']).toBeUndefined();
 
         profile.aiFeature = {realtimeTranscripts: {enable: true}} as any;
         pending.resolve({profile});
         await expect(replacement).resolves.toBe(profile);
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
+        expect(webex.cc['multiRegionSettings']).toBeNull();
         expect(webex.cc['registrationAbortController'].signal.aborted).toBe(false);
         expect(webex.cc.services.rtdWebSocketManager.initWebSocket).toHaveBeenCalledTimes(1);
       });
@@ -3599,21 +3599,20 @@ describe('webex.cc', () => {
         expect(listener).toHaveBeenCalledTimes(1);
       });
 
-      const home = ' ProDUs1 ';
+      const home = 'produs1';
       it.each([
-        ['enabled', home, ' pRoDuS1 ', {homeRegion: home, servingRegion: ' pRoDuS1 ', limitedService: false}],
-        ['enabled', home, ' PrODuS2 ', {homeRegion: home, servingRegion: ' PrODuS2 ', limitedService: true}],
-        ['enabled', home, undefined, {homeRegion: home}],
-        ['enabled', undefined, ' PrODuS2 ', {servingRegion: ' PrODuS2 '}],
-        ['disabled', home, ' pRoDuS1 ', {homeRegion: home, servingRegion: ' pRoDuS1 '}],
-        ['disabled', home, ' PrODuS2 ', {homeRegion: home, servingRegion: ' PrODuS2 '}],
-        ['disabled', home, undefined, {homeRegion: home}],
-        ['unknown', home, ' pRoDuS1 ', {servingRegion: ' pRoDuS1 '}],
-        ['unknown', home, ' PrODuS2 ', {servingRegion: ' PrODuS2 '}],
-        ['unknown', home, undefined, {}],
-      ])('T-011 enabledOnlyLimitedService eligibility=%s home=%s serving=%s', (eligibility, homeRegion, servingRegion, metadata) => {
-        // Retain stale input deliberately: unknown eligibility must hide its home region too.
-        webex.cc['multiRegionSettings'] = {eligibility, ...(homeRegion ? {homeRegion} : {})};
+        [true, home, 'produs1', {homeRegion: home, servingRegion: 'produs1', limitedService: false}],
+        [true, home, 'produs2', {homeRegion: home, servingRegion: 'produs2', limitedService: true}],
+        [true, home, undefined, {homeRegion: home}],
+        [true, undefined, 'produs2', {servingRegion: 'produs2'}],
+        [false, home, 'produs1', {homeRegion: home, servingRegion: 'produs1'}],
+        [false, home, 'produs2', {homeRegion: home, servingRegion: 'produs2'}],
+        [false, home, undefined, {homeRegion: home}],
+        [null, undefined, 'produs1', {servingRegion: 'produs1'}],
+        [null, undefined, 'produs2', {servingRegion: 'produs2'}],
+        [null, undefined, undefined, {}],
+      ])('T-011 enabledOnlyLimitedService enabled=%s home=%s serving=%s', (multiRegionEnabled, homeRegion, servingRegion, metadata) => {
+        webex.cc['multiRegionSettings'] = multiRegionEnabled === null ? null : {multiRegionEnabled, homeRegion};
         mockWebSocketManager.getServingRegion.mockReturnValue(servingRegion);
         const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
         webex.cc['publishRegionState'](webex.cc['buildRegionState']('ready', 'initial-login'));
@@ -3727,7 +3726,7 @@ describe('webex.cc', () => {
           mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
           webex.cc.services.config.getAgentConfig.mockImplementation(async () => ({
             profile: createFreshAgentProfile({webRtcEnabled: false}),
-            multiRegionSettings: {eligibility: 'enabled', homeRegion: 'produs1'},
+            multiRegionSettings: {multiRegionEnabled: true, homeRegion: 'produs1'},
           }));
           await webex.cc.register();
           mockWebSocketManager.getServingRegion.mockReturnValue('produs1');
@@ -3747,7 +3746,8 @@ describe('webex.cc', () => {
           let replacementController: AbortController | undefined;
           const listener = jest.fn(state => {
             publications.push({state, frozen: Object.isFrozen(state), cached: webex.cc['lastPublishedRegionState'] === state,
-              context: {...webex.cc['regionStateContext']}, settings: {...webex.cc['multiRegionSettings']},
+              context: {...webex.cc['regionStateContext']},
+              settings: webex.cc['multiRegionSettings'] && {...webex.cc['multiRegionSettings']},
               oldAborted: oldRegistration.signal.aborted});
             if (reentrant && state.status === 'unavailable') {
               replacement = webex.cc.register();
@@ -3771,11 +3771,11 @@ describe('webex.cc', () => {
           expect(publications).toEqual([{
             state: {status: 'unavailable', reason: 'recovery-failed', ...context, homeRegion: 'produs1'},
             frozen: true, cached: true, context,
-            settings: {eligibility: 'unknown'}, oldAborted: true,
+            settings: null, oldAborted: true,
           }]);
           expect(webex.cc['lastPublishedRegionState']).toBeUndefined();
           expect(webex.cc['regionStateContext']).toEqual(reentrant ? {trackingId: 'replacement'} : {});
-          expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
+          expect(webex.cc['multiRegionSettings']).toBeNull();
           if (reentrant) {
             expect(webex.cc['registrationAbortController']).toBe(replacementController);
             expect(replacementController.signal.aborted).toBe(false);
@@ -3785,7 +3785,7 @@ describe('webex.cc', () => {
           }
           await replacement;
           for (let turn = 0; turn < 24; turn += 1) await Promise.resolve();
-          expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'enabled', homeRegion: 'produs1'});
+          expect(webex.cc['multiRegionSettings']).toEqual({multiRegionEnabled: true, homeRegion: 'produs1'});
           expect(webex.cc['regionStateContext']).toEqual(reentrant ? {trackingId: 'replacement'} : {});
           mockWebSocketManager.getServingRegion.mockReturnValue('produs1');
           await login();
@@ -10536,7 +10536,7 @@ describe('realRecoveryWiring', () => {
         const {cc, flush} = h;
         const {primary, rtd} = await startBrowserAndRtd(h);
         cc.$config.allowAutomatedRelogin = true;
-        expect(cc['multiRegionSettings'].eligibility).toBe('disabled');
+        expect(cc['multiRegionSettings']?.multiRegionEnabled).toBe(false);
         const assertDisabled = observeDisabledBoundary(h);
 
         primary.message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'disabled-switch'});
@@ -10562,7 +10562,7 @@ describe('realRecoveryWiring', () => {
         primary.message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'unknown-switch'});
         await flush();
 
-        expect(cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
+        expect(cc['multiRegionSettings']).toBeNull();
         expect(cc['lastPublishedRegionState']).toBe(snapshot);
         expect(recovery).not.toHaveBeenCalled();
         expect(primary.close).not.toHaveBeenCalled();
@@ -13536,7 +13536,7 @@ describe('realRecoveryWiring', () => {
           // Integrates the separately owned ci_959a44011994128f4a672b0d
           // interpolation correction at both connectWebsocket/register catches.
           await expect(cc.register()).rejects.toBe(failure);
-          expect(cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
+          expect(cc['multiRegionSettings']).toBeNull();
           expect(cc.services.webSocketManager.hasUsableSocket()).toBe(false);
           expect(proof.metric.mock.calls.filter(([name]) => name === METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED)).toHaveLength(1);
           proof.requireSink('host.error'); proof.requireSink('proxy.error');
@@ -14099,7 +14099,7 @@ describe('realRecoveryWiring', () => {
     history: [...cc['acceptedSwitchIds']],
     profile: cc.agentConfig && {...cc.agentConfig},
     publication: cc['lastPublishedRegionState'],
-    settings: {...cc['multiRegionSettings']},
+    settings: cc['multiRegionSettings'] && {...cc['multiRegionSettings']},
     primary: [cc.services.webSocketManager.hasUsableSocket(), cc.services.webSocketManager.getServingRegion()],
     mode: cc.services.connectionService['mode'],
   });
@@ -14986,11 +14986,10 @@ describe('realRecoveryWiring', () => {
       const recover = jest.spyOn(cc.services.connectionService, 'recoverRegion');
       const switchEvent = {type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'switch'};
       const settings = () => cc['multiRegionSettings'];
-      const eligibility = value => value === undefined ? 'unknown' : value ? 'enabled' : 'disabled';
       const reads = () => requests.filter(r => r.resource === orgDesktopLogin);
       const preSwitchCount = requests.length;
       wireSettings.multiRegionEnabled = next;
-      expect(settings().eligibility).toBe(eligibility(initial));
+      expect(settings()?.multiRegionEnabled).toBe(initial);
       expect(reads()).toHaveLength(1);
       if (initial === undefined) {
         sockets[0].message(switchEvent);
@@ -15004,7 +15003,7 @@ describe('realRecoveryWiring', () => {
 
       const registration = cc.register();
       await flush(); sockets[1].welcome(); await registration;
-      expect(settings()).toEqual({eligibility: eligibility(next), homeRegion: 'produs1'});
+      expect(settings()).toEqual({multiRegionEnabled: next, homeRegion: 'produs1'});
       expect(states).not.toHaveBeenCalled();
       expect([...cc['acceptedSwitchIds']]).toEqual([]);
       sockets[1].message(switchEvent);
@@ -15800,7 +15799,7 @@ describe('realRecoveryWiring', () => {
 
   describe('T-012 registration boundary ownership', () => {
     const invalidatedState = cc => ({
-      settings: {...cc['multiRegionSettings']}, agentId: cc['registrationAgentId'],
+      settings: cc['multiRegionSettings'] && {...cc['multiRegionSettings']}, agentId: cc['registrationAgentId'],
       history: [...cc['acceptedSwitchIds']],
       station: cc['acceptedStation'], active: cc['priorStationActive'],
       dispatches: cc['stateDispatches'].size, confirmed: cc['confirmedState'],
@@ -15808,7 +15807,7 @@ describe('realRecoveryWiring', () => {
       idleCode: cc['wellbeingBreakIdleCode'],
     });
     const cleared = {
-      settings: {eligibility: 'unknown'}, agentId: undefined, history: [],
+      settings: null, agentId: undefined, history: [],
       station: undefined, active: false, dispatches: 0, confirmed: undefined,
       ordinal: 0, idleCode: undefined,
     };
@@ -15939,7 +15938,7 @@ describe('realRecoveryWiring', () => {
           const primary = sockets.filter(s => s.url.includes('routing.')).slice(-1)[0];
           primary.welcome(); await replacement; await flush();
           await login(LoginOption.EXTENSION, 'replacement-session');
-          expect(cc['multiRegionSettings']).toEqual({eligibility: 'enabled', homeRegion: 'produs1'});
+          expect(cc['multiRegionSettings']).toEqual({multiRegionEnabled: true, homeRegion: 'produs1'});
           expect(cc['registrationAgentId']).toBe('agent');
           expect(cc['registrationOrgId']).toBe(host.credentials.getOrgId());
           expect(cc['currentAgentSessionId']).toBe('replacement-session');
@@ -16236,7 +16235,7 @@ describe('realRecoveryWiring', () => {
       const recover = jest.spyOn(cc.services.connectionService, 'recoverRegion');
       const cleanup = jest.spyOn(cc.taskManager, 'invalidateRegionalTasks');
       const registration = cc['registrationAbortController'];
-      expect(cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
+      expect(cc['multiRegionSettings']).toBeNull();
       expect(requests.filter(r => r.resource === orgDesktopLogin)).toHaveLength(1);
 
       sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'ignored-switch'});
@@ -16261,7 +16260,7 @@ describe('realRecoveryWiring', () => {
       expect(listener.mock.calls).toEqual([[{status, reason: terminalReason}]]);
       const terminal = cc['lastPublishedRegionState'];
       expect(registration.signal.aborted).toBe(false);
-      expect(cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
+      expect(cc['multiRegionSettings']).toBeNull();
       expect(jest.getTimerCount()).toBe(0);
       jest.advanceTimersByTime(600000); await flush();
       expect(listener.mock.calls).toEqual([[{status, reason: terminalReason}]]);

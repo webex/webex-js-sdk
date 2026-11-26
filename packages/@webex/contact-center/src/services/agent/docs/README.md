@@ -617,8 +617,8 @@ Key nested WebSocket binds use the actual outer/data constants, for example `CC_
 
 Recovery errors use the [ContactCenter lifecycle contract](../../../docs/README.md#caller-visible-failure-modes).
 The [Core admission matrix](../../core/docs/README.md#aqmreqs-members) applies to agent adapters.
-`stateChange` is a command, `stationLogin` and `reload` are session requests, `logout` is
-teardown, and `buddyAgents` is a query.
+`stateChange` uses the default command classification. `stationLogin` and `reload` are session
+requests, `logout` is teardown, and `buddyAgents` is a query.
 
 | Condition | Signal or result | Caller behavior | Retry or recovery | Evidence |
 | --------- | ---------------- | --------------- | ----------------- | -------- |

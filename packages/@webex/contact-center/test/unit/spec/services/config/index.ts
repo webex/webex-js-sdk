@@ -707,22 +707,22 @@ describe('AgentConfigService', () => {
       {
         scenario: 'enabled with a home region',
         settings: {multiRegionEnabled: true, homeRegion: ' US1 '},
-        expected: {eligibility: 'enabled', homeRegion: 'us1'},
+        expected: {multiRegionEnabled: true, homeRegion: 'us1'},
       },
       {
         scenario: 'disabled with a home region',
         settings: {multiRegionEnabled: false, homeRegion: ' EU2 '},
-        expected: {eligibility: 'disabled', homeRegion: 'eu2'},
+        expected: {multiRegionEnabled: false, homeRegion: 'eu2'},
       },
       {
         scenario: 'enabled with a blank home region',
         settings: {multiRegionEnabled: true, homeRegion: ' '},
-        expected: {eligibility: 'enabled'},
+        expected: {multiRegionEnabled: true},
       },
       {
         scenario: 'enabled with a non-string home region',
         settings: {multiRegionEnabled: true, homeRegion: 123},
-        expected: {eligibility: 'enabled'},
+        expected: {multiRegionEnabled: true},
       },
       {scenario: 'missing flag', settings: {homeRegion: 'US1'}, expected: undefined},
       {

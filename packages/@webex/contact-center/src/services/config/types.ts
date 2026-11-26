@@ -3,7 +3,7 @@ import {COLLABORATION_ACCESS} from './constants';
 
 /** Confirmed entitlement; retained for Config declarations, without a root API export. */
 export type MultiRegionSettings = {
-  eligibility: 'enabled' | 'disabled';
+  multiRegionEnabled: boolean;
   homeRegion?: string;
 };
 

@@ -5,13 +5,14 @@
 
 import {HTTP_METHODS} from '../../types';
 import LoggerProxy from '../../logger-proxy';
-import {
+import type {
   ListAuxCodesResponse,
   OrgDesktopLoginResponse,
   UserDesktopLoginResponse,
   TeamList,
   DialPlanEntity,
   Profile,
+  MultiRegionSettings,
   ListTeamsResponse,
   AuxCode,
   MultimediaProfileResponse,
@@ -24,7 +25,6 @@ import WebexRequest from '../core/WebexRequest';
 import {WCC_API_GATEWAY} from '../constants';
 import {CONFIG_FILE_NAME, METHODS as MAIN_METHODS} from '../../constants';
 import {parseAgentConfigs} from './Util';
-import type {MultiRegionSettings} from './types';
 import {
   DEFAULT_AUXCODE_ATTRIBUTES,
   DEFAULT_PAGE,
@@ -49,7 +49,7 @@ export default class AgentConfigService {
    * Fetches the agent configuration data for the given orgId and agentId.
    * @param {string} orgId - organization ID for which the agent configuration is to be fetched.
    * @param {string} agentId - agent ID for which the configuration is to be fetched.
-   * @returns {Promise<{profile: Profile; multiRegionSettings?: MultiRegionSettings}>} - The profile and optional regional settings.
+   * @returns The agent profile and optional regional settings.
    * @throws {Error} - Throws an error if any API call fails or if the response status is not 200.
    * @public
    */
@@ -119,7 +119,7 @@ export default class AgentConfigService {
       return {
         profile,
         multiRegionSettings: {
-          eligibility: multiRegionEnabled ? 'enabled' : 'disabled',
+          multiRegionEnabled,
           ...(normalizedHomeRegion ? {homeRegion: normalizedHomeRegion} : {}),
         },
       };

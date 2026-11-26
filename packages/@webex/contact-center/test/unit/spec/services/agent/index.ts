@@ -80,10 +80,10 @@ describe('AQM routing agent', () => {
       data: {agentProfileId: 'buddy-profile', mediaType: 'telephony', state: 'Available'},
     },
     {
-      operation: 'stateChange', kind: 'command',
+      operation: 'stateChange', kind: undefined,
       data: {state: 'Idle', auxCodeId: 'state-idle-code', lastStateChangeReason: 'Lunch'},
     },
-  ])('declares $operation operation kind $kind without changing its body', ({operation, kind, data}) => {
+  ])('configures $operation for recovery without changing its body', ({operation, kind, data}) => {
     const config = operation === 'reload' ? agent.reload() : agent[operation]({data});
     expect(config.kind).toBe(kind);
     expect(config.data).toStrictEqual(data);

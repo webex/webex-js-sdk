@@ -548,9 +548,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     independent: boolean;
   };
 
-  private multiRegionSettings: MultiRegionSettings | {eligibility: 'unknown'} = {
-    eligibility: 'unknown',
-  };
+  private multiRegionSettings: MultiRegionSettings | null = null;
 
   private lastPublishedRegionState?: RegionRecoveryState;
   private regionStateContext: Pick<
@@ -689,20 +687,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /** Refresh placement; ended owners can publish detached settings after live invalidation. */
   private publishRegionState(
     state: RegionRecoveryState,
-    settings: MultiRegionSettings | {eligibility: 'unknown'} = this.multiRegionSettings
+    settings = this.multiRegionSettings
   ): void {
     const retained = {...state};
     delete retained.homeRegion;
     delete retained.servingRegion;
     delete retained.limitedService;
-    const homeRegion = settings.eligibility !== 'unknown' ? settings.homeRegion : undefined;
+    const homeRegion = settings?.homeRegion;
     const servingRegion = this.services.webSocketManager.getServingRegion();
     const snapshot = Object.freeze({
       ...retained,
       ...(homeRegion ? {homeRegion} : {}),
       ...(servingRegion ? {servingRegion} : {}),
-      ...(settings.eligibility === 'enabled' && homeRegion && servingRegion
-        ? {limitedService: homeRegion.trim().toLowerCase() !== servingRegion.trim().toLowerCase()}
+      ...(settings?.multiRegionEnabled && homeRegion && servingRegion
+        ? {limitedService: homeRegion !== servingRegion}
         : {}),
     });
     if (isEqual(snapshot, this.lastPublishedRegionState)) return;
@@ -968,7 +966,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     // Invalidate the ended owner before aborts, diagnostics or host publication can reenter.
     this.acceptedSwitchIds.clear();
     this.clearAcceptedStation();
-    this.multiRegionSettings = {eligibility: 'unknown'};
+    this.multiRegionSettings = null;
     this.registrationAgentId = undefined;
     this.wellbeingBreakIdleCode = undefined;
     this.registrationAbortController?.abort();
@@ -1194,7 +1192,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return;
     if (
       !this.registrationAgentId ||
-      this.multiRegionSettings.eligibility === 'unknown' ||
+      !this.multiRegionSettings ||
       this.acceptedSwitchIds.has(event.trackingId)
     ) {
       recordIgnoredSwitch();
@@ -1226,7 +1224,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
     this.resetRegionState();
     this.regionStateContext = {trackingId: event.trackingId, ...event.data};
-    if (this.multiRegionSettings.eligibility === 'disabled') {
+    if (this.multiRegionSettings?.multiRegionEnabled === false) {
       this.setRecoveryPhase('unavailable');
       this.services.connectionService.stop();
       this.services.webSocketManager.close(false, 'notEligible');
@@ -2395,7 +2393,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.registrationAbortController?.abort();
     this.registrationGeneration += 1;
     this.registrationAgentId = undefined;
-    this.multiRegionSettings = {eligibility: 'unknown'};
+    this.multiRegionSettings = null;
     this.wellbeingBreakIdleCode = undefined;
     const entry = this.registrationGeneration;
     const entryRecovery = this.recoveryGeneration;
@@ -2501,7 +2499,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             this.publishRegionState(this.buildRegionState('unavailable', 'recovery-failed'));
           }
         }
-        if (ownsRegistration()) this.multiRegionSettings = {eligibility: 'unknown'};
+        if (ownsRegistration()) this.multiRegionSettings = null;
       }
       if (attempt.reloadRequired) throw attempt.reloadRequired;
       if (isRegionRecoveryError(error)) throw error;
@@ -2583,7 +2581,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     assertOwned();
     this.registrationAgentId = undefined;
     this.registrationOrgId = undefined;
-    this.multiRegionSettings = {eligibility: 'unknown'};
+    this.multiRegionSettings = null;
     this.resetRegionState();
     this.wellbeingBreakIdleCode = undefined;
     this.updateWellnessSession();
@@ -2825,7 +2823,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.registrationAgentId = agentId;
       this.resetOrdinaryConnection();
       this.assertInitialRegistration(attempt, agentId);
-      this.multiRegionSettings = multiRegionSettings ?? {eligibility: 'unknown'};
+      this.multiRegionSettings = multiRegionSettings ?? null;
       this.taskManager.startSession(this.getTaskRecoveryGuard());
 
       this.recordBestEffort(() =>

@@ -106,7 +106,6 @@ export default function routingAgent(routing: AqmReqs) {
      * @public
      */
     stateChange: routing.req((p: {data: Agent.StateChange}) => ({
-      kind: 'command',
       url: '/v1/agents/session/state',
       host: WCC_API_GATEWAY,
       data: p.data,

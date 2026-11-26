@@ -220,7 +220,7 @@ Types used by the config service, all defined in [`types.ts`](../types.ts):
 | CONFIG-R-010 | `getOutdialAniEntries(orgId, params)` adds only the provided `page`, `pageSize`, `search`, `filter`, and `attributes` query parameters, resolves `response.body?.data`, and rethrows a request rejection; it does not check `statusCode`. | `cc.getOutdialAniEntries` is the public caller-ID lookup and records the result count in metrics. | `src/services/config/index.ts`, `src/cc.ts` | `test/unit/spec/services/config/index.ts` | A resolved non-200 response yields `undefined`, not an error (asserted by the 404 and 500 cases). | Present |
 | CONFIG-R-011 | `parseAgentConfigs` keeps active aux codes of each `workTypeCode` from the full pool as `Entity` values, appends the synthetic idle code `{id: '0', name: 'Available'}`, and sets `defaultWrapupCode` to the default wrap-up code id or an empty string. | The desktop-login aggregate does not carry per-agent restriction lists, so the whole pool applies (JSDoc of `getFilterAuxCodes`). | `src/services/config/Util.ts` | `test/unit/spec/services/config/Util.ts` | None. | Present |
 | CONFIG-R-012 | When `dialPlanEnabled` is true, `Profile.dialPlan` is `{type: 'adhocDial', dialPlanEntity}` built from every active plan; otherwise it is `undefined` and no dial-plan request is made. | The aggregate does not carry the per-profile `dialPlans` selection, so all active plans apply (JSDoc of `getFilteredDialplanEntries`). | `src/services/config/Util.ts`, `src/services/config/index.ts` | `test/unit/spec/services/config/Util.ts`, `test/unit/spec/services/config/index.ts` | None. | Present |
-| CONFIG-R-013 | Internal `getAgentConfig()` resolves `{profile, multiRegionSettings?}`. Derive settings from `organizationSetting.multiRegionEnabled` in the existing `GET organization/{orgId}/desktop-login` response. Only literal booleans establish eligibility. Trim and lowercase an optional nonempty `organizationSetting.homeRegion`. Missing or malformed eligibility leaves settings absent and the Profile unchanged. | Reuse the registration aggregate without an extra entitlement request. | `src/services/config/index.ts`, `src/services/config/types.ts`, `src/cc.ts` | `test/unit/spec/services/config/index.ts`, `test/unit/spec/cc.ts` | Registration owns the settings. Public `register()` returns only the Profile. | PRESENT |
+| CONFIG-R-013 | Internal `getAgentConfig()` resolves `{profile, multiRegionSettings?}`. Carry the boolean `organizationSetting.multiRegionEnabled` from the existing `GET organization/{orgId}/desktop-login` response into settings. Trim and lowercase an optional nonempty `organizationSetting.homeRegion`. A missing or malformed flag leaves settings absent. | Reuse the registration aggregate without an extra entitlement request. | `src/services/config/index.ts`, `src/services/config/types.ts`, `src/cc.ts` | `test/unit/spec/services/config/index.ts`, `test/unit/spec/cc.ts` | Registration owns the settings. Public `register()` returns only the Profile. | PRESENT |
 
 ## Design overview
 
@@ -236,7 +236,7 @@ const orgId = this.$webex.credentials.getOrgId();
 const {profile, multiRegionSettings} = await this.services.config.getAgentConfig(orgId, agentId);
 // After validating the current registration and Welcome identity:
 this.agentConfig = profile;
-this.multiRegionSettings = multiRegionSettings ?? {eligibility: 'unknown'};
+this.multiRegionSettings = multiRegionSettings ?? null;
 ```
 
 Stack: TypeScript 5.4 REST client, Promise-based parallel aggregation, Jest 27.
