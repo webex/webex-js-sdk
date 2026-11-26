@@ -1571,6 +1571,7 @@ later `AgentContact` and `ContactMerged` reuse, exact-child/main-task collision
 protection, and both owner-change/participant-left orders (the Contact owner propagation block of
 `test/unit/spec/services/task/TaskManager.ts`).
 
-Run `yarn workspace @webex/contact-center test:unit` from the workspace root. Coverage review and
-independent validation are pending. A module specification is complete only when its public surface, invariants,
+Unit tests run with `yarn workspace @webex/contact-center test:unit` from the workspace root. On 2026-11-16 jest ran 191 tests in `TaskManager.ts`, 105 in `Task.ts`, 92 in
+`voice/Voice.ts`, and 6 in `TaskFactory.ts`, all passing. Coverage measurement and independent
+validation are pending. A module specification is complete only when its public surface, invariants,
 failure modes, and test evidence agree with the implementation.

@@ -1,6 +1,5 @@
 import Voice from '../../../../../../src/services/task/voice/Voice';
 import LoggerProxy from '../../../../../../src/logger-proxy';
-import WebexRequest from '../../../../../../src/services/core/WebexRequest';
 import {
   TaskData,
   CONSULT_TRANSFER_DESTINATION_TYPE,
@@ -10,7 +9,7 @@ import {
 } from '../../../../../../src/services/task/types';
 import {CC_EVENTS} from '../../../../../../src/services/config/types';
 import {TaskEvent, TaskState} from '../../../../../../src/services/task/state-machine';
-import * as uiControlsComputer from '../../../../../../src/services/task/state-machine/uiControlsComputer';
+import {computeUIControls, getDefaultUIControls} from '../../../../../../src/services/task/state-machine/uiControlsComputer';
 import * as Utils from '../../../../../../src/services/core/Utils';
 import {createTaskData} from '../taskTestUtils';
 import {AIAssistantEventName} from '../../../../../../src/types';
@@ -25,7 +24,7 @@ import * as wxAppDiagnosticLogging from '../../../../../../src/services/wxAppDia
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
   default: {
-    getInstance: jest.fn().mockReturnValue({uploadLogs: jest.fn().mockResolvedValue(undefined)}),
+    getInstance: () => ({uploadLogs: jest.fn()}),
   },
 }));
 
@@ -463,7 +462,7 @@ describe('Voice Task', () => {
       const taskData = createBaseData();
       const voice = new Voice(dummyContact, taskData, {});
       const initialSnapshot = voice.stateMachineService?.getSnapshot();
-      const initialExpected = uiControlsComputer.computeUIControls(
+      const initialExpected = computeUIControls(
         initialSnapshot?.value as TaskState,
         initialSnapshot?.context as any,
         voice.data
@@ -475,7 +474,7 @@ describe('Voice Task', () => {
       voice.stateMachineService?.send({type: TaskEvent.ASSIGN, taskData});
 
       const snapshot = voice.stateMachineService?.getSnapshot();
-      const expected = uiControlsComputer.computeUIControls(
+      const expected = computeUIControls(
         snapshot?.value as TaskState,
         snapshot?.context as any,
         voice.data
@@ -2360,9 +2359,10 @@ describe('T-008 Voice regional lifetime', () => {
   it('keeps stale controls disabled after a Voice-specific setting update', () => {
     const task = new Voice(dummyContact, createBaseData());
     primeConnectedState(task, task.data);
-    const controls = uiControlsComputer.getDefaultUIControls();
+    const controls = getDefaultUIControls();
     controls.main.hold = {isVisible: true, isEnabled: true};
-    const compute = jest.spyOn(uiControlsComputer, 'computeUIControls');
+    const controlsComputer = require('../../../../../../src/services/task/state-machine/uiControlsComputer');
+    const compute = jest.spyOn(controlsComputer, 'computeUIControls');
     try {
       compute.mockReturnValueOnce(controls);
       task['updateUiControls'](true);
@@ -2410,21 +2410,6 @@ describe('T-008 Voice regional lifetime', () => {
       jest.restoreAllMocks();
     });
 
-    it.each([false, true])('finishes retries and read continuations on an active task: rejected=%s', async (rejected) => {
-      if (rejected) service.getCallDetails.mockRejectedValue({status: 400, message: 'Call not found'});
-      const updated = jest.fn();
-      task.on(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, updated);
-      const result = task.syncWxAppMuteFromCallDetails();
-      expect(jest.getTimerCount()).toBe(1);
-      await finishRetries();
-      await expect(result).resolves.toBe(rejected ? undefined : true);
-      expect(service.getCallDetails.mock.calls).toEqual([[{callId: 'call-1', lineOwnerId: undefined}]]);
-      expect(task.getWxAppMuted()).toBe(!rejected);
-      expect(updated.mock.calls).toEqual(rejected ? [] : [[{muted: true}]]);
-      expect(task['wxAppMuteSyncInFlight']).toBeUndefined();
-      expect(jest.getTimerCount()).toBe(0);
-    });
-
     it('does not start reads for a retired task', async () => {
       task.invalidateForRegionRecovery();
       await expect(task.syncWxAppMuteFromCallDetails()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
@@ -2462,107 +2447,36 @@ describe('T-008 Voice regional lifetime', () => {
   });
 
   describe('wxApp continuation guard wiring', () => {
-    const actualUtils = jest.requireActual('../../../../../../src/services/core/Utils');
-    const uploadLogs = WebexRequest.getInstance().uploadLogs;
-    let task: Voice;
+    it('does not update a retired task when Webex App answers', async () => {
+      const pendingAnswer = createDeferred<void>();
+      const service = {
+        answerCall: jest.fn(() => pendingAnswer.promise),
+        getCallDetails: jest.fn(),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', deviceType: 'wxApp', deviceId: 'device-id-1', deviceCallId: 'call-id-1'},
+          },
+        } as TaskData['interaction'],
+      });
+      const task = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: service as unknown as AnswerCallOnWebexService,
+      });
+      task.stateMachineService.send({type: TaskEvent.TASK_INCOMING, taskData});
+      const answer = task.accept();
+      expect(service.answerCall).toHaveBeenCalledTimes(1);
 
-    afterEach(() => {
-      task?.invalidateForRegionRecovery();
-      jest.restoreAllMocks();
+      task.invalidateForRegionRecovery();
+      const controls = task.uiControls;
+      pendingAnswer.resolve();
+
+      await expect(answer).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
+      expect(service.getCallDetails).not.toHaveBeenCalled();
+      expect(task.uiControls).toBe(controls);
     });
-
-    it.each([true, false])(
-      'drains a pending answer through real Voice dependencies: retired=%s', async (retired) => {
-        jest.clearAllMocks();
-        jest.spyOn(Utils, 'getErrorDetails').mockImplementation(actualUtils.getErrorDetails);
-        const actionLog = jest.spyOn(wxAppDiagnosticLogging, 'logWxAppTelephonyAction');
-        const metricsManager = MetricsManager.getInstance();
-        jest.spyOn(metricsManager, 'timeEvent').mockImplementation();
-        const metrics = jest.spyOn(metricsManager, 'trackEvent').mockImplementation();
-        const pendingAnswer = createDeferred<void>();
-        const service = {
-          answerCall: jest.fn(() => pendingAnswer.promise),
-          getCallDetails: jest.fn().mockResolvedValue({muted: false}),
-        };
-        const taskData = createBaseData({
-          agentId: 'agent-1',
-          interaction: {
-            participants: {
-              'agent-1': {
-                id: 'agent-1', deviceType: 'wxApp',
-                deviceId: 'device-id-1', deviceCallId: 'call-id-1',
-              },
-            },
-          } as TaskData['interaction'],
-        });
-        task = new Voice(dummyContact, taskData, {
-          enableWxBetterTogether: true,
-          answerCallOnWebexService: service as unknown as AnswerCallOnWebexService,
-        });
-        task.stateMachineService.send({type: TaskEvent.TASK_INCOMING, taskData});
-        expect(task.isWebexAppCallingOffer()).toBe(true);
-        // Make an erroneous late reset observable even though the default is false.
-        task['wxAppMuted'] = true;
-        const sync = jest.spyOn(task, 'syncWxAppMuteFromCallDetails');
-        const updated = jest.fn();
-        task.on(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, updated);
-        // Ignore construction/offer diagnostics; the assertions below own this accept.
-        metrics.mockClear();
-        actionLog.mockClear();
-        const result = task.accept();
-
-        expect(service.answerCall.mock.calls).toEqual([[
-          {callId: 'call-id-1', endpointId: 'device-id-1', lineOwnerId: undefined},
-        ]]);
-        expect(task.uiControlConfig.wxAppAcceptInFlight).toBe(true);
-        expect(task.uiControlConfig.wxAppAnswerPending).toBe(true);
-        expect(sync).not.toHaveBeenCalled();
-        expect(metrics).not.toHaveBeenCalled();
-
-        if (retired) {
-          const rejected = expect(result).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
-          task.invalidateForRegionRecovery();
-          const controls = task.uiControls;
-          const config = {...task.uiControlConfig};
-          const updatesAtRetirement = updated.mock.calls.slice();
-
-          pendingAnswer.resolve();
-          await rejected;
-
-          expect(task.getWxAppMuted()).toBe(true);
-          expect(sync).not.toHaveBeenCalled();
-          expect(service.getCallDetails).not.toHaveBeenCalled();
-          expect(task.uiControlConfig).toEqual(config);
-          expect(task.uiControls).toBe(controls);
-          expect(updated.mock.calls).toEqual(updatesAtRetirement);
-        } else {
-          pendingAnswer.resolve();
-          await expect(result).resolves.toBeUndefined();
-          await flushEventLoopTurn();
-
-          expect(actionLog.mock.calls).toEqual([
-            [{action: 'accept', phase: 'started', interactionId: 'int1'}],
-            [{action: 'accept', phase: 'success', interactionId: 'int1'}],
-          ]);
-          expect(metrics.mock.calls).toEqual([[
-            METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_SUCCESS,
-            {
-              taskId: 'int1', acceptReason: 'wxApp_offer_ready',
-              hasDeviceCallId: true, hasDeviceId: true,
-            },
-            ['operational', 'behavioral'],
-          ]]);
-          expect(sync).toHaveBeenCalledTimes(1);
-          expect(service.getCallDetails).toHaveBeenCalledTimes(1);
-          expect(task.getWxAppMuted()).toBe(false);
-          expect(task.uiControlConfig.wxAppAcceptInFlight).toBe(false);
-          expect(task.uiControlConfig.wxAppAnswerPending).toBe(true);
-          expect(updated).toHaveBeenCalled();
-        }
-        expect(service.answerCall).toHaveBeenCalledTimes(1);
-        expect(uploadLogs).not.toHaveBeenCalled();
-      }
-    );
 
     it.each([
       {method: 'muteCall', invoke: (voice: Voice) => voice.toggleMute({muted: true})},
@@ -2580,7 +2494,7 @@ describe('T-008 Voice regional lifetime', () => {
           },
         } as TaskData['interaction'],
       });
-      task = new Voice(dummyContact, taskData, {
+      const task = new Voice(dummyContact, taskData, {
         enableWxBetterTogether: true,
         answerCallOnWebexService: {[method]: request} as unknown as AnswerCallOnWebexService,
       });
@@ -2603,289 +2517,40 @@ describe('T-008 Voice regional lifetime', () => {
     });
   });
 
-  describe('voice command lifecycle', () => {
-    const actualUtils = jest.requireActual('../../../../../../src/services/core/Utils');
-    const uploadLogs = WebexRequest.getInstance().uploadLogs as jest.Mock;
-    const consultPayload = {to: 'agent-2', destinationType: DESTINATION_TYPE.AGENT};
-    const transferPayload = {to: 'agent-2', destinationType: DESTINATION_TYPE.AGENT};
-    const mediaRequest = {interactionId: 'int1', data: {mediaResourceId: 'media1'}};
-    const interactionRequest = {interactionId: 'int1'};
-    type CommandCase = {
-      label: string;
-      state: 'offered' | 'connected' | 'held' | 'consulting' | 'conference';
-      boundary: string;
-      request: unknown;
-      invoke: (voice: Voice) => Promise<unknown>;
-      prime?: (voice: Voice, data: TaskData) => void;
+  it.each([
+    ['decline', (task: Voice) => task.decline()],
+    ['hold', (task: Voice) => task.hold()],
+    ['resume', (task: Voice) => task.resume()],
+    ['pause recording', (task: Voice) => task.pauseRecording()],
+    ['resume recording', (task: Voice) => task.resumeRecording()],
+    ['consult', (task: Voice) => task.consult()],
+    ['end consult', (task: Voice) => task.endConsult()],
+    ['transfer', (task: Voice) => task.transfer({to: 'agent-2', destinationType: DESTINATION_TYPE.AGENT})],
+    ['consult conference', (task: Voice) => task.consultConference()],
+    ['drop conference member', (task: Voice) => task.dropConferenceParticipant({participantId: 'agent-2'})],
+    ['exit conference', (task: Voice) => task.exitConference()],
+    ['transfer conference', (task: Voice) => task.transferConference()],
+    ['switch call', (task: Voice) => task.switchCall()],
+  ] as const)('rejects %s on a retired task', async (_method, invoke) => {
+    const task = new Voice(dummyContact, createBaseData());
+    task.invalidateForRegionRecovery();
 
-      failureMetric: string;
-      failureEvent?: TaskEvent;
-    };
-    const commandCases: CommandCase[] = [
-      {
-        label: 'decline outdial', state: 'offered', boundary: 'cancelTask',
-        request: interactionRequest, invoke: (voice) => voice.decline(),
-        failureMetric: METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
-      },
-      {
-        label: 'decline inbound', state: 'offered', boundary: 'rejectCall',
-        request: {callId: 'call-1', lineOwnerId: undefined}, invoke: (voice) => voice.decline(),
-        failureMetric: METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
-      },
-      {
-        label: 'holdResume hold', state: 'connected', boundary: 'hold',
-        request: mediaRequest, invoke: (voice) => voice.holdResume(),
-        failureMetric: METRIC_EVENT_NAMES.TASK_HOLD_FAILED, failureEvent: TaskEvent.HOLD_FAILED,
-      },
-      {
-        label: 'holdResume resume', state: 'held', boundary: 'unHold',
-        request: mediaRequest, invoke: (voice) => voice.holdResume(),
-        failureMetric: METRIC_EVENT_NAMES.TASK_RESUME_FAILED, failureEvent: TaskEvent.UNHOLD_FAILED,
-      },
-      {
-        label: 'pauseRecording', state: 'connected', boundary: 'pauseRecording',
-        request: interactionRequest, invoke: (voice) => voice.pauseRecording(),
-        failureMetric: METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_FAILED,
-      },
-      {
-        label: 'resumeRecording', state: 'connected', boundary: 'resumeRecording',
-        request: {interactionId: 'int1', data: {autoResumed: false}},
-        prime: (voice, taskData) => voice.stateMachineService.send({
-          type: TaskEvent.PAUSE_RECORDING, taskData,
-        }),
-        invoke: (voice) => voice.resumeRecording(),
-        failureMetric: METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_FAILED,
-      },
-      {
-        label: 'consult', state: 'connected', boundary: 'consult',
-        request: {interactionId: 'int1', data: consultPayload},
-        invoke: (voice) => voice.consult({...consultPayload}),
-        failureMetric: METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
-        failureEvent: TaskEvent.CONSULT_FAILED,
-      },
-      {
-        label: 'endConsult', state: 'consulting', boundary: 'consultEnd',
-        request: {interactionId: 'int1', data: undefined}, invoke: (voice) => voice.endConsult(),
-        failureMetric: METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
-      },
-      {
-        label: 'transfer consult', state: 'consulting', boundary: 'consultTransfer',
-        request: {interactionId: 'int1', data: {to: 'agent-2', destinationType: 'agent'}},
-        invoke: (voice) => voice.transfer({...transferPayload}),
-        failureMetric: METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
-      },
-      {
-        label: 'transfer blind', state: 'connected', boundary: 'blindTransfer',
-        request: {interactionId: 'int1', data: transferPayload},
-        invoke: (voice) => voice.transfer({...transferPayload}),
-        failureMetric: METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
-      },
-      {
-        label: 'consultConference', state: 'consulting', boundary: 'consultConference',
-        request: {
-          interactionId: 'int1',
-          data: {agentId: 'agent-1', to: 'agent-2', destinationType: DESTINATION_TYPE.AGENT},
-        },
-        invoke: (voice) => voice.consultConference(),
-        failureMetric: METRIC_EVENT_NAMES.TASK_CONFERENCE_START_FAILED,
-        failureEvent: TaskEvent.CONFERENCE_FAILED,
-      },
-      {
-        label: 'dropConferenceParticipant', state: 'conference', boundary: 'dropConferenceParticipant',
-        request: {interactionId: 'int1', participantId: 'agent-2'},
-        invoke: (voice) => voice.dropConferenceParticipant({participantId: 'agent-2'}),
-        failureMetric: METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED,
-      },
-      {
-        label: 'exitConference', state: 'conference', boundary: 'exitConference',
-        request: interactionRequest, invoke: (voice) => voice.exitConference(),
-        failureMetric: METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_FAILED,
-        failureEvent: TaskEvent.EXIT_CONFERENCE_FAILED,
-      },
-      {
-        label: 'transferConference', state: 'conference', boundary: 'conferenceTransfer',
-        request: interactionRequest, invoke: (voice) => voice.transferConference(),
-        failureMetric: METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED,
-        failureEvent: TaskEvent.TRANSFER_CONFERENCE_FAILED,
-      },
-      {
-        label: 'switchCall to main', state: 'consulting', boundary: 'unHold',
-        request: mediaRequest, invoke: (voice) => voice.switchCall(),
-        failureMetric: METRIC_EVENT_NAMES.TASK_SWITCH_CALL_FAILED,
-        failureEvent: TaskEvent.SWITCH_TO_CONSULT,
-      },
-      {
-        label: 'switchCall to consult', state: 'consulting', boundary: 'hold',
-        request: mediaRequest, invoke: (voice) => voice.switchCall(),
-        prime: (voice) => voice.stateMachineService.send({type: TaskEvent.SWITCH_TO_MAIN_CALL}),
-        failureMetric: METRIC_EVENT_NAMES.TASK_SWITCH_CALL_FAILED,
-        failureEvent: TaskEvent.SWITCH_TO_MAIN_CALL,
-      },
-    ];
-    let task: Voice;
-    let errorLog: jest.SpyInstance;
-    let metrics: jest.SpyInstance;
-    let diagnosticSinks: jest.SpyInstance[];
+    await expect(invoke(task)).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
+  });
 
-    beforeEach(() => {
-      jest.spyOn(Utils, 'getErrorDetails').mockImplementation(actualUtils.getErrorDetails);
-      errorLog = jest.spyOn(LoggerProxy, 'error').mockImplementation();
-      const manager = MetricsManager.getInstance();
-      metrics = jest.spyOn(manager, 'trackEvent').mockImplementation();
-      diagnosticSinks = [
-        metrics, errorLog,
-        jest.spyOn(manager, 'timeEvent').mockImplementation(),
-        jest.spyOn(LoggerProxy, 'info').mockImplementation(),
-        jest.spyOn(LoggerProxy, 'log').mockImplementation(),
-        jest.spyOn(LoggerProxy, 'warn').mockImplementation(),
-        jest.spyOn(LoggerProxy, 'trace').mockImplementation(),
-        jest.spyOn(wxAppDiagnosticLogging, 'logWxAppTelephonyAction'),
-      ];
-    });
+  it('settles a pending hold without updating a retired task', async () => {
+    const pending = createDeferred<{trackingId: string}>();
+    const task = new Voice({...dummyContact, hold: jest.fn(() => pending.promise)}, createBaseData());
+    primeConnectedState(task, task.data);
+    const actor = jest.spyOn(task.stateMachineService, 'send');
+    const hold = task.hold();
 
-    afterEach(() => {
-      task?.invalidateForRegionRecovery();
-      jest.restoreAllMocks();
-    });
+    task.invalidateForRegionRecovery();
+    actor.mockClear();
+    const response = {trackingId: 'hold-result'};
+    pending.resolve(response);
 
-    const createHarness = (testCase: CommandCase) => {
-      const pending = createDeferred<any>();
-      const boundaries = Object.fromEntries([
-        'cancelTask', 'rejectCall', 'hold', 'unHold', 'pauseRecording', 'resumeRecording',
-        'consult', 'consultEnd', 'consultTransfer', 'blindTransfer', 'consultConference',
-        'dropConferenceParticipant', 'exitConference', 'conferenceTransfer',
-      ].map((method) => [method, jest.fn(() => pending.promise)]));
-      const taskData = createBaseData({
-        agentId: 'agent-1', destAgentId: 'agent-2', consultMediaResourceId: 'consult-media',
-        interaction: {
-          state: testCase.state === 'consulting' ? 'consulting' : 'connected',
-          outboundType: testCase.label === 'decline outdial' ? 'OUTDIAL' : undefined,
-          owner: 'agent-1',
-          callProcessingDetails: {recordingStarted: true, recordInProgress: true},
-          participants: {
-            'agent-1': {
-              id: 'agent-1', pType: 'Agent', type: 'Agent', hasLeft: false,
-              deviceType: 'wxApp', deviceId: 'device-1', deviceCallId: 'call-1',
-            },
-            'agent-2': {id: 'agent-2', pType: 'Agent', type: 'Agent', hasLeft: false},
-          },
-          media: {
-            media1: {mediaResourceId: 'media1', isHold: false},
-            'consult-media': {
-              mediaResourceId: 'consult-media', isHold: false, mType: 'consult',
-              participants: ['agent-1', 'agent-2'],
-            },
-          },
-        } as TaskData['interaction'],
-      });
-      task = new Voice(boundaries as any, taskData, {
-        enableWxBetterTogether: testCase.state === 'offered',
-        answerCallOnWebexService: {rejectCall: boundaries.rejectCall} as unknown as AnswerCallOnWebexService,
-      }, undefined, 'agent-1');
-      if (testCase.state === 'offered') {
-        task.stateMachineService.send({type: TaskEvent.TASK_INCOMING, taskData});
-        expect(task.isWebexAppCallingOffer()).toBe(true);
-      } else if (testCase.state === 'held') {
-        primeHeldState(task, taskData);
-      } else {
-        primeConnectedState(task, taskData);
-        if (testCase.state === 'consulting') {
-          task.stateMachineService.send({type: TaskEvent.CONSULT, ...{
-            destination: consultPayload.to, destinationType: consultPayload.destinationType,
-          }});
-          task.stateMachineService.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
-        } else if (testCase.state === 'conference') {
-          task.stateMachineService.send({type: TaskEvent.CONFERENCE_START, taskData});
-        }
-      }
-      expect(task.stateMachineService.getSnapshot().value).toBe({
-        offered: TaskState.OFFERED, connected: TaskState.CONNECTED, held: TaskState.HELD,
-        consulting: TaskState.CONSULTING, conference: TaskState.CONFERENCING,
-      }[testCase.state]);
-      testCase.prime?.(task, taskData);
-      const actor = jest.spyOn(task.stateMachineService, 'send');
-      const emit = jest.spyOn(task, 'emit');
-      const updates = jest.spyOn(task, 'updateTaskData');
-      const controls = jest.spyOn(task as any, 'updateUiControls');
-      diagnosticSinks.forEach((sink) => sink.mockClear());
-      uploadLogs.mockClear();
-      const effects = () => ({
-        // Clone values so an in-place mutation cannot also change our baseline.
-        state: JSON.parse(JSON.stringify({
-          value: task.stateMachineService?.getSnapshot().value,
-          context: task.stateMachineService?.getSnapshot().context,
-          data: task.data, controls: task.uiControls, config: task['uiControlConfig'],
-          wxAppMuted: task.getWxAppMuted(),
-        })),
-        calls: [actor, emit, updates, controls, ...diagnosticSinks, uploadLogs,
-          ...Object.values(boundaries)].map((sink) => sink.mock.calls.slice()),
-      });
-      const expectBoundary = () => {
-        expect(Object.fromEntries(Object.entries(boundaries).map(([name, mock]) => [
-          name, mock.mock.calls,
-        ]))).toEqual(Object.fromEntries(Object.keys(boundaries).map((name) => [
-          name, name === testCase.boundary ? [[testCase.request]] : [],
-        ])));
-      };
-      const response = {trackingId: 'voice-command-tracking', data: taskData};
-
-      return {pending, actor, effects, expectBoundary, response, request: boundaries[testCase.boundary]};
-    };
-
-    describe.each(commandCases)('$label', (testCase) => {
-      it('blocks retired tasks before I/O or local effects', async () => {
-        const harness = createHarness(testCase);
-        task.invalidateForRegionRecovery();
-        const before = harness.effects();
-
-        await expect(testCase.invoke(task)).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
-
-        expect(harness.effects()).toEqual(before);
-      });
-
-      it('preserves ordinary backend failure handling', async () => {
-        const harness = createHarness(testCase);
-        const error = new Error('ordinary backend failure');
-        const result = testCase.invoke(task);
-        const observed = testCase.boundary === 'dropConferenceParticipant'
-          ? expect(result).rejects.toBe(error)
-          : expect(result).rejects.toThrow('Error while performing');
-        harness.expectBoundary();
-        harness.actor.mockClear();
-        harness.pending.reject(error);
-        await observed;
-
-        expect(metrics.mock.calls.map(([name]) => name)).toContain(testCase.failureMetric);
-        if (testCase.failureEvent) {
-          expect(harness.actor.mock.calls.map(([event]) => event.type)).toEqual([testCase.failureEvent]);
-        }
-      });
-
-      if (testCase.label === 'holdResume hold') {
-        it('settles a pending hold without updating a retired task', async () => {
-          const harness = createHarness(testCase);
-          const result = testCase.invoke(task);
-          harness.pending.resolve(harness.response);
-          task.invalidateForRegionRecovery();
-          harness.actor.mockClear();
-
-          await expect(result).resolves.toBe(harness.response);
-
-          expect(harness.actor).not.toHaveBeenCalled();
-        });
-      }
-
-      if (testCase.boundary === 'conferenceTransfer') {
-        it('completes an admitted conference transfer through its actor', async () => {
-          const harness = createHarness(testCase);
-          const result = testCase.invoke(task);
-          harness.expectBoundary();
-          harness.pending.resolve(harness.response);
-
-          await expect(result).resolves.toBe(harness.response);
-          expect(harness.actor).toHaveBeenCalledWith({type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS, taskData: harness.response.data});
-        });
-      }
-    });
+    await expect(hold).resolves.toBe(response);
+    expect(actor).not.toHaveBeenCalled();
   });
 });

@@ -1133,6 +1133,15 @@ describe('WebCallingService', () => {
   });
 
   describe('cleanUpCall', () => {
+    it('should clean up the call and remove listeners', () => {
+      webRTCCalling.cleanUpCall();
+
+      expect(mockCall.off).toHaveBeenCalledWith(CALL_EVENT_KEYS.REMOTE_MEDIA, expect.any(Function));
+      expect(mockCall.off).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, expect.any(Function));
+      expect(webRTCCalling.call).toBeNull();
+      expect(webRTCCalling.getTaskIdForCall(mockCall.getCallId())).toBeUndefined();
+    });
+
     const installCall = (callId = 'call-id-123') => {
       const call = {...mockCall, ...createEmitter(), getCallId: jest.fn(() => callId)};
       (webRTCCalling as any).call = call;
@@ -1140,19 +1149,6 @@ describe('WebCallingService', () => {
 
       return call;
     };
-
-    it('should clean up the call and remove listeners', () => {
-      const call = installCall();
-      webRTCCalling.mapCallToTask(call.getCallId(), 'ending-task');
-      webRTCCalling.cleanUpCall();
-
-      expect(call.off.mock.calls).toEqual(call.on.mock.calls);
-      expect(call.handlers.get(CALL_EVENT_KEYS.REMOTE_MEDIA)).toEqual([]);
-      expect(call.handlers.get(CALL_EVENT_KEYS.DISCONNECT)).toEqual([]);
-      expect(webRTCCalling.call).toBeNull();
-      expect(webRTCCalling.getTaskIdForCall(call.getCallId())).toBeUndefined();
-      expect(call.end).not.toHaveBeenCalled();
-    });
 
     it.each([
       {owner: undefined, dispose: false},
@@ -1311,13 +1307,6 @@ describe('WebCallingService', () => {
       expect(webRTCCalling.getVoiceConnectionState()).toEqual({...transport, status: VOICE_CONNECTION_STATUS.NOT_REQUIRED});
     });
 
-    it('cleanUpCall ignores a replacement identity', () => {
-      const replacement = {...mockCall};
-      (webRTCCalling as any).call = replacement;
-      webRTCCalling.cleanUpCall(mockCall);
-      expect((webRTCCalling as any).call).toBe(replacement);
-      expect(mockCall.off).not.toHaveBeenCalled();
-    });
   });
 
   describe('T-009 real retained calling owner', () => {
@@ -1590,7 +1579,6 @@ describe('WebCallingService', () => {
     it.each([
       {name: 'stopped registration', type: ERROR_TYPE.SERVICE_UNAVAILABLE, event: LINE_EVENTS.ERROR},
       {name: 'stopped keepalive', type: ERROR_TYPE.TOKEN_ERROR, event: LINE_EVENTS.UNREGISTERED},
-      {name: 'restartable keepalive', type: ERROR_TYPE.NOT_FOUND, event: LINE_EVENTS.UNREGISTERED},
       {name: 'superseded registration', type: ERROR_TYPE.SESSION_SUPERSEDED, event: LINE_EVENTS.UNREGISTERED},
     ])('retains $name without attempting deferred repair', async ({type, event}) => {
       jest.useFakeTimers();

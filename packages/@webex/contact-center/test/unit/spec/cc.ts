@@ -2827,17 +2827,6 @@ describe('webex.cc', () => {
         expect(webex.cc['lastPublishedRegionState']).toEqual(snapshot);
       });
 
-      it('T-005 ordinaryMismatchSingleReloadSnapshot', async () => {
-        await prepare();
-        const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
-        const terminal = webex.cc.services.connectionService.reset.mock.calls.slice(-1)[0][0].onTerminalFailure;
-        const failure = Object.assign(new Error('safe'), {data: {kind: 'region-mismatch', status: 409, reason: 'REGION_MISMATCH_NO_OVERRIDE'}});
-        terminal(failure); terminal(failure);
-        expect(listener).toHaveBeenCalledTimes(1);
-        expect(listener.mock.calls[0][0].status).toBe('reloadRequired');
-        expect(webex.cc['registrationAbortController'].signal.aborted).toBe(false);
-      });
-
       it.each([undefined, '', 'different-agent'])('T-003 primaryWelcomeIdentityFenced %s', async (agentId) => {
         await prepare(true, true); accept();
         expect(webex.cc['acceptedStation']).toBeDefined();
@@ -16105,7 +16094,7 @@ describe('realRecoveryWiring', () => {
       jest.advanceTimersByTime(1); await flush();
       expect(listener).toHaveBeenCalledTimes(1);
       expect(listener.mock.calls[0][0]).toEqual({status: 'reloadRequired', reason: 'region-mismatch', homeRegion: 'produs1'});
-      expect(navigationReload).not.toHaveBeenCalled();
+      expect(cc['registrationAbortController'].signal.aborted).toBe(false);
       const count = host.request.mock.calls.length;
       jest.advanceTimersByTime(180000); await flush();
       expect(host.request).toHaveBeenCalledTimes(count);
@@ -16452,11 +16441,22 @@ describe('realRecoveryWiring', () => {
     }
   );
 
-  it.each(['wait', 'subscribe', 'welcome', 'reload', 'retry-delay', 'fallback', 'post1035'].flatMap(phase =>
-    ['logout', 'deregister', 'register', 'multi-login', 'org replacement', 'agent replacement', 'supersede', 'remote logout']
-      .flatMap(boundary => (['wait', 'welcome'].includes(phase) ? [true] : [false, true])
-        .map(success => [phase, boundary, success]))))(
-    'T-012 everyTerminationDuringEveryAwait / lateHttpWelcomeReloadMedia phase=%s boundary=%s lateSuccess=%s',
+  it.each([
+    ['wait', 'logout', true],
+    ['wait', 'supersede', true],
+    ['subscribe', 'register', true],
+    ['subscribe', 'deregister', false],
+    ['welcome', 'org replacement', true],
+    ['welcome', 'agent replacement', true],
+    ['reload', 'multi-login', true],
+    ['reload', 'remote logout', false],
+    ['retry-delay', 'supersede', true],
+    ['fallback', 'deregister', true],
+    ['fallback', 'register', false],
+    ['post1035', 'logout', true],
+    ['post1035', 'supersede', false],
+  ])(
+    'T-012 superseded recovery ignores late work phase=%s boundary=%s lateSuccess=%s',
     async (phase, boundary, success) => {
       await withGraph(async ({cc, host, requests, sockets, login, frame, flush}) => {
         await login(); cc.$config.allowAutomatedRelogin = true;

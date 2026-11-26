@@ -47,7 +47,12 @@ type SocketAttempt = {
   reject: (error: unknown) => void;
 };
 
-/** Owns one admitted socket and every resource associated with its lifetime. @ignore */
+/**
+ * WebSocketManager handles the WebSocket connection for Contact Center operations.
+ * It manages the connection lifecycle, including registration, reconnection, and message handling.
+ * It also utilizes a Web Worker to manage keepalive messages and socket closure.
+ * @ignore
+ */
 export class WebSocketManager extends EventEmitter {
   public shouldReconnect = true;
   private isConnectionLost = false;
@@ -57,10 +62,11 @@ export class WebSocketManager extends EventEmitter {
 
   constructor(options: {webex: WebexSDK}) {
     super();
-    this.webex = options.webex;
+    const {webex} = options;
+    this.webex = webex;
   }
 
-  public initWebSocket(options: {
+  initWebSocket(options: {
     body: SubscribeRequest;
     resource: string;
     signal?: AbortSignal;
@@ -93,8 +99,8 @@ export class WebSocketManager extends EventEmitter {
         return;
       }
       // Retain both continuations after cancellation: late HTTP cannot install a socket.
-      const {body, resource} = options;
-      this.register(body, resource).then(
+      const {body: connectionConfig, resource} = options;
+      this.register(connectionConfig, resource).then(
         (url) => {
           if (!this.ownsAttempt(attempt)) return;
           clearTimeout(attempt.timer);
@@ -132,7 +138,7 @@ export class WebSocketManager extends EventEmitter {
     );
   }
 
-  public close(shouldReconnect: boolean, reason = 'Unknown'): void {
+  close(shouldReconnect: boolean, reason = 'Unknown'): void {
     this.shouldReconnect = shouldReconnect;
     const attempt = this.attempt;
     if (!attempt) return;
@@ -141,7 +147,7 @@ export class WebSocketManager extends EventEmitter {
     if (reason) WebSocketManager.diagnose('WebSocket connection closed', METHODS.CLOSE);
   }
 
-  public handleConnectionLost(event: ConnectionLostDetails): void {
+  handleConnectionLost(event: ConnectionLostDetails): void {
     this.isConnectionLost = event.isConnectionLost;
   }
 
@@ -158,35 +164,41 @@ export class WebSocketManager extends EventEmitter {
     }
   }
 
-  private async register(body: SubscribeRequest, resource: string): Promise<string> {
+  private async register(connectionConfig: SubscribeRequest, resource: string): Promise<string> {
+    // X-ORGANIZATION-ID header is only required for INT environments
     const isIntEnv = this.webex.internal?.services?.isIntegrationEnvironment() || false;
     const orgId = this.webex.credentials.getOrgId();
-    const response: SubscribeResponse = await this.webex.request({
+    const subscribeResponse: SubscribeResponse = await this.webex.request({
       service: WCC_API_GATEWAY,
       resource,
       method: HTTP_METHODS.POST,
-      body,
+      body: connectionConfig,
       headers: isIntEnv && orgId ? {'X-ORGANIZATION-ID': orgId} : undefined,
       timeout: TIMEOUT_REQ,
     });
-    const failure = normalizeRecoveryFailure(response);
+    const failure = normalizeRecoveryFailure(subscribeResponse);
     if (failure.status !== undefined && (failure.status < 200 || failure.status >= 300)) {
-      throw response;
+      throw subscribeResponse;
     }
-    const url = response.body?.webSocketUrl;
-    let isWss = false;
+    const webSocketUrl = subscribeResponse.body?.webSocketUrl;
+
+    // Only a `wss` URL whose hostname is, or is a subdomain of, one of the allow-listed
+    // RoutingNotifs domains is considered trusted.
+    let isWssUrl = false;
+
     try {
-      isWss = new URL(url).protocol === 'wss:';
+      isWssUrl = new URL(webSocketUrl).protocol === 'wss:';
     } catch {
-      isWss = false;
+      isWssUrl = false;
     }
-    if (!isWss || !isAllowedUrlHost(url, ALLOWED_ROUTING_NOTIFS_DOMAINS)) {
+
+    if (!isWssUrl || !isAllowedUrlHost(webSocketUrl, ALLOWED_ROUTING_NOTIFS_DOMAINS)) {
       throw new Error(
         'Rejected webSocketUrl from RoutingNotifs registration: scheme or host not allow-listed'
       );
     }
 
-    return url;
+    return webSocketUrl;
   }
 
   private connect(attempt: SocketAttempt, url: string, primary: boolean): void {
@@ -196,23 +208,27 @@ export class WebSocketManager extends EventEmitter {
       if (!this.ownsAttempt(attempt) || attempt.worker) return;
       try {
         socket.send(JSON.stringify({keepalive: 'true'}));
-        const blob = new Blob([workerScript], {type: 'application/javascript'});
-        attempt.workerUrl = URL.createObjectURL(blob);
+        const workerScriptBlob = new Blob([workerScript], {type: 'application/javascript'});
+        attempt.workerUrl = URL.createObjectURL(workerScriptBlob);
         const worker = new Worker(attempt.workerUrl);
         attempt.worker = worker;
-        worker.onmessage = (event: MessageEvent) => {
+        worker.onmessage = (keepAliveEvent: MessageEvent) => {
           if (!this.ownsAttempt(attempt)) return;
-          if (event.data?.type === 'keepalive' && socket.readyState === 1)
+          if (keepAliveEvent?.data?.type === 'keepalive' && socket.readyState === 1)
             socket.send(JSON.stringify({keepalive: 'true'}));
-          if (event.data?.type === 'closeSocket' && this.isConnectionLost && this.shouldReconnect) {
+          if (
+            keepAliveEvent?.data?.type === 'closeSocket' &&
+            this.isConnectionLost &&
+            this.shouldReconnect
+          ) {
             this.close(true, 'WebSocket did not auto close within 16 secs');
           }
         };
         worker.postMessage({
           type: 'start',
-          intervalDuration: KEEPALIVE_WORKER_INTERVAL,
+          intervalDuration: KEEPALIVE_WORKER_INTERVAL, // Keepalive interval
           isSocketClosed: false,
-          closeSocketTimeout: CLOSE_SOCKET_TIMEOUT,
+          closeSocketTimeout: CLOSE_SOCKET_TIMEOUT, // Close socket timeout
         });
       } catch (error) {
         const admitted = attempt.accepted;

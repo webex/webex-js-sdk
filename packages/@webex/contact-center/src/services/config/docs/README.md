@@ -259,7 +259,7 @@ Sequence coverage:
 
 | Operation group | Entry and outcome | Diagram or evidence | Failure and recovery coverage |
 | --------------- | ----------------- | ------------------- | ----------------------------- |
-| Profile aggregation and AI feature flags | `getAgentConfig(orgId, agentId)` resolves a `Profile` | Profile aggregation diagram; `src/services/config/index.ts` | Any required request rejection rejects `getAgentConfig`; no partial Profile is returned. |
+| Profile aggregation and AI feature flags | `getAgentConfig(orgId, agentId)` resolves one `Profile` | Profile aggregation diagram; `src/services/config/index.ts` | Any required request rejection rejects `getAgentConfig`; no partial Profile is returned. |
 | Team/aux-code pagination | `getAllTeams`, `getAllAuxCodes` resolve the concatenated list | Pagination diagram; `src/services/config/index.ts` | Continue until page metadata is exhausted; any page rejection rejects the operation. |
 | Wellness system idle code | `getWellbeingBreakIdleCode(orgId)` resolves one `Entity` | Wellness idle-code lookup diagram; `src/services/config/index.ts` | Sequential pages stop at the first match; no match rejects with `WELLBEING_BREAK_IDLE_CODE_NOT_FOUND`; a non-200 page rejects. |
 | Single-resource fetches | `getOrgDesktopLoginConfig`, `getUserDesktopLoginConfig`, `getSiteInfo`, `getDialPlanData`, `getMultimediaProfileById`, `getListOfTeams`, `getListOfAuxCodes` resolve the response body | `src/services/config/index.ts` | Non-200 throws `API call failed with {statusCode}`; rejections are logged and rethrown. |
@@ -269,8 +269,9 @@ AI-feature retrieval shares the same actors, ordering, Promise aggregation, and 
 
 ### Profile aggregation
 
-`getAgentConfig()` resolves a `Profile` with optional internal recovery settings from the
-existing organization desktop-login response.
+Main method that aggregates all configuration data into the AgentProfile.
+
+**Returns**: `Promise<Profile>`
 
 **Flow**:
 
@@ -281,9 +282,9 @@ existing organization desktop-login response.
 5. `Promise.all` the five remaining promises
 6. Resolve `multimediaProfileId` from the team value, falling back to the site value
 7. Parse and combine all data (`parseAgentConfigs`)
+8. Attach the optional recovery settings from the organization desktop-login response.
 
-The following diagram shows how `getAgentConfig()` combines the two desktop-login aggregates
-with related configuration requests.
+The following diagram shows how `getAgentConfig` orchestrates six API calls and combines their results into the AgentProfile via `parseAgentConfigs()`:
 
 ```mermaid
 sequenceDiagram

@@ -300,7 +300,7 @@ function changeEnv() {
     return;
   }
 
-  changeEnvBtn.textContent = sampleEnvironment === 'integration' ? 'In Integration' : 'In Production';
+  changeEnvBtn.innerHTML = sampleEnvironment === 'integration' ? 'In Integration' : 'In Production';
   tokenElm.value = getSavedSampleCredentials()?.access_token ?? '';
 }
 
@@ -693,14 +693,20 @@ function changeAuthType(regionResume) {
     return;
   }
 
-  const useOAuth = authTypeElm.value === 'oauth';
-  toggleDisplay('credentials', !useOAuth);
-  toggleDisplay('oauth', useOAuth);
-  if (useOAuth) {
-    initOauth(regionResume);
-  } else {
-    tokenElm.value = getSavedSampleCredentials()?.access_token ?? '';
-    if (regionResume) initAccessToken(regionResume.credentials, regionResume.orgId);
+  switch (authTypeElm.value) {
+    case 'accessToken':
+      toggleDisplay('credentials', true);
+      toggleDisplay('oauth', false);
+      tokenElm.value = getSavedSampleCredentials()?.access_token ?? '';
+      if (regionResume) initAccessToken(regionResume.credentials, regionResume.orgId);
+      break;
+    case 'oauth':
+      initOauth(regionResume);
+      toggleDisplay('credentials', false);
+      toggleDisplay('oauth', true);
+      break;
+    default:
+      break;
   }
 }
 
@@ -716,7 +722,12 @@ function toggleDisplay(elementId, status) {
 }
 
 function initOauth(regionResume) {
-  const redirectUri = `${window.location.origin}${window.location.pathname}`;
+  let redirectUri = `${window.location.protocol}//${window.location.host}`;
+
+  if (window.location.pathname) {
+    redirectUri += window.location.pathname;
+  }
+
   const isIntegration = sampleEnvironment === 'integration';
   oauthLoginBtn.disabled = true;
 
@@ -770,7 +781,7 @@ function initOauth(regionResume) {
   webex.once('ready', () => {
     oauthLoginBtn.disabled = false;
     if (webex.canAuthorize) {
-      oauthStatusElm.textContent = 'Authenticated';
+      oauthStatusElm.innerText = 'Authenticated';
       completeSampleSignIn(0, regionResume?.orgId);
     } else if (regionResume) {
       setRegionRecoveryDialog(false);

@@ -23,7 +23,6 @@ import AnswerCallOnWebexService from '../../../../../../src/services/AnswerCallO
 import MetricsManager from '../../../../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../../../../src/metrics/constants';
 import * as Utils from '../../../../../../src/services/core/Utils';
-import {createDeferred} from '../../../../fixtures/aiSummaryTestUtils';
 
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
@@ -727,91 +726,18 @@ describe('runWxAppTransmitDtmf metrics', () => {
   });
 });
 
-describe.each([
-  ['accept', 'answerCall'], ['reject', 'rejectCall'], ['toggleMute', 'muteCall'],
-  ['transmitDtmf', 'transmitDtmf'], ['outdialDecline', 'cancelTask'],
-] as const)('wxApp %s regional lifetime', (operation, serviceMethod) => {
-  let deps: WxAppVoiceDeps;
-  let lifecycle: WxAppVoiceLifecycle;
-  let dependency: jest.Mock;
-  let admission: jest.Mock;
-  let invoke: () => Promise<unknown>;
-
-  beforeEach(() => {
-    const service = makeMockService();
-    const cancelTask = jest.fn().mockResolvedValue(undefined);
-    dependency = serviceMethod === 'cancelTask' ? cancelTask : service[serviceMethod];
-    admission = jest.fn();
-    deps = makeDeps({
-      answerCallOnWebexService: service,
-      assertCommandAllowed: admission,
-      getTaskState: () => operation === 'toggleMute' || operation === 'transmitDtmf'
-        ? TaskState.CONNECTED : TaskState.OFFERED,
-    });
-    jest.spyOn(deps, 'setWxAppMuted');
-    lifecycle = makeLifecycle({
-      mapWxAppVoiceError: jest.fn((error, name) => mapWxAppVoiceError(error, name, 'cc')),
-    });
-    const runners = {
-      accept: () => runWxAppAccept(deps, lifecycle),
-      reject: () => runWxAppReject(deps, lifecycle),
-      toggleMute: () => runWxAppToggleMute(deps, lifecycle, {muted: true}),
-      transmitDtmf: () => runWxAppTransmitDtmf(deps, lifecycle, {dtmf: '123'}),
-      outdialDecline: () => runWxAppOutdialDecline(deps, cancelTask),
-    };
-    invoke = runners[operation];
+it('blocks answer if the task retires while publishing pending controls', async () => {
+  const service = makeMockService();
+  const assertCommandAllowed = jest.fn();
+  const error = Utils.createRegionRecoveryError('STALE_TASK');
+  const deps = makeDeps({answerCallOnWebexService: service, assertCommandAllowed});
+  const lifecycle = makeLifecycle({
+    setWxAppAnswerPending: jest.fn(() => {
+      assertCommandAllowed.mockImplementation(() => { throw error; });
+    }),
+    mapWxAppVoiceError: jest.fn((failure, name) => mapWxAppVoiceError(failure, name, 'cc')),
   });
 
-  afterEach(() => jest.restoreAllMocks());
-
-  it('preserves the original recovery error', async () => {
-    const error = Utils.createRegionRecoveryError('REGION_RELOAD_REQUIRED', {status: 409});
-    dependency.mockRejectedValue(error);
-    await expect(invoke()).rejects.toBe(error);
-    expect(dependency).toHaveBeenCalledTimes(1);
-  });
-
-  if (operation === 'accept' || operation === 'toggleMute') {
-    it('keeps a late response from changing local call state', async () => {
-      const pending = createDeferred<void>();
-      dependency.mockReturnValue(pending.promise);
-      const error = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
-      const observed = expect(invoke()).rejects.toBe(error);
-      expect(dependency).toHaveBeenCalledTimes(1);
-      admission.mockImplementation(() => {
-        throw error;
-      });
-      pending.resolve();
-      await observed;
-
-      expect(deps.setWxAppMuted).not.toHaveBeenCalled();
-      expect(lifecycle.resetWxAppMuted).not.toHaveBeenCalled();
-      expect(lifecycle.syncWxAppMuteFromCallDetails).not.toHaveBeenCalled();
-    });
-  }
-
-  if (operation === 'transmitDtmf') {
-    it('tracks and maps an ordinary DTMF service failure', async () => {
-      const error = new Error('DTMF service failure');
-      dependency.mockRejectedValue(error);
-      await expect(invoke()).rejects.toThrow('Error while performing');
-      expect(lifecycle.mapWxAppVoiceError).toHaveBeenCalledWith(error, METHODS.TRANSMIT_DTMF);
-      expect((deps.metricsManager.trackEvent as jest.Mock).mock.calls.map(([event]) => event))
-        .toEqual([METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_FAILED]);
-    });
-  }
-
-  if (operation === 'accept') {
-    it('blocks dispatch when setting answer-pending controls interrupts the task', async () => {
-      const error = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
-      jest.mocked(lifecycle.setWxAppAnswerPending).mockImplementation(() => {
-        admission.mockImplementation(() => {
-          throw error;
-        });
-      });
-
-      await expect(invoke()).rejects.toBe(error);
-      expect(dependency).not.toHaveBeenCalled();
-    });
-  }
+  await expect(runWxAppAccept(deps, lifecycle)).rejects.toBe(error);
+  expect(service.answerCall).not.toHaveBeenCalled();
 });

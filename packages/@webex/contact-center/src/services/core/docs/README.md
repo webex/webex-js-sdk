@@ -847,5 +847,4 @@ Unit tests mirror module paths under `test/unit/spec/services/core`. Preserve po
 
 Run `yarn workspace @webex/contact-center build:src` and then `yarn workspace @webex/contact-center test:unit` from the workspace root. A module specification is
 complete only when its public surface, invariants, failure modes, and test evidence agree with the
-implementation. Module coverage remains Partial under `.sdd/manifest.json`; independent semantic
-approval does not itself satisfy coverage review and promotion criteria.
+implementation; this module stays Partial until coverage review and independent validation run.

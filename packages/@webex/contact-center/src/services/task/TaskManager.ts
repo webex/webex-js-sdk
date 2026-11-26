@@ -344,7 +344,7 @@ export default class TaskManager extends EventEmitter {
         CC_EVENTS.AGENT_CONTACT_RESERVED,
         currentTask.data
       );
-      if (eventPayload) {
+      if (eventPayload && currentTask) {
         currentTask.sendStateMachineEvent(eventPayload);
         if (!this.canHandleIncomingCall(owner)) return;
       }
@@ -353,7 +353,6 @@ export default class TaskManager extends EventEmitter {
   };
 
   public registerIncomingCallEvent() {
-    this.webCallingService.off(LINE_EVENTS.INCOMING_CALL, this.handleIncomingWebCall);
     this.webCallingService.on(LINE_EVENTS.INCOMING_CALL, this.handleIncomingWebCall);
   }
 
@@ -854,14 +853,16 @@ export default class TaskManager extends EventEmitter {
     const eventContext = this.prepareEventContext(message);
     if (!eventContext || !this.ownsTaskDelivery(owner)) return;
 
-    const {task} = this.handleTaskLifecycleEvent(eventContext);
+    const actions = this.handleTaskLifecycleEvent(eventContext);
+
+    const {task} = actions;
     if (!task || !this.ownsTaskDelivery(owner)) return;
 
     const {payload, stateMachineEvent} = eventContext;
 
     // Always keep task.data updated (even for mapped events) so consumers relying
     // on TaskManager-managed task instances see the latest payload.
-    if (!this.updateTaskData(task, payload)) return;
+    if (payload && !this.updateTaskData(task, payload)) return;
 
     // Send event to state machine - this will trigger all TASK_EVENTS emissions
     // including TASK_INCOMING which is now handled via the state machine callbacks
@@ -1165,7 +1166,7 @@ export default class TaskManager extends EventEmitter {
    */
   private findUniqueTaskByRelatedInteraction(
     payload: WebSocketPayload,
-    candidateFilter: (task: Task) => boolean = () => true,
+    candidateFilter: (task: ITask) => boolean = () => true,
     options: {includeCollectionKeys?: boolean; includeMainCallMediaKeys?: boolean} = {}
   ): Task | undefined {
     const candidates = this.findRelatedTasks(payload, options).filter(candidateFilter);
@@ -1627,13 +1628,14 @@ export default class TaskManager extends EventEmitter {
     }
     if (interactionId) {
       this.pendingFeatureEnablement.delete(interactionId);
-      // Drop any receiving summary for an offer that ends unanswered.
+      // An offer that ends unanswered (RONA, declined, consult cancelled) is removed here,
+      // so its held receiving summary is dropped instead of being emitted.
       this.receivingSummaryBuffer.delete(interactionId);
     }
     try {
       task.cancelAutoWrapupTimer?.();
       if (!interactionId) return;
-      LoggerProxy.info('Task removed from collection', {
+      LoggerProxy.info(`Task removed from collection`, {
         module: TASK_MANAGER_FILE,
         method: METHODS.REMOVE_TASK_FROM_COLLECTION,
         interactionId,

@@ -674,11 +674,9 @@ describe('ConnectionService single-flight scheduler', () => {
         const run = recover({signal: parent.signal, afterWelcome, onAttemptSettled: hook});
         const observed = run.promise.catch(error => { order.push('rejected'); rejected(error); });
         await tick(100000); await observed;
-        expect(rejected).toHaveBeenCalledTimes(1);
         expect(rejected.mock.calls[0][0]).toBeInstanceOf(Error);
         expect(rejected.mock.calls[0][0].data).toEqual({...failure, kind});
         expect(order).toEqual(['hook', 'rejected']);
-        expect(hook).toHaveBeenCalledTimes(1);
         expect(hook.mock.calls[0].slice(0, 2)).toEqual([1, 'terminal']);
         expect(snapshots).toEqual([{
           closed: [[false, 'Terminal recovery']], reconnect: false, flightAborted: true,

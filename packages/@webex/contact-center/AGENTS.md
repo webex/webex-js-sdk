@@ -652,12 +652,9 @@ reference; a `.bind(this)` at registration creates a reference that `off()` cann
 listener-cleanup defects are recorded in
 [Pitfalls and constraints](src/docs/README.md#pitfalls-and-constraints).
 
-Internal services listen to each other: the constructor's `this.$webex.once(READY, ...)` block
-registers the `TaskManager` listeners (`incomingTaskListener()`), `register()` registers the WebSocket
-`message` listener and, through `setupEventListeners()`, the `connectionLost` listener, and
-`deregister()` removes them. Pair each `on()` with an `off()` using the same callback. On
-registration teardown, close both socket managers with `shouldReconnect: false` so they also
-dispose pending admission. See [Deregister](src/docs/README.md#deregister).
+`register()` attaches the task, WebSocket `message`, and `connectionLost` listeners. Pair each
+`on()` with an `off()` using the same callback. On deregistration, close both socket managers with
+`shouldReconnect: false` to clear pending subscriptions. See [Deregister](src/docs/README.md#deregister).
 
 Applications subscribe on the `cc` object or on task instances. Always use named callbacks so `.off()`
 can reference the same function:

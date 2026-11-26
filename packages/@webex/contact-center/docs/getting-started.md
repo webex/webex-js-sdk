@@ -214,28 +214,18 @@ response. Literal `true` enables recovery and literal `false` disables it. Missi
 values leave eligibility unknown and preserve ordinary registration. Register again to pick up
 entitlement changes. Roll back through SDK release and backend entitlement management.
 
-### Release evidence and REL-AQM-TRACKING-ECHO
+### Release verification
 
-The SDK maintainer owns the release decision. Routing and QA must provide sanitized deployed
-captures with API versions and timestamps. Verify the entitlement fields in the deployed
-`GET organization/{orgId}/desktop-login` response and ordinary station and reconnect compatibility.
-
-For `stateChange`, `stationLogin` and `reload`, capture the successful and failed outcomes.
-Compare the UUID segment of the request header `trackingid: webex-js-sdk_<uuid>` with nested
-`data.trackingId`. Also verify backend reasons and reason codes and the ordinary event-type binds.
-The outer notification tracking ID is separate from request matching.
-
-AC-021 requires a live drill for each combination below. Record the desktop-login entitlement and
-home region, serving region, station result, new-call result, and supported RTD and voice evidence
-for each run.
-Record deployed SDK, backend and API versions and links to each capture.
+- Verify the deployed desktop-login entitlement and ordinary station login and reconnect.
+- For `REL-AQM-TRACKING-ECHO`, verify that recovery `stateChange`, `stationLogin`, and `reload`
+  responses echo the UUID from `trackingid: webex-js-sdk_<uuid>` in nested `data.trackingId`.
+  Check success, failure, and backend reason codes.
+- For `AC-021`, record the home and serving regions, station outcome, and new-call, RTD, and voice
+  results. For browser runs, capture the order and identifiers of the Calling offer and Task hydration.
+  Link sanitized captures with deployment versions and timestamps in the release record.
 
 | Login mode | Failover | Failback |
 | --- | --- | --- |
 | DN | Pending | Pending |
 | Extension | Pending | Pending |
 | Browser | Pending | Pending |
-
-For both browser runs, record the order of the Calling offer and Routing Task hydration, whether
-Calling emits the offer once, and the identifiers in both payloads. Keep the deployed correlation
-and live findings in the delivery release record. Local unit tests do not replace this evidence.

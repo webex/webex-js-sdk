@@ -616,21 +616,19 @@ Key nested WebSocket binds use the actual outer/data constants, for example `CC_
 ## Caller-visible failure modes
 
 Recovery errors use the [ContactCenter lifecycle contract](../../../docs/README.md#caller-visible-failure-modes).
-The [Core admission matrix](../../core/docs/README.md#aqmreqs-members) applies to agent adapters.
-`stateChange` uses the default command classification. `stationLogin` and `reload` are session
-requests, `logout` is teardown, and `buddyAgents` is a query.
+The [AQM request contract](../../core/docs/README.md#aqmreqs-members) describes ordinary and recovery request settlement.
 
 | Condition | Signal or result | Caller behavior | Retry or recovery | Evidence |
 | --------- | ---------------- | --------------- | ----------------- | -------- |
 | AGENT_DN dial number fails the dial plan | `Error('INVALID_DIAL_NUMBER')` before any request; `error.data` has the field message and `fieldName` | Show `error.data.message` on the dial-number field | Correct the number and call again | `src/cc.ts`, `src/services/core/Utils.ts` |
 | Extension or DN already in use by another session | Backend reason `DUPLICATE_LOCATION`: `Error('DUPLICATE_LOCATION')` with the in-use message for the login option | Show `error.data.message` on the `error.data.fieldName` field | Log in with another extension or DN | `src/services/core/Utils.ts`, `test/unit/spec/services/core/Utils.ts` |
-| Other ordinary backend failure notification | New `Error` whose message is the notification `data.reason`; for `stationLogin`, `error.data` has the generic login message and fieldName `generic` | Branch on `error.message`; lifecycle errors instead retain their `data.reason` as described above | Logs are uploaded with the failure tracking id | `src/cc.ts`, `src/services/core/Utils.ts` |
+| Other backend failure notification | `Error` whose message is the notification `data.reason`; for `stationLogin`, `error.data` has the generic login message and fieldName `generic` | Branch on `error.message` | Logs are uploaded with the failure tracking id | `src/cc.ts`, `src/services/core/Utils.ts` |
 | HTTP rejection, timeout after 20000 ms, or the same request already pending | AqmReqs rejects with `Service.aqm.agent.stationLogin`, `Service.reqs.generic.failure`, `Service.aqm.reqs.Timeout`, or `Service.aqm.reqs.Pending` details; these carry no `data.reason`, so the wrapper throws `Error` with the message Error while performing followed by the method name | Treat the outcome as unknown and wait for an agent event; never synthesize success | Call again once the pending call has settled | `src/services/core/aqm-reqs.ts`, `src/services/core/Utils.ts` |
 | Available requested while browser voice is not ready | `Error` whose message is `VOICE_CONNECTION_ERROR.NOT_READY`; no request sent | Wait for `voice:connectionStateChange` to report voice ready, or choose an Idle code | Call again when voice is ready | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | Silent relogin finds no agent session | Reason `AGENT_NOT_FOUND`; returns without throwing, error logging, or log upload | Nothing to handle; the agent is logged out | Call `stationLogin` | `src/cc.ts`, `src/services/core/Utils.ts` |
 | Ordinary reconnect does not run silent relogin | No reload unless `isConnectionLost` is false, `isSocketReconnected` is true, `allowAutomatedRelogin` is true (the default), no registration is pending, `suppressAutomaticRelogin` is false, and phase is `idle` or `ready` | Preserve logout intent and recovery ownership; changing the flag alone does not satisfy all gates | A later eligible reconnect can relogin; `stationLoginRequired` needs explicit login. Register-time relogin is a separate path gated by the flag and current registration ownership | `src/config.ts`, `src/cc.ts`, `test/unit/spec/cc.ts` |
 
-For ordinary `stationLogin` failures, special error handling extracts field-specific messages: `getStationLoginErrorData`
+For `stationLogin`, special error handling extracts field-specific messages: `getStationLoginErrorData`
 in `src/services/core/Utils.ts` builds an `errorCodeMessageMap` in which `DUPLICATE_LOCATION` gives the
 message 'This extension is already in use' for EXTENSION, a 'Dial number is in use' message for
 AGENT_DN, and 'This value is already in use' otherwise, and `INVALID_DIAL_NUMBER` gives 'Enter a valid

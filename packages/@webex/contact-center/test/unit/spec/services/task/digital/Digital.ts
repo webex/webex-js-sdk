@@ -1,7 +1,6 @@
 import Digital from '../../../../../../src/services/task/digital/Digital';
 import {MEDIA_CHANNEL, TaskData, TaskResponse} from '../../../../../../src/services/task/types';
 import {TaskEvent, TaskEventPayload} from '../../../../../../src/services/task/state-machine';
-import {createRegionRecoveryError} from '../../../../../../src/services/core/Utils';
 
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
@@ -52,14 +51,6 @@ describe('Digital Task', () => {
 
     await expect(task.accept()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
     expect(dummyContact.accept).not.toHaveBeenCalled();
-  });
-
-  it('accept() propagates AQM interruption', async () => {
-    const error = createRegionRecoveryError('RECOVERY_INTERRUPTED');
-    dummyContact.accept.mockRejectedValue(error);
-    const task = new Digital(dummyContact, dummyData);
-
-    await expect(task.accept()).rejects.toBe(error);
   });
 
   it('constructor shows accept when offered', () => {

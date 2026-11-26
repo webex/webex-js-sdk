@@ -282,10 +282,10 @@ export class ApiAIAssistant {
     const {signal} = options;
     if (signal?.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
     const key = ApiAIAssistant.getRtdRequestKey(options.rtdEventType, options.correlationId);
-    const previous = this.pendingRtdRequests.get(key);
-    if (previous) {
-      this.removeRtdRequest(key, previous);
-      previous.reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+    const previousRequest = this.pendingRtdRequests.get(key);
+    if (previousRequest) {
+      this.removeRtdRequest(key, previousRequest);
+      previousRequest.reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
     }
 
     let request!: PendingRtdRequest<T>;

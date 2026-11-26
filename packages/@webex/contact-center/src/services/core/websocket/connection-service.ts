@@ -1,5 +1,6 @@
 import {EventEmitter} from 'events';
 import type {WebSocketManager} from './WebSocketManager';
+import LoggerProxy from '../../../logger-proxy';
 import type {
   ConnectionFlight,
   ConnectionLostDetails,
@@ -9,11 +10,6 @@ import type {
   ConnectionRecoveryError,
   ConnectionRecoveryFailureKind,
 } from './types';
-import type {RecoveryFailure} from '../types';
-import type {SubscribeRequest} from '../../../types';
-import type {WelcomeResponse} from '../../config/types';
-import LoggerProxy from '../../../logger-proxy';
-import {CONNECTION_SERVICE_FILE} from '../../../constants';
 import {
   LOST_CONNECTION_RECOVERY_TIMEOUT,
   WS_DISCONNECT_ALLOWED,
@@ -22,7 +18,11 @@ import {
   REGION_RECOVERY_ERROR_CODES,
   SUBSCRIPTION_MISMATCH_REASONS,
 } from '../constants';
+import {CONNECTION_SERVICE_FILE} from '../../../constants';
+import type {SubscribeRequest} from '../../../types';
 import {SUBSCRIBE_API} from '../../constants';
+import type {WelcomeResponse} from '../../config/types';
+import type {RecoveryFailure} from '../types';
 import {
   awaitRecoveryWork,
   getSubscriptionMismatchReason,
@@ -55,7 +55,7 @@ const terminalError = (
 export class ConnectionService extends EventEmitter {
   private mode: 'ordinary' | 'paused' | 'region' | 'stopped' = 'stopped';
   private retryTimer?: ReturnType<typeof setTimeout>;
-  private heartbeatLossTimer?: ReturnType<typeof setTimeout>;
+  private reconnectingTimer?: ReturnType<typeof setTimeout>;
   private restoreTimer?: ReturnType<typeof setTimeout>;
   private isConnectionLost = false;
   private isRestoreFailed = false;
@@ -66,12 +66,14 @@ export class ConnectionService extends EventEmitter {
   private invocation?: RegionRecoveryInvocation;
   private registrationSignal?: AbortSignal;
   private onTerminalFailure?: ConnectionResetOptions['onTerminalFailure'];
+  private readonly webSocketManager: WebSocketManager;
   private subscribeRequest: SubscribeRequest;
   private readonly onRegistrationAbort = () => this.stop();
   private readonly onRegionAbort = () => this.pause();
 
-  constructor(private readonly webSocketManager: WebSocketManager) {
+  constructor(webSocketManager: WebSocketManager) {
     super();
+    this.webSocketManager = webSocketManager;
   }
 
   public reset(options: ConnectionResetOptions): void {
@@ -141,10 +143,10 @@ export class ConnectionService extends EventEmitter {
 
   private clearTimers(): void {
     clearTimeout(this.retryTimer);
-    clearTimeout(this.heartbeatLossTimer);
+    clearTimeout(this.reconnectingTimer);
     clearTimeout(this.restoreTimer);
     this.retryTimer = undefined;
-    this.heartbeatLossTimer = undefined;
+    this.reconnectingTimer = undefined;
     this.restoreTimer = undefined;
     this.lossEpisode = undefined;
   }
@@ -309,19 +311,19 @@ export class ConnectionService extends EventEmitter {
   }
 
   private dispatchConnectionEvent(socketReconnected = false): void {
-    const details: ConnectionLostDetails = {
+    const event: ConnectionLostDetails = {
       isConnectionLost: this.isConnectionLost,
       isRestoreFailed: this.isRestoreFailed,
       isSocketReconnected: socketReconnected,
       isKeepAlive: this.isKeepAlive,
     };
     try {
-      this.webSocketManager.handleConnectionLost(details);
+      this.webSocketManager.handleConnectionLost(event);
     } catch {
       /* Owner state is already settled. */
     }
     try {
-      this.emit('connectionLost', details);
+      this.emit('connectionLost', event);
     } catch {
       /* Host observers cannot restart scheduling. */
     }
@@ -333,9 +335,9 @@ export class ConnectionService extends EventEmitter {
   }
 
   private monitorOrdinary(): void {
-    clearTimeout(this.heartbeatLossTimer);
+    clearTimeout(this.reconnectingTimer);
     clearTimeout(this.restoreTimer);
-    this.heartbeatLossTimer = setTimeout(this.handleConnectionLost, WS_DISCONNECT_ALLOWED);
+    this.reconnectingTimer = setTimeout(this.handleConnectionLost, WS_DISCONNECT_ALLOWED);
     this.restoreTimer = setTimeout(this.handleRestoreFailed, LOST_CONNECTION_RECOVERY_TIMEOUT);
   }
 
@@ -362,15 +364,15 @@ export class ConnectionService extends EventEmitter {
 
   private onPing = (event: unknown): void => {
     if (this.mode !== 'ordinary' || this.flight) return;
-    let data: unknown;
+    let parsedEvent: unknown;
     try {
-      data = JSON.parse(event as string);
+      parsedEvent = JSON.parse(event as string);
     } catch {
       ConnectionService.diagnose('error', 'onPing failed to parse payload', METHODS.ON_PING);
 
       return;
     }
-    if (!isRecord(data) || Array.isArray(data)) {
+    if (!isRecord(parsedEvent) || Array.isArray(parsedEvent)) {
       ConnectionService.diagnose(
         'error',
         'onPing received non-object payload, ignoring',
@@ -379,7 +381,7 @@ export class ConnectionService extends EventEmitter {
 
       return;
     }
-    this.isKeepAlive = data.keepalive === 'true';
+    this.isKeepAlive = parsedEvent.keepalive === 'true';
     this.monitorOrdinary();
     if (this.isConnectionLost || this.isKeepAlive) {
       this.updateConnectionData();
@@ -502,7 +504,7 @@ export class ConnectionService extends EventEmitter {
     // Aborting the adopted socket and emitting loss can synchronously reset the scheduler.
     const episode = this.lossEpisode ?? {startedAt: Date.now(), attempt: 0};
     this.lossEpisode = episode;
-    clearTimeout(this.heartbeatLossTimer);
+    clearTimeout(this.reconnectingTimer);
     this.isConnectionLost = true;
     if (!this.restoreTimer)
       this.restoreTimer = setTimeout(this.handleRestoreFailed, LOST_CONNECTION_RECOVERY_TIMEOUT);
@@ -511,5 +513,3 @@ export class ConnectionService extends EventEmitter {
     if (this.lossEpisode === episode) this.dispatchConnectionEvent();
   };
 }
-
-export default ConnectionService;

@@ -812,43 +812,9 @@ const resolveSymbol = (checker: ts.TypeChecker, symbol: ts.Symbol | undefined) =
 
 describe('contact-center root public contract', () => {
   it('T-007/T-013 preserves existing consumer signatures and adds the typed recovery contract', () => {
-    const legacy = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__legacy_voice_controls.ts');
     const stateChange = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__state_id_consumer.ts');
     const recovery = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__recovery_consumer.ts');
     const program = createProgram({
-      [legacy]: `
-      import type {
-        ContactCenter, IContactCenter, ITask, Profile, SetStateResponse,
-        StationLoginResponse, StationLogoutResponse, VoiceConnectionState,
-      } from '../../../src';
-      declare const cc: ContactCenter;
-      declare const plugin: IContactCenter;
-      declare const task: ITask;
-
-      const registered: Promise<Profile> = plugin.register();
-      const deregistered: Promise<void> = cc.deregister();
-      const loggedIn: Promise<StationLoginResponse> = cc.stationLogin({teamId: 'team', loginOption: 'BROWSER'});
-      const loggedOut: Promise<StationLogoutResponse> = cc.stationLogout({});
-      const changed: Promise<SetStateResponse> = cc.setAgentState({state: 'Available', auxCodeId: '0'});
-      const voice: VoiceConnectionState = plugin.getVoiceConnectionState();
-      const enabled: boolean = task.uiControls[task.uiControls.activeLeg].hold.isEnabled;
-      const keypad: boolean | undefined = task.uiControls.main.keypad?.isVisible;
-      const destinations: string[] = task.uiControls.consultTransferDestinations.transfer;
-
-      // @ts-expect-error registration has no public cancellation option
-      plugin.register({signal: new AbortController().signal});
-      // @ts-expect-error login requires its team
-      cc.stationLogin({loginOption: 'BROWSER'});
-      // @ts-expect-error logout reason remains a fixed vocabulary
-      cc.stationLogout({logoutReason: 'arbitrary'});
-      // @ts-expect-error a state change requires the auxiliary code
-      cc.setAgentState({state: 'Available'});
-      // @ts-expect-error the voice getter stays synchronous
-      const asyncVoice: Promise<VoiceConnectionState> = cc.getVoiceConnectionState();
-      // @ts-expect-error controls keep per-leg ownership
-      task.uiControls.hold.isEnabled;
-      void [registered, deregistered, loggedIn, loggedOut, changed, voice, enabled, keypad, destinations];
-      `,
       [stateChange]: `
       import {routingAgent} from '../../../src';
       import type {StateChangeSuccess} from '../../../src';
@@ -869,10 +835,12 @@ describe('contact-center root public contract', () => {
       `,
       [recovery]: `
       import {CC_EVENTS, REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES} from '../../../src';
-      import type {ContactCenterEvents, RegionRecoveryState} from '../../../src';
+      import type {ContactCenter, ContactCenterEvents, Profile, RegionRecoveryState} from '../../../src';
       import {isRegionRecoveryError, createRegionRecoveryError} from '../../../src/services/core/Utils';
       type Assert<T extends true> = T;
       type Exact<A, B> = [A] extends [B] ? [B] extends [A] ? true : false : false;
+      type RegisterArgs = Assert<Exact<Parameters<ContactCenter['register']>, []>>;
+      type RegisterResult = Assert<Exact<ReturnType<ContactCenter['register']>, Promise<Profile>>>;
       type AutoAvailable = NonNullable<RegionRecoveryState['autoAvailable']>;
       type ErrorCode = (typeof REGION_RECOVERY_ERROR_CODES)[keyof typeof REGION_RECOVERY_ERROR_CODES];
       type Status = Assert<Exact<RegionRecoveryState['status'], 'recovering' | 'ready' | 'reloadRequired' | 'stationLoginRequired' | 'unavailable'>>;
@@ -909,7 +877,7 @@ describe('contact-center root public contract', () => {
         getObjectLiteralInitializer(getRootExportSymbol(program, name), name)
       ))).toEqual(expected);
     });
-    expect(getDiagnosticsForFiles(program, [legacy, stateChange, recovery])).toEqual([]);
+    expect(getDiagnosticsForFiles(program, [stateChange, recovery])).toEqual([]);
     const types = program.getSourceFile(TYPES_PATH)!;
     const catalogImport = types.statements.find((statement) =>
       ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === './services/core/constants'

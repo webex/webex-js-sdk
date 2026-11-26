@@ -39,25 +39,47 @@ export default class AqmReqs {
 
   /**
    * Creates a request function for an API call with parameters
-   * @param config - The configuration for the request
+   * @param c - The configuration for the request
    * @returns A function that makes the API request
    */
-  req<TRes, TErr, TReq>(config: Conf<TRes, TErr, TReq>): Res<TRes, TReq> {
+  req<TRes, TErr, TReq>(c: Conf<TRes, TErr, TReq>): Res<TRes, TReq> {
     return (p: TReq, cbRes?: CbRes<TRes>, context?: AqmRequestContext) =>
-      this.createPromise(config(p), cbRes, context);
+      this.makeAPIRequest(c(p), cbRes, context);
   }
 
   /**
    * Creates a request function for an API call with no parameters
-   * @param config - The configuration for the request
+   * @param c - The configuration for the request
    * @returns A function that makes the API request
    */
-  reqEmpty<TRes, TErr>(config: ConfEmpty<TRes, TErr>): ResEmpty<TRes> {
+  reqEmpty<TRes, TErr>(c: ConfEmpty<TRes, TErr>): ResEmpty<TRes> {
     return (cbRes?: CbRes<TRes>, context?: AqmRequestContext) =>
-      this.createPromise(config(), cbRes, context);
+      this.makeAPIRequest(c(), cbRes, context);
   }
 
-  private async createPromise<TRes, TErr>(
+  /**
+   * Makes an API request
+   * @param c - The request configuration
+   * @param cbRes - The callback for the response
+   * @param context - The optional recovery request context
+   * @returns A promise that resolves with the response or rejects with an error
+   */
+  private async makeAPIRequest<TRes, TErr>(
+    c: Req<TRes, TErr>,
+    cbRes?: CbRes<TRes>,
+    context?: AqmRequestContext
+  ): Promise<TRes> {
+    return this.createPromise(c, cbRes, context);
+  }
+
+  /**
+   * Creates a promise for an API request
+   * @param c - The request configuration
+   * @param cbRes - The callback for the response
+   * @param context - The optional recovery request context
+   * @returns A promise that resolves with the response or rejects with an error
+   */
+  private createPromise<TRes, TErr>(
     c: Req<TRes, TErr>,
     cbRes?: CbRes<TRes>,
     context?: AqmRequestContext
@@ -70,13 +92,20 @@ export default class AqmReqs {
         return;
       }
       const keySuccess = this.bindPrint(c.notifSuccess.bind);
-      const keyFail = c.notifFail && this.bindPrint(c.notifFail.bind);
-      const duplicateSuccess = this.pendingRequests[keySuccess];
-      const duplicateFail = keyFail && keyFail !== keySuccess && this.pendingRequests[keyFail];
-      if ((duplicateSuccess || duplicateFail) && c.timeout !== 'disabled') {
+      const keyFail = c.notifFail ? this.bindPrint(c.notifFail.bind) : null;
+      const cancelBind = c.notifCancel?.bind;
+      const keyCancel = cancelBind ? this.bindPrint(cancelBind) : null;
+      let k = '';
+      if (this.pendingRequests[keySuccess]) {
+        k = keySuccess;
+      }
+      if (keyFail && keyFail !== keySuccess && this.pendingRequests[keyFail]) {
+        k += keyFail;
+      }
+      if (k && c.timeout !== 'disabled') {
         reject(
           new Err.Details('Service.aqm.reqs.Pending', {
-            key: `${duplicateSuccess ? keySuccess : ''}${duplicateFail ? keyFail : ''}`,
+            key: k,
             msg: 'The request has been already created, multiple requests are not allowed.',
           })
         );
@@ -92,28 +121,26 @@ export default class AqmReqs {
           : bind;
       const successBind = correlate(c.notifSuccess.bind);
       const failBind = c.notifFail && correlate(c.notifFail.bind);
-      const cancelBind = c.notifCancel?.bind;
-      const keyCancel = cancelBind && this.bindPrint(cancelBind);
-      let response: WebexRequestPayload | null = null;
       let timeoutId: ReturnType<typeof setTimeout>;
-      let settled = false;
-      const finish = (result: {value: TRes} | {error: Error}) => {
-        if (settled) return;
-        settled = true;
+      let isClear = false;
+      const clear = () => {
+        isClear = true;
         clearTimeout(timeoutId);
         signal?.removeEventListener('abort', onAbort);
-        [keySuccess, keyFail].forEach((key) => {
-          if (key && this.pendingRequests[key]?.operationId === operationId)
-            delete this.pendingRequests[key];
-        });
-        if (keyCancel && this.pendingNotifCancelrequest[keyCancel]?.operationId === operationId)
+        if (this.pendingRequests[keySuccess]?.operationId === operationId) {
+          delete this.pendingRequests[keySuccess];
+        }
+        if (keyFail && this.pendingRequests[keyFail]?.operationId === operationId) {
+          delete this.pendingRequests[keyFail];
+        }
+        if (keyCancel && this.pendingNotifCancelrequest[keyCancel]?.operationId === operationId) {
           delete this.pendingNotifCancelrequest[keyCancel];
-        if ('error' in result) reject(result.error);
-        else resolve(result.value);
+        }
       };
-      const rejectOperation = (error: Error) => finish({error});
       const onAbort = () => {
-        rejectOperation(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+        if (isClear) return;
+        clear();
+        reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
         AqmReqs.diagnose('info', 'Routing operation aborted');
       };
       const matches = (bind: any, msg: Msg): boolean => {
@@ -123,37 +150,18 @@ export default class AqmReqs {
         return this.bindCheck(bind, msg);
       };
       const success = (msg: Msg) => {
-        if (settled) return;
+        if (isClear) return;
         // Legacy binds also own the server-assigned ID of a matched local station outcome.
         if (session && typeof msg.data?.trackingId === 'string')
           this.rememberTrackingId(msg.data.trackingId, c.url, true);
-        finish({value: msg as unknown as TRes});
+        clear();
+        resolve(msg as unknown as TRes);
       };
       this.pendingRequests[keySuccess] = {
         operationId,
         check: (msg) => matches(successBind, msg),
         handle: success,
       };
-      if (keyFail) {
-        this.pendingRequests[keyFail] = {
-          operationId,
-          check: (msg) => matches(failBind, msg),
-          handle: (msg) => {
-            if (settled) return;
-            try {
-              const failure = c.notifFail!;
-              const error =
-                'errId' in failure
-                  ? new Err.Details(failure.errId, msg as any)
-                  : failure.err(msg as any);
-              rejectOperation(error);
-            } catch (error) {
-              rejectOperation(error);
-            }
-            AqmReqs.diagnose('log', 'Routing notification failed', msg);
-          },
-        };
-      }
       if (keyCancel) {
         this.pendingNotifCancelrequest[keyCancel] = {
           operationId,
@@ -161,11 +169,35 @@ export default class AqmReqs {
           handle: success,
         };
       }
+
+      if (keyFail) {
+        this.pendingRequests[keyFail] = {
+          operationId,
+          check: (msg) => matches(failBind, msg),
+          handle: (msg) => {
+            if (isClear) return;
+            clear();
+            const notifFail = c.notifFail!;
+            try {
+              if ('errId' in notifFail) {
+                reject(new Err.Details(notifFail.errId, msg as any));
+              } else {
+                reject(notifFail.err(msg as any));
+              }
+            } catch (error) {
+              reject(error);
+            }
+            AqmReqs.diagnose('log', 'Routing notification failed', msg);
+          },
+        };
+      }
+      let response: WebexRequestPayload | null = null;
       signal?.addEventListener('abort', onAbort, {once: true});
       if (c.timeout !== 'disabled') {
         timeoutId = setTimeout(
           () => {
-            if (settled) return;
+            if (isClear) return;
+            clear();
             const {status, reasonCode, trackingId, id} = normalizeRecoveryFailure(response);
             // Copy selected scalars only; the shared acknowledgement can contain credentials.
             const safeResponse = response
@@ -176,7 +208,7 @@ export default class AqmReqs {
                   ...(id ? {id} : {}),
                 }
               : null;
-            rejectOperation(
+            reject(
               new Err.Details('Service.aqm.reqs.Timeout', {
                 key: this.bindPrint(successBind),
                 response: safeResponse,
@@ -189,20 +221,21 @@ export default class AqmReqs {
       }
       if (correlationId) this.rememberTrackingId(correlationId, c.url, session);
       const onHttpFailure = (error: WebexRequestPayload) => {
-        if (settled) return;
+        if (isClear) return;
+        clear();
         if (isRegionRecoveryError(error)) {
-          rejectOperation(error);
+          reject(error);
 
           return;
         }
         try {
-          rejectOperation(
+          reject(
             typeof c.err === 'function'
               ? c.err(error)
               : new Err.Message(c.err ?? 'Service.aqm.reqs.GenericRequestError')
           );
         } catch (translated) {
-          rejectOperation(translated);
+          reject(translated);
         }
         AqmReqs.diagnose('info', 'Routing HTTP request failed', error);
       };
@@ -211,19 +244,19 @@ export default class AqmReqs {
           .request({
             service: c.host ?? '',
             resource: c.url,
-            method: c.method ?? (c.data ? HTTP_METHODS.POST : HTTP_METHODS.GET),
+            // eslint-disable-next-line no-nested-ternary
+            method: c.method ? c.method : c.data ? HTTP_METHODS.POST : HTTP_METHODS.GET,
+
             body: c.data,
             ...(correlationId ? {headers: {trackingid: `webex-js-sdk_${correlationId}`}} : {}),
           })
           .then((res) => {
-            if (settled) return;
+            if (isClear) return undefined;
             response = res as unknown as WebexRequestPayload;
-            try {
-              if (cbRes) Promise.resolve(cbRes(res)).then(() => undefined, onHttpFailure);
-            } catch (error) {
-              onHttpFailure(error);
-            }
-          }, onHttpFailure);
+
+            return cbRes?.(res);
+          })
+          .catch(onHttpFailure);
       } catch (error) {
         onHttpFailure(error);
       }
@@ -347,11 +380,15 @@ export default class AqmReqs {
     return false;
   }
 
-  /** Matches notifications independently of diagnostic sink failures. */
-  private readonly onMessage = (payload: string): void => {
+  /**
+   * Handles incoming messages from the WebSocket (must be a lambda fn)
+   * @param msg - The message to handle
+   * @returns
+   */
+  private readonly onMessage = (msg: string): void => {
     let event: unknown;
     try {
-      event = JSON.parse(payload);
+      event = JSON.parse(msg);
     } catch {
       AqmReqs.diagnose('info', 'Invalid routing notification');
 
@@ -368,31 +405,44 @@ export default class AqmReqs {
 
       return;
     }
-    if (event.keepalive === 'true') return;
-    let handled = false;
-    for (const key of Object.keys(this.pendingRequests)) {
-      const entry = this.pendingRequests[key];
+
+    if (event.keepalive === 'true') {
+      return;
+    }
+
+    let isHandled = false;
+
+    const kReq = Object.keys(this.pendingRequests);
+    for (const thisReq of kReq) {
+      const req = this.pendingRequests[thisReq];
       try {
-        if (entry?.check(event as Msg)) {
-          entry.handle(event as Msg);
-          handled = true;
+        if (req?.check(event as Msg)) {
+          req.handle(event as Msg);
+          isHandled = true;
           break;
         }
       } catch {
         AqmReqs.diagnose('info', 'Routing notification handler failed');
       }
     }
-    for (const key of Object.keys(this.pendingNotifCancelrequest)) {
-      const entry = this.pendingNotifCancelrequest[key];
+    // pendingNotifCancelrequest stores the secondary bind key, checks for the secondary bind key and handles the event
+    const kReqAlt = Object.keys(this.pendingNotifCancelrequest);
+    for (const thisReq of kReqAlt) {
+      const req = this.pendingNotifCancelrequest[thisReq];
       try {
-        if (entry?.check(event as Msg)) {
-          entry.handle(event as Msg);
-          handled = true;
+        if (req?.check(event as Msg)) {
+          req.handle(event as Msg);
+          isHandled = true;
         }
       } catch {
         AqmReqs.diagnose('info', 'Routing cancellation handler failed');
       }
     }
-    if (!handled) AqmReqs.diagnose('info', 'Routing notification has no pending handler');
+
+    // TODO:  add event emitter for unhandled events to replicate event.listen or .on
+
+    if (!isHandled) {
+      AqmReqs.diagnose('info', 'Routing notification has no pending handler');
+    }
   };
 }

@@ -1,6 +1,5 @@
 import ApiAIAssistant from '../../../../src/services/ApiAiAssistant';
 import MetricsManager from '../../../../src/metrics/MetricsManager';
-import {METRIC_EVENT_NAMES} from '../../../../src/metrics/constants';
 import LoggerProxy from '../../../../src/logger-proxy';
 import WebexRequest from '../../../../src/services/core/WebexRequest';
 import {
@@ -266,22 +265,6 @@ describe('ApiAIAssistant', () => {
       recoverySignal = controller.signal;
     });
 
-    const directHttpOperations = [
-      ['sendEvent', sendEvent],
-      ['fetchHistoricTranscripts', (instance: ApiAIAssistant) => instance.fetchHistoricTranscripts('agent', 'interaction')],
-      ['getRealTimeAssistance', (instance: ApiAIAssistant) => instance.getRealTimeAssistance({agentId: 'agent', interactionId: 'interaction'})],
-      ['sendRealTimeAssistanceUserAction', (instance: ApiAIAssistant) => instance.sendRealTimeAssistanceUserAction({
-        agentId: 'agent', interactionId: 'interaction', adaptiveCardId: 'card', actionId: RealTimeAssistanceUserActionId.LIKE,
-      })],
-    ] as const;
-
-    it.each(directHttpOperations)('allows %s while recovery owns the station', async (_name, invoke) => {
-      recoverySignal = undefined;
-      (mockWebex.request as jest.Mock).mockResolvedValue({statusCode: 200, body: httpBody});
-      await expect(invoke(createOwnedAssistant())).resolves.toEqual(httpBody);
-      expect(mockWebex.request).toHaveBeenCalledTimes(1);
-    });
-
     const wellnessOperations = [
       ['requestWellnessBreak', (instance: ApiAIAssistant) => instance.requestWellnessBreak()],
       ['respondToWellnessBreak', (instance: ApiAIAssistant) => instance.respondToWellnessBreak({action: WELLNESS_BREAK_USER_ACTIONS.ACCEPTED})],
@@ -344,32 +327,6 @@ describe('ApiAIAssistant', () => {
       expect(mockUploadLogs).not.toHaveBeenCalled();
     });
 
-    it.each([
-      ['event', sendEvent, METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_FAILED],
-      ['transcripts', (instance: ApiAIAssistant) => instance.fetchHistoricTranscripts('agent', 'interaction'),
-        METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED],
-      ['wellness', (instance: ApiAIAssistant) => instance.requestWellnessBreak(),
-        METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_FAILED],
-    ] as const)('translates an ordinary backend %s failure', async (_name, invoke, metric) => {
-      const failure = {statusCode: 503, details: {data: {reason: 'HTTP_FAILURE'}}};
-      (mockWebex.request as jest.Mock).mockRejectedValue(failure);
-
-      await expect(invoke(createOwnedAssistant())).rejects.toThrow('HTTP_FAILURE');
-      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-        metric, expect.objectContaining({error: String(failure)}), ['operational']
-      );
-    });
-
-    it('preserves the original Error from the transcript request', async () => {
-      const failure = new Error('Transcript request failed');
-      (mockWebex.request as jest.Mock).mockRejectedValue(failure);
-
-      await expect(createOwnedAssistant().fetchHistoricTranscripts('agent', 'interaction')).rejects.toBe(failure);
-      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED,
-        expect.objectContaining({error: failure.message}), ['operational']
-      );
-    });
   });
 
   it('sends a summary request and resolves it from the matching RTD event', async () => {

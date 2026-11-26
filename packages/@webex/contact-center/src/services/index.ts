@@ -29,7 +29,7 @@ export default class Services {
   public readonly rtdWebSocketManager: WebSocketManager;
   /** Connection service for managing websocket connections */
   public readonly connectionService: ConnectionService;
-  /** Retained operation owner for recovery admission and interruption. @internal */
+  /** Identifies local station replies during recovery. @internal */
   public readonly aqmReqs: AqmReqs;
   /** Singleton instance of the Services class */
   private static instance: Services;

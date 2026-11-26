@@ -276,9 +276,9 @@ default filter makes every default call a search request. Reference files:
 
 ApiAIAssistant wellness reporting is also direct REST, but it reads live context through a read-only provider supplied by ContactCenter at construction rather than a separate factory or context setter. It fails closed unless wellness is effectively enabled and the SDK owns a current organization, agent, and session; public action calls do not accept identity fields.
 
-Direct AI event requests and historic transcript reads use authenticated HTTP independently of
-regional recovery. Wellness actions and summary requests that wait for RTD follow the lifetime of
-their station or task.
+Direct AI event requests, wellness actions, and historic transcript reads retain their HTTP
+settlement during recovery. Pending summary requests that wait for RTD settle when their RTD
+connection or task is interrupted.
 
 ApiAIAssistant resolves its base URL by looking up the `WCC_API_GATEWAY` host in
 `AI_ASSISTANT_ENV_MAP` and filling `AI_ASSISTANT_BASE_URL_TEMPLATE`; an unknown host fails with
@@ -415,7 +415,7 @@ sequenceDiagram
   participant AI as ApiAIAssistant
   participant SVC as AI Assistant event API
   participant TM as TaskManager
-  T->>AI: requestAndWaitForRtd(options)
+  T->>AI: requestAndWaitForRtd(eventType, correlationId, timeoutMs)
   AI->>AI: reject the prior request for this key, then store the new request and start its timer
   AI->>SVC: sendEvent, POST /event
   alt HTTP failure

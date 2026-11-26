@@ -94,6 +94,8 @@ export default class WebCallingService extends EventEmitter {
 
   private rejectRegistration?: (error: Error) => void;
 
+  private incomingCallHandler?: (call: ICall) => void;
+
   private registrationGeneration = 0;
   private registrationAttempt?: {generation: number; cancel: () => void};
 
@@ -224,7 +226,7 @@ export default class WebCallingService extends EventEmitter {
     emitter: ICallingClient | ILine,
     event: string,
     callback: (...args: any[]) => void
-  ): void {
+  ): (...args: any[]) => void {
     const generation = this.registrationGeneration;
     const listener = (...args: any[]) => {
       if (generation === this.registrationGeneration) {
@@ -234,6 +236,8 @@ export default class WebCallingService extends EventEmitter {
 
     (emitter as any).on(event, listener);
     this.registrationListenerCleanup.push(() => (emitter as any).off?.(event, listener));
+
+    return listener;
   }
 
   private async cleanupWebCallingRegistration(): Promise<void> {
@@ -245,6 +249,7 @@ export default class WebCallingService extends EventEmitter {
     this.rejectRegistration = undefined;
     this.registrationListenerCleanup.forEach((cleanup) => cleanup());
     this.registrationListenerCleanup = [];
+    this.incomingCallHandler = undefined;
 
     const line = this.line;
     this.line = undefined;
@@ -540,10 +545,14 @@ export default class WebCallingService extends EventEmitter {
       this.addRegistrationListener(this.line, LINE_EVENTS.ERROR, this.handleLineError);
 
       // Start listening for incoming calls
-      this.addRegistrationListener(this.line, LINE_EVENTS.INCOMING_CALL, (call: ICall) => {
-        this.call = call;
-        this.emit(LINE_EVENTS.INCOMING_CALL, call);
-      });
+      this.incomingCallHandler = this.addRegistrationListener(
+        this.line,
+        LINE_EVENTS.INCOMING_CALL,
+        (call: ICall) => {
+          this.call = call;
+          this.emit(LINE_EVENTS.INCOMING_CALL, call);
+        }
+      );
 
       const ownedLine = this.line;
       await new Promise<void>((resolve, reject) => {

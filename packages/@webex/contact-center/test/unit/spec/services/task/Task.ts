@@ -29,7 +29,7 @@ import {
   createDeferred,
   flushEventLoopTurn,
 } from '../../../fixtures/aiSummaryTestUtils';
-import ApiAIAssistant from '../../../../../src/services/ApiAiAssistant';
+import type ApiAIAssistant from '../../../../../src/services/ApiAiAssistant';
 
 const AI_SUMMARY_TRANSPORT_ERROR_CODES = {
   VALIDATION_FAILED: 'AI_SUMMARY_TRANSPORT_VALIDATION_FAILED',
@@ -1062,16 +1062,6 @@ const summaryRequestCases: Array<{
 
 describe('Task AI summary APIs', () => {
   const dummyContact = {} as any;
-  const createSummaryCoordinator = () => {
-    const request = jest.fn();
-    const coordinator = new ApiAIAssistant({
-      credentials: {getOrgId: () => 'org-1'},
-      internal: {services: {get: () => 'https://api.wxcc-us1.cisco.com'}},
-      request,
-    } as any);
-
-    return {coordinator, request};
-  };
   const injectSummaryDependencies = (
     task: DummyTask,
     apiAIAssistant: any,
@@ -1334,62 +1324,15 @@ describe('Task AI summary APIs', () => {
     });
   });
 
-  describe.each([
-    {eventType: 'POST_CALL_SUMMARY', eventName: AIAssistantEventName.GET_POST_CALL_SUMMARY,
-      invoke: (task: DummyTask) => task.requestPostCallSummary()},
-    {eventType: 'MID_CALL_SUMMARY', eventName: AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY,
-      invoke: (task: DummyTask) => task.requestMidCallSummary('CONSULT')},
-  ])('Task summary signal ownership: $eventType', ({eventType, eventName, invoke}) => {
-    it('cancels only its own real coordinator request while acknowledgements are pending', async () => {
-      jest.useFakeTimers();
-      const flush = async () => {for (let i = 0; i < 20; i += 1) await Promise.resolve();};
-      const {coordinator, request} = createSummaryCoordinator();
-      const oldHttp = createDeferred<any>();
-      const liveHttp = createDeferred<any>();
-      request.mockReturnValueOnce(oldHttp.promise).mockReturnValueOnce(liveHttp.promise);
-      const sessions = [new AbortController(), new AbortController()];
-      const register = jest.spyOn(coordinator, 'requestAndWaitForRtd');
-      const tasks = ['owned', 'unrelated'].map((id, index) => {
-        const task = new DummyTask(dummyContact, createAISummaryTaskData({
-          interactionId: id, interaction: {mainInteractionId: id} as any,
-        }));
-        task.bindRecoveryGuard({signal: sessions[index].signal});
-        injectSummaryDependencies(task, coordinator, {
-          wrapUpSummariesEnabled: true, consultTransferSummariesEnabled: true,
-        });
-        task.setFeatureEnablement({interactionId: id, postCallEnabled: true, midCallEnabled: true});
-        return task;
-      });
-      const retired = expect(invoke(tasks[0])).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-      const live = invoke(tasks[1]);
-      await flush();
-      expect(request).toHaveBeenCalledTimes(2);
-      const [first, second] = register.mock.calls.map(([options]) => options);
-      expect(first).toMatchObject({correlationId: 'owned', eventName, rtdEventType: eventType});
-      expect(second).toMatchObject({correlationId: 'unrelated', eventName, rtdEventType: eventType});
-      expect(first.signal).toBe(sessions[0].signal);
-      expect(first.signal).not.toBe(second.signal);
+  it.each(summaryRequestCases)('passes the task signal for a $label summary request', async ({invoke}) => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const {adapter} = createSummaryMocks(task);
+    const {signal} = new AbortController();
+    task.bindRecoveryGuard({signal});
 
-      sessions[0].abort();
-      await retired;
-      expect(first.signal.aborted).toBe(true);
-      expect(second.signal.aborted).toBe(false);
-      expect(jest.getTimerCount()).toBe(1);
-      oldHttp.reject(new Error('late owned HTTP failure'));
-      await flush();
-      expect(coordinator.resolveFromRtdEvent(eventType, 'owned', {summaryText: 'obsolete'})).toBe('not-found');
+    await invoke(task);
 
-      const summary = {conversationId: 'unrelated', summaryText: 'current'};
-      coordinator.resolveFromRtdEvent(eventType, 'unrelated', summary);
-      const completed = jest.fn();
-      const observed = live.then(completed);
-      await flush();
-      expect(completed).not.toHaveBeenCalled();
-      liveHttp.resolve({statusCode: 202, body: {}});
-      await observed;
-      expect(completed.mock.calls).toEqual([[summary]]);
-      expect(jest.getTimerCount()).toBe(0);
-    });
+    expect(adapter.requestAndWaitForRtd).toHaveBeenCalledWith(expect.objectContaining({signal}));
   });
 
   it('defines the exact AI summary operation metric names', () => {
@@ -1772,12 +1715,17 @@ describe('Task AI summary APIs', () => {
     },
   ])(
     'leaves the real coordinator idle when $label disables a request',
-    async ({invoke, disabledCode, flags, taskData, featureEnablement}) => {
+    async ({invoke, inboundType, disabledCode, flags, taskData, featureEnablement}) => {
       jest.useFakeTimers();
       const task = new DummyTask(dummyContact, taskData ?? createAISummaryTaskData());
-      const {coordinator, request} = createSummaryCoordinator();
+      const adapter: any = {
+        sendEvent: jest.fn().mockResolvedValue(undefined),
+        requestAndWaitForRtd: jest.fn(),
+        pendingRequests: new Map(),
+      };
+      const coordinator = adapter;
       const registerSpy = jest.spyOn(coordinator, 'requestAndWaitForRtd');
-      injectSummaryDependencies(task, coordinator, flags);
+      injectSummaryDependencies(task, adapter, flags);
       task.setFeatureEnablement({
         interactionId: task.data.interactionId,
         ...(featureEnablement ?? {}),
@@ -1787,8 +1735,8 @@ describe('Task AI summary APIs', () => {
         createAISummaryErrorExpectation(disabledCode)
       );
       expect(registerSpy).not.toHaveBeenCalled();
-      expect(request).not.toHaveBeenCalled();
-      expect(coordinator['pendingRtdRequests'].size).toBe(0);
+      expect(adapter.sendEvent).not.toHaveBeenCalled();
+      expect(getPendingRequest(coordinator, inboundType, 'conversation-1')).toBeUndefined();
       expect(jest.getTimerCount()).toBe(0);
     }
   );

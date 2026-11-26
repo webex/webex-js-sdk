@@ -1791,6 +1791,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /**
    * Handles campaign preview reservation events when a contact is offered to the agent
+   * @private
    * @param {ITask} task The campaign reservation task
    */
   private handleCampaignPreviewReservation = (task: ITask) => {
@@ -1915,24 +1916,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     );
   }
 
-  private canResumeRtd(): boolean {
-    const signal = this.registrationAbortController?.signal;
-    if (
-      !signal ||
-      signal.aborted ||
-      this.suppressAutomaticRelogin ||
-      !this.registrationAgentId ||
-      this.registrationOrgId !== this.$webex.credentials.getOrgId() ||
-      !(
-        ['idle', 'ready'].includes(this.recoveryPhase) ||
-        (this.recoveryPhase === 'manualLoginRequired' && !this.priorStationActive)
-      )
-    )
-      return false;
-
-    return true;
-  }
-
   private isCurrentRtdEpoch(epoch: RtdEpoch): boolean {
     return (
       this.rtdEpoch === epoch &&
@@ -1968,9 +1951,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private resumeRtd(signal: AbortSignal): Promise<void> {
     if (
+      !signal ||
+      signal.aborted ||
       signal !== this.registrationAbortController?.signal ||
       !this.shouldSubscribeRtd() ||
-      !this.canResumeRtd() ||
+      this.suppressAutomaticRelogin ||
+      !this.registrationAgentId ||
+      this.registrationOrgId !== this.$webex.credentials.getOrgId() ||
+      !(
+        ['idle', 'ready'].includes(this.recoveryPhase) ||
+        (this.recoveryPhase === 'manualLoginRequired' && !this.priorStationActive)
+      ) ||
       (this.rtdTerminatedFor?.registration === this.registrationGeneration &&
         (!this.currentAgentSessionId ||
           this.rtdTerminatedFor.sessionId === this.currentAgentSessionId))

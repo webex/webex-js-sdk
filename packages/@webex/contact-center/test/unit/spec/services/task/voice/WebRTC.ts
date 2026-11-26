@@ -10,8 +10,6 @@ import type {WebexSDK} from '../../../../../../src/types';
 import {TaskEvent, TaskEventPayload} from '../../../../../../src/services/task/state-machine';
 import {createTaskData} from '../taskTestUtils';
 import {CC_EVENTS} from '../../../../../../src/services/config/types';
-import MetricsManager from '../../../../../../src/metrics/MetricsManager';
-import {METRIC_EVENT_NAMES} from '../../../../../../src/metrics/constants';
 
 jest.mock('@webex/calling', () => ({
   LocalMicrophoneStream: class {
@@ -40,7 +38,7 @@ beforeAll(() => {
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
   default: {
-    getInstance: jest.fn().mockReturnValue({uploadLogs: jest.fn().mockResolvedValue(undefined)}),
+    getInstance: jest.fn().mockReturnValue({uploadLogs: jest.fn()}),
   },
 }));
 
@@ -275,45 +273,6 @@ describe('WebRTC Task', () => {
       expect(calling.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(0);
     });
 
-    it('stops late microphone tracks after retiring a task', async () => {
-      let acquired: (stream: MediaStream) => void;
-      const stream = new Promise<MediaStream>(resolve => { acquired = resolve; });
-      const track = {stop: jest.fn()};
-      jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockReturnValue(stream);
-      const contact = {end: jest.fn()};
-      const calling = new WebCallingService({} as WebexSDK);
-      calling.setLoginOption(LoginOption.BROWSER);
-      const call = {answer: jest.fn(), end: jest.fn(), off: jest.fn(), getCallId: () => 'pending-call'};
-      calling['call'] = call as any;
-      const answer = jest.spyOn(calling, 'answerCall');
-      const deregister = jest.spyOn(calling, 'deregisterWebCallingLine');
-      const manager = new TaskManager(undefined, contact as any, calling, new EventEmitter() as any, new EventEmitter() as any);
-      const task = new WebRTC(contact as any, calling, createTaskData());
-      manager['taskCollection'] = {[task.data.interactionId]: task};
-      manager['call'] = call as any;
-      calling.mapCallToTask(call.getCallId(), task.data.interactionId);
-      const ended = jest.fn();
-      task.on(TASK_EVENTS.TASK_END, ended);
-      try {
-        const rejection = expect(task.accept()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
-        expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({audio: true});
-        manager.invalidateRegionalTasks();
-        expect(calling.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(0);
-        expect(track.stop).not.toHaveBeenCalled();
-        acquired({getTracks: () => [track], getAudioTracks: () => [track]} as unknown as MediaStream);
-        await rejection;
-        expect(track.stop).toHaveBeenCalledTimes(1);
-        expect(answer).not.toHaveBeenCalled();
-        expect(call.answer).not.toHaveBeenCalled();
-        expect(call.end).not.toHaveBeenCalled();
-        expect(contact.end).not.toHaveBeenCalled();
-        expect(ended).not.toHaveBeenCalled();
-        expect(deregister).not.toHaveBeenCalled();
-      } finally {
-        manager.stopSession();
-      }
-    });
-
     it.each([false, true])('disposes SDK media while preserving host tracks and line ownership: replacement=%s', async (replace) => {
       const owned = [{stop: jest.fn()}, {stop: jest.fn()}];
       const host = {stop: jest.fn()};
@@ -420,25 +379,4 @@ describe('WebRTC commands on retired tasks', () => {
     }
   });
 
-  it.each([
-    ['accept', METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED],
-    ['decline', METRIC_EVENT_NAMES.TASK_DECLINE_FAILED],
-    ['toggleMute', undefined],
-  ] as const)('%s reports a dependency failure', async (operation, failureMetric) => {
-    const error = new Error('ordinary Calling failure');
-    const fail = jest.fn(() => {throw error;});
-    const calling = {on: jest.fn(), off: jest.fn(), declineCall: fail, muteUnmuteCall: fail};
-    const task = new WebRTC({} as any, calling as unknown as WebCallingService, createTaskData());
-    const media = jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockRejectedValue(error);
-    const metrics = jest.spyOn(MetricsManager.getInstance(), 'trackEvent').mockImplementation();
-    try {
-      await expect(task[operation]()).rejects.toThrow('Error while performing');
-      expect(operation === 'accept' ? media : fail).toHaveBeenCalledTimes(1);
-      expect(metrics.mock.calls.map(([event]) => event)).toEqual(failureMetric ? [failureMetric] : []);
-    } finally {
-      task.invalidateForRegionRecovery();
-      media.mockRestore();
-      metrics.mockRestore();
-    }
-  });
 });

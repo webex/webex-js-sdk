@@ -70,7 +70,6 @@ type UIControlConfigInput = Omit<UIControlConfig, 'channelType'> & {
 export default abstract class Task extends EventEmitter implements ITask {
   private recoveryGuard?: TaskRecoveryGuard;
   protected regionallyInvalidated = false;
-  private stateSubscription?: {unsubscribe: () => void};
 
   /** @internal */
   public bindRecoveryGuard(guard: TaskRecoveryGuard): void {
@@ -586,7 +585,8 @@ export default abstract class Task extends EventEmitter implements ITask {
 
     this.stateMachineService = createActor(machine);
 
-    this.stateSubscription = this.stateMachineService.subscribe((snapshot) => {
+    this.stateMachineService.subscribe((snapshot) => {
+      if (this.regionallyInvalidated) return;
       const previousState = this.lastState;
       const currentState = snapshot.value as TaskState;
       LoggerProxy.log(`State machine transition: ${previousState || 'N/A'} -> ${currentState}`, {
@@ -698,8 +698,6 @@ export default abstract class Task extends EventEmitter implements ITask {
    * Stop the state machine service
    */
   protected stopStateMachine(): void {
-    this.stateSubscription?.unsubscribe();
-    this.stateSubscription = undefined;
     if (this.stateMachineService) {
       this.stateMachineService.stop();
       this.stateMachineService = undefined;
@@ -979,6 +977,12 @@ export default abstract class Task extends EventEmitter implements ITask {
       }
       this.autoWrapup = new AutoWrapup(intervalMs, wrapUpProps.allowCancelAutoWrapup);
       this.autoWrapup.start(() => {
+        if (this.regionallyInvalidated) return;
+        LoggerProxy.info(`Auto wrap-up timer triggered`, {
+          module: TASK_FILE,
+          method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
+          interactionId: this.data.interactionId,
+        });
         this.wrapup({
           wrapUpReason: defaultWrapupReason.name,
           auxCodeId: defaultWrapupReason.id,
