@@ -140,12 +140,41 @@ export interface E2eeIdentityResult {
 
 /** A member of the MLS roster and its overall libe2ee credential validation result. */
 export interface E2eeRosterMember {
-  url: string;
+  deviceUrl: string;
   displayName: string;
   deviceType: string;
   validationResult: E2eeValidationResult;
   identityResults?: E2eeIdentityResult[];
 }
+
+/** Per-device E2EE verification result, derived from the MLS roster and applied onto a Member. */
+export interface E2eeDeviceVerification {
+  deviceUrl: string;
+  /** Overall libe2ee result for this device's credential or MultiCredential. */
+  validationResult: E2eeValidationResult;
+  displayName?: string;
+  deviceType?: string;
+  identityResults?: E2eeIdentityResult[];
+}
+
+/** E2EE verification state of a single device, derived from its X.509 identity result. */
+export const E2eeDeviceVerificationState = {
+  Unknown: 'unknown',
+  Verified: 'verified',
+  Unverified: 'unverified',
+} as const;
+
+export type E2eeDeviceVerificationState = Enum<typeof E2eeDeviceVerificationState>;
+
+/** A member's aggregate E2EE verification state across all of their devices. */
+export const E2eeMemberVerificationState = {
+  Unknown: 'unknown',
+  Verified: 'verified',
+  Unverified: 'unverified',
+  PartiallyVerified: 'partiallyVerified',
+} as const;
+
+export type E2eeMemberVerificationState = Enum<typeof E2eeMemberVerificationState>;
 
 /** Configuration for initializing an MLS group session. */
 export interface MLSConfig {
