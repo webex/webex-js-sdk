@@ -8,7 +8,6 @@ on:
 
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
-  token: ${{ secrets.NPM_TOKEN }}
   GIT_AUTHOR_NAME: ${{ github.actor }}
   GIT_AUTHOR_EMAIL: ${{ github.actor }}@users.noreply.github.com
 
@@ -166,6 +165,9 @@ jobs:
     name: Publish - NPM
     needs: generate-package-matrix
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     outputs:
       package_versions: ${{ steps.increment.outputs.package_versions }}
@@ -173,6 +175,8 @@ jobs:
     steps:
       - name: Checkout Project
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -192,10 +196,6 @@ jobs:
         with:
           path: '**/dist'
           key: dist-${{ env.rid }}
-
-      - name: Add NPM token to .yarnrc.yml file
-        run: |
-          echo "npmAuthToken: ${{ env.token }}" >> ~/.yarnrc.yml
 
       - name: Synchronize Packages
         run: |
@@ -223,9 +223,9 @@ jobs:
         run: yarn run build:script
 
       - name: Deploy Packages
-        run: yarn workspaces foreach --from '${{ needs.generate-package-matrix.outputs.yarn-recursive }}' --verbose run deploy:npm --access public --tag ${GITHUB_REF##*/}
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PACKAGES_GLOB: ${{ needs.generate-package-matrix.outputs.yarn-recursive }}
+        run: bash scripts/publish-npm.sh "$PACKAGES_GLOB" "$GITHUB_REF_NAME" --provenance
 
   publish-documentation:
     name: Publish - Documentation

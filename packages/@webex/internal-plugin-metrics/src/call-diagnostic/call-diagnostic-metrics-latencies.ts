@@ -62,6 +62,7 @@ type MeetingLatencyRecord = {
  */
 export default class CallDiagnosticLatencies extends WebexPlugin {
   latencyTimestamps: Map<MetricEventNames, number>;
+  private latencyTimestampsChanged = false;
   precomputedLatencies: Map<PreComputedLatencies, number>;
   meetingLatencies: Map<string, MeetingLatencyRecord[]>;
   // meetingId that the current latencies are for
@@ -95,9 +96,23 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * Clear timestamps
    */
   public clearTimestamps() {
-    this.latencyTimestamps.clear();
+    if (this.latencyTimestamps.size) {
+      this.latencyTimestamps.clear();
+      this.latencyTimestampsChanged = true;
+    }
     this.precomputedLatencies.clear();
     this.meetingLatencies.clear();
+  }
+
+  /** Returns the full timestamp snapshot for the next diagnostic log after a change. */
+  public takeLatencyTimestampsForLog(): Partial<Record<MetricEventNames, number>> | undefined {
+    if (!this.latencyTimestampsChanged) {
+      return undefined;
+    }
+
+    this.latencyTimestampsChanged = false;
+
+    return Object.fromEntries(this.latencyTimestamps);
   }
 
   /**
@@ -725,12 +740,21 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       key === 'client.media-engine.remote-sdp-received'
     ) {
       this.saveFirstTimestampOnly(key, value);
-    } else {
+
+      return;
+    }
+
+    if (this.latencyTimestamps.get(key) !== value) {
       this.latencyTimestamps.set(key, value);
-      // new offer/answer so reset the remote SDP timestamp
-      if (key === 'client.media-engine.local-sdp-generated') {
-        this.latencyTimestamps.delete('client.media-engine.remote-sdp-received');
-      }
+      this.latencyTimestampsChanged = true;
+    }
+
+    // A new offer needs a new remote SDP timestamp.
+    if (
+      key === 'client.media-engine.local-sdp-generated' &&
+      this.latencyTimestamps.delete('client.media-engine.remote-sdp-received')
+    ) {
+      this.latencyTimestampsChanged = true;
     }
   }
 
@@ -798,6 +822,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       return;
     }
     this.latencyTimestamps.set(key, value);
+    this.latencyTimestampsChanged = true;
   }
 
   /**
