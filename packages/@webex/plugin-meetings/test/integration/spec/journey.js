@@ -18,7 +18,7 @@ const webexTestUsers = require('../../utils/webex-test-users');
 
 const {isBrowser} = BrowserDetection();
 
-let userSet, alice, bob, chris, enumerateSpy, channelUrlA, channelUrlB;
+let userSet, alice, bob, chris, channelUrlA, channelUrlB;
 
 const localStreams = {
   alice: {
@@ -42,6 +42,19 @@ const localStreams = {
       video: undefined,
     }
   },
+};
+
+const assertLocalStreamsAdded = (user, streams) => {
+  assert.strictEqual(
+    user.meeting.mediaProperties.audioStream,
+    streams.microphone,
+    `${user.name}'s meeting must use the supplied microphone stream`
+  );
+  assert.strictEqual(
+    user.meeting.mediaProperties.videoStream,
+    streams.camera,
+    `${user.name}'s meeting must use the supplied camera stream`
+  );
 };
 
 // Updated expectedPublished from a boolean value to an object containing the stream and status properties
@@ -87,14 +100,6 @@ skipInNode(describe)('plugin-meetings', () => {
           throw error;
         })
     );
-
-    before(() => {
-      enumerateSpy = sinon.spy(navigator.mediaDevices, 'enumerateDevices');
-    });
-
-    beforeEach(() => {
-      enumerateSpy.resetHistory();
-    });
 
     describe('Check configuration values', () => {
       it('properly sets the Media Quality Analyzer `metrics` config', () => {
@@ -350,7 +355,7 @@ skipInNode(describe)('plugin-meetings', () => {
               ]),
             ])
           )
-          .then(() => assert(enumerateSpy.called)));
+          .then(() => assertLocalStreamsAdded(alice, localStreams.alice)));
 
       it('bob joins the meeting', () => {
         const checkBobIsInMeeting = (event) =>
@@ -395,7 +400,7 @@ skipInNode(describe)('plugin-meetings', () => {
             assert.exists(alice.meeting.members.locusUrl);
             assert.equal(alice.meeting.type, 'CALL');
             assert.equal(bob.meeting.type, 'CALL');
-            assert(enumerateSpy.called);
+            assertLocalStreamsAdded(bob, localStreams.bob);
           })
           .then(function bobState() {
             testUtils.waitForStateChange(bob.meeting, 'JOINED');
@@ -917,7 +922,7 @@ skipInNode(describe)('plugin-meetings', () => {
                 localStreams.chris.camera = await createCameraStream();
               })
               .then(() => integrationTestUtils.addMedia(chris, {microphone: localStreams.chris.microphone, camera: localStreams.chris.camera}))
-              .then(() => assert(enumerateSpy.called));
+              .then(() => assertLocalStreamsAdded(chris, localStreams.chris));
           })
           .then(() =>
             Promise.all([
