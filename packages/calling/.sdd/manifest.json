@@ -265,6 +265,54 @@
       }
     },
     {
+      "path": "src/CallQueue",
+      "canonical_spec": "src/CallQueue/docs/README.md",
+      "coverage_status": "Untracked",
+      "coverage_evidence": "Initial call queue specification; full coverage assessment has not been performed.",
+      "last_assessed": "2026-11-17",
+      "characterization_baseline": "src/CallQueue/CallQueue.test.ts",
+      "contracts": {
+        "provides": [
+          "call-queue-sdk"
+        ],
+        "requires": [
+          "sdk-connector-internal",
+          "mercury-events"
+        ]
+      },
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex (source and test inspection)",
+        "resolved_at": "2026-11-17T07:43:01Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T14:37:17Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/CallQueue/ai-docs/call-queue-spec.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": "docs/adr/0001-migrate-ai-docs-to-repo-standards.md"
+      }
+    },
+    {
       "path": "src/CallSettings",
       "canonical_spec": "src/CallSettings/docs/README.md",
       "coverage_status": "Partial",
@@ -1042,6 +1090,13 @@
         "source_kind": "external",
         "source": "Webex UC config API (/v1/uc/config on the Webex API host)",
         "summary": "UCM call-forward-always configuration read by the CallSettings UCM connector. Owned by Webex."
+      },
+      "call-queue-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published call queue client factory, agent status, membership and event types from src/index.ts; declarations live in src/CallQueue/types.ts and behavior in src/CallQueue/docs/README.md."
       }
     }
   },

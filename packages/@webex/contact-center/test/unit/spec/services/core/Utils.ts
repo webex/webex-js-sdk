@@ -1058,4 +1058,31 @@ describe('Utils', () => {
       expect(Utils.isAllowedUrlHost(undefined as any, ['cisco.com'])).toBe(false);
     });
   });
+
+  describe('sanitizeForObservability', () => {
+    it('returns an empty string for non-string input', () => {
+      expect(Utils.sanitizeForObservability(undefined)).toBe('');
+      expect(Utils.sanitizeForObservability(null)).toBe('');
+      expect(Utils.sanitizeForObservability(42)).toBe('');
+      expect(Utils.sanitizeForObservability({})).toBe('');
+    });
+
+    it('leaves a legitimate value effectively unchanged', () => {
+      expect(Utils.sanitizeForObservability('AGENT_LOGOUT')).toBe('AGENT_LOGOUT');
+    });
+
+    it('strips CR/LF to block log-line injection', () => {
+      expect(Utils.sanitizeForObservability('ok\r\nINJECTED fake log line')).toBe(
+        'okINJECTED fake log line'
+      );
+    });
+
+    it('strips other control characters', () => {
+      expect(Utils.sanitizeForObservability('a\x00b\x1f\x7fc')).toBe('abc');
+    });
+
+    it('caps the length at 200 characters', () => {
+      expect(Utils.sanitizeForObservability('x'.repeat(500))).toHaveLength(200);
+    });
+  });
 });

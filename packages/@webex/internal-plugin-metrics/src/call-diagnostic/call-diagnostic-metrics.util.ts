@@ -397,7 +397,7 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
 
   webex.logger.log(
     `CallDiagnosticLatencies,prepareDiagnosticMetricItem: ${JSON.stringify({
-      latencies: Object.fromEntries(cdl.latencyTimestamps),
+      latencies: cdl.takeLatencyTimestampsForLog(),
       event: item,
     })}`
   );
