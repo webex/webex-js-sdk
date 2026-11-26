@@ -115,8 +115,7 @@ export default class WebexCrossClientService {
     users: string[],
     ttl: number,
     composition: Record<string, unknown>,
-    logContext: string,
-    signal?: AbortSignal
+    logContext: string
   ): Promise<unknown> {
     const body = {
       users,
@@ -138,12 +137,10 @@ export default class WebexCrossClientService {
       })
       .then((response: {body?: unknown}) => response?.body)
       .catch((error: unknown) => {
-        if (!signal?.aborted) {
-          LoggerProxy.error(`WebexCrossClientService.${logContext} failed: ${error}`, {
-            module: WEBEX_CROSS_CLIENT_FILE,
-            method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
-          });
-        }
+        LoggerProxy.error(`WebexCrossClientService.${logContext} failed: ${error}`, {
+          module: WEBEX_CROSS_CLIENT_FILE,
+          method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
+        });
 
         return Promise.reject(error);
       });
@@ -212,13 +209,7 @@ export default class WebexCrossClientService {
     }
 
     try {
-      await this.publishCrossClientState(
-        [userId],
-        ttl,
-        composition,
-        'setManageWebexCallingInWxcc',
-        signal
-      );
+      await this.publishCrossClientState([userId], ttl, composition, 'setManageWebexCallingInWxcc');
     } catch (error) {
       if (trackPublishMetrics) {
         if (signal?.aborted || operationGeneration !== this.refreshGeneration) {
