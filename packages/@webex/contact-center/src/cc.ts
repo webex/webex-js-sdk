@@ -384,6 +384,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /** Coalesces reloadV2 calls while their AQM response is still pending. @private */
   private v2ReloadPromise?: ReturnType<Services['agent']['reloadV2']>;
 
+  /** Generation associated with the shared pending reload response. @private */
+  private v2ReloadGeneration?: number;
+
   /** Generation allowed to buffer channel events before an initial reload identifies the session. @private */
   private initialReloadGeneration?: number;
 
@@ -426,15 +429,35 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /** Shares one in-flight V2 reload across overlapping reconnect handlers. @private */
   private reloadV2Once(): ReturnType<Services['agent']['reloadV2']> {
+    if (this.v2ReloadPromise) {
+      // A session cleanup invalidates the existing reload. Do not let a later
+      // session adopt its response; wait for AQM to release the bind first.
+      if (this.v2ReloadGeneration === undefined) {
+        return this.v2ReloadPromise.catch(() => undefined as never).then(() => this.reloadV2Once());
+      }
+
+      // Reconnects within the same session may share the pending response.
+      this.v2ReloadGeneration = this.reloadGeneration;
+
+      return this.v2ReloadPromise;
+    }
+
+    this.v2ReloadGeneration = this.reloadGeneration;
     if (!this.v2ReloadPromise) {
       const reloadPromise = this.services.agent.reloadV2();
       this.v2ReloadPromise = reloadPromise;
       reloadPromise.then(
         () => {
-          if (this.v2ReloadPromise === reloadPromise) this.v2ReloadPromise = undefined;
+          if (this.v2ReloadPromise === reloadPromise) {
+            this.v2ReloadPromise = undefined;
+            this.v2ReloadGeneration = undefined;
+          }
         },
         () => {
-          if (this.v2ReloadPromise === reloadPromise) this.v2ReloadPromise = undefined;
+          if (this.v2ReloadPromise === reloadPromise) {
+            this.v2ReloadPromise = undefined;
+            this.v2ReloadGeneration = undefined;
+          }
         }
       );
     }
@@ -937,6 +960,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
    */
   public async deregister(): Promise<void> {
+    this.reloadGeneration += 1; // Invalidate any pending silent relogin
     this.clearV2LocalState();
     this.wellnessRegistrationGeneration += 1;
     this.wellbeingBreakIdleCode = undefined;
@@ -1577,6 +1601,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       const resp = await logoutResponse;
 
+      // Stop pending reconnect work as soon as logout is confirmed. Voice
+      // deregistration below is asynchronous and must not leave a window in
+      // which a stale reload can restore the logged-out session.
+      this.reloadGeneration += 1;
+      this.v2ReloadGeneration = undefined;
+
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
         {
@@ -1590,10 +1620,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         await this.webCallingService.deregisterWebCallingLine();
       }
 
+      this.updateWellnessSession();
       this.clearV2LocalState();
 
       await this.teardownWxAppLocalState();
-      this.updateWellnessSession();
 
       LoggerProxy.log(`Agent station logout completed successfully`, {
         module: CC_FILE,
@@ -1969,7 +1999,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             lastStateChangeTimestamp: detail.stateChangeTimestamp,
             lastIdleCodeChangeTimestamp: detail.lastIdleCodeChangeTimestamp ?? 0,
             lastStateChangeReason: detail.stateChangeReason,
-            trackingId: agentStatusResponse.trackingId,
+            trackingId: v2Data.trackingId ?? agentStatusResponse.trackingId,
             changedBy: v2Data.changedBy ?? null,
             changedById: v2Data.changedById ?? null,
             changedByName: v2Data.changedByName ?? null,
@@ -2157,6 +2187,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           (!eventData.data.agentSessionId ||
             eventData.data.agentSessionId === this.currentAgentSessionId)
         ) {
+          this.reloadGeneration += 1; // The closed session cannot accept pending reload recovery
           this.updateWellnessSession();
           this.clearV2LocalState();
         }
@@ -2274,6 +2305,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           !eventData.data.agentSessionId ||
           eventData.data.agentSessionId === this.currentAgentSessionId
         ) {
+          this.reloadGeneration += 1; // A logged-out session cannot accept pending reload recovery
           this.updateWellnessSession();
           this.clearV2LocalState();
         }
@@ -2308,7 +2340,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           }
 
           // @ts-ignore
-          this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED, {
+          this.trigger(AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED, {
             ...eventData.data,
             channelType: eventData.data?.channelType,
           });
@@ -2990,7 +3022,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     );
 
     // @ts-ignore
-    this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, enriched);
+    this.trigger(AGENT_EVENTS.AGENT_STATE_CHANGE, enriched);
   }
 
   /** V2 AgentChannelStateChanged handler: updates state, emits batched agent:stateChange. @private */
@@ -3104,13 +3136,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       );
       // @ts-ignore
-      this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, enriched);
+      this.trigger(AGENT_EVENTS.AGENT_STATE_CHANGE, enriched);
     }
   }
 
   /** V2 AgentChannelReloginSuccess handler: restores channel states + emits enriched reloginSuccess. @private */
   private handleChannelReloginSuccess(eventData: AgentChannelReloginSuccess): void {
     const data = eventData.data;
+    if (this.v2ReloadPromise && this.v2ReloadGeneration !== this.reloadGeneration) {
+      return; // Ignore a delayed reload result after a newer session lifecycle event
+    }
+    if (!this.currentAgentSessionId && this.initialReloadGeneration !== this.reloadGeneration) {
+      return; // A sessionless relogin is valid only during its tracked initial reload
+    }
+
     const isInitialReload = this.initialReloadGeneration === this.reloadGeneration;
     const initialReloadEvents = isInitialReload
       ? this.initialReloadChannelEvents.get(data.agentSessionId) || []
@@ -3198,7 +3237,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       ...(this.wellbeingBreakIdleCode ? {wellbeingBreakIdleCode: this.wellbeingBreakIdleCode} : {}),
     };
     // @ts-ignore
-    this.emit(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, reloginPayload);
+    this.trigger(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, reloginPayload);
   }
 
   /**
@@ -3275,7 +3314,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     } else {
       this.initialReloadGeneration = undefined;
       this.initialReloadChannelEvents.clear();
-      this.liveUpdatedChannels.clear();
+      // A coalesced reload still owns live updates from its original request.
+      // Clear the set only when starting a fresh reload for this session.
+      if (!this.v2ReloadPromise || this.v2ReloadGeneration === undefined) {
+        this.liveUpdatedChannels.clear();
+      }
     }
 
     try {
@@ -3367,7 +3410,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             const stateChangeData: StateChange = {
               state: AGENT_STATE_AVAILABLE,
               auxCodeId: AGENT_STATE_AVAILABLE_ID,
-              lastStateChangeReason: 'agent-wss-disconnect',
+              lastStateChangeReason: WSS_DISCONNECT_REASON,
               agentId,
               channelType: immediate,
             };
@@ -3444,7 +3487,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.agentConfig.currentTeamId = reLoginResponse.data.teamId;
         await this.handleDeviceType(deviceType as LoginOption, dn);
 
-        if (lastStateChangeReason === 'agent-wss-disconnect') {
+        if (lastStateChangeReason === WSS_DISCONNECT_REASON) {
           LoggerProxy.log(
             'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
             {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
@@ -3507,7 +3550,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           this.agentConfig.isAgentLoggedIn = false;
         }
         // @ts-ignore
-        this.emit(AGENT_EVENTS.AGENT_RELOGIN_SESSION_NOT_FOUND, {
+        this.trigger(AGENT_EVENTS.AGENT_RELOGIN_SESSION_NOT_FOUND, {
           agentId: this.agentConfig?.agentId,
         });
 
@@ -3621,6 +3664,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /** Resets all V2 in-memory state. Called on logout, deregister, remote logout. @private */
   private clearV2LocalState(): void {
     this.clearTelephonyRecoveryTimer(); // Cancel deferred telephony recovery
+    this.v2ReloadGeneration = undefined; // Do not adopt a reload across session cleanup
     this.channelStatesMap = {} as Record<ChannelType, AgentChannelTypeStates>;
     this.liveUpdatedChannels.clear(); // No live updates to protect
     this.loginChannelsMap = {}; // Drop channel capacity snapshot
@@ -3648,7 +3692,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     // Emit enriched reconnect event with deferral context (second emit after the empty one).
     // @ts-ignore
-    this.emit(AGENT_EVENTS.AGENT_CONNECTION_RECONNECTED, {
+    this.trigger(AGENT_EVENTS.AGENT_CONNECTION_RECONNECTED, {
       deferredChannels: deferred,
       recoveryStatus: 'deferred' as const,
       deferralTimeoutMs: TELEPHONY_DEFERRAL_TIMEOUT_MS,
@@ -3676,7 +3720,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           channelType: deferred,
         });
         // @ts-ignore
-        this.emit(AGENT_EVENTS.AGENT_CONNECTION_RECONNECTED, {
+        this.trigger(AGENT_EVENTS.AGENT_CONNECTION_RECONNECTED, {
           recoveryStatus: 'recovered' as const,
         });
       } catch (error) {
@@ -3753,7 +3797,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     webRtcLineRegistered: boolean
   ): {immediate: ChannelType[]; deferred: ChannelType[]} {
     // Non-BROWSER or voice already registered → recover everything now.
-    if (!(deviceType === 'BROWSER' && !webRtcLineRegistered)) {
+    if (!(deviceType === LoginOption.BROWSER && !webRtcLineRegistered)) {
       return {immediate: disconnectedChannels, deferred: []};
     }
     // BROWSER without voice → recover digital now, defer telephony.

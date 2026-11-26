@@ -3667,6 +3667,61 @@ describe('webex.cc', () => {
       expect(logoutResolved).toBe(true);
     });
 
+    it('invalidates a pending reload as soon as station logout succeeds', async () => {
+      webex.cc.agentConfig = {
+        agentId: 'agent-1',
+        manageChannelAvailability: true,
+      } as Profile;
+      webex.cc['currentAgentSessionId'] = 'session-1';
+      webex.cc['channelStatesMap'] = {
+        chat: {agentState: 'Available', auxCodeId: '0'},
+      } as any;
+
+      let resolveReload: (response: any) => void;
+      jest.spyOn(webex.cc.services.agent, 'reloadV2').mockImplementation(
+        () => new Promise((resolve) => {
+          resolveReload = resolve;
+        }) as any
+      );
+      jest.spyOn(webex.cc.services.agent, 'logoutV2').mockResolvedValue({} as StationLogoutResponse);
+
+      let resolveDeregister: (() => void) | undefined;
+      let signalDeregisterStarted: (() => void) | undefined;
+      const deregisterStarted = new Promise<void>((resolve) => {
+        signalDeregisterStarted = resolve;
+      });
+      jest.spyOn(webex.cc.webCallingService, 'deregisterWebCallingLine').mockImplementation(
+        () => new Promise<void>((resolve) => {
+          resolveDeregister = resolve;
+          signalDeregisterStarted?.();
+        })
+      );
+
+      const pendingRelogin = webex.cc['silentRelogin']();
+      const logout = webex.cc.stationLogout({logoutReason: 'Logout reason'});
+      await deregisterStarted;
+
+      webex.cc['handleChannelReloginSuccess']({
+        data: {
+          type: 'AgentChannelReloginSuccess',
+          agentId: 'agent-1',
+          agentSessionId: 'session-1',
+          deviceType: LoginOption.EXTENSION,
+          teamId: 'team-1',
+          agentChannelStateDetailMap: {chat: {agentState: 'Idle', auxCodeId: '0'}},
+          channelsMap: {chat: ['c1']},
+        },
+      } as any);
+      resolveReload!({data: {type: 'AgentChannelReloginSuccess', agentSessionId: 'session-1'}});
+      await pendingRelogin;
+
+      expect(webex.cc['channelStatesMap'].chat.agentState).toBe('Available');
+      resolveDeregister?.();
+      await logout;
+      expect(webex.cc['currentAgentSessionId']).toBeUndefined();
+      expect(webex.cc['channelStatesMap']).toEqual({});
+    });
+
     it('should logout successfully', async () => {
       const data = {logoutReason: 'Logout reason'};
       const response = {};
@@ -5002,7 +5057,7 @@ describe('webex.cc', () => {
           details: {trackingId: '1234', data: {reason: 'AGENT_NOT_FOUND'}},
         });
 
-        const emitSpy = jest.spyOn(webex.cc, 'emit');
+        const emitSpy = jest.spyOn(webex.cc, 'trigger');
 
         await webex.cc['silentRelogin']();
 
@@ -5021,7 +5076,7 @@ describe('webex.cc', () => {
       });
 
       it('does not emit session-not-found when the reload succeeds', async () => {
-        const emitSpy = jest.spyOn(webex.cc, 'emit');
+        const emitSpy = jest.spyOn(webex.cc, 'trigger');
 
         await runReload(true, v2Reload);
 
@@ -7360,11 +7415,11 @@ describe('webex.cc', () => {
     };
 
     describe('handleChannelStateChanged', () => {
-      let emitSpy: jest.SpyInstance;
+      let triggerSpy: jest.SpyInstance;
       let messageCallback: (msg: string) => void;
 
       beforeEach(() => {
-        emitSpy = jest.spyOn(webex.cc, 'emit');
+        triggerSpy = jest.spyOn(webex.cc, 'trigger');
         messageCallback = webex.cc['handleWebsocketMessage'];
       });
 
@@ -7404,7 +7459,7 @@ describe('webex.cc', () => {
           JSON.stringify({type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE, data: failure})
         );
 
-        expect(emitSpy).toHaveBeenCalledWith(
+        expect(triggerSpy).toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED,
           expect.objectContaining({
             channelType: 'chat',
@@ -7427,7 +7482,7 @@ describe('webex.cc', () => {
           JSON.stringify({type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE, data: failure})
         );
 
-        expect(emitSpy).not.toHaveBeenCalledWith(
+        expect(triggerSpy).not.toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED,
           expect.anything()
         );
@@ -7452,7 +7507,7 @@ describe('webex.cc', () => {
           JSON.stringify({type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE, data: failure})
         );
 
-        expect(emitSpy).not.toHaveBeenCalledWith(
+        expect(triggerSpy).not.toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED,
           expect.anything()
         );
@@ -7476,7 +7531,7 @@ describe('webex.cc', () => {
           JSON.stringify({type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE, data: failure})
         );
 
-        expect(emitSpy).not.toHaveBeenCalledWith(
+        expect(triggerSpy).not.toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED,
           expect.anything()
         );
@@ -7502,7 +7557,7 @@ describe('webex.cc', () => {
         );
 
         expect(webex.cc['channelStatesMap'].telephony).toBeUndefined();
-        expect(emitSpy).not.toHaveBeenCalledWith(
+        expect(triggerSpy).not.toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE,
           expect.anything()
         );
@@ -7532,7 +7587,7 @@ describe('webex.cc', () => {
 
         // channelStatesMap must NOT be repopulated
         expect(webex.cc['channelStatesMap'].chat).toBeUndefined();
-        expect(emitSpy).not.toHaveBeenCalledWith(
+        expect(triggerSpy).not.toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE,
           expect.anything()
         );
@@ -7557,7 +7612,7 @@ describe('webex.cc', () => {
         );
 
         expect(webex.cc['channelStatesMap'].chat).toBeUndefined();
-        expect(emitSpy).not.toHaveBeenCalledWith(
+        expect(triggerSpy).not.toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE,
           expect.anything()
         );
@@ -7581,7 +7636,7 @@ describe('webex.cc', () => {
           })
         );
 
-        expect(emitSpy).toHaveBeenCalledWith(
+        expect(triggerSpy).toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE,
           expect.objectContaining({changedChannelType: 'chat', channelDetail: detail})
         );
@@ -7609,7 +7664,7 @@ describe('webex.cc', () => {
           })
         );
 
-        expect(emitSpy).toHaveBeenCalledWith(
+        expect(triggerSpy).toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE,
           expect.objectContaining({
             type: 'AgentStateChangeSuccess',
@@ -7617,12 +7672,12 @@ describe('webex.cc', () => {
             agentId: 'agent-1',
           })
         );
-        expect(emitSpy).not.toHaveBeenCalledWith(
+        expect(triggerSpy).not.toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS,
           expect.anything()
         );
         // isGranular removed — clients detect V2 via channelStates presence
-        const statePayload = emitSpy.mock.calls.find(
+        const statePayload = triggerSpy.mock.calls.find(
           (c: any[]) => c[0] === AGENT_EVENTS.AGENT_STATE_CHANGE
         )?.[1];
         expect(statePayload).not.toHaveProperty('isGranular');
@@ -7650,7 +7705,7 @@ describe('webex.cc', () => {
           })
         );
 
-        expect(emitSpy).toHaveBeenCalledWith(
+        expect(triggerSpy).toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE,
           expect.objectContaining({
             changedChannelType: 'telephony',
@@ -7673,7 +7728,7 @@ describe('webex.cc', () => {
           })
         );
 
-        expect(emitSpy).not.toHaveBeenCalledWith(
+        expect(triggerSpy).not.toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE,
           expect.anything()
         );
@@ -7695,7 +7750,7 @@ describe('webex.cc', () => {
           })
         );
 
-        expect(emitSpy).not.toHaveBeenCalledWith(
+        expect(triggerSpy).not.toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE,
           expect.anything()
         );
@@ -7724,7 +7779,7 @@ describe('webex.cc', () => {
           })
         );
 
-        expect(emitSpy).toHaveBeenCalledWith(
+        expect(triggerSpy).toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE,
           expect.objectContaining({
             changedBy: 'supervisor',
@@ -7768,7 +7823,7 @@ describe('webex.cc', () => {
           })
         );
 
-        expect(emitSpy).not.toHaveBeenCalledWith(
+        expect(triggerSpy).not.toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE,
           expect.anything()
         );
@@ -7794,7 +7849,7 @@ describe('webex.cc', () => {
           })
         );
 
-        expect(emitSpy).toHaveBeenCalledWith(
+        expect(triggerSpy).toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE,
           expect.objectContaining({isClientInitiated: false})
         );
@@ -7802,12 +7857,12 @@ describe('webex.cc', () => {
     });
 
     describe('handleChannelStateChanged batching', () => {
-      let emitSpy: jest.SpyInstance;
+      let triggerSpy: jest.SpyInstance;
       let messageCallback: (msg: string) => void;
 
       beforeEach(() => {
         jest.useFakeTimers();
-        emitSpy = jest.spyOn(webex.cc, 'emit');
+        triggerSpy = jest.spyOn(webex.cc, 'trigger');
         messageCallback = webex.cc['handleWebsocketMessage'];
         setV2();
         webex.cc['loginChannelsMap'] = {
@@ -7848,7 +7903,7 @@ describe('webex.cc', () => {
         );
 
         // After first event, no emit yet — batch not complete
-        expect(emitSpy).not.toHaveBeenCalledWith(
+        expect(triggerSpy).not.toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE,
           expect.anything()
         );
@@ -7870,7 +7925,7 @@ describe('webex.cc', () => {
         );
 
         // Still not emitted — 2 of 3 channels
-        expect(emitSpy).not.toHaveBeenCalledWith(
+        expect(triggerSpy).not.toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE,
           expect.anything()
         );
@@ -7892,7 +7947,7 @@ describe('webex.cc', () => {
         );
 
         // 3 of 3 — count-based flush triggers immediately
-        expect(emitSpy).toHaveBeenCalledWith(
+        expect(triggerSpy).toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE,
           expect.objectContaining({
             changedChannels: ['chat', 'telephony', 'email'],
@@ -7903,7 +7958,7 @@ describe('webex.cc', () => {
         );
 
         // Exactly one emit for this batch
-        const stateChangeCalls = emitSpy.mock.calls.filter(
+        const stateChangeCalls = triggerSpy.mock.calls.filter(
           (c: any[]) => c[0] === AGENT_EVENTS.AGENT_STATE_CHANGE
         );
         expect(stateChangeCalls).toHaveLength(1);
@@ -7928,7 +7983,7 @@ describe('webex.cc', () => {
         );
 
         // Not emitted yet — only 1 of 3 channels
-        expect(emitSpy).not.toHaveBeenCalledWith(
+        expect(triggerSpy).not.toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE,
           expect.anything()
         );
@@ -7937,7 +7992,7 @@ describe('webex.cc', () => {
         jest.advanceTimersByTime(50);
 
         // Timer-based flush fires
-        expect(emitSpy).toHaveBeenCalledWith(
+        expect(triggerSpy).toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE,
           expect.objectContaining({
             changedChannels: ['chat'],
@@ -7986,7 +8041,7 @@ describe('webex.cc', () => {
         }
 
         // Both batches should have flushed: A first, then B
-        const stateChangeCalls = emitSpy.mock.calls.filter(
+        const stateChangeCalls = triggerSpy.mock.calls.filter(
           (c: any[]) => c[0] === AGENT_EVENTS.AGENT_STATE_CHANGE
         );
         expect(stateChangeCalls).toHaveLength(2);
@@ -8030,7 +8085,7 @@ describe('webex.cc', () => {
         );
 
         // Neither has completed count-based — advance both timers
-        expect(emitSpy).not.toHaveBeenCalledWith(
+        expect(triggerSpy).not.toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE,
           expect.anything()
         );
@@ -8038,7 +8093,7 @@ describe('webex.cc', () => {
         jest.advanceTimersByTime(50);
 
         // Both batches flushed independently
-        const stateChangeCalls = emitSpy.mock.calls.filter(
+        const stateChangeCalls = triggerSpy.mock.calls.filter(
           (c: any[]) => c[0] === AGENT_EVENTS.AGENT_STATE_CHANGE
         );
         expect(stateChangeCalls).toHaveLength(2);
@@ -8073,7 +8128,7 @@ describe('webex.cc', () => {
 
         jest.advanceTimersByTime(50);
 
-        const payload = emitSpy.mock.calls.find(
+        const payload = triggerSpy.mock.calls.find(
           (c: any[]) => c[0] === AGENT_EVENTS.AGENT_STATE_CHANGE
         )?.[1];
 
@@ -8084,12 +8139,13 @@ describe('webex.cc', () => {
     });
 
     describe('handleChannelReloginSuccess', () => {
-      let emitSpy: jest.SpyInstance;
+      let triggerSpy: jest.SpyInstance;
       let messageCallback: (msg: string) => void;
 
       beforeEach(() => {
-        emitSpy = jest.spyOn(webex.cc, 'emit');
+        triggerSpy = jest.spyOn(webex.cc, 'trigger');
         messageCallback = webex.cc['handleWebsocketMessage'];
+        webex.cc['currentAgentSessionId'] = 'sess-1';
       });
 
       it('should restore channel state map from relogin data', () => {
@@ -8160,7 +8216,7 @@ describe('webex.cc', () => {
           })
         );
 
-        const payload = emitSpy.mock.calls.find(
+        const payload = triggerSpy.mock.calls.find(
           (c: any[]) => c[0] === AGENT_EVENTS.AGENT_RELOGIN_SUCCESS
         )?.[1];
 
@@ -8241,7 +8297,7 @@ describe('webex.cc', () => {
           })
         );
 
-        const payload = emitSpy.mock.calls.find(
+        const payload = triggerSpy.mock.calls.find(
           (c: any[]) => c[0] === AGENT_EVENTS.AGENT_RELOGIN_SUCCESS
         )?.[1];
 
@@ -8277,7 +8333,7 @@ describe('webex.cc', () => {
           })
         );
 
-        const payload = emitSpy.mock.calls.find(
+        const payload = triggerSpy.mock.calls.find(
           (c: any[]) => c[0] === AGENT_EVENTS.AGENT_RELOGIN_SUCCESS
         )?.[1];
 
@@ -8320,6 +8376,7 @@ describe('webex.cc', () => {
       it('should initialize currentAgentSessionId before emitting relogin success', () => {
         webex.cc.agentConfig = {agentId: 'agent-1'} as Profile;
         webex.cc['currentAgentSessionId'] = undefined;
+        webex.cc['initialReloadGeneration'] = webex.cc['reloadGeneration'];
 
         const handler = jest.fn(() => {
           // A wellness-enabled listener calling requestWellnessBreak() needs
@@ -8527,7 +8584,7 @@ describe('webex.cc', () => {
           })
         );
 
-        const payload = emitSpy.mock.calls.find(
+        const payload = triggerSpy.mock.calls.find(
           (c: any[]) => c[0] === AGENT_EVENTS.AGENT_RELOGIN_SUCCESS
         )?.[1];
 
@@ -8554,7 +8611,7 @@ describe('webex.cc', () => {
           })
         );
 
-        const payload = emitSpy.mock.calls.find(
+        const payload = triggerSpy.mock.calls.find(
           (c: any[]) => c[0] === AGENT_EVENTS.AGENT_RELOGIN_SUCCESS
         )?.[1];
 
@@ -8767,11 +8824,11 @@ describe('webex.cc', () => {
     });
 
     describe('scheduleTelephonyRecovery', () => {
-      let emitSpy: jest.SpyInstance;
+      let triggerSpy: jest.SpyInstance;
 
       beforeEach(() => {
         jest.useFakeTimers();
-        emitSpy = jest.spyOn(webex.cc, 'emit');
+        triggerSpy = jest.spyOn(webex.cc, 'trigger');
         setV2();
         webex.cc['currentAgentSessionId'] = 'session-123';
       });
@@ -8783,7 +8840,7 @@ describe('webex.cc', () => {
       it('should emit enriched AGENT_CONNECTION_RECONNECTED with deferral context before scheduling', () => {
         webex.cc['scheduleTelephonyRecovery']('agent-1', ['telephony']);
 
-        expect(emitSpy).toHaveBeenCalledWith(AGENT_EVENTS.AGENT_CONNECTION_RECONNECTED, {
+        expect(triggerSpy).toHaveBeenCalledWith(AGENT_EVENTS.AGENT_CONNECTION_RECONNECTED, {
           deferredChannels: ['telephony'],
           recoveryStatus: 'deferred',
           deferralTimeoutMs: 60_000,
@@ -8986,6 +9043,7 @@ describe('webex.cc', () => {
         trackingId: 'track-v2',
         data: {
           type: 'AgentChannelStateChanged',
+          trackingId: 'request-track-v2',
           channelType: 'chat',
           agentChannelStateDetail: {
             agentState: 'Available',
@@ -9584,6 +9642,7 @@ describe('webex.cc', () => {
         expect(result.data.agentId).toBe('agent-1');
         expect(result.data.changedBy).toBe('AGENT');
         expect(result.trackingId).toBe('track-v2');
+        expect(result.data.trackingId).toBe('request-track-v2');
       });
     });
 
@@ -10163,6 +10222,60 @@ describe('webex.cc', () => {
         expect(webex.cc['channelStatesMap'].telephony.agentState).toBe('Available');
       });
 
+      it('does not restore V2 state from a reload that completes after logout', async () => {
+        webex.cc.agentConfig = {
+          agentId: 'agent-1',
+          isAgentLoggedIn: true,
+          manageChannelAvailability: true,
+        } as Profile;
+        webex.cc['currentAgentSessionId'] = 'session-1';
+        webex.cc['channelStatesMap'] = {chat: makeChannelState('Available')} as any;
+
+        const reloadResponse = {
+          data: {
+            type: 'AgentChannelReloginSuccess',
+            agentId: 'agent-1',
+            agentSessionId: 'session-1',
+            deviceType: LoginOption.EXTENSION,
+            dn: '1001',
+            teamId: 'team-1',
+            agentChannelStateDetailMap: {
+              chat: makeChannelState('Idle', disconnected),
+            },
+            channelsMap: {chat: ['c1']},
+          },
+        };
+        let resolveReload: (response: typeof reloadResponse) => void;
+        jest.spyOn(webex.cc.services.agent, 'reloadV2').mockImplementation(
+          () =>
+            new Promise((resolve) => {
+              resolveReload = resolve;
+            }) as any
+        );
+
+        const pendingRelogin = webex.cc['silentRelogin']();
+        webex.cc['handleWebsocketMessage'](
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_LOGOUT_SUCCESS,
+            data: {
+              type: CC_EVENTS.AGENT_LOGOUT_SUCCESS,
+              agentId: 'agent-1',
+              agentSessionId: 'session-1',
+            },
+          })
+        );
+
+        // Simulate the delayed WebSocket response arriving after logout cleanup.
+        webex.cc['handleChannelReloginSuccess'](reloadResponse as any);
+        resolveReload!(reloadResponse);
+        await pendingRelogin;
+
+        expect(webex.cc['currentAgentSessionId']).toBeUndefined();
+        expect(webex.cc['channelStatesMap']).toEqual({});
+        expect(webex.cc.getAgentStateControl().active).toBeUndefined();
+        expect(setAgentStateSpy).not.toHaveBeenCalled();
+      });
+
       it('does not overwrite live channel updates with the stale reload snapshot', async () => {
         webex.cc.agentConfig = {
           agentId: 'agent-1',
@@ -10290,6 +10403,61 @@ describe('webex.cc', () => {
         expect(setAgentStateSpy).toHaveBeenCalledWith(
           expect.objectContaining({state: 'Available', channelType: ['telephony', 'chat']})
         );
+      });
+
+      it('preserves live updates when a second reconnect joins the same pending reload', async () => {
+        webex.cc.agentConfig = {
+          agentId: 'agent-1',
+          isAgentLoggedIn: true,
+          manageChannelAvailability: true,
+        } as Profile;
+        webex.cc['currentAgentSessionId'] = 'session-1';
+
+        const reloadResponse = {
+          data: {
+            type: 'AgentChannelReloginSuccess',
+            agentId: 'agent-1',
+            agentSessionId: 'session-1',
+            deviceType: LoginOption.EXTENSION,
+            dn: '1001',
+            teamId: 'team-1',
+            agentChannelStateDetailMap: {
+              chat: makeChannelState('Available', {stateChangeReason: 'reload-snapshot'}),
+              telephony: makeChannelState('Available', {stateChangeReason: 'reload-snapshot'}),
+            },
+            channelsMap: {chat: ['c1'], telephony: ['t1']},
+          },
+        };
+        let resolveReload: (response: typeof reloadResponse) => void;
+        const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reloadV2').mockImplementation(
+          () => new Promise((resolve) => {
+            resolveReload = resolve;
+          }) as any
+        );
+
+        const earlierReconnect = webex.cc['silentRelogin']();
+        const liveChat = makeChannelState('Idle', {
+          auxCodeId: 'lunch-code',
+          stateChangeReason: 'agent-explicit',
+        });
+        webex.cc['handleChannelStateChanged']({
+          data: {
+            type: 'AgentChannelStateChanged',
+            channelType: 'chat',
+            agentId: 'agent-1',
+            agentSessionId: 'session-1',
+            agentChannelStateDetail: liveChat,
+          },
+        } as any);
+        const latestReconnect = webex.cc['silentRelogin']();
+
+        webex.cc['handleChannelReloginSuccess'](reloadResponse as any);
+        resolveReload!(reloadResponse);
+        await Promise.all([earlierReconnect, latestReconnect]);
+
+        expect(reloadSpy).toHaveBeenCalledTimes(1);
+        expect(webex.cc['channelStatesMap'].chat).toBe(liveChat);
+        expect(webex.cc['channelStatesMap'].telephony.stateChangeReason).toBe('reload-snapshot');
       });
     });
   });

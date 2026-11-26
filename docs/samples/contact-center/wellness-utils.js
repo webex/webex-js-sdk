@@ -113,9 +113,13 @@
   function getUnconfirmedChannelTypes(channelStates, channelTypes, state, auxCodeId) {
     return channelTypes.filter((channelType) => {
       const channelState = channelStates?.[channelType];
+      const idleRequestConfirmed =
+        state === 'Idle' &&
+        channelState?.pendingIdle === true &&
+        channelState.auxCodeId === auxCodeId;
       return (
         !channelState ||
-        channelState.agentState !== state ||
+        (channelState.agentState !== state && !idleRequestConfirmed) ||
         (state === 'Idle' && channelState.auxCodeId !== auxCodeId)
       );
     });
