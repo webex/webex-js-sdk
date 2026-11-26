@@ -1237,14 +1237,11 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     expect(aqm['pendingRequests']).toEqual({});
   });
 
-  it('preserves caller request headers and station body without adding a data wrapper', async () => {
+  it('preserves the station body without adding a data wrapper', async () => {
     const data = {teamId: 'team', dialNumber: 'number'};
     const promise = agent.stationLogin({data});
     expect(http.mock.calls[0][0].body).toBe(data);
     send(frame('stationLogin', true, requestUuid())); await promise;
-    const request = aqm.req(() => command({headers: {'X-Request': 'retained'}}));
-    const normal = request({}); expect(http.mock.calls[1][0].headers).toEqual({'X-Request': 'retained'});
-    send({type: 'DONE'}); await normal;
   });
 
   it.each(['success', 'failure'])('aqmMessageDiagnosticsCannotBlockSettlement %s', async (outcome) => {

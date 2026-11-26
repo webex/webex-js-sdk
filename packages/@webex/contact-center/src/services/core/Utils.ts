@@ -15,7 +15,12 @@ import {
   Interaction,
   InteractionParticipant,
 } from '../task/types';
-import {PARTICIPANT_TYPES, REGION_RECOVERY_ERROR_CODES, STATE_CONSULT} from './constants';
+import {
+  PARTICIPANT_TYPES,
+  REGION_RECOVERY_ERROR_CODES,
+  STATE_CONSULT,
+  SUBSCRIPTION_MISMATCH_REASONS,
+} from './constants';
 import {DialPlan} from '../config/types';
 
 /** Returns whether a value is a non-null object with string keys. */
@@ -129,12 +134,7 @@ export const getSubscriptionMismatchReason = (error: unknown): string | undefine
     asRecord(body?.error)?.reason
   );
 
-  return [
-    'REGION_MISMATCH_REGION_FAILOVER',
-    'REGION_MISMATCH_ORG_OVERRIDE',
-    'REGION_MISMATCH_ORG_OVERRIDE_SUPERSEDED',
-    'REGION_MISMATCH_NO_OVERRIDE',
-  ].find((candidate) => candidate === reason);
+  return SUBSCRIPTION_MISMATCH_REASONS.find((candidate) => candidate === reason);
 };
 
 /** Creates an independent plain lifecycle Error with only safe supplied diagnostics. */
@@ -154,13 +154,17 @@ export const createRegionRecoveryError = (
 };
 
 /** Observes abandoned work while promptly releasing its local cancellation continuation. */
-export const awaitRecoveryWork = <T>(work: Promise<T>, signal?: AbortSignal): Promise<T> => {
+export const awaitRecoveryWork = <T>(
+  work: Promise<T>,
+  signal?: AbortSignal,
+  createAbortError: () => Error = () => createRegionRecoveryError('RECOVERY_INTERRUPTED')
+): Promise<T> => {
   if (!signal) return work;
 
   return new Promise<T>((resolve, reject) => {
     const onAbort = () => {
       signal.removeEventListener('abort', onAbort);
-      reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+      reject(createAbortError());
     };
     signal.addEventListener('abort', onAbort, {once: true});
     Promise.resolve(work).then(

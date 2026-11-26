@@ -1121,34 +1121,20 @@ export default abstract class Task extends EventEmitter implements ITask {
       }
       this.autoWrapup = new AutoWrapup(intervalMs, wrapUpProps.allowCancelAutoWrapup);
       this.autoWrapup.start(() => {
-        try {
-          this.assertTaskCommandAllowed();
-          this.wrapup({
-            wrapUpReason: defaultWrapupReason.name,
-            auxCodeId: defaultWrapupReason.id,
-          }).catch((error) => {
-            if (isRegionRecoveryError(error)) return;
-            try {
-              LoggerProxy.error('Automatic wrap-up failed', {
-                module: TASK_FILE,
-                method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
-              });
-            } catch {
-              // Diagnostic sinks must not reject the timer callback.
-            }
-          });
-        } catch (error) {
-          if (!isRegionRecoveryError(error)) {
-            try {
-              LoggerProxy.error('Automatic wrap-up admission failed', {
-                module: TASK_FILE,
-                method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
-              });
-            } catch {
-              // Timer callbacks have no caller to observe a diagnostic failure.
-            }
+        this.wrapup({
+          wrapUpReason: defaultWrapupReason.name,
+          auxCodeId: defaultWrapupReason.id,
+        }).catch((error) => {
+          if (isRegionRecoveryError(error)) return;
+          try {
+            LoggerProxy.error('Automatic wrap-up failed', {
+              module: TASK_FILE,
+              method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
+            });
+          } catch {
+            // Timer callbacks have no caller to observe a diagnostic failure.
           }
-        }
+        });
       });
     }
   }

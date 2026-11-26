@@ -248,7 +248,7 @@ export default class WebCallingService extends EventEmitter {
   }
 
   private async cleanupWebCallingRegistration(): Promise<void> {
-    this.cancelRegistrationAttempt(this.registrationGeneration);
+    this.cancelRegistrationAttempt();
     this.registrationGeneration += 1;
     this.setTerminalLine();
     this.rejectRegistration?.(new Error('WebCallingService registration superseded'));
@@ -554,9 +554,9 @@ export default class WebCallingService extends EventEmitter {
     if (signal?.aborted || stationSignal?.aborted) cancel();
   }
 
-  private cancelRegistrationAttempt(expectedGeneration: number): void {
+  private cancelRegistrationAttempt(): void {
     const attempt = this.registrationAttempt;
-    if (!attempt || attempt.generation !== expectedGeneration) return;
+    if (!attempt || attempt.generation !== this.registrationGeneration) return;
     this.registrationAttempt = undefined;
     this.registrationGeneration += 1;
     attempt.cancel();
@@ -565,7 +565,7 @@ export default class WebCallingService extends EventEmitter {
 
   private startRegistrationAttempt(mode: 'preserve' | 'replace'): Promise<void> {
     if (mode === 'preserve' && this.registrationAttempt) return this.registrationAttempt.promise;
-    this.cancelRegistrationAttempt(this.registrationGeneration);
+    this.cancelRegistrationAttempt();
     let cancel: () => void;
     const cancelled = new Promise<void>((resolve) => {
       cancel = resolve;

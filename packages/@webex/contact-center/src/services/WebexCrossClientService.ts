@@ -111,6 +111,44 @@ export default class WebexCrossClientService {
     }, refreshTime);
   }
 
+  private publishCrossClientState(
+    users: string[],
+    ttl: number,
+    composition: Record<string, unknown>,
+    logContext: string,
+    signal?: AbortSignal
+  ): Promise<unknown> {
+    const body = {
+      users,
+      compositions: [
+        {
+          type: 'cross-client-state',
+          ttl,
+          composition,
+        },
+      ],
+    };
+
+    return this.webex
+      .request({
+        method: 'POST',
+        service: 'usersub',
+        resource: 'publish',
+        body,
+      })
+      .then((response: {body?: unknown}) => response?.body)
+      .catch((error: unknown) => {
+        if (!signal?.aborted) {
+          LoggerProxy.error(`WebexCrossClientService.${logContext} failed: ${error}`, {
+            module: WEBEX_CROSS_CLIENT_FILE,
+            method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
+          });
+        }
+
+        return Promise.reject(error);
+      });
+  }
+
   public async setManageWebexCallingInWxcc(
     enable: boolean,
     options?: {
@@ -124,7 +162,6 @@ export default class WebexCrossClientService {
     const signal = options?.signal;
     if (signal?.aborted) return;
     const operationGeneration = this.refreshGeneration;
-    const ownsPublish = () => !signal?.aborted && operationGeneration === this.refreshGeneration;
     const userId = options?.userId ?? this.webex.internal.device?.userId;
     const ttl = options?.ttl ?? DEFAULT_CROSS_CLIENT_STATE_TTL;
     const appName = options?.appName ?? DEFAULT_APP_NAME;
@@ -149,11 +186,10 @@ export default class WebexCrossClientService {
       throw new Error(error);
     }
 
-    const deviceId = this.extractDeviceIdFromUrl(deviceUrl);
     const composition = {
       devices: [
         {
-          deviceId,
+          deviceId: this.extractDeviceIdFromUrl(deviceUrl),
           appName,
           state: {
             'answer-calls-on-wxcc': enable,
@@ -176,31 +212,16 @@ export default class WebexCrossClientService {
     }
 
     try {
-      await this.webex
-        .request({
-          method: 'POST',
-          service: 'usersub',
-          resource: 'publish',
-          body: {
-            users: [userId],
-            compositions: [{type: 'cross-client-state', ttl, composition}],
-          },
-        })
-        .catch((error: unknown) => {
-          if (!signal?.aborted) {
-            LoggerProxy.error(
-              `WebexCrossClientService.setManageWebexCallingInWxcc failed: ${error}`,
-              {
-                module: WEBEX_CROSS_CLIENT_FILE,
-                method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
-              }
-            );
-          }
-          throw error;
-        });
+      await this.publishCrossClientState(
+        [userId],
+        ttl,
+        composition,
+        'setManageWebexCallingInWxcc',
+        signal
+      );
     } catch (error) {
       if (trackPublishMetrics) {
-        if (!ownsPublish()) {
+        if (signal?.aborted || operationGeneration !== this.refreshGeneration) {
           if (publishMetricsId === this.usersubPublishMetricsId) {
             metricsManager.cancelTimedEvent(usersubPublishEventKeys);
           }
@@ -220,7 +241,7 @@ export default class WebexCrossClientService {
       throw error;
     }
 
-    if (!ownsPublish()) {
+    if (signal?.aborted || operationGeneration !== this.refreshGeneration) {
       if (trackPublishMetrics && publishMetricsId === this.usersubPublishMetricsId) {
         metricsManager.cancelTimedEvent(usersubPublishEventKeys);
       }
@@ -253,7 +274,7 @@ export default class WebexCrossClientService {
       method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
       data: {
         appName,
-        deviceId,
+        deviceId: this.extractDeviceIdFromUrl(deviceUrl),
         ttl,
       },
     });

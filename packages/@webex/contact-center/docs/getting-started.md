@@ -145,9 +145,9 @@ Expected result: all three commands exit zero and Jest prints no coverage thresh
 
 Listen for `REGION_RECOVERY_EVENTS.STATE_CHANGE` (`region:stateChange`) before registration.
 Each frozen `RegionRecoveryState` is a complete snapshot. Replace the previous snapshot so omitted
-placement, retry and automatic-action fields clear. The package exports the state and error catalogs
-along with `RegionRecoveryState`, `RegionRecoveryStatus`, `RegionRecoveryReason`,
-`RegionAutoAvailableStatus` and `RegionRecoveryErrorCode`.
+placement, retry and automatic-action fields clear. Import `REGION_RECOVERY_EVENTS`,
+`REGION_RECOVERY_ERROR_CODES` and the `RegionRecoveryState` type from `@webex/contact-center`.
+Use `RegionRecoveryState['status']` if your host needs the type of the status field.
 
 | Status | Host behavior |
 | --- | --- |

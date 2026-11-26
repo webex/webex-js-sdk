@@ -19,6 +19,19 @@ class ManagerDouble extends EventEmitter {
 }
 const subscribeRequest = {force: true, isKeepAliveEnabled: false, clientType: 'WebexCCSDK', allowMultiLogin: true};
 const flush = async () => { for (let turn = 0; turn < 16; turn += 1) await Promise.resolve(); };
+const tick = async (duration: number) => { jest.advanceTimersByTime(duration); await flush(); };
+const levels = ['log', 'info', 'warn', 'error', 'trace'] as const;
+const ordinaryRecords = () => (LoggerProxy.info as jest.Mock).mock.calls
+  .filter(([message]) => message === 'Ordinary reconnect attempt settled');
+const attemptRecord = (attempt: number, elapsedMs: number, outcome: string, failure = {}) => [
+  'Ordinary reconnect attempt settled',
+  {module: CONNECTION_SERVICE_FILE, method: METHODS.HANDLE_SOCKET_CLOSE,
+    data: {attempt, elapsedMs, outcome, ...failure}},
+];
+const expectNoLoggedSecrets = (sinks: Array<jest.Mock | jest.SpyInstance>) => {
+  expect(JSON.stringify(sinks.flatMap(sink => sink.mock.calls)))
+    .not.toMatch(/SECRET|authorization|options|dialNumber|signature=|https?:|wss:/i);
+};
 
 describe('ConnectionService single-flight scheduler', () => {
   let service: ConnectionService;
@@ -27,7 +40,6 @@ describe('ConnectionService single-flight scheduler', () => {
   let terminal: jest.Mock;
   let events: jest.Mock;
   let logger: Record<string, jest.Mock>;
-  const levels = ['log', 'info', 'warn', 'error', 'trace'] as const;
   const oldLogger = LoggerProxy.logger;
   const oldNavigator = global.navigator;
 
@@ -49,7 +61,6 @@ describe('ConnectionService single-flight scheduler', () => {
     Object.defineProperty(global, 'navigator', {value: oldNavigator, configurable: true});
     LoggerProxy.logger = oldLogger;
   });
-  const tick = async (duration: number) => { jest.advanceTimersByTime(duration); await flush(); };
   const recover = (overrides: Record<string, any> = {}) => {
     const parent = new AbortController();
     const onScheduled = jest.fn(), afterWelcome = jest.fn().mockResolvedValue(undefined), onAttemptSettled = jest.fn();
@@ -58,18 +69,9 @@ describe('ConnectionService single-flight scheduler', () => {
     return {promise, parent, onScheduled, afterWelcome, onAttemptSettled};
   };
   const lose = () => { manager.usable = false; manager.emit('socketClose', {shouldReconnect: true}); };
-  const ordinaryRecords = () => (LoggerProxy.info as jest.Mock).mock.calls
-    .filter(([message]) => message === 'Ordinary reconnect attempt settled');
-  const attemptRecord = (attempt: number, elapsedMs: number, outcome: string, failure = {}) => [
-    'Ordinary reconnect attempt settled',
-    {module: CONNECTION_SERVICE_FILE, method: METHODS.HANDLE_SOCKET_CLOSE,
-      data: {attempt, elapsedMs, outcome, ...failure}},
-  ];
-  const expectNoSecrets = () => {
-    const sinks = [...levels.map(level => LoggerProxy[level] as jest.Mock), ...Object.values(logger)];
-    expect(JSON.stringify(sinks.flatMap(sink => sink.mock.calls)))
-      .not.toMatch(/SECRET|authorization|options|dialNumber|signature=|https?:|wss:/i);
-  };
+  const expectNoSecrets = () => expectNoLoggedSecrets([
+    ...levels.map(level => LoggerProxy[level] as jest.Mock), ...Object.values(logger),
+  ]);
 
   it('T-004 dr100603015WithFreshJitter / repeatFinalDelay', async () => {
     const samples = [0, 0.25, 0.5, 0.75, 0, 0.25, 0.5, 0.75];
@@ -559,62 +561,6 @@ describe('ConnectionService single-flight scheduler', () => {
     expect(jest.getTimerCount()).toBe(0);
   });
 
-  it.each(['subscribe', 'open', 'Welcome'])('T-004 watchdogAbortsSubscribeOpenAndWelcome %s with actual WebSocketManager', async (phase) => {
-    service.stop();
-    const saved = {socket: global.WebSocket, worker: global.Worker, blob: global.Blob, create: URL.createObjectURL, revoke: URL.revokeObjectURL};
-    const sockets: any[] = [], pending: ReturnType<typeof createDeferred<any>>[] = [];
-    class Socket {
-      readyState = 0;
-      onopen: any; onclose: any; onmessage: any; onerror: any;
-      close = jest.fn(() => { this.readyState = 3; }); send = jest.fn();
-      constructor() { sockets.push(this); }
-    }
-    global.WebSocket = Socket as any;
-    global.Blob = class BlobDouble {} as any;
-    global.Worker = jest.fn(() => ({postMessage: jest.fn(), terminate: jest.fn(), onmessage: null})) as any;
-    URL.createObjectURL = jest.fn(() => 'blob:watchdog'); URL.revokeObjectURL = jest.fn();
-    const request = jest.fn(() => {
-      if (phase !== 'subscribe') return Promise.resolve({statusCode: 200, body: {webSocketUrl: 'wss://routing.produs1.cisco.com'}});
-      const deferred = createDeferred<any>(); pending.push(deferred); return deferred.promise;
-    });
-    const real = new WebSocketManager({webex: {request, credentials: {getOrgId: () => 'org'}, internal: {services: {isIntegrationEnvironment: () => false}}} as any});
-    service = new ConnectionService({webSocketManager: real, subscribeRequest});
-    const init = jest.spyOn(real, 'initWebSocket');
-    service.reset({subscribeRequest, signal: registration.signal, onTerminalFailure: terminal, recoverIfDisconnected: true});
-    service.on('connectionLost', events);
-    try {
-      for (let elapsed = 0; elapsed < 45000; elapsed += 5000) {
-        await tick(5000);
-        if (phase === 'Welcome') {
-          const socket = sockets[sockets.length - 1];
-          if (socket && socket.readyState === 0) { socket.readyState = 1; socket.onopen?.(); }
-        }
-      }
-      const settled = [attemptRecord(1, phase === 'subscribe' ? 25000 : 35000, 'retrying')];
-      expect(ordinaryRecords()).toEqual(settled);
-      expectNoSecrets();
-      const activeSignal = init.mock.calls[init.mock.calls.length - 1][0].signal!;
-      const lateCallbacks = sockets.map((socket) => ({open: socket.onopen, message: socket.onmessage}));
-      await tick(5000);
-      expect(activeSignal.aborted).toBe(true);
-      expect(real.hasUsableSocket()).toBe(false);
-      expect(real.getServingRegion()).toBeUndefined();
-      expect(events.mock.calls.filter(([event]) => event.isRestoreFailed)).toHaveLength(1);
-      const calls = init.mock.calls.length;
-      pending.forEach((deferred) => deferred.resolve({statusCode: 200, body: {webSocketUrl: 'wss://late.prodeu1.cisco.com'}}));
-      lateCallbacks.forEach(({open, message}) => { open?.(); message?.({data: JSON.stringify({type: 'Welcome', data: {}})}); });
-      await flush(); await tick(100000);
-      expect(init).toHaveBeenCalledTimes(calls);
-      expect(events.mock.calls.filter(([event]) => event.isSocketReconnected)).toHaveLength(0);
-      expect(terminal).not.toHaveBeenCalled();
-      expect(ordinaryRecords()).toEqual(settled);
-    } finally {
-      service.stop(); real.close(false);
-      global.WebSocket = saved.socket; global.Worker = saved.worker; global.Blob = saved.blob;
-      URL.createObjectURL = saved.create; URL.revokeObjectURL = saved.revoke;
-    }
-  });
-
   it('T-004 ordinaryMismatchStopsAndNotifiesOnce', async () => {
     manager.initWebSocket.mockRejectedValue({statusCode: 409, headers: {'X-WXCC-Region-Reason': 'REGION_MISMATCH_NO_OVERRIDE', trackingid: 'mismatch-id'}});
     const closeCallsAtTerminal: unknown[][][] = [];
@@ -805,7 +751,6 @@ describe('ConnectionService with actual WebSocketManager', () => {
   let request: jest.Mock;
   let terminal: jest.Mock;
   let events: jest.Mock;
-  const tick = async (duration: number) => { jest.advanceTimersByTime(duration); await flush(); };
   const startRecovery = (overrides: Record<string, any> = {}) => {
     const parent = new AbortController();
     const onScheduled = jest.fn(), afterWelcome = jest.fn().mockResolvedValue(undefined), onAttemptSettled = jest.fn();
@@ -846,6 +791,54 @@ describe('ConnectionService with actual WebSocketManager', () => {
     URL.createObjectURL = saved.create; URL.revokeObjectURL = saved.revoke;
     jest.clearAllTimers(); jest.useRealTimers(); jest.restoreAllMocks();
   });
+
+  it.each(['subscribe', 'open', 'Welcome'])(
+    'T-004 watchdogAbortsSubscribeOpenAndWelcome %s with actual WebSocketManager', async (phase) => {
+      const sinks = levels.map(level => jest.spyOn(LoggerProxy, level).mockImplementation(() => undefined));
+      const pending: ReturnType<typeof createDeferred<any>>[] = [];
+      if (phase === 'subscribe') {
+        request.mockImplementation(() => {
+          const deferred = createDeferred<any>();
+          pending.push(deferred);
+
+          return deferred.promise;
+        });
+      }
+      const init = jest.spyOn(manager, 'initWebSocket');
+      service.reset({subscribeRequest, signal: registration.signal, onTerminalFailure: terminal, recoverIfDisconnected: true});
+
+      for (let elapsed = 0; elapsed < 45000; elapsed += 5000) {
+        await tick(5000);
+        const socket = Socket.instances[Socket.instances.length - 1];
+        if (phase === 'Welcome' && socket?.readyState === 0) {
+          socket.readyState = 1;
+          socket.onopen?.();
+        }
+      }
+      const settled = [attemptRecord(1, phase === 'subscribe' ? 25000 : 35000, 'retrying')];
+      expect(ordinaryRecords()).toEqual(settled);
+      expectNoLoggedSecrets(sinks);
+      const activeSignal = init.mock.calls[init.mock.calls.length - 1][0].signal!;
+      const lateCallbacks = Socket.instances.map(({onopen, onmessage}) => ({onopen, onmessage}));
+      await tick(5000);
+      expect(activeSignal.aborted).toBe(true);
+      expect(manager.hasUsableSocket()).toBe(false);
+      expect(manager.getServingRegion()).toBeUndefined();
+      expect(events.mock.calls.filter(([event]) => event.isRestoreFailed)).toHaveLength(1);
+
+      const calls = init.mock.calls.length;
+      pending.forEach(deferred => deferred.resolve({statusCode: 200, body: {webSocketUrl: 'wss://late.prodeu1.cisco.com'}}));
+      lateCallbacks.forEach(({onopen, onmessage}) => {
+        onopen?.();
+        onmessage?.({data: JSON.stringify({type: CC_EVENTS.WELCOME, data: {}})});
+      });
+      await flush(); await tick(100000);
+      expect(init).toHaveBeenCalledTimes(calls);
+      expect(events.mock.calls.filter(([event]) => event.isSocketReconnected)).toHaveLength(0);
+      expect(terminal).not.toHaveBeenCalled();
+      expect(ordinaryRecords()).toEqual(settled);
+    }
+  );
 
   it.each(['subscribe', 'Welcome'])(
     'T-003/T-004 regional %s deadline settles once and preserves the retry slot', async (phase) => {

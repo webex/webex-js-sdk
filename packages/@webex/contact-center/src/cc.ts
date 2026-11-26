@@ -74,8 +74,6 @@ import * as Err from './services/core/Err';
 import type {
   RegionRecoveryErrorCode,
   RegionRecoveryState,
-  RegionRecoveryStatus,
-  RegionRecoveryReason,
   EntryPointListResponse,
   EntryPointSearchParams,
   ContactServiceQueuesResponse,
@@ -119,6 +117,8 @@ import {readSavedStationLogin, UserPreference} from './services/UserPreference';
  * @ignore
  */
 const CC_EVENT_ALLOW_LIST = new Set<string>(Object.values(CC_EVENTS));
+const STATION_RELOAD_RETRY_DELAYS_MS = [2000, 4000, 8000];
+const AGENT_STATE_FIELDS = ['status', 'subStatus', 'auxCodeId', 'lastStateChangeReason'] as const;
 
 type RecoveryPhase =
   | 'idle'
@@ -183,7 +183,7 @@ type RecoveryDiagnosticPayload = Readonly<{
   outcome: RecoveryDiagnosticOutcome;
   attempt: number;
   elapsedMs: number;
-  reason?: RegionRecoveryReason | RegionRecoveryErrorCode;
+  reason?: RegionRecoveryState['reason'] | RegionRecoveryErrorCode;
   status?: number;
   reasonCode?: number;
   id?: string;
@@ -579,7 +579,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private static isRecoveryDiagnosticReason(
     value: unknown
-  ): value is RegionRecoveryReason | RegionRecoveryErrorCode {
+  ): value is RegionRecoveryState['reason'] | RegionRecoveryErrorCode {
     return typeof value === 'string' && RECOVERY_DIAGNOSTIC_REASONS.has(value);
   }
 
@@ -596,13 +596,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     startedAt: number,
     failure?: RecoveryFailure
   ): void {
-    if (
-      !Number.isFinite(attempt) ||
-      !Number.isInteger(attempt) ||
-      attempt < 0 ||
-      !Number.isFinite(startedAt)
-    )
-      return;
+    if (!Number.isInteger(attempt) || attempt < 0 || !Number.isFinite(startedAt)) return;
     const elapsedMs = Math.max(0, Date.now() - startedAt);
     if (!Number.isFinite(elapsedMs)) return;
     const registration = this.registrationGeneration;
@@ -618,7 +612,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
     const id = ContactCenter.normalizeRecoveryDiagnosticId(failure?.id);
     const trackingId = ContactCenter.normalizeRecoveryDiagnosticId(failure?.trackingId);
-    const payload: RecoveryDiagnosticPayload = Object.freeze({
+    const payload: RecoveryDiagnosticPayload = {
       stage,
       outcome,
       attempt,
@@ -630,7 +624,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       ...(ContactCenter.isRecoveryDiagnosticReason(failure?.reason)
         ? {reason: failure.reason}
         : {}),
-    });
+    };
     const current = () => {
       try {
         return (
@@ -647,15 +641,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
     };
     if (current()) {
-      try {
+      this.recordBestEffort(() =>
         LoggerProxy.info('Region recovery', {
           module: CC_FILE,
           method: METHODS.RECORD_RECOVERY_DIAGNOSTIC,
           data: {...payload},
-        });
-      } catch {
-        // The metric sink remains independently eligible for this owner.
-      }
+        })
+      );
     }
     if (!current()) return;
     let metric:
@@ -673,12 +665,25 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       else if (['retrying', 'terminal', 'failed'].includes(outcome))
         metric = METRIC_EVENT_NAMES.STATION_RELOGIN_FAILED;
     }
-    if (!metric) return;
-    try {
-      this.metricsManager.trackEvent(metric, {...payload}, ['operational']);
-    } catch {
-      // Diagnostic delivery cannot alter the scheduler's fixed next transition.
-    }
+    if (metric)
+      this.recordBestEffort(() =>
+        this.metricsManager.trackEvent(metric, {...payload}, ['operational'])
+      );
+  }
+
+  private static getRegistrationErrorDetails(error: unknown) {
+    const failure = normalizeRecoveryFailure(error);
+    const id = ContactCenter.normalizeRecoveryDiagnosticId(failure.id);
+    const trackingId =
+      ContactCenter.normalizeRecoveryDiagnosticId(failure.trackingId) ??
+      ContactCenter.normalizeRecoveryDiagnosticId(isRecord(error) ? error.trackingId : undefined);
+
+    return {
+      ...(Number.isFinite(failure.status) ? {status: failure.status} : {}),
+      ...(Number.isFinite(failure.reasonCode) ? {reasonCode: failure.reasonCode} : {}),
+      ...(id ? {id} : {}),
+      ...(trackingId ? {trackingId} : {}),
+    };
   }
 
   /** Refresh placement; ended owners can publish detached settings after live invalidation. */
@@ -707,8 +712,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /** Builds initiating recovery context; publication adds the current placement metadata. */
   private buildRegionState(
-    status: RegionRecoveryStatus,
-    reason: RegionRecoveryReason,
+    status: RegionRecoveryState['status'],
+    reason: RegionRecoveryState['reason'],
     retryAfterMs?: number
   ): RegionRecoveryState {
     return {
@@ -808,9 +813,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private fenceRecoveryWork(phase: RecoveryPhase): void {
     this.recoveryPhase = phase;
     this.recoveryGeneration += 1;
-    this.sessionRequest?.controller.abort();
-    this.sessionRequest?.detach();
-    this.sessionRequest = undefined;
+    this.abortSessionRequest();
     this.commandController?.abort();
     this.commandController = new AbortController();
     this.services.aqmReqs.beginGeneration(this.recoveryGeneration);
@@ -889,24 +892,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   private beginSessionRequest(phase: 'restore' | 'manual', parent: AbortSignal): AqmRequestContext {
-    this.sessionRequest?.controller.abort();
-    this.sessionRequest?.detach();
+    this.abortSessionRequest();
     const controller = new AbortController();
     const abort = () => controller.abort();
     parent.addEventListener('abort', abort, {once: true});
     if (parent.aborted) abort();
-    const owner =
-      phase === 'restore'
-        ? {
-            generation: this.recoveryGeneration,
-            phase: 'restore' as const,
-            signal: controller.signal,
-          }
-        : {
-            generation: this.recoveryGeneration,
-            phase: 'manual' as const,
-            signal: controller.signal,
-          };
+    const owner = {generation: this.recoveryGeneration, phase, signal: controller.signal};
     this.sessionRequest = {
       owner,
       controller,
@@ -915,6 +906,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.setRecoveryPhase(phase === 'restore' ? 'restoringSession' : 'manualLoginRequired');
 
     return {generation: owner.generation, signal: owner.signal, sessionOwner: owner};
+  }
+
+  private abortSessionRequest(): void {
+    const request = this.sessionRequest;
+    this.sessionRequest = undefined;
+    request?.detach();
+    request?.controller.abort();
   }
 
   private endSessionRequest(context: AqmRequestContext): void {
@@ -979,6 +977,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const termination = this.registrationGeneration;
     const terminationStation = this.stationRevision;
     const terminationGeneration = this.recoveryGeneration;
+    const ownsTermination = () =>
+      termination === this.registrationGeneration &&
+      terminationStation === this.stationRevision &&
+      terminationGeneration === this.recoveryGeneration;
     this.services.connectionService.stop();
     const hadRtdEpoch = Boolean(this.rtdEpoch);
     this.pauseRtd();
@@ -986,33 +988,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.services.webSocketManager.close(false, 'registrationEnded');
     this.interruptedTaskGeneration = undefined;
     this.taskManager.stopSession();
-    if (cancelled) {
-      this.publishRegionState(cancelled, publicationSettings);
-      if (
-        termination !== this.registrationGeneration ||
-        terminationStation !== this.stationRevision ||
-        terminationGeneration !== this.recoveryGeneration
-      )
-        return undefined;
-    }
-    if (
-      termination !== this.registrationGeneration ||
-      terminationStation !== this.stationRevision ||
-      terminationGeneration !== this.recoveryGeneration
-    )
-      return undefined;
+    if (cancelled) this.publishRegionState(cancelled, publicationSettings);
+    if (!ownsTermination()) return undefined;
     if (identityFailure) {
       delete this.regionStateContext.autoAvailable;
       this.publishRegionState(
         this.buildRegionState('unavailable', 'recovery-failed'),
         publicationSettings
       );
-      if (
-        termination !== this.registrationGeneration ||
-        terminationStation !== this.stationRevision ||
-        terminationGeneration !== this.recoveryGeneration
-      )
-        return undefined;
+      if (!ownsTermination()) return undefined;
     }
     this.resetRegionState();
 
@@ -1129,23 +1113,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return;
     }
-    const cancelled = this.cancelAutoAvailable();
-    if (!this.cancelRegionRecovery()) return;
-    this.fenceRecoveryWork('unavailable');
-    this.services.connectionService.stop();
-    this.services.webSocketManager.close(false, 'recoveryFailed');
-    this.pauseRtd('recoveryFailed');
-    const generation = this.recoveryGeneration;
-    if (cancelled) this.publishRegionState(cancelled);
-    if (generation !== this.recoveryGeneration) return;
-    delete this.regionStateContext.autoAvailable;
-    this.publishRegionState(
-      this.buildRegionState(
-        'unavailable',
-        kind === 'authentication-failed' || failure.status === 401 || failure.status === 403
-          ? 'authentication-failed'
-          : 'recovery-failed'
-      )
+    this.finishRegionRecovery(
+      'unavailable',
+      kind === 'authentication-failed' || failure.status === 401 || failure.status === 403
+        ? 'authentication-failed'
+        : 'recovery-failed'
     );
   }
 
@@ -1158,21 +1130,33 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       pending.reloadRequired ??= createRegionRecoveryError('REGION_RELOAD_REQUIRED');
     }
     if (this.recoveryPhase === 'reloadRequired') return;
+    this.finishRegionRecovery('reloadRequired', 'region-mismatch');
+  }
+
+  private finishRegionRecovery(
+    status: 'unavailable' | 'reloadRequired',
+    reason: RegionRecoveryState['reason']
+  ): void {
     const cancelled = this.cancelAutoAvailable();
     if (!this.cancelRegionRecovery()) return;
-    this.fenceRecoveryWork('reloadRequired');
+    this.fenceRecoveryWork(status);
+    const closeReason = status === 'reloadRequired' ? 'regionMismatch' : 'recoveryFailed';
     this.services.connectionService.stop();
-    this.services.webSocketManager.close(false, 'regionMismatch');
-    this.pauseRtd('regionMismatch');
+    this.services.webSocketManager.close(false, closeReason);
+    this.pauseRtd(closeReason);
     const generation = this.recoveryGeneration;
     if (cancelled) this.publishRegionState(cancelled);
     if (generation !== this.recoveryGeneration) return;
     delete this.regionStateContext.autoAvailable;
-    this.publishRegionState(this.buildRegionState('reloadRequired', 'region-mismatch'));
+    this.publishRegionState(this.buildRegionState(status, reason));
   }
 
   private handleRegionSwitch(event: SystemRegionSwitch): void {
     const startedAt = Date.now();
+    const recordIgnoredSwitch = () =>
+      this.recordRecoveryDiagnostic('ignored-event', 'dropped', 0, startedAt, {
+        trackingId: event.trackingId,
+      });
     const signal = this.registrationAbortController?.signal;
     const orgId = this.registrationOrgId;
     const pending = this.pendingRegistration;
@@ -1185,9 +1169,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     )
       return;
     if (['unavailable', 'reloadRequired'].includes(this.recoveryPhase)) {
-      this.recordRecoveryDiagnostic('ignored-event', 'dropped', 0, startedAt, {
-        trackingId: event.trackingId,
-      });
+      recordIgnoredSwitch();
 
       return;
     }
@@ -1197,9 +1179,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return;
     }
     if (event.orgId !== orgId) {
-      this.recordRecoveryDiagnostic('ignored-event', 'dropped', 0, startedAt, {
-        trackingId: event.trackingId,
-      });
+      recordIgnoredSwitch();
 
       return;
     }
@@ -1212,17 +1192,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       )
     )
       return;
-    if (!this.registrationAgentId || this.multiRegionSettings.eligibility === 'unknown') {
-      this.recordRecoveryDiagnostic('ignored-event', 'dropped', 0, startedAt, {
-        trackingId: event.trackingId,
-      });
-
-      return;
-    }
-    if (this.acceptedSwitchIds.has(event.trackingId)) {
-      this.recordRecoveryDiagnostic('ignored-event', 'dropped', 0, startedAt, {
-        trackingId: event.trackingId,
-      });
+    if (
+      !this.registrationAgentId ||
+      this.multiRegionSettings.eligibility === 'unknown' ||
+      this.acceptedSwitchIds.has(event.trackingId)
+    ) {
+      recordIgnoredSwitch();
 
       return;
     }
@@ -1538,14 +1513,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     signal: AbortSignal
   ): Promise<void | (() => void)> {
     const manual =
-      (reason: RegionRecoveryReason, resumeRtd = false) =>
+      (reason: RegionRecoveryState['reason'], resumeRtd = false) =>
       () => {
         if (!this.isCurrentRecovery(recovery) || signal.aborted) return;
-        if (this.sessionRequest) {
-          this.sessionRequest.controller.abort();
-          this.sessionRequest.detach();
-          this.sessionRequest = undefined;
-        }
+        this.abortSessionRequest();
         this.setRecoveryPhase('manualLoginRequired');
         this.publishRegionState(this.buildRegionState('stationLoginRequired', reason));
         if (resumeRtd && this.isCurrentRecovery(recovery) && !signal.aborted)
@@ -1595,7 +1566,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         );
         if (context.signal.aborted || !this.isCurrentRecovery(recovery))
           throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-        if (recovery.stage === 'reload' && recovery.reloads >= 4) recovery.stage = 'fallback';
+        if (recovery.stage === 'reload' && recovery.reloads > STATION_RELOAD_RETRY_DELAYS_MS.length)
+          recovery.stage = 'fallback';
         const stage = recovery.stage;
         if (stage === 'manual') break;
         const diagnosticStage = stage === 'fallback' ? 'fallback-login' : 'reload';
@@ -1670,12 +1642,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             }
           });
         } catch (error) {
+          const retryDelay = STATION_RELOAD_RETRY_DELAYS_MS[recovery.reloads - 1];
           if (!this.isCurrentRecovery(recovery) || context.signal.aborted) {
-            if (this.isCurrentRecovery(recovery) && stage === 'reload' && recovery.reloads < 4)
-              recovery.retryNotBefore = Math.max(
-                recovery.retryNotBefore,
-                Date.now() + [2000, 4000, 8000][recovery.reloads - 1]
-              );
+            if (this.isCurrentRecovery(recovery) && stage === 'reload' && retryDelay !== undefined)
+              recovery.retryNotBefore = Math.max(recovery.retryNotBefore, Date.now() + retryDelay);
             throw error;
           }
           if (applying) throw error;
@@ -1692,8 +1662,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             throw error;
           }
           if (stage === 'fallback' && category === 'exists') recovery.stage = 'post1035';
-          else if (stage === 'reload' && category === 'transient' && recovery.reloads < 4) {
-            recovery.retryNotBefore = Date.now() + [2000, 4000, 8000][recovery.reloads - 1];
+          else if (stage === 'reload' && category === 'transient' && retryDelay !== undefined) {
+            recovery.retryNotBefore = Date.now() + retryDelay;
           } else if (stage === 'reload') {
             recovery.stage = 'fallback';
             recovery.retryNotBefore = 0;
@@ -1734,8 +1704,24 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       !this.currentAgentSessionId
     )
       return;
-    if (data.type === CC_EVENTS.AGENT_LOGOUT_SUCCESS) {
+    const isLogout = data.type === CC_EVENTS.AGENT_LOGOUT_SUCCESS;
+    if (isLogout) {
       if (data.agentSessionId !== this.currentAgentSessionId || this.logoutPending) return;
+    } else if (
+      ![CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS, CC_EVENTS.AGENT_RELOGIN_SUCCESS].includes(
+        data.type as any
+      ) ||
+      !['idle', 'ready'].includes(this.recoveryPhase) ||
+      this.sessionRequest ||
+      this.logoutPending ||
+      this.suppressAutomaticRelogin ||
+      typeof data.trackingId !== 'string' ||
+      !data.trackingId.trim() ||
+      this.services.aqmReqs.isLocalSessionTrackingId(data.trackingId)
+    ) {
+      return;
+    }
+    if (isLogout || data.agentSessionId !== this.currentAgentSessionId) {
       const terminal = ['unavailable', 'reloadRequired'].includes(this.recoveryPhase);
       const wasRegional = this.hasRegionalConnectionOwner();
       const cancelled = this.cancelAutoAvailable();
@@ -1766,50 +1752,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.setRecoveryPhase('idle');
         if (this.interruptedTaskGeneration !== undefined) this.startTaskSession(ownsStation);
       }
-
-      return;
-    }
-    if (
-      ![CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS, CC_EVENTS.AGENT_RELOGIN_SUCCESS].includes(
-        data.type as any
-      ) ||
-      !['idle', 'ready'].includes(this.recoveryPhase) ||
-      this.sessionRequest ||
-      this.logoutPending ||
-      this.suppressAutomaticRelogin ||
-      typeof data.trackingId !== 'string' ||
-      !data.trackingId.trim() ||
-      this.services.aqmReqs.isLocalSessionTrackingId(data.trackingId)
-    )
-      return;
-    if (data.agentSessionId !== this.currentAgentSessionId) {
-      const wasRegional = this.hasRegionalConnectionOwner();
-      const cancelled = this.cancelAutoAvailable();
-      this.stationRevision += 1;
-      const station = this.stationRevision;
-      const registration = this.registrationGeneration;
-      if (!this.cancelRegionRecovery()) return;
-      this.fenceRecoveryWork('cancelled');
-      this.pauseRtd();
-      this.clearAcceptedStation();
-      this.updateWellnessSession();
-      this.suppressAutomaticRelogin = true;
-      if (wasRegional) this.resetOrdinaryConnection();
-      const generation = this.recoveryGeneration;
-      const ownsStation = () =>
-        station === this.stationRevision &&
-        generation === this.recoveryGeneration &&
-        this.isCurrentRegistration(
-          registration,
-          this.registrationOrgId,
-          signal,
-          this.registrationAgentId
-        );
-      if (cancelled) this.publishRegionState(cancelled);
-      if (!ownsStation()) return;
-      this.resetRegionState();
-      this.setRecoveryPhase('idle');
-      if (this.interruptedTaskGeneration !== undefined) this.startTaskSession(ownsStation);
 
       return;
     }
@@ -2576,22 +2518,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       );
       let correlationId: string | undefined;
       this.recordBestEffort(() => {
-        const failure = normalizeRecoveryFailure(error);
-        const id = ContactCenter.normalizeRecoveryDiagnosticId(failure.id);
-        correlationId =
-          ContactCenter.normalizeRecoveryDiagnosticId(failure.trackingId) ??
-          ContactCenter.normalizeRecoveryDiagnosticId(
-            isRecord(error) ? error.trackingId : undefined
-          );
+        const data = ContactCenter.getRegistrationErrorDetails(error);
+        correlationId = data.trackingId;
         LoggerProxy.error('Error during register', {
           module: CC_FILE,
           method: METHODS.REGISTER,
-          data: {
-            ...(Number.isFinite(failure.status) ? {status: failure.status} : {}),
-            ...(Number.isFinite(failure.reasonCode) ? {reasonCode: failure.reasonCode} : {}),
-            ...(id ? {id} : {}),
-            ...(correlationId ? {trackingId: correlationId} : {}),
-          },
+          data,
         });
       });
       this.recordBestEffort(() => {
@@ -2871,7 +2803,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           this.isCurrentRegistration(registration, orgId, signal)
         ) {
           this.requireRegionReload();
-          throw createRegionRecoveryError('REGION_RELOAD_REQUIRED');
         }
         throw error;
       }
@@ -2984,25 +2915,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (attempt.reloadRequired) throw attempt.reloadRequired;
       if (this.isCurrentRegistration(registration, orgId, signal)) this.updateWellnessSession();
       if (isRegionRecoveryError(error)) throw error;
-      this.recordBestEffort(() => {
-        const failure = normalizeRecoveryFailure(error);
-        const id = ContactCenter.normalizeRecoveryDiagnosticId(failure.id);
-        const trackingId =
-          ContactCenter.normalizeRecoveryDiagnosticId(failure.trackingId) ??
-          ContactCenter.normalizeRecoveryDiagnosticId(
-            isRecord(error) ? error.trackingId : undefined
-          );
+      this.recordBestEffort(() =>
         LoggerProxy.error('Error during register', {
           module: CC_FILE,
           method: METHODS.CONNECT_WEBSOCKET,
-          data: {
-            ...(Number.isFinite(failure.status) ? {status: failure.status} : {}),
-            ...(Number.isFinite(failure.reasonCode) ? {reasonCode: failure.reasonCode} : {}),
-            ...(id ? {id} : {}),
-            ...(trackingId ? {trackingId} : {}),
-          },
-        });
-      });
+          data: ContactCenter.getRegistrationErrorDetails(error),
+        })
+      );
 
       throw error;
     }
@@ -3569,20 +3488,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private invalidatesAutoAvailableDisconnect(data: unknown, auto?: AutoAvailable): boolean {
     if (!auto || !isRecord(data)) return false;
-    const semantics = ['status', 'subStatus', 'auxCodeId', 'lastStateChangeReason'];
     if (
       data.orgId !== this.registrationOrgId ||
       data.agentId !== this.registrationAgentId ||
       !this.currentAgentSessionId ||
       data.agentSessionId !== this.currentAgentSessionId ||
-      !semantics.every((key) => typeof data[key] === 'string') ||
+      !AGENT_STATE_FIELDS.every((key) => typeof data[key] === 'string') ||
       !hasAgentStateVersion(data)
     )
       return false;
     const restored = auto.disconnect;
     const version = compareAgentStateVersions(data, restored);
 
-    return version >= 0 && semantics.some((key) => data[key] !== restored[key]);
+    return version >= 0 && AGENT_STATE_FIELDS.some((key) => data[key] !== restored[key]);
   }
 
   private armAutoAvailable(result: Agent.ReloginSuccess, signal: AbortSignal): void {
@@ -3779,9 +3697,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       data.orgId !== this.registrationOrgId ||
       !this.currentAgentSessionId ||
       data.agentSessionId !== this.currentAgentSessionId ||
-      !['status', 'subStatus', 'auxCodeId', 'lastStateChangeReason'].every(
-        (key) => typeof data[key] === 'string'
-      ) ||
+      !AGENT_STATE_FIELDS.every((key) => typeof data[key] === 'string') ||
       !hasAgentStateVersion(data)
     )
       return;
@@ -3799,8 +3715,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const previous = this.confirmedState;
     const version = previous ? compareAgentStateVersions(data, previous.data) : 1;
     if (version < 0) return;
-    const semantics = ['status', 'subStatus', 'auxCodeId', 'lastStateChangeReason'];
-    const identical = previous && semantics.every((key) => data[key] === previous.data[key]);
+    const identical =
+      previous && AGENT_STATE_FIELDS.every((key) => data[key] === previous.data[key]);
     if (
       !version &&
       !identical &&

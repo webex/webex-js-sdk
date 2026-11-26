@@ -6,6 +6,14 @@ export const REGION_RECOVERY_ERROR_CODES = {
   REGION_RELOAD_REQUIRED: 'REGION_RELOAD_REQUIRED',
 } as const;
 
+/** Subscribe conflicts that require a new Contact Center registration. */
+export const SUBSCRIPTION_MISMATCH_REASONS = [
+  'REGION_MISMATCH_REGION_FAILOVER',
+  'REGION_MISMATCH_ORG_OVERRIDE',
+  'REGION_MISMATCH_ORG_OVERRIDE_SUPERSEDED',
+  'REGION_MISMATCH_NO_OVERRIDE',
+] as const;
+
 /**
  * Interval in milliseconds for sending keepalive pings to the worker.
  * @ignore

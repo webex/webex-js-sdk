@@ -1,4 +1,4 @@
-import {SubscribeRequest} from '../../../types';
+import type {SubscribeRequest} from '../../../types';
 import type {WebSocketManager} from './WebSocketManager';
 import type {RecoveryFailure} from '../types';
 import type {WelcomeResponse} from '../../config/types';

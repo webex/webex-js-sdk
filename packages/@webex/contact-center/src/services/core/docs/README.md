@@ -219,7 +219,7 @@ Core separates four responsibilities:
 Component instantiation order (`Services` constructor in `src/services/index.ts`, after the plugin
 has called `WebexRequest.getInstance({webex})` in `src/cc.ts`):
 
-1. **WebSocketManager** ([WebSocketManager.ts](../websocket/WebSocketManager.ts)) - Creates keepalive worker (not started); a second instance, `rtdWebSocketManager`, is created for the RTD socket and is not wired to `AqmReqs` or `ConnectionService`
+1. **WebSocketManager** ([WebSocketManager.ts](../websocket/WebSocketManager.ts)) - Creates a keepalive worker when an owned socket opens. The RTD manager has its own socket and worker.
 2. **AqmReqs** ([src/services/core/aqm-reqs.ts](../aqm-reqs.ts)) - Initialized with WebSocketManager reference
 3. **Service layers** (agent, contact, dialer) - Created with AqmReqs reference; config is created without it
 4. **ConnectionService** ([connection-service.ts](../websocket/connection-service.ts)) - Wires event listeners immediately
@@ -258,9 +258,9 @@ await setState({data: stateChangePayload});
 ```
 
 The production `stateChange` method in `src/services/agent/index.ts` has this shape plus an `err`
-mapper. `req` returns `(payload, cbRes?, context?: AqmRequestContext) => Promise`, and `reqEmpty` returns `(cbRes?, context?: AqmRequestContext) => Promise`
-for configurations without parameters; the optional `cbRes` callback receives the raw HTTP
-acknowledgement.
+mapper. `req` returns `(payload, cbRes?) => Promise`, and `reqEmpty` returns `(cbRes?) => Promise`.
+The optional `cbRes` callback receives the raw HTTP acknowledgement. Internal callers can pass an
+`AqmRequestContext` as the last argument for recovery ownership and correlation.
 
 `WebexRequest` ([WebexRequest.ts](../WebexRequest.ts)) is a singleton HTTP client that all services
 use to make authenticated REST API calls to the contact center backend. Its constructor is private;

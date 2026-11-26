@@ -18,9 +18,16 @@ import {
   WS_DISCONNECT_ALLOWED,
   CONNECTIVITY_CHECK_INTERVAL,
   METHODS,
+  REGION_RECOVERY_ERROR_CODES,
+  SUBSCRIPTION_MISMATCH_REASONS,
 } from '../constants';
 import {SUBSCRIBE_API} from '../../constants';
-import {getSubscriptionMismatchReason, isRecord, normalizeRecoveryFailure} from '../Utils';
+import {
+  awaitRecoveryWork,
+  getSubscriptionMismatchReason,
+  isRecord,
+  normalizeRecoveryFailure,
+} from '../Utils';
 
 type Flight = {
   controller: AbortController;
@@ -34,14 +41,8 @@ type Invocation = RegionRecoveryOptions & {
 };
 
 const SAFE_REASONS = new Set([
-  'RECOVERY_INTERRUPTED',
-  'RECOVERY_IN_PROGRESS',
-  'STALE_TASK',
-  'REGION_RELOAD_REQUIRED',
-  'REGION_MISMATCH_REGION_FAILOVER',
-  'REGION_MISMATCH_ORG_OVERRIDE',
-  'REGION_MISMATCH_ORG_OVERRIDE_SUPERSEDED',
-  'REGION_MISMATCH_NO_OVERRIDE',
+  ...Object.values(REGION_RECOVERY_ERROR_CODES),
+  ...SUBSCRIPTION_MISMATCH_REASONS,
   'INTERNAL_ERROR',
   'AGENT_NOT_FOUND',
   'AGENT_DN_NOT_REGISTERED',
@@ -234,28 +235,6 @@ export class ConnectionService extends EventEmitter {
     }, wait);
   }
 
-  /** Observes abandoned callbacks while aborting the logical attempt promptly. */
-  private static observe<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
-    return new Promise((resolve, reject) => {
-      const onAbort = () => {
-        signal.removeEventListener('abort', onAbort);
-        reject(terminalError('cancelled'));
-      };
-      signal.addEventListener('abort', onAbort, {once: true});
-      work.then(
-        (value) => {
-          signal.removeEventListener('abort', onAbort);
-          resolve(value);
-        },
-        (error) => {
-          signal.removeEventListener('abort', onAbort);
-          reject(error);
-        }
-      );
-      if (signal.aborted) onAbort();
-    });
-  }
-
   private async runRegionAttempt(invocation: Invocation): Promise<void> {
     if (!this.ownsInvocation(invocation)) return;
     let canAttempt: boolean;
@@ -279,9 +258,10 @@ export class ConnectionService extends EventEmitter {
       if (!this.ownsInvocation(invocation) || this.flight !== flight) return;
       if (signal.aborted) throw terminalError('cancelled');
       welcomed = true;
-      const publishOutcome = await ConnectionService.observe(
+      const publishOutcome = await awaitRecoveryWork(
         Promise.resolve().then(() => invocation.afterWelcome(welcome, signal)),
-        signal
+        signal,
+        () => terminalError('cancelled')
       );
       if (!this.ownsInvocation(invocation) || this.flight !== flight) return;
       if (signal.aborted) throw terminalError('cancelled');

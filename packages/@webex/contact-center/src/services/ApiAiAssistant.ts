@@ -34,6 +34,7 @@ type WellnessBreakContextProvider = () => {
   agentSessionId?: string;
 };
 
+/** @internal */
 type RecoveryOwner = Pick<TaskRecoveryGuard, 'generation' | 'signal'>;
 
 /**
@@ -59,6 +60,15 @@ export class ApiAIAssistant {
 
     return error;
   }
+
+  constructor(webex: WebexSDK, wellnessContextProvider?: WellnessBreakContextProvider);
+
+  /** @internal */
+  constructor(
+    webex: WebexSDK,
+    wellnessContextProvider: WellnessBreakContextProvider | undefined,
+    getRecoveryGuard: () => RecoveryOwner | undefined
+  );
 
   constructor(
     webex: WebexSDK,
@@ -137,27 +147,25 @@ export class ApiAIAssistant {
 
       const baseUrl = this.getBaseUrl();
       this.assertRecoveryOwner(recoveryOwner);
-      const response = (await awaitRecoveryWork(
-        this.webex.request({
-          uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
-          method: HTTP_METHODS.POST,
-          addAuthHeader: true,
-          body: {
-            agentId,
-            orgId,
-            eventType: AIAssistantEventType.CUSTOM_EVENT,
-            eventName: AIAssistantEventName.WELLNESS_BREAK_ACTION,
-            eventDetails: {
-              data: {
-                action,
-                agentSessionId,
-                actionTimeStamp: Date.now(),
-              },
+      const request = this.webex.request({
+        uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
+        method: HTTP_METHODS.POST,
+        addAuthHeader: true,
+        body: {
+          agentId,
+          orgId,
+          eventType: AIAssistantEventType.CUSTOM_EVENT,
+          eventName: AIAssistantEventName.WELLNESS_BREAK_ACTION,
+          eventDetails: {
+            data: {
+              action,
+              agentSessionId,
+              actionTimeStamp: Date.now(),
             },
           },
-        }),
-        recoveryOwner?.signal
-      )) as IHttpResponse;
+        },
+      });
+      const response = (await awaitRecoveryWork(request, recoveryOwner?.signal)) as IHttpResponse;
 
       if (response.statusCode !== 202) {
         throw this.createWellnessError(
@@ -424,25 +432,23 @@ export class ApiAIAssistant {
         trackingId,
       };
       this.assertRecoveryOwner(recoveryOwner);
-      const response = (await awaitRecoveryWork(
-        this.webex.request({
-          uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
-          method: HTTP_METHODS.POST,
-          addAuthHeader: true,
-          ...(timeout !== undefined ? {timeout} : {}),
-          body: {
-            agentId,
-            orgId,
-            eventType,
-            eventName,
-            ...(publishTimestamp !== undefined ? {publishTimestamp} : {}),
-            eventDetails: {
-              data,
-            },
+      const request = this.webex.request({
+        uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
+        method: HTTP_METHODS.POST,
+        addAuthHeader: true,
+        ...(timeout !== undefined ? {timeout} : {}),
+        body: {
+          agentId,
+          orgId,
+          eventType,
+          eventName,
+          ...(publishTimestamp !== undefined ? {publishTimestamp} : {}),
+          eventDetails: {
+            data,
           },
-        }),
-        recoveryOwner?.signal
-      )) as IHttpResponse;
+        },
+      });
+      const response = (await awaitRecoveryWork(request, recoveryOwner?.signal)) as IHttpResponse;
 
       this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
@@ -710,19 +716,17 @@ export class ApiAIAssistant {
       const baseUrl = this.getBaseUrl();
       const orgId = this.webex.credentials.getOrgId();
       this.assertRecoveryOwner(recoveryOwner);
-      const response = (await awaitRecoveryWork(
-        this.webex.request({
-          uri: `${baseUrl}${AI_ASSISTANT_API_URLS.TRANSCRIPTS_LIST}`,
-          method: HTTP_METHODS.POST,
-          addAuthHeader: true,
-          body: {
-            agentId,
-            orgId,
-            interactionId,
-          },
-        }),
-        recoveryOwner?.signal
-      )) as IHttpResponse;
+      const request = this.webex.request({
+        uri: `${baseUrl}${AI_ASSISTANT_API_URLS.TRANSCRIPTS_LIST}`,
+        method: HTTP_METHODS.POST,
+        addAuthHeader: true,
+        body: {
+          agentId,
+          orgId,
+          interactionId,
+        },
+      });
+      const response = (await awaitRecoveryWork(request, recoveryOwner?.signal)) as IHttpResponse;
 
       this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(

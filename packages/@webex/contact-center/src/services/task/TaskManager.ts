@@ -179,15 +179,13 @@ export default class TaskManager extends EventEmitter {
           task.invalidateForRegionRecovery();
         } catch {
           // Controls observers may throw; resource cleanup still belongs here.
-        } finally {
-          try {
-            this.cleanupTaskCallResources(task);
-          } catch {
-            // Keep cleanup of other Task owners independent.
-          } finally {
-            this.removeTaskFromCollection(task);
-          }
         }
+        try {
+          this.cleanupTaskCallResources(task);
+        } catch {
+          // Keep cleanup of other Task owners independent.
+        }
+        this.removeTaskFromCollection(task);
       }
     } finally {
       this.regionalCleanupDepth -= 1;
@@ -871,7 +869,6 @@ export default class TaskManager extends EventEmitter {
    * - State Machine: Manages individual task state and event emissions
    */
   private registerTaskListeners() {
-    this.webSocketManager.off('message', this.handleWebsocketMessage);
     this.webSocketManager.on('message', this.handleWebsocketMessage);
   }
 
@@ -1647,48 +1644,47 @@ export default class TaskManager extends EventEmitter {
   }
 
   private removeTaskFromCollection(task: Task): void {
+    const view: ITask = task;
     const cleanups = [
       () => task.clearFeatureEnablement(),
-      () => {
-        const view: ITask = task;
-        view.disposeWxAppOfferObservability?.();
-      },
+      () => view.disposeWxAppOfferObservability?.(),
       () => task.cancelAutoWrapupTimer(),
-      () => {
-        const listeners = this.taskListeners.get(task) ?? [];
-        this.taskListeners.delete(task);
-        for (const [event, listener] of listeners) {
-          try {
-            task.off(event, listener);
-          } catch {
-            // A throwing removeListener observer cannot retain the other listeners.
-          }
-        }
-      },
-      () => {
-        this.pendingFeatureEnablement.delete(task.data.interactionId);
-        this.receivingSummaryBuffer.delete(task.data.interactionId);
-        for (const [taskId, candidate] of Object.entries(this.taskCollection)) {
-          if (candidate === task) delete this.taskCollection[taskId];
-        }
-      },
-      () => {
-        const interactionId = task.data?.interactionId;
-        if (interactionId) {
-          LoggerProxy.info('Task removed from collection', {
-            module: TASK_MANAGER_FILE,
-            method: METHODS.REMOVE_TASK_FROM_COLLECTION,
-            interactionId,
-          });
-        }
-      },
     ];
     for (const cleanup of cleanups) {
       try {
         cleanup();
       } catch {
-        // Cleanup steps and Tasks have independent ownership.
+        // A failed cleanup cannot retain the task or its listeners.
       }
+    }
+
+    const listeners = this.taskListeners.get(task) ?? [];
+    this.taskListeners.delete(task);
+    for (const [event, listener] of listeners) {
+      try {
+        task.off(event, listener);
+      } catch {
+        // A throwing removeListener observer cannot retain the other listeners.
+      }
+    }
+
+    const interactionId = task.data?.interactionId;
+    for (const [taskId, candidate] of Object.entries(this.taskCollection)) {
+      if (candidate === task) delete this.taskCollection[taskId];
+    }
+    if (!interactionId) return;
+
+    this.pendingFeatureEnablement.delete(interactionId);
+    // Drop any receiving summary for an offer that ends unanswered.
+    this.receivingSummaryBuffer.delete(interactionId);
+    try {
+      LoggerProxy.info('Task removed from collection', {
+        module: TASK_MANAGER_FILE,
+        method: METHODS.REMOVE_TASK_FROM_COLLECTION,
+        interactionId,
+      });
+    } catch {
+      // Diagnostics do not own task or session cleanup.
     }
   }
 

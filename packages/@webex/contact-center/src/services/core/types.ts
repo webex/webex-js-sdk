@@ -24,6 +24,7 @@ export type AqmSessionOwner<P extends 'restore' | 'manual'> = Readonly<{
   phase: P;
   signal: AbortSignal;
 }>;
+/** @internal Request ownership and correlation are assigned by the SDK. */
 export type AqmRequestContext = Readonly<{
   generation: number;
   signal?: AbortSignal;
@@ -80,13 +81,17 @@ export type Req<TRes, TErr> = {
 
 export type Conf<TRes, TErr, TReq> = (p: TReq) => Req<TRes, TErr>;
 export type ConfEmpty<TRes, TErr> = () => Req<TRes, TErr>;
-export type Res<TRes, TReq> = (
-  p: TReq,
-  cbRes?: CbRes<TRes>,
-  context?: AqmRequestContext
-) => Promise<TRes>;
-export type ResEmpty<TRes> = (cbRes?: CbRes<TRes>, context?: AqmRequestContext) => Promise<TRes>;
 export type CbRes<TRes> = (res: any) => void | TRes;
+export type Res<TRes, TReq> = {
+  /** @internal */
+  (p: TReq, cbRes: CbRes<TRes> | undefined, context: AqmRequestContext | undefined): Promise<TRes>;
+  (p: TReq, cbRes?: CbRes<TRes>): Promise<TRes>;
+};
+export type ResEmpty<TRes> = {
+  /** @internal */
+  (cbRes: CbRes<TRes> | undefined, context: AqmRequestContext | undefined): Promise<TRes>;
+  (cbRes?: CbRes<TRes>): Promise<TRes>;
+};
 
 /** @internal Pending request completed by a correlated RTD response. */
 export type PendingRtdRequest<T> = {

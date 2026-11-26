@@ -9,10 +9,6 @@ const TYPES_PATH = path.join(SRC_ROOT, 'types.ts');
 const EXPECTED_ROOT_EXPORTS = Object.freeze([
   'REGION_RECOVERY_EVENTS',
   'REGION_RECOVERY_ERROR_CODES',
-  'RegionRecoveryErrorCode',
-  'RegionRecoveryStatus',
-  'RegionRecoveryReason',
-  'RegionAutoAvailableStatus',
   'RegionRecoveryState',
   'AGENT_EVENTS',
   'AISummaryAction',
@@ -138,6 +134,11 @@ const EXPECTED_ROOT_EXPORTS = Object.freeze([
 ]);
 
 const INTERNAL_ROOT_EXPORTS = Object.freeze([
+  'RegionRecoveryErrorCode',
+  'RegionRecoveryStatus',
+  'RegionRecoveryReason',
+  'RegionAutoAvailableStatus',
+  'AqmRequestContext',
   'SYSTEM_EVENTS',
   'SystemRegionSwitch',
   'ConnectionRecoveryFailureKind',
@@ -529,14 +530,14 @@ void transferResult;
 void transferWithOptionsResult;
 `;
 
-const createProgram = (virtualSources: Record<string, string> = {}) => {
+const createProgram = (virtualSources: Record<string, string> = {}, emitDeclarations = false) => {
   const configPath = path.join(CONTACT_CENTER_ROOT, 'tsconfig.json');
   const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
   const parsed = ts.parseJsonConfigFileContent(
     configFile.config,
     ts.sys,
     CONTACT_CENTER_ROOT,
-    {emitDeclarationOnly: false, noEmit: true},
+    {emitDeclarationOnly: emitDeclarations, noEmit: !emitDeclarations},
     configPath
   );
   const virtualFileNames = Object.keys(virtualSources);
@@ -641,6 +642,22 @@ const getDiagnosticsForFiles = (program: ts.Program, fileNames: string[]) =>
 
     return !!fileName && fileNames.includes(fileName);
   });
+
+const getEmittedDeclaration = (program: ts.Program, sourcePath: string) => {
+  const source = program.getSourceFile(path.join(SRC_ROOT, sourcePath));
+  if (!source) throw new Error(`Missing declaration source ${sourcePath}`);
+  let declaration = '';
+  program.emit(
+    source,
+    (_path, output) => {
+      declaration = output;
+    },
+    undefined,
+    true
+  );
+
+  return declaration;
+};
 
 const getMissingExportNameFromDiagnostic = (diagnostic: ts.Diagnostic) => {
   const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
@@ -835,47 +852,51 @@ describe('contact-center root public contract', () => {
       [stateChange]: `
       import {routingAgent} from '../../../src';
       import type {StateChangeSuccess} from '../../../src';
+      import routingAgentInternal from '../../../src/services/agent';
       declare const agent: ReturnType<typeof routingAgent>;
+      declare const internalAgent: ReturnType<typeof routingAgentInternal>;
       const data = {state: 'Available', auxCodeId: '0'};
       const callback = (response: any): void => {};
       const context = {generation: 3, signal: new AbortController().signal};
       const legacy: Promise<StateChangeSuccess> = agent.stateChange({data});
       const withCallback: Promise<StateChangeSuccess> = agent.stateChange({data}, callback);
-      const withContext: Promise<StateChangeSuccess> = agent.stateChange({data}, undefined, context);
-      const withBoth: Promise<StateChangeSuccess> = agent.stateChange({data}, callback, context);
+      const withContext: Promise<StateChangeSuccess> = internalAgent.stateChange({data}, undefined, context);
+      const withBoth: Promise<StateChangeSuccess> = internalAgent.stateChange({data}, callback, context);
       // @ts-expect-error SDK correlation is owned by its request context.
       agent.stateChange({data, requestId: '8f5ec5e4-80b8-4f5d-9720-10bfe56e7ca1'});
       // @ts-expect-error state changes still require their payload.
       agent.stateChange({});
       // @ts-expect-error context still requires an explicit generation.
-      agent.stateChange({data}, callback, {signal: context.signal});
+      internalAgent.stateChange({data}, callback, {signal: context.signal});
       `,
       [recovery]: `
       import {CC_EVENTS, REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES} from '../../../src';
-      import type {ContactCenterEvents, RegionRecoveryState, RegionRecoveryStatus, RegionRecoveryReason, RegionAutoAvailableStatus, RegionRecoveryErrorCode} from '../../../src';
+      import type {ContactCenterEvents, RegionRecoveryState} from '../../../src';
       import {isRegionRecoveryError, createRegionRecoveryError} from '../../../src/services/core/Utils';
       type Assert<T extends true> = T;
       type Exact<A, B> = [A] extends [B] ? [B] extends [A] ? true : false : false;
-      type Status = Assert<Exact<RegionRecoveryStatus, 'recovering' | 'ready' | 'reloadRequired' | 'stationLoginRequired' | 'unavailable'>>;
-      type Reason = Assert<Exact<RegionRecoveryReason, 'initial-login' | 'region-switch' | 'region-mismatch' | 'not-eligible' | 'session-restore-failed' | 'automatic-relogin-disabled' | 'authentication-failed' | 'recovery-failed'>>;
-      type Auto = Assert<Exact<RegionAutoAvailableStatus, 'waitingForVoice' | 'requesting' | 'succeeded' | 'failed' | 'cancelled'>>;
+      type AutoAvailable = NonNullable<RegionRecoveryState['autoAvailable']>;
+      type ErrorCode = (typeof REGION_RECOVERY_ERROR_CODES)[keyof typeof REGION_RECOVERY_ERROR_CODES];
+      type Status = Assert<Exact<RegionRecoveryState['status'], 'recovering' | 'ready' | 'reloadRequired' | 'stationLoginRequired' | 'unavailable'>>;
+      type Reason = Assert<Exact<RegionRecoveryState['reason'], 'initial-login' | 'region-switch' | 'region-mismatch' | 'not-eligible' | 'session-restore-failed' | 'automatic-relogin-disabled' | 'authentication-failed' | 'recovery-failed'>>;
+      type Auto = Assert<Exact<AutoAvailable, 'waitingForVoice' | 'requesting' | 'succeeded' | 'failed' | 'cancelled'>>;
       type PrivateKey = Assert<'SYSTEM_REGION_SWITCH' extends keyof typeof CC_EVENTS ? false : true>;
       type PrivateEvent = Assert<'SYSTEM_REGION_SWITCH' extends ContactCenterEvents ? false : true>;
-      type Codes = Assert<Exact<RegionRecoveryErrorCode, 'RECOVERY_INTERRUPTED' | 'RECOVERY_IN_PROGRESS' | 'STALE_TASK' | 'REGION_RELOAD_REQUIRED'>>;
+      type Codes = Assert<Exact<ErrorCode, 'RECOVERY_INTERRUPTED' | 'RECOVERY_IN_PROGRESS' | 'STALE_TASK' | 'REGION_RELOAD_REQUIRED'>>;
       const event: 'region:stateChange' = REGION_RECOVERY_EVENTS.STATE_CHANGE;
       const state: RegionRecoveryState = {status: 'ready', reason: 'region-switch', operation: 'FAILOVER', scope: 'ORG', limitedService: false, retryAfterMs: 0, autoAvailable: 'requesting'};
-      const created: RegionRecoveryErrorCode = createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.STALE_TASK).data.reason;
+      const created: ErrorCode = createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.STALE_TASK).data.reason;
       declare const candidate: unknown;
       if (isRegionRecoveryError(candidate)) {
         const error: Error = candidate;
-        const reason: RegionRecoveryErrorCode = candidate.data.reason;
+        const reason: ErrorCode = candidate.data.reason;
         void [error, reason];
       }
       // @ts-expect-error recovering is not an automatic action outcome
-      const invalidAuto: RegionAutoAvailableStatus = 'recovering';
+      const invalidAuto: AutoAvailable = 'recovering';
       void [event, state, created, invalidAuto];
       `,
-    });
+    }, true);
     const catalogs = {
       REGION_RECOVERY_EVENTS: {STATE_CHANGE: 'region:stateChange'},
       REGION_RECOVERY_ERROR_CODES: {
@@ -898,6 +919,17 @@ describe('contact-center root public contract', () => {
     expect(catalogImport.importClause?.isTypeOnly).toBe(true);
     const leaf = program.getSourceFile(path.join(SRC_ROOT, 'services/core/constants.ts'))!;
     expect(leaf.statements.some(ts.isImportDeclaration)).toBe(false);
+
+    const routingDeclarations = getEmittedDeclaration(program, 'services/core/types.ts');
+    expect(routingDeclarations).toContain('(p: TReq, cbRes?: CbRes<TRes>): Promise<TRes>;');
+    expect(routingDeclarations).toContain('(cbRes?: CbRes<TRes>): Promise<TRes>;');
+    expect(routingDeclarations).not.toContain('AqmRequestContext');
+
+    const assistantDeclaration = getEmittedDeclaration(program, 'services/ApiAiAssistant.ts');
+    expect(assistantDeclaration).toContain(
+      'constructor(webex: WebexSDK, wellnessContextProvider?: WellnessBreakContextProvider);'
+    );
+    expect(assistantDeclaration).not.toContain('RecoveryOwner | undefined');
   });
 
   it('preserves the literal root barrel export list and omits package internals', () => {

@@ -72,11 +72,13 @@ export default class AqmReqs {
   }
 
   req<TRes, TErr, TReq>(config: Conf<TRes, TErr, TReq>): Res<TRes, TReq> {
-    return (p, cbRes, context) => this.createPromise({...config(p)}, cbRes, context);
+    return (p: TReq, cbRes?: CbRes<TRes>, context?: AqmRequestContext) =>
+      this.createPromise(config(p), cbRes, context);
   }
 
   reqEmpty<TRes, TErr>(config: ConfEmpty<TRes, TErr>): ResEmpty<TRes> {
-    return (cbRes, context) => this.createPromise({...config()}, cbRes, context);
+    return (cbRes?: CbRes<TRes>, context?: AqmRequestContext) =>
+      this.createPromise(config(), cbRes, context);
   }
 
   private assertAdmission<TRes, TErr>(c: Req<TRes, TErr>, context: AqmRequestContext): void {
@@ -276,14 +278,7 @@ export default class AqmReqs {
             resource: c.url,
             method: c.method ?? (c.data ? HTTP_METHODS.POST : HTTP_METHODS.GET),
             body: c.data,
-            ...(c.headers || correlationId
-              ? {
-                  headers: {
-                    ...c.headers,
-                    ...(correlationId ? {trackingid: `webex-js-sdk_${correlationId}`} : {}),
-                  },
-                }
-              : {}),
+            ...(correlationId ? {headers: {trackingid: `webex-js-sdk_${correlationId}`}} : {}),
           })
           .then((res) => {
             if (!current()) return;

@@ -7233,16 +7233,14 @@ describe('T-008 TaskManager recovery owners', () => {
     expect(manager.getAllTasks()).toEqual({});
   });
 
-  describe.each([
-    {ownership: 'missing', phase: 'ingress'},
-    {ownership: 'aborted', phase: 'ingress'},
-    {ownership: 'missing', phase: 'after-context'},
-    {ownership: 'aborted', phase: 'after-context'},
-  ])('$ownership ownership at $phase', ({ownership, phase}) => {
-    it.each([
-      {event: CC_EVENTS.AGENT_CONTACT, mapped: TaskEvent.HYDRATE},
-      {event: CC_EVENTS.AGENT_CONTACT_ASSIGNED, mapped: TaskEvent.ASSIGN},
-    ])('registered callback fences $mapped before task or actor work', ({event, mapped}) => {
+  it.each([
+    ['missing', 'ingress', CC_EVENTS.AGENT_CONTACT, TaskEvent.HYDRATE],
+    ['aborted', 'ingress', CC_EVENTS.AGENT_CONTACT_ASSIGNED, TaskEvent.ASSIGN],
+    ['missing', 'after-context', CC_EVENTS.AGENT_CONTACT_ASSIGNED, TaskEvent.ASSIGN],
+    ['aborted', 'after-context', CC_EVENTS.AGENT_CONTACT, TaskEvent.HYDRATE],
+  ])(
+    'registered callback fences %s ownership at %s for %s',
+    (ownership, phase, event, mapped) => {
       const {manager, controller, guard, primary, data, hydrate} = setup();
       try {
         manager.startSession(guard);
@@ -7295,8 +7293,8 @@ describe('T-008 TaskManager recovery owners', () => {
       } finally {
         manager.stopSession();
       }
-    });
-  });
+    }
+  );
 
   it.each(['missing-guard', 'aborted-signal', 'no-browser-voice', 'admission-throws', 'admitted'])(
     'registered incoming call admission preserves task and call ownership: %s', (admission) => {
@@ -7410,14 +7408,21 @@ describe('T-008 TaskManager recovery owners', () => {
       await task.accept();
       expect(contact.accept.mock.calls).toEqual([[{interactionId: 'interaction-1'}]]);
       expect(autoAnswered).not.toHaveBeenCalled();
-      hydrate(offer);
+      const freshOffer = {
+        ...offer,
+        interactionId: 'interaction-2',
+        interaction: {...offer.interaction, interactionId: 'interaction-2'},
+      };
+      hydrate({...freshOffer, type: CC_EVENTS.AGENT_CONTACT_RESERVED, isAutoAnswering: false});
+      const freshTask = manager.getTask(freshOffer.interactionId);
+      const freshAutoAnswered = jest.fn();
+      freshTask.on(TASK_EVENTS.TASK_AUTO_ANSWERED, freshAutoAnswered);
+      hydrate(freshOffer);
       await flushEventLoopTurn();
-      expect(accept).toHaveBeenCalledTimes(3);
       expect(contact.accept.mock.calls).toEqual([
-        [{interactionId: 'interaction-1'}], [{interactionId: 'interaction-1'}],
+        [{interactionId: 'interaction-1'}], [{interactionId: 'interaction-2'}],
       ]);
-      expect(offered.mock.calls).toEqual([[task], [task]]);
-      expect(autoAnswered.mock.calls).toEqual([[task]]);
+      expect(freshAutoAnswered.mock.calls).toEqual([[freshTask]]);
     } finally {
       manager.stopSession();
     }

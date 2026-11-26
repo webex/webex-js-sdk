@@ -28,46 +28,27 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
 export type RegionRecoveryErrorCode = Enum<typeof REGION_RECOVERY_ERROR_CODES>;
 
 /**
- * Station recovery status; transport admission alone never implies ready.
- * `ready` confirms backend-accepted station signaling and session acceptance only.
- * Voice registration and Available state are independent outcomes. Ready does not promise
- * Available state or uninterrupted migration of an ongoing call or its audio.
- * @public
- */
-export type RegionRecoveryStatus =
-  | 'recovering'
-  | 'ready'
-  | 'reloadRequired'
-  | 'stationLoginRequired'
-  | 'unavailable';
-
-/** Cause of the current recovery snapshot. */
-export type RegionRecoveryReason =
-  | 'initial-login'
-  | 'region-switch'
-  | 'region-mismatch'
-  | 'not-eligible'
-  | 'session-restore-failed'
-  | 'automatic-relogin-disabled'
-  | 'authentication-failed'
-  | 'recovery-failed';
-
-/** Outcome of the conditional automatic state action, separate from readiness. */
-export type RegionAutoAvailableStatus =
-  | 'waitingForVoice'
-  | 'requesting'
-  | 'succeeded'
-  | 'failed'
-  | 'cancelled';
-
-/**
  * Complete recovery snapshot. Replace the previous snapshot so omitted fields clear.
  * `stationLoginRequired` hands off to the app's sign-in flow after SDK recovery ends.
  * `reloadRequired` asks the app to restart with fresh regional routing.
+ * @public
  */
 export type RegionRecoveryState = {
-  status: RegionRecoveryStatus;
-  reason: RegionRecoveryReason;
+  /**
+   * `ready` confirms backend station acceptance.
+   * Voice readiness, Available state and call continuity are independent.
+   */
+  status: 'recovering' | 'ready' | 'reloadRequired' | 'stationLoginRequired' | 'unavailable';
+  /** Cause of the current recovery snapshot. */
+  reason:
+    | 'initial-login'
+    | 'region-switch'
+    | 'region-mismatch'
+    | 'not-eligible'
+    | 'session-restore-failed'
+    | 'automatic-relogin-disabled'
+    | 'authentication-failed'
+    | 'recovery-failed';
   trackingId?: string;
   operation?: 'FAILOVER' | 'FAILBACK';
   scope?: 'REGION' | 'ORG';
@@ -75,7 +56,8 @@ export type RegionRecoveryState = {
   servingRegion?: string;
   limitedService?: boolean;
   retryAfterMs?: number;
-  autoAvailable?: RegionAutoAvailableStatus;
+  /** Outcome of the conditional automatic state action, separate from readiness. */
+  autoAvailable?: 'waitingForVoice' | 'requesting' | 'succeeded' | 'failed' | 'cancelled';
 };
 
 /**
