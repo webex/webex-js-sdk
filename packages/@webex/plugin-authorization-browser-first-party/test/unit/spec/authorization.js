@@ -476,67 +476,93 @@ describe('plugin-authorization-browser-first-party', () => {
         refresh_token: 'refresh-token',
       };
 
-      it('uses the client ID in the form for a public client', async () => {
-        const webex = {request: sinon.stub().resolves({body: tokenResponse})};
-        const token = {
-          refresh_token: 'current-refresh-token',
-          config: {
-            clientType: 'public',
-            client_id: 'public-client-id',
-            redirect_uri: 'http://example.com',
-            tokenUrl: 'https://idbroker.example.com/access_token',
-          },
-        };
+      const refreshCases = [
+        {mode: 'by default', options: undefined, formatFields: {}},
+        {mode: 'with an explicit opt-out', options: {selfContainedToken: false}, formatFields: {}},
+        {
+          mode: 'with a self-contained token request',
+          options: {selfContainedToken: true},
+          formatFields: {self_contained_token: true},
+        },
+      ];
 
-        const response = await authorizationConfig.credentials.refreshCallback(webex, token);
-
-        assert.calledOnceWithExactly(webex.request, {
-          method: 'POST',
-          uri: 'https://idbroker.example.com/access_token',
-          form: {
-            grant_type: 'refresh_token',
-            redirect_uri: 'http://example.com',
+      it.each(refreshCases)(
+        'uses the client ID in the form for a public client $mode',
+        async ({options, formatFields}) => {
+          const webex = {request: sinon.stub().resolves({body: tokenResponse})};
+          const token = {
             refresh_token: 'current-refresh-token',
-            client_id: 'public-client-id',
-          },
-          addAuthHeader: false,
-          shouldRefreshAccessToken: false,
-        });
-        assert.deepEqual(response, tokenResponse);
-      });
+            config: {
+              clientType: 'public',
+              client_id: 'public-client-id',
+              redirect_uri: 'http://example.com',
+              tokenUrl: 'https://idbroker.example.com/access_token',
+            },
+          };
 
-      it('uses HTTP Basic authentication for a confidential client', async () => {
-        const webex = {request: sinon.stub().resolves({body: tokenResponse})};
-        const token = {
-          refresh_token: 'current-refresh-token',
-          config: {
-            clientType: 'confidential',
-            client_id: 'confidential-client-id',
-            client_secret: 'confidential-client-secret',
-            redirect_uri: 'http://example.com',
-            tokenUrl: 'https://idbroker.example.com/access_token',
-          },
-        };
+          const response = await authorizationConfig.credentials.refreshCallback(
+            webex,
+            token,
+            options
+          );
 
-        const response = await authorizationConfig.credentials.refreshCallback(webex, token);
+          assert.calledOnceWithExactly(webex.request, {
+            method: 'POST',
+            uri: 'https://idbroker.example.com/access_token',
+            form: {
+              grant_type: 'refresh_token',
+              redirect_uri: 'http://example.com',
+              refresh_token: 'current-refresh-token',
+              client_id: 'public-client-id',
+              ...formatFields,
+            },
+            addAuthHeader: false,
+            shouldRefreshAccessToken: false,
+          });
+          assert.deepEqual(response, tokenResponse);
+        }
+      );
 
-        assert.calledOnceWithExactly(webex.request, {
-          method: 'POST',
-          uri: 'https://idbroker.example.com/access_token',
-          form: {
-            grant_type: 'refresh_token',
-            redirect_uri: 'http://example.com',
+      it.each(refreshCases)(
+        'uses HTTP Basic authentication for a confidential client $mode',
+        async ({options, formatFields}) => {
+          const webex = {request: sinon.stub().resolves({body: tokenResponse})};
+          const token = {
             refresh_token: 'current-refresh-token',
-          },
-          auth: {
-            user: 'confidential-client-id',
-            pass: 'confidential-client-secret',
-            sendImmediately: true,
-          },
-          shouldRefreshAccessToken: false,
-        });
-        assert.deepEqual(response, tokenResponse);
-      });
+            config: {
+              clientType: 'confidential',
+              client_id: 'confidential-client-id',
+              client_secret: 'confidential-client-secret',
+              redirect_uri: 'http://example.com',
+              tokenUrl: 'https://idbroker.example.com/access_token',
+            },
+          };
+
+          const response = await authorizationConfig.credentials.refreshCallback(
+            webex,
+            token,
+            options
+          );
+
+          assert.calledOnceWithExactly(webex.request, {
+            method: 'POST',
+            uri: 'https://idbroker.example.com/access_token',
+            form: {
+              grant_type: 'refresh_token',
+              redirect_uri: 'http://example.com',
+              refresh_token: 'current-refresh-token',
+              ...formatFields,
+            },
+            auth: {
+              user: 'confidential-client-id',
+              pass: 'confidential-client-secret',
+              sendImmediately: true,
+            },
+            shouldRefreshAccessToken: false,
+          });
+          assert.deepEqual(response, tokenResponse);
+        }
+      );
     });
 
     describe('#initiateLogin()', () => {

@@ -306,6 +306,77 @@ describe('webex-core', () => {
           });
         });
 
+        nodeOnly(it)('keeps the existing token format and scope by default', async () => {
+          const token = makeToken({scope: 'scope:prior'});
+
+          webex.request.resolves({body: {access_token: 'replacement', scope: 'scope:returned'}});
+
+          const refreshed = await token.refresh();
+
+          assert.notProperty(webex.request.firstCall.args[0].form, 'self_contained_token');
+          assert.strictEqual(refreshed.scope, 'scope:prior');
+        });
+
+        nodeOnly(it)(
+          'requests a self-contained token and keeps the scope IdBroker returns',
+          async () => {
+            const token = makeToken();
+
+            webex.request.resolves({body: {access_token: 'replacement', scope: 'scope:returned'}});
+
+            const refreshed = await token.refresh({selfContainedToken: true});
+
+            assert.isTrue(webex.request.firstCall.args[0].form.self_contained_token);
+            assert.strictEqual(refreshed.access_token, 'replacement');
+            assert.strictEqual(refreshed.scope, 'scope:returned');
+            assert.strictEqual(refreshed.refresh_token, token.refresh_token);
+          }
+        );
+
+        nodeOnly(it)(
+          'keeps the previous scope when the self-contained response omits scope',
+          async () => {
+            const token = makeToken({scope: 'scope:prior'});
+
+            webex.request.resolves({body: {access_token: 'replacement'}});
+
+            const refreshed = await token.refresh({selfContainedToken: true});
+
+            assert.strictEqual(refreshed.scope, 'scope:prior');
+          }
+        );
+
+        nodeOnly(it)('rejects a self-contained refresh response without an access token', () => {
+          const token = makeToken();
+
+          webex.request.resolves({body: {scope: 'scope:returned'}});
+
+          return assert.isRejected(
+            token.refresh({selfContainedToken: true}),
+            'refresh did not return an access token'
+          );
+        });
+
+        browserOnly(it)('passes the opt-in to the browser refresh callback', async () => {
+          const token = makeToken();
+          const options = {selfContainedToken: true};
+
+          webex.config.credentials.refreshCallback = sinon
+            .stub()
+            .resolves({access_token: 'replacement', scope: 'scope:returned'});
+          token.trigger('change:config');
+
+          const refreshed = await token.refresh(options);
+
+          assert.calledOnceWithExactly(
+            webex.config.credentials.refreshCallback,
+            webex,
+            token,
+            options
+          );
+          assert.strictEqual(refreshed.scope, 'scope:returned');
+        });
+
         browserOnly(it)('revokes the previous token when set', () => {
           const token = makeToken();
 
