@@ -669,6 +669,84 @@ describe('plugin-mercury', () => {
     });
 
     describe('#disconnect()', () => {
+      ['unopened', 'failed to open', 'already closed'].forEach((state) => {
+        it(`settles when the socket is ${state} without emitting close`, async () => {
+          let socket;
+
+          if (state === 'already closed') {
+            await mercury.connect();
+            socket = mercury.socket;
+            mockWebSocket.readyState = 3;
+          } else {
+            socket = new Socket();
+            if (state === 'failed to open') {
+              await assert.isRejected(
+                socketOpenStub.wrappedMethod.call(socket, ''),
+                '`url` is required'
+              );
+            }
+            mercury.socket = socket;
+          }
+
+          const disconnected = sinon.spy();
+          const settled = sinon.spy();
+          const offlineListeners = mercury._events?.offline?.length || 0;
+
+          mercury.on('disconnected', disconnected);
+          mercury.disconnect().then(settled);
+          await clock.tickAsync(0);
+
+          assert.calledOnce(settled);
+          assert.calledOnce(disconnected);
+          assert.isUndefined(mercury.socket);
+          assert.isFalse(mercury.connected);
+          assert.equal(mercury._events?.offline?.length || 0, offlineListeners);
+        });
+      });
+
+      it('rejects when closing fails without leaving an offline listener', async () => {
+        const socket = new Socket();
+        const error = new Error('Cannot close socket');
+        const disconnected = sinon.spy();
+        const offlineListeners = mercury._events?.offline?.length || 0;
+
+        sinon.stub(socket, 'close').rejects(error);
+        mercury.socket = socket;
+        mercury.on('disconnected', disconnected);
+
+        assert.strictEqual(await assert.isRejected(mercury.disconnect()), error);
+        assert.strictEqual(mercury.socket, socket);
+        assert.notCalled(disconnected);
+        assert.equal(mercury._events?.offline?.length || 0, offlineListeners);
+        socket.close.restore();
+      });
+
+      it('preserves a replacement socket when the old close finishes', async () => {
+        const socket = new Socket();
+        const replacement = new Socket();
+        const disconnected = sinon.spy();
+        let finishClose;
+
+        sinon.stub(socket, 'close').returns(
+          new Promise((resolve) => {
+            finishClose = resolve;
+          })
+        );
+        mercury.socket = socket;
+        mercury.on('disconnected', disconnected);
+
+        const disconnect = mercury.disconnect();
+
+        mercury.socket = replacement;
+        mercury.connected = true;
+        finishClose();
+        await disconnect;
+
+        assert.strictEqual(mercury.socket, replacement);
+        assert.isTrue(mercury.connected);
+        assert.calledOnce(disconnected);
+      });
+
       it('disconnects the WebSocket', () =>
         mercury
           .connect()
@@ -811,19 +889,17 @@ describe('plugin-mercury', () => {
           return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
             // By this time backoffCall and mercury socket should be defined by the
             // 'connect' call
-            assert.isDefined(
-              mercury.backoffCall,
-              'Mercury backoffCall is not defined'
-            );
+            assert.isDefined(mercury.backoffCall, 'Mercury backoffCall is not defined');
             assert.isDefined(mercury.socket, 'Mercury socket is not defined');
             // Calling disconnect will abort the backoffCall, close the socket, and
             // reject the connect
-            mercury.disconnect();
-            assert.notExists(mercury.backoffCall, 'Mercury backoffCall is still defined');
-            // The socket will never be unset (which seems bad)
-            assert.isDefined(mercury.socket, 'Mercury socket is not defined');
+            const disconnect = mercury.disconnect();
 
-            return assert.isRejected(promise).then((error) => {
+            assert.notExists(mercury.backoffCall, 'Mercury backoffCall is still defined');
+
+            return assert.isRejected(promise).then(async () => {
+              await disconnect;
+              assert.isUndefined(mercury.socket, 'Mercury socket was cleaned up');
               // connection did not fail, so no last error
               assert.isUndefined(mercury.getLastError());
             });
