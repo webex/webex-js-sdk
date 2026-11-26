@@ -381,6 +381,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /** Monotonic counter; invalidates stale silentRelogin recovery across socket drops. @private */
   private reloadGeneration = 0;
 
+  /** Coalesces reloadV2 calls while their AQM response is still pending. @private */
+  private v2ReloadPromise?: ReturnType<Services['agent']['reloadV2']>;
+
+  /** Generation allowed to buffer channel events before an initial reload identifies the session. @private */
+  private initialReloadGeneration?: number;
+
+  /** Channel updates buffered by session ID until an initial reload identifies the active session. @private */
+  private initialReloadChannelEvents = new Map<string, AgentChannelStateChanged[]>();
+
   /** Request-local V2 flag for in-flight stationLogin; prevents flipping the live-session guard. @private */
   private pendingLoginV2?: boolean;
 
@@ -414,6 +423,24 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       isClientInitiated?: boolean;
     }
   >();
+
+  /** Shares one in-flight V2 reload across overlapping reconnect handlers. @private */
+  private reloadV2Once(): ReturnType<Services['agent']['reloadV2']> {
+    if (!this.v2ReloadPromise) {
+      const reloadPromise = this.services.agent.reloadV2();
+      this.v2ReloadPromise = reloadPromise;
+      reloadPromise.then(
+        () => {
+          if (this.v2ReloadPromise === reloadPromise) this.v2ReloadPromise = undefined;
+        },
+        () => {
+          if (this.v2ReloadPromise === reloadPromise) this.v2ReloadPromise = undefined;
+        }
+      );
+    }
+
+    return this.v2ReloadPromise;
+  }
 
   /**
    * API instance for managing Webex Contact Center entry points
@@ -2974,18 +3001,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (this.agentConfig?.manageChannelAvailability !== true) return; // Not V2
 
     // Session guard: discard notifications for ended or mismatched sessions.
-    // During initial registration, currentAgentSessionId is undefined until
-    // the reload notification sets it.  Live channel updates that arrive in
-    // that window must still be applied to channelStatesMap and tracked via
-    // liveUpdatedChannels so the reload's gap-fill does not overwrite them
-    // with the stale snapshot.  When agentConfig exists the session is live
-    // (register in progress or active); when it is null the session ended.
+    // During an explicitly tracked initial reload, buffer by session ID so
+    // only updates matching the reload response can be applied later.
     if (this.currentAgentSessionId) {
       if (data.agentSessionId && data.agentSessionId !== this.currentAgentSessionId) {
         return; // Different session
       }
-    } else if (!this.agentConfig) {
-      return; // Session ended (deregistered/logged out)
+    } else if (
+      !this.agentConfig ||
+      this.initialReloadGeneration !== this.reloadGeneration ||
+      !data.agentSessionId
+    ) {
+      return; // Session ended or not part of the active initial reload
     }
 
     const ownAgentId = this.agentConfig?.agentId;
@@ -2997,6 +3024,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         `Ignoring AgentChannelStateChanged for unknown channelType: ${data.channelType}`,
         {module: CC_FILE, method: 'handleChannelStateChanged'}
       );
+
+      return;
+    }
+
+    if (!this.currentAgentSessionId) {
+      const sessionEvents = this.initialReloadChannelEvents.get(data.agentSessionId) || [];
+      sessionEvents.push(eventData);
+      this.initialReloadChannelEvents.set(data.agentSessionId, sessionEvents);
 
       return;
     }
@@ -3076,6 +3111,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /** V2 AgentChannelReloginSuccess handler: restores channel states + emits enriched reloginSuccess. @private */
   private handleChannelReloginSuccess(eventData: AgentChannelReloginSuccess): void {
     const data = eventData.data;
+    const isInitialReload = this.initialReloadGeneration === this.reloadGeneration;
+    const initialReloadEvents = isInitialReload
+      ? this.initialReloadChannelEvents.get(data.agentSessionId) || []
+      : [];
+    if (isInitialReload) this.initialReloadChannelEvents.clear();
 
     // Upgrade V2 flag before emit so listeners see correct mode.
     if (this.agentConfig && this.agentConfig.manageChannelAvailability !== true) {
@@ -3119,6 +3159,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     this.restoreV2AgentConfigFromChannels(data.agentId, data.agentSessionId, data.orgId);
     this.updateWellnessSession(data.agentSessionId);
+    initialReloadEvents.forEach((bufferedEvent) => this.handleChannelStateChanged(bufferedEvent));
+    if (isInitialReload) this.initialReloadGeneration = undefined;
 
     // Set voice guard before emit so listeners can't bypass it.
     if (data.deviceType) {
@@ -3139,7 +3181,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     // Fall back to Idle (not Available) when bridge returns null to avoid wellness side-effects.
     const reloginPayload = {
       ...loginData,
-      type: 'AgentReloginSuccess' as const,
+      type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
       status: bridged?.status ?? 'LoggedIn',
       subStatus: bridged?.subStatus ?? 'Idle',
       auxCodeId: bridged?.auxCodeId ?? '',
@@ -3220,53 +3262,33 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       method: METHODS.SILENT_RELOGIN,
     });
 
-    try {
-      this.reloadGeneration += 1; // Invalidate earlier reconnect recovery
-      const myGeneration = this.reloadGeneration;
-      this.liveUpdatedChannels.clear(); // Reset for this reload window
-
-      // reloadV2 accepts both V1 and V2 responses; server session type drives routing.
-      // If a prior reload's AQM bind is still live (Service.aqm.reqs.Pending),
-      // wait briefly and retry once so recovery is not lost between two
-      // overlapping reconnects.
-      let reLoginResponse;
-      try {
-        reLoginResponse = await this.services.agent.reloadV2();
-      } catch (reloadErr: unknown) {
-        const isPending =
-          reloadErr &&
-          typeof reloadErr === 'object' &&
-          (reloadErr as {id?: string}).id === 'Service.aqm.reqs.Pending';
-        if (!isPending) throw reloadErr;
-
-        LoggerProxy.log(
-          'event=silentRelogin | reloadV2 rejected as Pending; waiting for prior reload to settle before retrying',
-          {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
-        );
-
-        // Wait for the pending request to settle (success/failure/timeout).
-        // 5s is well under TIMEOUT_REQ (20s) but enough for typical WS latency.
-        await new Promise<void>((r) => {
-          setTimeout(r, 5000);
-        });
-
-        // Abort if another reconnect cycle superseded this one while waiting.
-        if (this.reloadGeneration !== myGeneration) {
-          LoggerProxy.log(
-            'event=silentRelogin | reload generation changed during Pending retry wait, aborting',
-            {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
-          );
-
-          return;
-        }
-
-        reLoginResponse = await this.services.agent.reloadV2();
+    this.reloadGeneration += 1; // Invalidate earlier reconnect recovery
+    const myGeneration = this.reloadGeneration;
+    const isInitialReload = !this.currentAgentSessionId && Boolean(this.agentConfig);
+    if (isInitialReload) {
+      const initialReloadAlreadyPending = this.initialReloadGeneration !== undefined;
+      this.initialReloadGeneration = myGeneration;
+      if (!initialReloadAlreadyPending) {
+        this.initialReloadChannelEvents.clear();
+        this.liveUpdatedChannels.clear();
       }
+    } else {
+      this.initialReloadGeneration = undefined;
+      this.initialReloadChannelEvents.clear();
+      this.liveUpdatedChannels.clear();
+    }
+
+    try {
+      // Share a pending reload across reconnect handlers. A fixed delay can
+      // expire before AqmReqs' request timeout, leaving the new generation
+      // without a reload while the older generation is already superseded.
+      const reLoginResponse = await this.reloadV2Once();
+      if (this.reloadGeneration !== myGeneration) return;
       this.updateWellnessSession(reLoginResponse.data.agentSessionId);
 
       const responseType = reLoginResponse.data?.type;
 
-      if (responseType === 'AgentChannelReloginSuccess') {
+      if (responseType === CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS) {
         // ─── V2 path ─────────────────────────────────────────────
 
         // Mismatch: server is V2 but flag is false → upgrade for this session.
@@ -3475,7 +3497,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           module: CC_FILE,
           method: METHODS.SILENT_RELOGIN,
         });
-        // The server session is gone; drop the stale pin so consumers see a logged-out agent.
+        // The server session is gone; clear V2 state so consumers see a logged-out agent.
         // Clear currentAgentSessionId so the live-session guard in
         // handleChannelStateChanged rejects queued notifications for the
         // ended session — matching logout and multi-login close cleanup.
@@ -3492,6 +3514,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         return;
       }
       throw detailedError;
+    } finally {
+      if (this.initialReloadGeneration === myGeneration) {
+        this.initialReloadGeneration = undefined;
+        this.initialReloadChannelEvents.clear();
+      }
     }
   }
 
@@ -3601,6 +3628,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.pendingBatches.clear(); // Discard unsent batched events
     this.v2StateChangeChain = Promise.resolve(); // Reset serialization chain
     this.v2ChainGeneration += 1; // Invalidate queued closures
+    this.initialReloadGeneration = undefined;
+    this.initialReloadChannelEvents.clear();
   }
 
   /** Cancel pending deferred telephony recovery timer. @private */

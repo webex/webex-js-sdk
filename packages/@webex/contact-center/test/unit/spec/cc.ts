@@ -4938,7 +4938,7 @@ describe('webex.cc', () => {
       expect(unsubscribeSpy).toHaveBeenCalled();
     });
 
-    describe('session version pin (server wins)', () => {
+    describe('server-reported session mode', () => {
       const v1Reload = {
         data: {
           type: 'AgentReloginSuccess',
@@ -7510,9 +7510,10 @@ describe('webex.cc', () => {
 
       it('should ignore late notifications after session has ended (no currentAgentSessionId)', () => {
         setV2();
-        // Simulate logout clearing the session and config
+        // Logout clears V2 state but retains profile eligibility.
         webex.cc['currentAgentSessionId'] = undefined;
-        webex.cc.agentConfig = null;
+        webex.cc.agentConfig = {agentId: 'agent-1', manageChannelAvailability: true} as Profile;
+        webex.cc['initialReloadGeneration'] = undefined;
         webex.cc['channelStatesMap'] = {} as any;
 
         messageCallback(
@@ -8647,12 +8648,14 @@ describe('webex.cc', () => {
         expect(webex.cc['pendingBatches'].size).toBe(0);
       });
 
-      it('should clear the pinned session version', () => {
+      it('should clear V2 session state', () => {
         setV2();
+        webex.cc['initialReloadChannelEvents'].set('session-1', []);
 
         webex.cc['clearV2LocalState']();
 
         expect(webex.cc['channelStatesMap']).toEqual({});
+        expect(webex.cc['initialReloadChannelEvents'].size).toBe(0);
       });
     });
 
@@ -10109,6 +10112,18 @@ describe('webex.cc', () => {
               type: 'AgentChannelStateChanged',
               channelType: 'chat',
               agentId: 'agent-1',
+              agentSessionId: 'session-other',
+              agentChannelStateDetail: makeChannelState('Idle', {
+                auxCodeId: 'wrong-session-code',
+                stateChangeReason: 'agent-explicit',
+              }),
+            },
+          } as any);
+          liveHandler({
+            data: {
+              type: 'AgentChannelStateChanged',
+              channelType: 'chat',
+              agentId: 'agent-1',
               agentSessionId: 'session-1',
               agentChannelStateDetail: makeChannelState('Idle', {
                 auxCodeId: 'lunch-code',
@@ -10117,7 +10132,7 @@ describe('webex.cc', () => {
             },
           } as any);
 
-          return {
+          const eventData = {
             data: {
               type: 'AgentChannelReloginSuccess',
               agentId: 'agent-1',
@@ -10131,7 +10146,11 @@ describe('webex.cc', () => {
               },
               channelsMap: {chat: ['c1'], telephony: ['t1']},
             },
-          } as any;
+          };
+          // The reload flow handles the WS event before its AQM promise resolves.
+          webex.cc['handleChannelReloginSuccess'](eventData as any);
+
+          return eventData as any;
         });
 
         await webex.cc['silentRelogin']();
@@ -10139,6 +10158,7 @@ describe('webex.cc', () => {
         // Chat should be the live Idle/Lunch, NOT the stale Available from reload
         expect(webex.cc['channelStatesMap'].chat.auxCodeId).toBe('lunch-code');
         expect(webex.cc['channelStatesMap'].chat.stateChangeReason).toBe('agent-explicit');
+        expect(webex.cc['channelStatesMap'].chat.auxCodeId).not.toBe('wrong-session-code');
         // Telephony should be from the reload (no live update)
         expect(webex.cc['channelStatesMap'].telephony.agentState).toBe('Available');
       });
@@ -10227,119 +10247,49 @@ describe('webex.cc', () => {
         expect(webex.cc['loginChannelsMap']).toEqual({chat: ['c1']});
       });
 
-      it('retries reloadV2 when the first attempt is rejected as Pending from a prior reconnect', async () => {
-        jest.useFakeTimers();
-        try {
-          webex.cc.agentConfig = {
+      it('coalesces overlapping reconnect reloads and lets the newest generation recover', async () => {
+        webex.cc.agentConfig = {
+          agentId: 'agent-1',
+          isAgentLoggedIn: true,
+          manageChannelAvailability: true,
+        } as Profile;
+        jest
+          .spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired')
+          .mockReturnValue(false);
+
+        const successResponse = {
+          data: {
+            type: 'AgentChannelReloginSuccess',
             agentId: 'agent-1',
-            isAgentLoggedIn: true,
-            manageChannelAvailability: true,
-          } as Profile;
-          jest
-            .spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired')
-            .mockReturnValue(false);
-
-          const pendingError = Object.assign(new Error(), {
-            id: 'Service.aqm.reqs.Pending',
-            details: {key: 'bind-key', msg: 'The request has been already created'},
-          });
-
-          const successResponse = {
-            data: {
-              type: 'AgentChannelReloginSuccess',
-              agentId: 'agent-1',
-              deviceType: LoginOption.EXTENSION,
-              dn: '1001',
-              teamId: 'team-1',
-              agentSessionId: 'session-1',
-              orgId: 'org-1',
-              agentChannelStateDetailMap: {
-                telephony: makeChannelState('Idle', disconnected),
-                chat: makeChannelState('Idle', disconnected),
-              },
-              channelsMap: {telephony: ['t1'], chat: ['c1']},
+            deviceType: LoginOption.EXTENSION,
+            dn: '1001',
+            teamId: 'team-1',
+            agentSessionId: 'session-1',
+            orgId: 'org-1',
+            agentChannelStateDetailMap: {
+              telephony: makeChannelState('Idle', disconnected),
+              chat: makeChannelState('Idle', disconnected),
             },
-          };
+            channelsMap: {telephony: ['t1'], chat: ['c1']},
+          },
+        };
+        let resolveReload: (response: typeof successResponse) => void;
+        const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reloadV2').mockImplementation(
+          () => new Promise((resolve) => {
+            resolveReload = resolve;
+          }) as any
+        );
 
-          const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reloadV2');
-          // First call rejects as Pending; second succeeds.
-          reloadSpy
-            .mockRejectedValueOnce(pendingError)
-            .mockResolvedValueOnce(successResponse as any);
+        const earlierReconnect = webex.cc['silentRelogin']();
+        const latestReconnect = webex.cc['silentRelogin']();
 
-          const reloginPromise = webex.cc['silentRelogin']();
+        expect(reloadSpy).toHaveBeenCalledTimes(1);
+        resolveReload!(successResponse);
+        await Promise.all([earlierReconnect, latestReconnect]);
 
-          // Flush microtasks so the async function reaches the setTimeout
-          await Promise.resolve();
-          await Promise.resolve();
-          await Promise.resolve();
-
-          // Advance past the 5s retry delay
-          jest.advanceTimersByTime(5001);
-
-          // Flush microtasks for the retry's async resolution
-          await Promise.resolve();
-          await Promise.resolve();
-          await reloginPromise;
-
-          // reloadV2 called twice: initial + retry
-          expect(reloadSpy).toHaveBeenCalledTimes(2);
-
-          // Recovery ran: setAgentState dispatched for disconnected channels
-          expect(setAgentStateSpy).toHaveBeenCalledWith(
-            expect.objectContaining({
-              state: 'Available',
-              channelType: ['telephony', 'chat'],
-            })
-          );
-        } finally {
-          jest.useRealTimers();
-        }
-      });
-
-      it('aborts Pending retry when reload generation changes during the wait', async () => {
-        jest.useFakeTimers();
-        try {
-          webex.cc.agentConfig = {
-            agentId: 'agent-1',
-            isAgentLoggedIn: true,
-            manageChannelAvailability: true,
-          } as Profile;
-          jest
-            .spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired')
-            .mockReturnValue(false);
-
-          const pendingError = Object.assign(new Error(), {
-            id: 'Service.aqm.reqs.Pending',
-            details: {key: 'bind-key', msg: 'The request has been already created'},
-          });
-
-          const reloadSpy = jest
-            .spyOn(webex.cc.services.agent, 'reloadV2')
-            .mockRejectedValueOnce(pendingError)
-            .mockResolvedValueOnce({} as any);
-
-          const reloginPromise = webex.cc['silentRelogin']();
-
-          // Flush microtasks so silentRelogin reaches the setTimeout
-          await Promise.resolve();
-          await Promise.resolve();
-          await Promise.resolve();
-
-          // Simulate a third reconnect cycle incrementing the generation
-          // while the 5s retry delay is ticking.
-          webex.cc['reloadGeneration'] += 1;
-
-          jest.advanceTimersByTime(5001);
-          await Promise.resolve();
-          await reloginPromise;
-
-          // Should have aborted — reloadV2 called only once (the Pending one)
-          expect(reloadSpy).toHaveBeenCalledTimes(1);
-          expect(setAgentStateSpy).not.toHaveBeenCalled();
-        } finally {
-          jest.useRealTimers();
-        }
+        expect(setAgentStateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({state: 'Available', channelType: ['telephony', 'chat']})
+        );
       });
     });
   });

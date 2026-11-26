@@ -4,6 +4,7 @@ const {
   getLegacyExternalTransitionDecision,
   getRecoveryDecision,
   getSelectableIdleCodes,
+  getUnconfirmedChannelTypes,
   getWellnessTransition,
   parseRecoveryMarker,
   shouldResetForSessionEvent,
@@ -101,6 +102,45 @@ describe('Contact Center wellness sample utilities', () => {
         {id: '0', name: 'Available', isSystem: false},
         {id: 'training', name: 'Training', isSystem: false},
       ]);
+    });
+  });
+
+  describe('granular wellness channel confirmation', () => {
+    it.each([
+      [
+        'leaves every channel unconfirmed when no states are available',
+        {},
+        ['telephony', 'chat'],
+        ['telephony', 'chat'],
+      ],
+      [
+        'keeps an Available channel unconfirmed when entering Idle',
+        {telephony: {agentState: 'Idle', auxCodeId: 'wellness'}, chat: {agentState: 'Available'}},
+        ['telephony', 'chat'],
+        ['chat'],
+      ],
+      [
+        'requires the requested idle code on every channel',
+        {
+          telephony: {agentState: 'Idle', auxCodeId: 'wellness'},
+          chat: {agentState: 'Idle', auxCodeId: 'lunch'},
+        },
+        ['telephony', 'chat'],
+        ['chat'],
+      ],
+      [
+        'confirms the complete state when every targeted channel matches',
+        {
+          telephony: {agentState: 'Idle', auxCodeId: 'wellness'},
+          chat: {agentState: 'Idle', auxCodeId: 'wellness'},
+        },
+        ['telephony', 'chat'],
+        [],
+      ],
+    ])('%s', (_label, channelStates, channelTypes, expected) => {
+      expect(getUnconfirmedChannelTypes(channelStates, channelTypes, 'Idle', 'wellness')).toEqual(
+        expected
+      );
     });
   });
 

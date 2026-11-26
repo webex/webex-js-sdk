@@ -110,6 +110,17 @@
     return succeeded || !hasAgentConfig;
   }
 
+  function getUnconfirmedChannelTypes(channelStates, channelTypes, state, auxCodeId) {
+    return channelTypes.filter((channelType) => {
+      const channelState = channelStates?.[channelType];
+      return (
+        !channelState ||
+        channelState.agentState !== state ||
+        (state === 'Idle' && channelState.auxCodeId !== auxCodeId)
+      );
+    });
+  }
+
   function getWellnessTransition(state, event) {
     const readyLifecycle = state.isReady ? 'Ready' : 'Unavailable';
 
@@ -149,6 +160,7 @@
     getLegacyExternalTransitionDecision,
     getRecoveryDecision,
     getSelectableIdleCodes,
+    getUnconfirmedChannelTypes,
     getWellnessTransition,
     isTaskBlockingWellness,
     normalizeState,

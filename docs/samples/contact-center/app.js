@@ -32,6 +32,7 @@ const {
   getLegacyExternalTransitionDecision,
   getRecoveryDecision,
   getSelectableIdleCodes,
+  getUnconfirmedChannelTypes,
   getWellnessTransition,
   parseRecoveryMarker,
   shouldResetForSessionEvent,
@@ -40,6 +41,7 @@ const {
 const WELLNESS_OFFER_TIMEOUT_MS = 5 * 60 * 1000;
 const WELLNESS_REQUEST_DECISION_TIMEOUT_MS = 5 * 60 * 1000;
 const WELLNESS_STATE_SETTLE_DELAY_MS = 2 * 1000;
+const WELLNESS_CHANNEL_CONFIRMATION_TIMEOUT_MS = 20 * 1000;
 const WELLNESS_SAFE_STATE_RECHECK_MS = 1000;
 const WELLNESS_BREAK_DURATION_MS = 60 * 1000;
 const WELLNESS_RESTORE_MAX_ATTEMPTS = 3;
@@ -4647,12 +4649,82 @@ async function setWellnessAgentState(state, options = {}) {
       options.reason ||
       (state === 'Idle' ? 'wellness-break' : 'wellness-break-complete'),
     agentId,
+    ...(options.channelType ? {channelType: options.channelType} : {}),
     // When restoring from a wellness break, narrow auto-selected channels
     // to only those still carrying the WellbeingBreak idle code.  Channels
     // manually changed (e.g. Voice→Lunch) are excluded so the timer-driven
     // Available does not undo explicit selections.
     ...(isRestore ? {wellnessRestoration: true} : {}),
   });
+}
+
+function createWellnessChannelConfirmation(channelTypes, state, auxCodeId) {
+  let requestTrackingId;
+  let settled = false;
+  let timeout;
+  const pendingEvents = [];
+  let resolveConfirmation;
+  let rejectConfirmation;
+  const confirmation = new Promise((resolve, reject) => {
+    resolveConfirmation = resolve;
+    rejectConfirmation = reject;
+  });
+
+  const finish = (error) => {
+    if (settled) return;
+    settled = true;
+    if (timeout) clearTimeout(timeout);
+    webex.cc.off('agent:stateChange', onStateChange);
+    webex.cc.off('agent:stateChangeFailed', onStateChangeFailed);
+    if (error) rejectConfirmation(error);
+    else resolveConfirmation();
+  };
+
+  const checkStateChange = (event) => {
+    if (!requestTrackingId || event?.requestTrackingId !== requestTrackingId) return;
+    const unconfirmed = getUnconfirmedChannelTypes(
+      event.channelStates || webex.cc.getChannelStates(),
+      channelTypes,
+      state,
+      auxCodeId
+    );
+    if (unconfirmed.length === 0) finish();
+  };
+
+  const onStateChange = (event) => {
+    if (requestTrackingId) checkStateChange(event);
+    else pendingEvents.push(event);
+  };
+
+  const onStateChangeFailed = (event) => {
+    if (
+      requestTrackingId &&
+      event?.trackingId === requestTrackingId &&
+      channelTypes.includes(event.channelType)
+    ) {
+      finish(new Error(`${event.channelType} state change failed: ${event.reason || 'unknown reason'}`));
+    }
+  };
+
+  webex.cc.on('agent:stateChange', onStateChange);
+  webex.cc.on('agent:stateChangeFailed', onStateChangeFailed);
+
+  return {
+    waitFor: (trackingId) => {
+      if (!trackingId) {
+        finish(new Error('The V2 state change did not include a request tracking ID.'));
+        return confirmation;
+      }
+      requestTrackingId = trackingId;
+      timeout = setTimeout(
+        () => finish(new Error('Timed out waiting for every wellness channel to change state.')),
+        WELLNESS_CHANNEL_CONFIRMATION_TIMEOUT_MS
+      );
+      pendingEvents.splice(0).forEach(checkStateChange);
+      return confirmation;
+    },
+    dispose: () => finish(),
+  };
 }
 
 function captureWellnessBreakContext() {
@@ -4754,8 +4826,23 @@ async function enterWellnessBreak(sendAccepted) {
     `${areAllTasksSafe(getWellnessTaskList()) ? WELLNESS_COPY.acceptedNotEngaged : WELLNESS_COPY.acceptedEngaged} Requesting Idle / WellbeingBreak.`
   );
   renderWellnessState();
+  let channelConfirmation;
   try {
-    await setWellnessAgentState('Idle');
+    const targetChannels = isGranularAgentStateActive ? getSelectableChannelTypes() : undefined;
+    if (targetChannels) {
+      if (targetChannels.length === 0) {
+        throw new Error('No selectable channels are available for the wellness break.');
+      }
+      channelConfirmation = createWellnessChannelConfirmation(
+        targetChannels,
+        'Idle',
+        wellnessState.idleCode?.id || '0'
+      );
+    }
+    const response = await setWellnessAgentState('Idle', {channelType: targetChannels});
+    if (channelConfirmation) {
+      await channelConfirmation.waitFor(response?.data?.trackingId);
+    }
   } catch (error) {
     if (wellnessState.operationGeneration !== operationGeneration) return;
     setWellnessMessage(`${WELLNESS_COPY.startFailure} Starting safe cleanup.`, true);
@@ -4764,6 +4851,8 @@ async function enterWellnessBreak(sendAccepted) {
       completionMessage: 'The failed wellness transition was cleaned up.',
     });
     return;
+  } finally {
+    channelConfirmation?.dispose();
   }
 
   if (wellnessState.operationGeneration !== operationGeneration) return;
@@ -5173,7 +5262,7 @@ function register() {
         entryPointId = agentProfile.outDialEp;
         registerChannelStateEventListeners();
         // register() awaits silentRelogin, so the reload events fired before
-        // these listeners existed; apply the pinned session version here.
+        // these listeners existed; hydrate the UI from the reconciled session state.
         if (agentProfile.isAgentLoggedIn) {
           handleGranularStateLogin();
         }
@@ -6623,8 +6712,8 @@ async function deleteUserPreference() {
 
 /**
  * Switches between V1 (simple dropdown) and V2 (widget-like) agent state UI.
- * Called once after stationLogin resolves. The session version is pinned for the
- * lifetime of the session, so this only runs once per login.
+ * Called after stationLogin resolves. The accepted login mode selects the UI
+ * surface for the active session.
  */
 function switchAgentStateUI(isV2) {
   isGranularAgentStateActive = isV2;
