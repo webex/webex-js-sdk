@@ -4658,6 +4658,7 @@ function createWellnessChannelConfirmation(channelTypes, state, auxCodeId) {
   let requestTrackingId;
   let settled = false;
   let timeout;
+  const confirmedChannels = new Set();
   const pendingEvents = [];
   let resolveConfirmation;
   let rejectConfirmation;
@@ -4678,13 +4679,18 @@ function createWellnessChannelConfirmation(channelTypes, state, auxCodeId) {
 
   const checkStateChange = (event) => {
     if (!requestTrackingId || event?.requestTrackingId !== requestTrackingId) return;
-    const unconfirmed = getUnconfirmedChannelTypes(
-      event.channelStates || webex.cc.getChannelStates(),
-      channelTypes,
-      state,
-      auxCodeId
-    );
-    if (unconfirmed.length === 0) finish();
+    const changedChannels =
+      event.changedChannels || (event.changedChannelType ? [event.changedChannelType] : []);
+    const channelStates = event.channelStates || webex.cc.getChannelStates();
+    changedChannels.forEach((channelType) => {
+      if (!channelTypes.includes(channelType)) return;
+      if (
+        getUnconfirmedChannelTypes(channelStates, [channelType], state, auxCodeId).length === 0
+      ) {
+        confirmedChannels.add(channelType);
+      }
+    });
+    if (channelTypes.every((channelType) => confirmedChannels.has(channelType))) finish();
   };
 
   const onStateChange = (event) => {
@@ -4823,8 +4829,9 @@ async function enterWellnessBreak(sendAccepted) {
   );
   renderWellnessState();
   let channelConfirmation;
+  let targetChannels;
   try {
-    const targetChannels = isGranularAgentStateActive ? getSelectableChannelTypes() : undefined;
+    targetChannels = isGranularAgentStateActive ? getSelectableChannelTypes() : undefined;
     if (targetChannels) {
       if (targetChannels.length === 0) {
         throw new Error('No selectable channels are available for the wellness break.');
@@ -4844,6 +4851,7 @@ async function enterWellnessBreak(sendAccepted) {
     setWellnessMessage(`${WELLNESS_COPY.startFailure} Starting safe cleanup.`, true);
     await restoreWellnessState({
       forceAvailableChannels: true,
+      channelTypes: targetChannels,
       completionMessage: 'The failed wellness transition was cleaned up.',
     });
     return;
@@ -4947,10 +4955,22 @@ function waitForWellnessRestoreRetry(delay, operationGeneration) {
   });
 }
 
-async function performSingleWellnessRestore() {
-  await setWellnessAgentState('Available', {
-    reason: 'wellness-break-complete',
-  });
+async function performSingleWellnessRestore(channelTypes) {
+  let channelConfirmation;
+  try {
+    if (channelTypes?.length > 0) {
+      channelConfirmation = createWellnessChannelConfirmation(channelTypes, 'Available', '0');
+    }
+    const response = await setWellnessAgentState('Available', {
+      reason: 'wellness-break-complete',
+      channelType: channelTypes,
+    });
+    if (channelConfirmation) {
+      await channelConfirmation.waitFor(response?.data?.trackingId);
+    }
+  } finally {
+    channelConfirmation?.dispose();
+  }
 }
 
 function scheduleLegacyRestoreRecovery(operationGeneration) {
@@ -4996,6 +5016,10 @@ async function restoreWellnessState(options = {}) {
   const maxAttempts = options.maxAttempts || WELLNESS_RESTORE_MAX_ATTEMPTS;
   const wellnessCodeId = wellnessState.idleCode?.id;
   const selectableChannelOrder = ['telephony', 'chat', 'email', 'social'];
+  const forcedChannelTypes =
+    options.forceAvailableChannels === true && options.channelTypes?.length > 0
+      ? [...options.channelTypes]
+      : undefined;
   clearWellnessBreakTimer();
   clearWellnessSafeStateTimer();
   wellnessState.lifecycle = 'Restoring';
@@ -5015,7 +5039,7 @@ async function restoreWellnessState(options = {}) {
       // AQM resolves on the first channel confirmation. Other channels can
       // report success while this retry waits, so recognize completed
       // restoration before sending another wellness-scoped request.
-      if (attempt > 1 && wellnessCodeId) {
+      if (attempt > 1 && wellnessCodeId && !forcedChannelTypes) {
         const channelStates = webex.cc.getChannelStates?.() || {};
         const stillOnBreak = selectableChannelOrder.some(
           (channelType) => channelStates[channelType]?.auxCodeId === wellnessCodeId
@@ -5030,7 +5054,7 @@ async function restoreWellnessState(options = {}) {
       }
 
       try {
-        await performSingleWellnessRestore();
+        await performSingleWellnessRestore(forcedChannelTypes);
         if (
           wellnessState.operationGeneration !== operationGeneration ||
           wellnessState.agentSessionId !== sessionId
@@ -5044,7 +5068,16 @@ async function restoreWellnessState(options = {}) {
         // succeeded), treat this as a partial failure and retry instead
         // of releasing recovery ownership.
         const channelStates = webex.cc.getChannelStates?.() || {};
-        if (wellnessCodeId) {
+        if (forcedChannelTypes) {
+          const unconfirmed = forcedChannelTypes.filter((channelType) => {
+            const state = channelStates[channelType];
+
+            return !state || state.agentState !== 'Available' || state.auxCodeId !== '0';
+          });
+          if (unconfirmed.length > 0) {
+            throw new Error(`Partial restore: ${unconfirmed.join(', ')} are not Available`);
+          }
+        } else if (wellnessCodeId) {
           const stillOnBreak = selectableChannelOrder.filter(
             (ct) => channelStates[ct]?.auxCodeId === wellnessCodeId
           );

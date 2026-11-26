@@ -120,7 +120,7 @@
       return (
         !channelState ||
         (channelState.agentState !== state && !idleRequestConfirmed) ||
-        (state === 'Idle' && channelState.auxCodeId !== auxCodeId)
+        ((state === 'Idle' || auxCodeId !== undefined) && channelState.auxCodeId !== auxCodeId)
       );
     });
   }
