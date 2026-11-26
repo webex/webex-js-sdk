@@ -6,8 +6,9 @@ run-name: ${{ github.actor }} is manually ${{ inputs.dry-run && 'dry-running' ||
 # package set and deploy version, then (unless dry-run) publishes to NPM, pushes
 # the documentation/changelog, and creates the git tag.
 #
-# Job flow (linear — publish-tag needs both publish-npm and publish-documentation):
+# Live release jobs run in this order.
 #   authorize → initialize → resolve → publish-npm → publish-documentation → publish-tag
+# A dry run ends at dry-run-npm after resolve.
 # The `resolve` job is the single source of truth for the package set and
 # version; every publish job consumes its outputs.
 
@@ -379,14 +380,19 @@ jobs:
 
   publish-npm:
     name: Publish - NPM
+    if: ${{ inputs.dry-run != true }}
     needs: resolve
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
-    steps:
+    steps: &manual-npm-steps
       - name: Checkout Project
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -438,13 +444,6 @@ jobs:
       - name: Build a webex UMD
         run: yarn run build:script
 
-      - name: Add NPM token to .yarnrc.yml file
-        if: ${{ inputs.dry-run != true }}
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          echo "npmAuthToken: $NPM_TOKEN" >> ~/.yarnrc.yml
-
       - name: Deploy Packages
         if: ${{ inputs.dry-run != true }}
         # `--tolerate-republish` makes reruns idempotent: npm versions are
@@ -454,19 +453,26 @@ jobs:
         # packages and publishes only the remaining ones. Args after
         # `run deploy:npm` forward to each workspace's `yarn npm publish`.
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           DIST_TAG: ${{ inputs.dist-tag }}
           PACKAGES_GLOB: ${{ needs.resolve.outputs.packages-glob }}
-        run: yarn workspaces foreach --from "$PACKAGES_GLOB" --verbose run deploy:npm --access public --tag "$DIST_TAG" --tolerate-republish
+        run: bash scripts/publish-npm.sh "$PACKAGES_GLOB" "$DIST_TAG" --tolerate-republish --provenance
 
       - name: Deploy Packages (Dry Run)
         if: ${{ inputs.dry-run == true }}
-        # `yarn npm publish` has no `--dry-run`, so use `yarn pack --dry-run`,
-        # which resolves `workspace:*` deps and exercises the full packaging path
-        # (file selection, prepack scripts) without uploading anything.
         env:
+          DIST_TAG: ${{ inputs.dist-tag }}
           PACKAGES_GLOB: ${{ needs.resolve.outputs.packages-glob }}
-        run: yarn workspaces foreach --from "$PACKAGES_GLOB" --verbose pack --dry-run
+        run: bash scripts/publish-npm.sh "$PACKAGES_GLOB" "$DIST_TAG" --dry-run
+
+  dry-run-npm:
+    name: Dry Run - NPM
+    if: ${{ inputs.dry-run == true }}
+    needs: resolve
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: none
+    steps: *manual-npm-steps
 
   publish-documentation:
     name: Publish - Documentation
