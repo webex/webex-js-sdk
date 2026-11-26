@@ -11244,9 +11244,10 @@ describe('realRecoveryWiring', () => {
         const {task, data, deliver} = offerRetainedTask(h);
         const lifetime = task['recoveryGuard'];
         const command = cc['commandController'];
-        const pending = task.end();
+        const pending = task.hold();
         const interrupted = expect(pending).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
         await flush();
+        expect(task.state.value).toBe('HOLD_INITIATING');
         const boundary = host.request.getMockImplementation();
         host.request.mockImplementation(request => request.resource === '/v1/agents/logout'
           ? Promise.reject({statusCode: 400, body: {reason: 'AGENT_IN_INTERACTION'}}) : boundary(request));
@@ -11256,6 +11257,7 @@ describe('realRecoveryWiring', () => {
         }
         await expect(cc.stationLogout({logoutReason: 'in interaction'})).rejects.toThrow();
         await interrupted;
+        expect(task.state.value).toBe('CONNECTED');
         if (outcome === 'no-primary') {
           expect(host.request.mock.calls.filter(([r]) => r.resource === '/v1/agents/logout')).toHaveLength(0);
           jest.advanceTimersByTime(5000); await flush();
@@ -11271,8 +11273,7 @@ describe('realRecoveryWiring', () => {
         const held = task.hold();
         const observed = held.catch(() => undefined);
         await flush();
-        const request = requests.find(r => r.resource === `/v1/tasks/${data.interactionId}/hold`);
-        expect(request).toBeDefined();
+        expect(requests.filter(r => r.resource === `/v1/tasks/${data.interactionId}/hold`)).toHaveLength(2);
         deliver(CC_EVENTS.AGENT_CONTACT_HELD, {
           interaction: {...data.interaction, state: 'connected'}});
         await held; await observed;
@@ -16887,9 +16888,7 @@ describe('realRecoveryWiring', () => {
         if (boundary === 'agent replacement') sockets[0].message({type: 'Welcome', data: {agentId: 'replacement-agent'}});
         expect(controller.signal.aborted).toBe(true);
         await flush();
-        // Assert settlement while microphone acquisition is still pending.
-        expect(rejected).toHaveBeenCalledTimes(1);
-        expect((await result).data.reason).toBe('RECOVERY_INTERRUPTED');
+        expect(rejected).not.toHaveBeenCalled();
         if (boundary === 'register') {
           sockets.filter(s => s.url.includes('routing.')).slice(-1)[0].welcome(); await operation;
         } else await operation;
@@ -16904,7 +16903,7 @@ describe('realRecoveryWiring', () => {
         const cleanupCalls = [deregister.mock.calls.length, line.deregister.mock.calls.length];
 
         acquisition.resolve({getTracks: () => [track], getAudioTracks: () => [track]} as unknown as MediaStream);
-        await flush();
+        expect((await result).data.reason).toBe(boundary === 'switch' ? 'RECOVERY_IN_PROGRESS' : 'STALE_TASK');
         expect(track.stop).toHaveBeenCalledTimes(1);
         expect(answer).not.toHaveBeenCalled();
         expect(call.answer).not.toHaveBeenCalled();

@@ -1,4 +1,6 @@
 import {LocalMicrophoneStream, CALL_EVENT_KEYS} from '@webex/calling';
+import {CC_FILE} from '../../../constants';
+import {getErrorDetails} from '../../core/Utils';
 import routingContact from '../contact';
 import {
   TaskData,
@@ -44,20 +46,9 @@ export default class WebRTC extends Voice implements IWebRTC {
 
   protected disposeRegionalResources(): void {
     super.disposeRegionalResources();
-    const tracks = [...this.ownedTracks];
+    this.ownedTracks.forEach((track) => track.stop());
     this.ownedTracks.clear();
     this.localAudioStream = undefined;
-    WebRTC.stopTracks(tracks);
-  }
-
-  private static stopTracks(tracks: MediaStreamTrack[]): void {
-    for (const track of tracks) {
-      try {
-        track.stop();
-      } catch {
-        // A failed track does not retain the remaining owned tracks.
-      }
-    }
   }
 
   private registerWebCallListeners() {
@@ -92,31 +83,30 @@ export default class WebRTC extends Voice implements IWebRTC {
    * ```
    */
   public async accept(): Promise<TaskResponse> {
-    const timedEvents = [
-      METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
-      METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
-    ];
+    this.assertTaskCommandAllowed();
+    LoggerProxy.log(`Accepting WebRTC task for taskId:${this.data.interactionId}`, {
+      module: 'WebRTC',
+      method: 'accept',
+    });
     try {
-      await this.runTaskOperation(async () => {
-        LoggerProxy.log(`Accepting WebRTC task for taskId:${this.data.interactionId}`, {
-          module: 'WebRTC',
-          method: 'accept',
-        });
-        this.metricsManager.timeEvent(timedEvents);
-        const constraints = {audio: true};
-        const localStream = await navigator.mediaDevices.getUserMedia(constraints);
-        const tracks = localStream.getTracks();
-        try {
-          this.assertTaskCommandAllowed();
-        } catch (error) {
-          WebRTC.stopTracks(tracks);
-          throw error;
-        }
-        tracks.forEach((track) => this.ownedTracks.add(track));
-        const audioTrack = localStream.getAudioTracks()[0];
-        this.localAudioStream = new LocalMicrophoneStream(new MediaStream([audioTrack]));
-        this.webCallingService.answerCall(this.localAudioStream, this.data.interactionId);
-      }, timedEvents);
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
+      ]);
+
+      const constraints = {audio: true};
+      const localStream = await navigator.mediaDevices.getUserMedia(constraints);
+      const tracks = localStream.getTracks();
+      try {
+        this.assertTaskCommandAllowed();
+      } catch (error) {
+        tracks.forEach((track) => track.stop());
+        throw error;
+      }
+      tracks.forEach((track) => this.ownedTracks.add(track));
+      const audioTrack = localStream.getAudioTracks()[0];
+      this.localAudioStream = new LocalMicrophoneStream(new MediaStream([audioTrack]));
+      this.webCallingService.answerCall(this.localAudioStream, this.data.interactionId);
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
@@ -126,8 +116,9 @@ export default class WebRTC extends Voice implements IWebRTC {
         },
         ['operational', 'behavioral', 'business']
       );
+
+      return Promise.resolve();
     } catch (error) {
-      const detailedError = WebRTC.getTaskError(error, 'accept');
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
         {
@@ -139,6 +130,7 @@ export default class WebRTC extends Voice implements IWebRTC {
         },
         ['operational', 'behavioral', 'business']
       );
+      const {error: detailedError} = getErrorDetails(error, 'accept', CC_FILE);
       throw detailedError;
     }
   }
@@ -176,7 +168,6 @@ export default class WebRTC extends Voice implements IWebRTC {
 
       return Promise.resolve();
     } catch (error) {
-      const detailedError = WebRTC.getTaskError(error, 'decline');
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
         {
@@ -188,6 +179,7 @@ export default class WebRTC extends Voice implements IWebRTC {
         },
         ['operational', 'behavioral']
       );
+      const {error: detailedError} = getErrorDetails(error, 'decline', CC_FILE);
       throw detailedError;
     }
   }
@@ -215,7 +207,8 @@ export default class WebRTC extends Voice implements IWebRTC {
 
       return Promise.resolve();
     } catch (error) {
-      throw WebRTC.getTaskError(error, 'mute');
+      const {error: detailedError} = getErrorDetails(error, 'mute', CC_FILE);
+      throw detailedError;
     }
   }
 }

@@ -4,8 +4,6 @@ import {
   calculateDestAgentId,
   calculateDestType,
   getErrorDetails,
-  isRegionRecoveryError,
-  waitForRecoveryDelay,
 } from '../../core/Utils';
 import routingContact from '../contact';
 import {
@@ -278,6 +276,12 @@ export default class Voice extends Task implements IVoice {
     return this.wxAppMuted;
   }
 
+  private static delay(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+  }
+
   private canRetryWxAppMuteSync(): boolean {
     if (!this.enableWxBetterTogether) {
       return false;
@@ -325,9 +329,7 @@ export default class Voice extends Task implements IVoice {
       return this.wxAppMuteSyncInFlight;
     }
 
-    const syncPromise = this.runTaskLifetimeOperation((signal) =>
-      this.performWxAppMuteSync(retryAttempt, signal)
-    );
+    const syncPromise = this.performWxAppMuteSync(retryAttempt);
     if (retryAttempt === 0) {
       this.wxAppMuteSyncInFlight = syncPromise;
       syncPromise
@@ -342,10 +344,7 @@ export default class Voice extends Task implements IVoice {
     return syncPromise;
   }
 
-  private async performWxAppMuteSync(
-    retryAttempt: number,
-    signal: AbortSignal
-  ): Promise<boolean | undefined> {
+  private async performWxAppMuteSync(retryAttempt: number): Promise<boolean | undefined> {
     if (this.shouldSkipWxAppMuteSync()) {
       return undefined;
     }
@@ -353,10 +352,10 @@ export default class Voice extends Task implements IVoice {
     let callId = this.getWebexCallingCallId();
     if (!callId) {
       if (retryAttempt < Voice.WXAPP_MUTE_SYNC_MAX_RETRIES && this.canRetryWxAppMuteSync()) {
-        await waitForRecoveryDelay(Voice.WXAPP_MUTE_SYNC_RETRY_DELAY_MS, signal);
-        this.assertTaskLifetimeActive(signal);
+        await Voice.delay(Voice.WXAPP_MUTE_SYNC_RETRY_DELAY_MS);
+        this.assertTaskLifetimeActive();
 
-        return this.performWxAppMuteSync(retryAttempt + 1, signal);
+        return this.performWxAppMuteSync(retryAttempt + 1);
       }
 
       callId = getCallingDeviceDetails(this.getWxAppVoiceDeps())?.deviceCallId ?? null;
@@ -365,24 +364,11 @@ export default class Voice extends Task implements IVoice {
       }
     }
 
+    let muted: boolean | undefined;
     try {
       const lineOwnerId = resolveWxAppLineOwnerId(this.getWxAppVoiceDeps());
-      const details = await this.answerCallOnWebexService.getCallDetails({callId, lineOwnerId});
-      this.assertTaskLifetimeActive(signal);
-      if (details.muted !== undefined) {
-        this.applyWxAppMuteStateFromSync(callId, details.muted);
-        this.assertTaskLifetimeActive(signal);
-        if (this.wxAppMuted !== details.muted) {
-          this.applyWxAppMuteFromBackfill(callId, details.muted);
-        }
-
-        return details.muted;
-      }
-
-      return this.wxAppMuted;
+      ({muted} = await this.answerCallOnWebexService.getCallDetails({callId, lineOwnerId}));
     } catch (error) {
-      this.assertTaskLifetimeActive(signal);
-      if (isRegionRecoveryError(error)) throw error;
       if (!isWxAppCallNotFoundError(error)) {
         LoggerProxy.error(`Failed to sync wxApp mute from call details: ${error}`, {
           module: CC_FILE,
@@ -393,6 +379,14 @@ export default class Voice extends Task implements IVoice {
 
       return undefined;
     }
+
+    this.assertTaskLifetimeActive();
+    if (muted === undefined) return this.wxAppMuted;
+
+    this.applyWxAppMuteStateFromSync(callId, muted);
+    if (this.wxAppMuted !== muted) this.applyWxAppMuteFromBackfill(callId, muted);
+
+    return muted;
   }
 
   protected onTaskAssigned(): void {
@@ -458,14 +452,13 @@ export default class Voice extends Task implements IVoice {
    * Accepts the task. Routes to wxApp telephony answer when `enableWxBetterTogether` and wxApp offer.
    */
   public async accept(): Promise<TaskResponse> {
+    this.assertTaskCommandAllowed();
     if (this.enableWxBetterTogether && this.isWebexAppCallingOffer()) {
-      return this.runTaskOperation(
-        () =>
-          runWxAppAccept(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
-            acceptReason: this.getWxAppAcceptReasonForMetrics(),
-          }),
-        [METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_SUCCESS, METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_FAILED]
-      );
+      await runWxAppAccept(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
+        acceptReason: this.getWxAppAcceptReasonForMetrics(),
+      });
+
+      return Promise.resolve();
     }
 
     return super.unsupportedMethodError(METHODS.ACCEPT);
@@ -476,19 +469,12 @@ export default class Voice extends Task implements IVoice {
    */
   public async decline(): Promise<TaskResponse> {
     this.assertTaskCommandAllowed();
-    const wxAppDeclineMetrics = [
-      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
-      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
-    ];
-
     if (this.enableWxBetterTogether && this.isWebexAppInboundCallingOffer()) {
-      return this.runTaskOperation(
-        () =>
-          runWxAppReject(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
-            acceptReason: this.getWxAppAcceptReasonForMetrics(),
-          }),
-        wxAppDeclineMetrics
-      );
+      await runWxAppReject(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
+        acceptReason: this.getWxAppAcceptReasonForMetrics(),
+      });
+
+      return Promise.resolve();
     }
 
     const isOutdial = this.data?.interaction?.outboundType === 'OUTDIAL';
@@ -504,16 +490,15 @@ export default class Voice extends Task implements IVoice {
     });
 
     try {
-      const declineAcceptReason = this.wxAppAnswerPending
-        ? 'wxApp_answer_pending'
-        : 'wxApp_offer_ready';
-      this.setWxAppAnswerPending(false);
-      this.assertTaskCommandAllowed();
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
         METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
       ]);
 
+      const declineAcceptReason = this.wxAppAnswerPending
+        ? 'wxApp_answer_pending'
+        : 'wxApp_offer_ready';
+      this.setWxAppAnswerPending(false);
       const response = await runWxAppOutdialDecline(
         this.getWxAppVoiceDependencies(),
         () => this.contact.cancelTask({interactionId}),
@@ -531,7 +516,6 @@ export default class Voice extends Task implements IVoice {
 
       return response;
     } catch (error) {
-      if (isRegionRecoveryError(error)) throw error;
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
         {
@@ -552,31 +536,28 @@ export default class Voice extends Task implements IVoice {
    * Toggles mute for wxApp engaged telephony when `enableWxBetterTogether` is active.
    */
   public async toggleMute(options?: TaskToggleMuteOptions): Promise<void> {
-    return this.runTaskOperation(() => {
-      if (!this.enableWxBetterTogether || !this.getWebexCallingCallId()) {
-        return super.unsupportedMethodError(METHODS.TOGGLE_MUTE);
-      }
-
+    this.assertTaskCommandAllowed();
+    if (this.enableWxBetterTogether && this.getWebexCallingCallId()) {
       const togglePromise = this.wxAppMuteToggleTail
         .catch(() => undefined)
         .then(() =>
           runWxAppToggleMute(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), options)
         );
       this.wxAppMuteToggleTail = togglePromise.catch(() => undefined);
+      await togglePromise;
 
-      return togglePromise;
-    }, [METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_SUCCESS, METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_FAILED]);
+      return;
+    }
+
+    super.unsupportedMethodError(METHODS.TOGGLE_MUTE);
   }
 
   /**
    * Sends in-call DTMF for wxApp engaged telephony when `enableWxBetterTogether` is active.
    */
   public async transmitDtmf(options: TaskTransmitDtmfOptions): Promise<void> {
-    return this.runTaskOperation(() => {
-      if (!this.enableWxBetterTogether || !this.getWebexCallingCallId()) {
-        return super.unsupportedMethodError(METHODS.TRANSMIT_DTMF);
-      }
-
+    this.assertTaskCommandAllowed();
+    if (this.enableWxBetterTogether && this.getWebexCallingCallId()) {
       const dtmfPromise = this.wxAppDtmfTail
         .catch(() => undefined)
         .then(() =>
@@ -587,9 +568,12 @@ export default class Voice extends Task implements IVoice {
           )
         );
       this.wxAppDtmfTail = dtmfPromise.catch(() => undefined);
+      await dtmfPromise;
 
-      return dtmfPromise;
-    }, [METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_SUCCESS, METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_FAILED]);
+      return;
+    }
+
+    super.unsupportedMethodError(METHODS.TRANSMIT_DTMF);
   }
 
   /**
@@ -699,7 +683,6 @@ export default class Voice extends Task implements IVoice {
       ? [METRIC_EVENT_NAMES.TASK_HOLD_SUCCESS, METRIC_EVENT_NAMES.TASK_HOLD_FAILED]
       : [METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS, METRIC_EVENT_NAMES.TASK_RESUME_FAILED];
 
-    this.assertTaskCommandAllowed();
     this.metricsManager.timeEvent([successEvt, failedEvt]);
 
     try {
@@ -771,10 +754,8 @@ export default class Voice extends Task implements IVoice {
 
       return response;
     } catch (error) {
-      if (isRegionRecoveryError(error)) throw error;
-      this.assertTaskCommandAllowed();
       const failureEvent = shouldHold ? TaskEvent.HOLD_FAILED : TaskEvent.UNHOLD_FAILED;
-      this.stateMachineService.send({
+      this.sendStateMachineEvent({
         type: failureEvent,
         reason: error.toString(),
         mediaResourceId: this.data.mediaResourceId,
@@ -859,7 +840,7 @@ export default class Voice extends Task implements IVoice {
 
       return result;
     } catch (error) {
-      const detailedError = Voice.getTaskError(error, 'pauseRecording');
+      const {error: detailedError} = getErrorDetails(error, 'pauseRecording', CC_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_FAILED,
         {
@@ -939,7 +920,7 @@ export default class Voice extends Task implements IVoice {
 
       return result;
     } catch (error) {
-      const detailedError = Voice.getTaskError(error, 'resumeRecording');
+      const {error: detailedError} = getErrorDetails(error, 'resumeRecording', CC_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_FAILED,
         {
@@ -1006,7 +987,6 @@ export default class Voice extends Task implements IVoice {
         method: 'consult',
         interactionId: requestInteractionId,
       });
-      this.assertTaskCommandAllowed();
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS,
         METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
@@ -1046,9 +1026,7 @@ export default class Voice extends Task implements IVoice {
 
       return result;
     } catch (error) {
-      if (isRegionRecoveryError(error)) throw error;
-      this.assertTaskCommandAllowed();
-      this.stateMachineService.send({
+      this.sendStateMachineEvent({
         type: TaskEvent.CONSULT_FAILED,
         reason: error.toString(),
       });
@@ -1121,7 +1099,7 @@ export default class Voice extends Task implements IVoice {
 
       return result;
     } catch (error) {
-      const detailedError = Voice.getTaskError(error, 'endConsult');
+      const {error: detailedError} = getErrorDetails(error, 'endConsult', CC_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
         {
@@ -1217,7 +1195,7 @@ export default class Voice extends Task implements IVoice {
         destinationType: payload.destinationType,
       });
     } catch (err) {
-      const detailedError = Voice.getTaskError(err, METHODS.TRANSFER_CALL);
+      const {error: detailedError} = getErrorDetails(err, METHODS.TRANSFER_CALL, CC_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
         {
@@ -1289,7 +1267,6 @@ export default class Voice extends Task implements IVoice {
         this.data.interactionId
       );
 
-      this.assertTaskCommandAllowed();
       const response = await this.contact.consultConference({
         interactionId: paramsDataForConferenceV2.interactionId,
         data: paramsDataForConferenceV2.data,
@@ -1324,15 +1301,10 @@ export default class Voice extends Task implements IVoice {
 
       return response;
     } catch (error) {
-      if (isRegionRecoveryError(error)) throw error;
-      this.assertTaskCommandAllowed();
-      // Send failure event to revert state
-      if (this.stateMachineService) {
-        this.stateMachineService.send({
-          type: TaskEvent.CONFERENCE_FAILED,
-          reason: error.toString(),
-        });
-      }
+      this.sendStateMachineEvent({
+        type: TaskEvent.CONFERENCE_FAILED,
+        reason: error.toString(),
+      });
 
       const {error: detailedError} = getErrorDetails(error, METHODS.CONSULT_CONFERENCE, CC_FILE);
 
@@ -1428,7 +1400,6 @@ export default class Voice extends Task implements IVoice {
 
       return response;
     } catch (error) {
-      if (isRegionRecoveryError(error)) throw error;
       const failureTrackingFields = MetricsManager.getCommonTrackingFieldForAQMResponseFailed(
         error?.details || {}
       );
@@ -1513,7 +1484,6 @@ export default class Voice extends Task implements IVoice {
         interactionId: requestInteractionId,
       });
 
-      this.assertTaskCommandAllowed();
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_SUCCESS,
         METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_FAILED,
@@ -1576,15 +1546,10 @@ export default class Voice extends Task implements IVoice {
 
       return response;
     } catch (error) {
-      if (isRegionRecoveryError(error)) throw error;
-      this.assertTaskCommandAllowed();
-      // Send failure event
-      if (this.stateMachineService) {
-        this.stateMachineService.send({
-          type: TaskEvent.EXIT_CONFERENCE_FAILED,
-          reason: error.toString(),
-        });
-      }
+      this.sendStateMachineEvent({
+        type: TaskEvent.EXIT_CONFERENCE_FAILED,
+        reason: error.toString(),
+      });
 
       const {error: detailedError} = getErrorDetails(error, 'exitConference', CC_FILE);
       this.metricsManager.trackEvent(
@@ -1658,7 +1623,6 @@ export default class Voice extends Task implements IVoice {
         interactionId: requestInteractionId,
       });
 
-      this.assertTaskCommandAllowed();
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS,
         METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED,
@@ -1698,15 +1662,10 @@ export default class Voice extends Task implements IVoice {
 
       return response;
     } catch (error) {
-      if (isRegionRecoveryError(error)) throw error;
-      this.assertTaskCommandAllowed();
-      // Send failure event
-      if (this.stateMachineService) {
-        this.stateMachineService.send({
-          type: TaskEvent.TRANSFER_CONFERENCE_FAILED,
-          reason: error.toString(),
-        });
-      }
+      this.sendStateMachineEvent({
+        type: TaskEvent.TRANSFER_CONFERENCE_FAILED,
+        reason: error.toString(),
+      });
 
       const {error: detailedError} = getErrorDetails(error, 'transferConference', CC_FILE);
       this.metricsManager.trackEvent(
@@ -1789,7 +1748,6 @@ export default class Voice extends Task implements IVoice {
       this.stateMachineService.send({type: targetEvent});
     }
 
-    this.assertTaskCommandAllowed();
     this.metricsManager.timeEvent([
       METRIC_EVENT_NAMES.TASK_SWITCH_CALL_SUCCESS,
       METRIC_EVENT_NAMES.TASK_SWITCH_CALL_FAILED,
@@ -1848,11 +1806,7 @@ export default class Voice extends Task implements IVoice {
 
       return response;
     } catch (error) {
-      if (isRegionRecoveryError(error)) throw error;
-      this.assertTaskCommandAllowed();
-      if (this.stateMachineService) {
-        this.stateMachineService.send({type: revertEvent});
-      }
+      this.sendStateMachineEvent({type: revertEvent});
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_SWITCH_CALL_FAILED,

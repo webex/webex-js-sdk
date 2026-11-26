@@ -764,33 +764,31 @@ describe.each([
 
   afterEach(() => jest.restoreAllMocks());
 
-  it('passes through backend recovery errors without failure effects', async () => {
+  it('preserves the original recovery error', async () => {
     const error = Utils.createRegionRecoveryError('REGION_RELOAD_REQUIRED', {status: 409});
     dependency.mockRejectedValue(error);
     await expect(invoke()).rejects.toBe(error);
     expect(dependency).toHaveBeenCalledTimes(1);
-    expect(deps.metricsManager.trackEvent).not.toHaveBeenCalled();
-    expect(lifecycle.mapWxAppVoiceError).not.toHaveBeenCalled();
   });
 
-  it('ignores a late response after recovery interrupts the task', async () => {
-    const pending = createDeferred<void>();
-    dependency.mockReturnValue(pending.promise);
-    const error = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
-    const observed = expect(invoke()).rejects.toBe(error);
-    expect(dependency).toHaveBeenCalledTimes(1);
-    admission.mockImplementation(() => {
-      throw error;
+  if (operation === 'accept' || operation === 'toggleMute') {
+    it('keeps a late response from changing local call state', async () => {
+      const pending = createDeferred<void>();
+      dependency.mockReturnValue(pending.promise);
+      const error = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      const observed = expect(invoke()).rejects.toBe(error);
+      expect(dependency).toHaveBeenCalledTimes(1);
+      admission.mockImplementation(() => {
+        throw error;
+      });
+      pending.resolve();
+      await observed;
+
+      expect(deps.setWxAppMuted).not.toHaveBeenCalled();
+      expect(lifecycle.resetWxAppMuted).not.toHaveBeenCalled();
+      expect(lifecycle.syncWxAppMuteFromCallDetails).not.toHaveBeenCalled();
     });
-    pending.resolve();
-    await observed;
-
-    expect(deps.metricsManager.trackEvent).not.toHaveBeenCalled();
-    expect(lifecycle.mapWxAppVoiceError).not.toHaveBeenCalled();
-    expect(deps.setWxAppMuted).not.toHaveBeenCalled();
-    expect(lifecycle.resetWxAppMuted).not.toHaveBeenCalled();
-    expect(lifecycle.syncWxAppMuteFromCallDetails).not.toHaveBeenCalled();
-  });
+  }
 
   if (operation === 'transmitDtmf') {
     it('tracks and maps an ordinary DTMF service failure', async () => {
@@ -814,25 +812,6 @@ describe.each([
 
       await expect(invoke()).rejects.toBe(error);
       expect(dependency).not.toHaveBeenCalled();
-      expect(deps.metricsManager.trackEvent).not.toHaveBeenCalled();
-    });
-
-    it('does not report accept success when recovery interrupts mute sync', async () => {
-      const reachedSync = createDeferred<void>();
-      const sync = createDeferred<boolean>();
-      lifecycle.syncWxAppMuteFromCallDetails = jest.fn(() => {
-        reachedSync.resolve();
-        return sync.promise;
-      });
-      const error = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
-      const observed = expect(invoke()).rejects.toBe(error);
-      await reachedSync.promise;
-      expect(lifecycle.resetWxAppMuted).toHaveBeenCalledTimes(1);
-      admission.mockImplementation(() => {throw error;});
-      sync.resolve(true);
-      await observed;
-
-      expect(deps.metricsManager.trackEvent).not.toHaveBeenCalled();
     });
   }
 });

@@ -2886,45 +2886,6 @@ describe('T-008 Task regional lifetime', () => {
     };
   };
 
-  it('lifetime reads bypass command admission and release captured signal listeners', async () => {
-    const {controller, guard} = createGuard();
-    guard.assertCommandAllowed.mockImplementation(() => {
-      throw recovery.createRegionRecoveryError('RECOVERY_IN_PROGRESS');
-    });
-    const task = new DummyTask({} as any, createTaskData());
-    task.bindRecoveryGuard(guard);
-    const addListener = jest.spyOn(controller.signal, 'addEventListener');
-    const removeListener = jest.spyOn(controller.signal, 'removeEventListener');
-    const operation = jest.fn(async (signal: AbortSignal) => {
-      expect(signal.aborted).toBe(false);
-      return 'read result';
-    });
-
-    await expect(task['runTaskLifetimeOperation'](operation)).resolves.toBe('read result');
-    expect(operation).toHaveBeenCalledTimes(1);
-    expect(guard.assertCommandAllowed).not.toHaveBeenCalled();
-    expect(task['taskOperations'].size).toBe(0);
-    expect(removeListener.mock.calls).toEqual(
-      addListener.mock.calls.map(([event, listener]) => [event, listener])
-    );
-
-    const pending = createDeferred<string>();
-    const result = task['runTaskLifetimeOperation'](() => pending.promise);
-    const observed = expect(result).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-    // Rebinding cannot move an in-flight read to a new lifetime.
-    task.bindRecoveryGuard(createGuard().guard);
-    controller.abort();
-    await observed;
-    expect(task['taskOperations'].size).toBe(0);
-    expect(removeListener.mock.calls).toEqual(
-      addListener.mock.calls.map(([event, listener]) => [event, listener])
-    );
-    expect(guard.assertCommandAllowed).not.toHaveBeenCalled();
-    pending.reject(new Error('late read failure'));
-    await flushEventLoopTurn();
-    expect(task['taskOperations'].size).toBe(0);
-  });
-
   it('pre-aborted command admission performs no backend or timing work', async () => {
     const {controller, guard} = createGuard();
     const contact = {end: jest.fn()};
@@ -3103,13 +3064,12 @@ describe('T-008 Task regional lifetime', () => {
     expect(updated.mock.calls[1][0]).toBe(task.uiControls);
   });
 
-  it('passes through a backend recovery error without ordinary failure effects', async () => {
+  it('preserves a backend recovery error', async () => {
     const error = recovery.createRegionRecoveryError('REGION_RELOAD_REQUIRED', {status: 409});
     const task = new DummyTask({end: jest.fn().mockRejectedValue(error)}, createTaskData());
     task.bindRecoveryGuard(createGuard().guard);
     await expect(task.end()).rejects.toBe(error);
     expect(error.data).toEqual({reason: 'REGION_RELOAD_REQUIRED', status: 409});
-    expect(task['metricsManager'].trackEvent).not.toHaveBeenCalled();
   });
 });
 

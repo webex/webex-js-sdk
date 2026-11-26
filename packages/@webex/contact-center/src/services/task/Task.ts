@@ -96,11 +96,11 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   /** @internal */
-  protected assertTaskLifetimeActive(signal = this.recoveryGuard?.signal): void {
+  protected assertTaskLifetimeActive(): void {
     if (this.regionallyInvalidated) {
       throw createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.STALE_TASK);
     }
-    if (this.operationsInterrupted || signal?.aborted) {
+    if (this.operationsInterrupted || this.recoveryGuard?.signal.aborted) {
       throw createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.RECOVERY_INTERRUPTED);
     }
   }
@@ -119,35 +119,8 @@ export default abstract class Task extends EventEmitter implements ITask {
     operation: (signal: AbortSignal) => Promise<T>,
     timedEventKeys?: string | string[]
   ): Promise<T> {
-    return this.runOwnedTaskOperation(operation, 'command', timedEventKeys);
-  }
-
-  /** @internal Maps ordinary command failures before the caller reports them. */
-  protected static getTaskError(error: unknown, method: string): Error {
-    if (isRegionRecoveryError(error)) throw error;
-
-    return getErrorDetails(error, method, CC_FILE).error;
-  }
-
-  /** @internal */
-  protected async runTaskLifetimeOperation<T>(
-    operation: (signal: AbortSignal) => Promise<T>
-  ): Promise<T> {
-    return this.runOwnedTaskOperation(operation, 'lifetime');
-  }
-
-  /** @internal */
-  private async runOwnedTaskOperation<T>(
-    operation: (signal: AbortSignal) => Promise<T>,
-    admission: 'command' | 'lifetime',
-    timedEventKeys?: string | string[]
-  ): Promise<T> {
     const parent = this.recoveryGuard?.signal;
-    const assertAllowed = (): void => {
-      if (admission === 'command') this.assertTaskCommandAllowed();
-      else this.assertTaskLifetimeActive(parent);
-    };
-    assertAllowed();
+    this.assertTaskCommandAllowed();
     const controller = new AbortController();
     const {signal} = controller;
     const onParentAbort = (): void => {
@@ -161,13 +134,13 @@ export default abstract class Task extends EventEmitter implements ITask {
 
       const result = await awaitRecoveryWork(operation(signal), signal, () => signal.reason);
       if (signal.aborted) throw signal.reason;
-      assertAllowed();
+      this.assertTaskCommandAllowed();
 
       return result;
     } catch (error) {
       if (isRegionRecoveryError(error)) throw error;
       if (signal.aborted) throw signal.reason;
-      assertAllowed();
+      this.assertTaskCommandAllowed();
       throw error;
     } finally {
       parent?.removeEventListener('abort', onParentAbort);
@@ -1247,7 +1220,7 @@ export default abstract class Task extends EventEmitter implements ITask {
 
       return result;
     } catch (error) {
-      const detailedError = Task.getTaskError(error, 'transfer');
+      const {error: detailedError} = getErrorDetails(error, 'transfer', CC_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
         {
@@ -1303,7 +1276,7 @@ export default abstract class Task extends EventEmitter implements ITask {
 
       return response;
     } catch (error) {
-      const detailedError = Task.getTaskError(error, 'end');
+      const {error: detailedError} = getErrorDetails(error, 'end', CC_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_END_FAILED,
         {
@@ -1369,7 +1342,7 @@ export default abstract class Task extends EventEmitter implements ITask {
 
       return response;
     } catch (error) {
-      const detailedError = Task.getTaskError(error, 'wrapup');
+      const {error: detailedError} = getErrorDetails(error, 'wrapup', CC_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_WRAPUP_FAILED,
         {

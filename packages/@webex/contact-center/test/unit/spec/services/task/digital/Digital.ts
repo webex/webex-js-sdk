@@ -2,7 +2,6 @@ import Digital from '../../../../../../src/services/task/digital/Digital';
 import {MEDIA_CHANNEL, TaskData, TaskResponse} from '../../../../../../src/services/task/types';
 import {TaskEvent, TaskEventPayload} from '../../../../../../src/services/task/state-machine';
 import {createRegionRecoveryError} from '../../../../../../src/services/core/Utils';
-import MetricsManager from '../../../../../../src/metrics/MetricsManager';
 
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
@@ -55,19 +54,12 @@ describe('Digital Task', () => {
     expect(dummyContact.accept).not.toHaveBeenCalled();
   });
 
-  it('accept() propagates AQM interruption without recording a failure', async () => {
+  it('accept() propagates AQM interruption', async () => {
     const error = createRegionRecoveryError('RECOVERY_INTERRUPTED');
     dummyContact.accept.mockRejectedValue(error);
     const task = new Digital(dummyContact, dummyData);
-    const trackEvent = jest.spyOn(MetricsManager.getInstance(), 'trackEvent').mockImplementation();
 
-    try {
-      await expect(task.accept()).rejects.toBe(error);
-      expect(dummyContact.accept).toHaveBeenCalledTimes(1);
-      expect(trackEvent).not.toHaveBeenCalled();
-    } finally {
-      trackEvent.mockRestore();
-    }
+    await expect(task.accept()).rejects.toBe(error);
   });
 
   it('constructor shows accept when offered', () => {

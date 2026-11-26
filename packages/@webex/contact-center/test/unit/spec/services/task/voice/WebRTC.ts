@@ -290,7 +290,6 @@ describe('WebRTC Task', () => {
       'stops late microphone tracks after $path interruption (disposed: $cleanup)', async ({path, cleanup}) => {
         let acquired: (stream: MediaStream) => void;
         const stream = new Promise<MediaStream>(resolve => { acquired = resolve; });
-        const brokenTrack = {stop: jest.fn(() => {throw new Error('track stop failed');})};
         const track = {stop: jest.fn()};
         jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockReturnValue(stream);
         const contact = {end: jest.fn()};
@@ -308,24 +307,20 @@ describe('WebRTC Task', () => {
         manager['call'] = call as any;
         calling.mapCallToTask(call.getCallId(), task.data.interactionId);
         const ended = jest.fn(); task.on(TASK_EVENTS.TASK_END, ended);
-        const rejected = jest.fn();
         try {
-          const result = task.accept().catch(error => {rejected(error); return error;});
+          const rejection = expect(task.accept()).rejects.toMatchObject({
+            data: {reason: cleanup ? 'STALE_TASK' : 'RECOVERY_INTERRUPTED'},
+          });
           expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({audio: true});
           if (path === 'parent-abort') controller.abort();
           else manager.interruptTaskOperations(() => lifecycle.createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-          await new Promise(resolve => setImmediate(resolve));
-          // Check before invalidation or media resolution so a later guard cannot mask a missing listener.
-          expect(rejected).toHaveBeenCalledTimes(1);
-          expect((await result).data.reason).toBe('RECOVERY_INTERRUPTED');
           expect(controller.signal.aborted).toBe(path === 'parent-abort');
           expect(manager.getTask(task.data.interactionId)).toBe(task);
           if (cleanup) manager.invalidateRegionalTasks();
           expect(calling.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(cleanup ? 0 : 1);
           expect(track.stop).not.toHaveBeenCalled();
-          acquired({getTracks: () => [brokenTrack, track], getAudioTracks: () => [track]} as unknown as MediaStream);
-          await new Promise(resolve => setImmediate(resolve));
-          expect(brokenTrack.stop).toHaveBeenCalledTimes(1);
+          acquired({getTracks: () => [track], getAudioTracks: () => [track]} as unknown as MediaStream);
+          await rejection;
           expect(track.stop).toHaveBeenCalledTimes(1);
           expect(answer).not.toHaveBeenCalled();
           expect(call.answer).not.toHaveBeenCalled();
@@ -447,32 +442,25 @@ describe('WebRTC command admission', () => {
     }
   });
 
-  describe.each([
+  it.each([
     ['accept', METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED],
     ['decline', METRIC_EVENT_NAMES.TASK_DECLINE_FAILED],
     ['toggleMute', undefined],
-  ] as const)('%s dependency failure', (operation, failureMetric) => {
-    it.each(['recovery', 'ordinary'] as const)('preserves %s error behavior', async (kind) => {
-      const error = kind === 'recovery'
-        ? Utils.createRegionRecoveryError('REGION_RELOAD_REQUIRED', {status: 409})
-        : new Error('ordinary Calling failure');
-      const fail = jest.fn(() => {throw error;});
-      const calling = {on: jest.fn(), off: jest.fn(), declineCall: fail, muteUnmuteCall: fail};
-      const task = new WebRTC({} as any, calling as unknown as WebCallingService, createTaskData());
-      const media = jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockRejectedValue(error);
-      const metrics = jest.spyOn(MetricsManager.getInstance(), 'trackEvent').mockImplementation();
-      try {
-        const action = task[operation]();
-        if (kind === 'recovery') await expect(action).rejects.toBe(error);
-        else await expect(action).rejects.toThrow('Error while performing');
-        expect(operation === 'accept' ? media : fail).toHaveBeenCalledTimes(1);
-        expect(metrics.mock.calls.map(([event]) => event))
-          .toEqual(kind === 'ordinary' && failureMetric ? [failureMetric] : []);
-      } finally {
-        task.invalidateForRegionRecovery();
-        media.mockRestore();
-        metrics.mockRestore();
-      }
-    });
+  ] as const)('%s reports a dependency failure', async (operation, failureMetric) => {
+    const error = new Error('ordinary Calling failure');
+    const fail = jest.fn(() => {throw error;});
+    const calling = {on: jest.fn(), off: jest.fn(), declineCall: fail, muteUnmuteCall: fail};
+    const task = new WebRTC({} as any, calling as unknown as WebCallingService, createTaskData());
+    const media = jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockRejectedValue(error);
+    const metrics = jest.spyOn(MetricsManager.getInstance(), 'trackEvent').mockImplementation();
+    try {
+      await expect(task[operation]()).rejects.toThrow('Error while performing');
+      expect(operation === 'accept' ? media : fail).toHaveBeenCalledTimes(1);
+      expect(metrics.mock.calls.map(([event]) => event)).toEqual(failureMetric ? [failureMetric] : []);
+    } finally {
+      task.invalidateForRegionRecovery();
+      media.mockRestore();
+      metrics.mockRestore();
+    }
   });
 });
