@@ -124,7 +124,7 @@ export default class TaskManager extends EventEmitter {
     this.recoveryGuard = guard;
     if (this.sessionListening) return;
     this.sessionListening = true;
-    this.registerTaskListeners();
+    this.webSocketManager.on('message', this.handleWebsocketMessage);
     this.registerIncomingCallEvent();
   }
 
@@ -855,9 +855,7 @@ export default class TaskManager extends EventEmitter {
   }
 
   /**
-   * Register WebSocket message listeners for task events
-   *
-   * Main entry point that orchestrates event processing through a clear pipeline:
+   * Processes primary WebSocket task events:
    * 1. Parse and validate incoming WebSocket messages
    * 2. Prepare event context with task and state machine mappings
    * 3. Handle task lifecycle (creation, updates, collection management)
@@ -868,10 +866,6 @@ export default class TaskManager extends EventEmitter {
    * - TaskManager: Manages task collection lifecycle and operational concerns
    * - State Machine: Manages individual task state and event emissions
    */
-  private registerTaskListeners() {
-    this.webSocketManager.on('message', this.handleWebsocketMessage);
-  }
-
   private handleWebsocketMessage = (event: string): void => {
     const owner = this.recoveryGuard;
     if (!this.ownsTaskDelivery(owner)) return;

@@ -40,16 +40,11 @@ const SAFE_REASONS = new Set([
   'AGENT_SESSION_ALREADY_EXISTS',
 ]);
 const safeFailure = (error: unknown, mismatch?: string): RecoveryFailure => {
-  const {status, reasonCode, reason, id, trackingId} = normalizeRecoveryFailure(error);
-  const safeReason = mismatch ?? (reason && SAFE_REASONS.has(reason) ? reason : undefined);
+  const failure = normalizeRecoveryFailure(error);
+  if (mismatch) failure.reason = mismatch;
+  else if (failure.reason && !SAFE_REASONS.has(failure.reason)) delete failure.reason;
 
-  return {
-    ...(status !== undefined ? {status} : {}),
-    ...(reasonCode !== undefined ? {reasonCode} : {}),
-    ...(safeReason ? {reason: safeReason} : {}),
-    ...(id ? {id} : {}),
-    ...(trackingId ? {trackingId} : {}),
-  };
+  return failure;
 };
 const terminalError = (
   kind: ConnectionRecoveryFailureKind,
@@ -166,7 +161,6 @@ export class ConnectionService extends EventEmitter {
     const invocation = this.detachInvocation();
     this.disposeFlight(this.flight);
     if (!preserveSocket) this.disposeFlight(this.socketOwner);
-    this.webSocketManager.cancelPending(terminalError('cancelled'));
     invocation?.reject(terminalError('cancelled'));
   }
 
@@ -204,7 +198,6 @@ export class ConnectionService extends EventEmitter {
 
   private ownsInvocation(invocation: RegionRecoveryInvocation): boolean {
     return (
-      this.mode === 'region' &&
       this.invocation === invocation &&
       !invocation.signal.aborted &&
       !this.registrationSignal?.aborted
@@ -256,7 +249,7 @@ export class ConnectionService extends EventEmitter {
       if (signal.aborted) throw terminalError('cancelled');
       welcomed = true;
       const publishOutcome = await awaitRecoveryWork(
-        Promise.resolve().then(() => invocation.afterWelcome(welcome, signal)),
+        invocation.afterWelcome(welcome, signal),
         signal,
         () => terminalError('cancelled')
       );

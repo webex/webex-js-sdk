@@ -358,7 +358,10 @@ export class ApiAIAssistant {
         this.removeRtdRequest(request, (pending) => pending.reject(error));
         throw error;
       });
-    const [payload] = await Promise.all([result, acknowledgement]);
+    const [payload] = await awaitRecoveryWork(
+      Promise.all([result, acknowledgement]),
+      owner?.signal
+    );
     this.assertRecoveryOwner(owner);
 
     return payload;
@@ -409,7 +412,6 @@ export class ApiAIAssistant {
     publishTimestamp?: number,
     timeout?: number
   ): Promise<Record<string, unknown>> {
-    const recoveryOwner = this.captureRecoveryOwner();
     LoggerProxy.info('Sending event', {
       module: CC_FILE,
       method: METHODS.SEND_EVENT,
@@ -431,8 +433,7 @@ export class ApiAIAssistant {
         languageCode,
         trackingId,
       };
-      this.assertRecoveryOwner(recoveryOwner);
-      const request = this.webex.request({
+      const response = (await this.webex.request({
         uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
         method: HTTP_METHODS.POST,
         addAuthHeader: true,
@@ -447,10 +448,8 @@ export class ApiAIAssistant {
             data,
           },
         },
-      });
-      const response = (await awaitRecoveryWork(request, recoveryOwner?.signal)) as IHttpResponse;
+      })) as IHttpResponse;
 
-      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_SUCCESS,
         {agentId, orgId, interactionId, eventType, eventName},
@@ -459,7 +458,6 @@ export class ApiAIAssistant {
 
       return response?.body || {};
     } catch (error) {
-      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_FAILED,
         {
@@ -484,7 +482,6 @@ export class ApiAIAssistant {
    * @public
    */
   public async getRealTimeAssistance(params: RealTimeAssistanceParams) {
-    const recoveryOwner = this.captureRecoveryOwner();
     const {agentId, interactionId, context} = params;
     const trimmedContext = context?.trim();
     const languageCode = params.languageCode ?? 'en';
@@ -530,7 +527,6 @@ export class ApiAIAssistant {
         trackingId
       );
 
-      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_SUCCESS,
         {
@@ -547,9 +543,7 @@ export class ApiAIAssistant {
 
       return response;
     } catch (error) {
-      this.assertRecoveryOwner(recoveryOwner);
       LoggerProxy.error('Real-time assistance request failed', {...loggerContext, error});
-      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_FAILED,
         {
@@ -581,7 +575,6 @@ export class ApiAIAssistant {
   public async sendRealTimeAssistanceUserAction(
     params: RealTimeAssistanceUserActionParams
   ): Promise<Record<string, unknown>> {
-    const recoveryOwner = this.captureRecoveryOwner();
     const {agentId, interactionId, adaptiveCardId, actionId} = params;
     const actionType = 'Action.Submit';
     const languageCode = params.languageCode ?? 'en';
@@ -629,7 +622,6 @@ export class ApiAIAssistant {
         trackingId
       );
 
-      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_SUCCESS,
         {
@@ -646,9 +638,7 @@ export class ApiAIAssistant {
 
       return response;
     } catch (error) {
-      this.assertRecoveryOwner(recoveryOwner);
       LoggerProxy.error('Real-time assistance user action failed', {...loggerContext, error});
-      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_FAILED,
         {
@@ -681,7 +671,6 @@ export class ApiAIAssistant {
     agentId: string,
     interactionId: string
   ): Promise<HistoricTranscriptsResponse> {
-    const recoveryOwner = this.captureRecoveryOwner();
     LoggerProxy.info('Fetching historic transcripts', {
       module: CC_FILE,
       method: METHODS.FETCH_HISTORIC_TRANSCRIPTS,
@@ -715,8 +704,7 @@ export class ApiAIAssistant {
     try {
       const baseUrl = this.getBaseUrl();
       const orgId = this.webex.credentials.getOrgId();
-      this.assertRecoveryOwner(recoveryOwner);
-      const request = this.webex.request({
+      const response = (await this.webex.request({
         uri: `${baseUrl}${AI_ASSISTANT_API_URLS.TRANSCRIPTS_LIST}`,
         method: HTTP_METHODS.POST,
         addAuthHeader: true,
@@ -725,10 +713,8 @@ export class ApiAIAssistant {
           orgId,
           interactionId,
         },
-      });
-      const response = (await awaitRecoveryWork(request, recoveryOwner?.signal)) as IHttpResponse;
+      })) as IHttpResponse;
 
-      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS,
         {agentId, orgId, interactionId},
@@ -737,7 +723,6 @@ export class ApiAIAssistant {
 
       return response.body as HistoricTranscriptsResponse;
     } catch (error) {
-      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED,
         {

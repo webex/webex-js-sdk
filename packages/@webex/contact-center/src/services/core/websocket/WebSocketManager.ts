@@ -36,13 +36,11 @@ export const parseServingRegion = (webSocketUrl: string): string | undefined => 
 };
 
 type SocketAttempt = {
-  resource: string;
   signal?: AbortSignal;
   onAbort: () => void;
   socket?: WebSocket;
   worker?: Worker;
   workerUrl?: string;
-  url?: string;
   accepted: boolean;
   timer?: ReturnType<typeof setTimeout>;
   resolve: (welcome: WelcomeResponse) => void;
@@ -76,7 +74,6 @@ export class WebSocketManager extends EventEmitter {
 
     return new Promise((resolve, reject) => {
       const attempt: SocketAttempt = {
-        resource: options.resource,
         signal: options.signal,
         accepted: false,
         resolve,
@@ -96,8 +93,9 @@ export class WebSocketManager extends EventEmitter {
         return;
       }
       // Retain both continuations after cancellation: late HTTP cannot install a socket.
-      this.register(options.body, attempt).then(
-        () => {
+      const {body, resource} = options;
+      this.register(body, resource).then(
+        (url) => {
           if (!this.ownsAttempt(attempt)) return;
           clearTimeout(attempt.timer);
           attempt.timer = setTimeout(
@@ -105,7 +103,7 @@ export class WebSocketManager extends EventEmitter {
             WELCOME_TIMEOUT
           );
           try {
-            this.connect(attempt);
+            this.connect(attempt, url, resource === SUBSCRIBE_API);
           } catch (error) {
             this.disposeAttempt(attempt, error);
           }
@@ -165,21 +163,17 @@ export class WebSocketManager extends EventEmitter {
     }
   }
 
-  private async register(
-    connectionConfig: SubscribeRequest,
-    attempt: SocketAttempt
-  ): Promise<void> {
+  private async register(body: SubscribeRequest, resource: string): Promise<string> {
     const isIntEnv = this.webex.internal?.services?.isIntegrationEnvironment() || false;
     const orgId = this.webex.credentials.getOrgId();
     const response: SubscribeResponse = await this.webex.request({
       service: WCC_API_GATEWAY,
-      resource: attempt.resource,
+      resource,
       method: HTTP_METHODS.POST,
-      body: connectionConfig,
+      body,
       headers: isIntEnv && orgId ? {'X-ORGANIZATION-ID': orgId} : undefined,
       timeout: TIMEOUT_REQ,
     });
-    if (!this.ownsAttempt(attempt)) return;
     const failure = normalizeRecoveryFailure(response);
     if (failure.status !== undefined && (failure.status < 200 || failure.status >= 300)) {
       throw response;
@@ -196,12 +190,12 @@ export class WebSocketManager extends EventEmitter {
         'Rejected webSocketUrl from RoutingNotifs registration: scheme or host not allow-listed'
       );
     }
-    attempt.url = url;
+
+    return url;
   }
 
-  private connect(attempt: SocketAttempt): void {
-    if (!this.ownsAttempt(attempt) || !attempt.url) return;
-    const socket = new WebSocket(attempt.url);
+  private connect(attempt: SocketAttempt, url: string, primary: boolean): void {
+    const socket = new WebSocket(url);
     attempt.socket = socket;
     socket.onopen = () => {
       if (!this.ownsAttempt(attempt) || attempt.worker) return;
@@ -255,8 +249,7 @@ export class WebSocketManager extends EventEmitter {
       ) {
         attempt.accepted = true;
         clearTimeout(attempt.timer);
-        if (attempt.resource === SUBSCRIBE_API)
-          this.servingRegion = parseServingRegion(attempt.url);
+        if (primary) this.servingRegion = parseServingRegion(url);
         attempt.resolve(messageData as WelcomeResponse);
       }
       if (messageType === CC_EVENTS.AGENT_MULTI_LOGIN) {

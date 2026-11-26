@@ -143,7 +143,7 @@ Expected result: all three commands exit zero and Jest prints no coverage thresh
 
 ## Multi-region recovery
 
-Listen for `REGION_RECOVERY_EVENTS.STATE_CHANGE` (`region:stateChange`) before registration.
+Subscribe to `REGION_RECOVERY_EVENTS.STATE_CHANGE` (`region:stateChange`) before calling `cc.register()`.
 Each frozen `RegionRecoveryState` is a complete snapshot. Replace the previous snapshot so omitted
 placement, retry and automatic-action fields clear. Import `REGION_RECOVERY_EVENTS`,
 `REGION_RECOVERY_ERROR_CODES` and the `RegionRecoveryState` type from `@webex/contact-center`.
@@ -151,11 +151,21 @@ Use `RegionRecoveryState['status']` if your host needs the type of the status fi
 
 | Status | Host behavior |
 | --- | --- |
-| `recovering` | Show recovery progress and keep commands disabled. |
-| `ready` | The current socket and an initial or restored station session are accepted. Track `autoAvailable` and voice readiness separately. |
-| `stationLoginRequired` | The SDK needs the app’s station sign-in flow. Use the existing `stationLogin()` with `BROWSER`, `EXTENSION` or `AGENT_DN`. Failed attempts stay in this state. |
+| `recovering` | Show a loading indicator. Disable station login and profile changes, task and call controls, and agent-state controls. Pause background requests for those actions. |
+| `ready` | Hide the loading indicator. Resume task and agent actions for the accepted station, subject to the usual task and voice controls. |
+| `stationLoginRequired` | Hide the loading indicator and enable the app’s existing `stationLogin()` flow with `BROWSER`, `EXTENSION` or `AGENT_DN`. Keep other station actions paused until `ready`. |
 | `reloadRequired` | Follow the [host restart guidance](#multi-region-recovery-host-restart). |
-| `unavailable` | Show the terminal reason and follow the host's recovery flow. |
+| `unavailable` | Show the terminal reason and keep station actions paused. Use the app’s sign-in flow for `authentication-failed` or its normal restart or sign-out flow for other reasons. |
+
+The SDK handles reconnection and station restoration. Wait for `ready` before issuing new station
+work. If a request was interrupted, use the latest state and Task objects to decide whether to issue
+a new request. Automatically replaying call controls can duplicate an action the backend already received.
+
+On `ready`, keep manual state controls disabled while `autoAvailable` is `requesting`. The SDK is
+sending or awaiting an automatic state change, and an overlapping `setAgentState()` can receive the
+usual pending request error. Enable manual state controls when the automatic request settles. With
+`autoAvailable: 'waitingForVoice'`, manual state controls can remain available, subject to the normal
+voice readiness check when selecting Available. Task controls can resume on `ready` in either case.
 
 With `allowAutomatedRelogin` enabled, the SDK tries to restore the previous station. Apps can also
 enable `config.cc.allowSavedStationLoginOnRecovery` to let the SDK try one saved DN or extension when it

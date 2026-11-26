@@ -12,7 +12,6 @@ class ManagerDouble extends EventEmitter {
   shouldReconnect = true;
   usable = false;
   initWebSocket = jest.fn(async (_options?: any) => { this.shouldReconnect = true; this.usable = true; return {}; });
-  cancelPending = jest.fn();
   close = jest.fn((reconnect: boolean) => { this.shouldReconnect = reconnect; this.usable = false; });
   handleConnectionLost = jest.fn();
   hasUsableSocket = jest.fn(() => this.usable);

@@ -266,35 +266,41 @@ describe('ApiAIAssistant', () => {
       owner = {generation: 1, signal: controller.signal};
     });
 
-    it.each([
+    const directHttpOperations = [
       ['sendEvent', sendEvent],
       ['fetchHistoricTranscripts', (instance: ApiAIAssistant) => instance.fetchHistoricTranscripts('agent', 'interaction')],
       ['getRealTimeAssistance', (instance: ApiAIAssistant) => instance.getRealTimeAssistance({agentId: 'agent', interactionId: 'interaction'})],
       ['sendRealTimeAssistanceUserAction', (instance: ApiAIAssistant) => instance.sendRealTimeAssistanceUserAction({
         agentId: 'agent', interactionId: 'interaction', adaptiveCardId: 'card', actionId: RealTimeAssistanceUserActionId.LIKE,
       })],
+    ] as const;
+
+    it.each(directHttpOperations)('allows %s while recovery owns the station', async (_name, invoke) => {
+      owner = undefined;
+      (mockWebex.request as jest.Mock).mockResolvedValue({statusCode: 200, body: httpBody});
+      await expect(invoke(createOwnedAssistant())).resolves.toEqual(httpBody);
+      expect(mockWebex.request).toHaveBeenCalledTimes(1);
+    });
+
+    const wellnessOperations = [
       ['requestWellnessBreak', (instance: ApiAIAssistant) => instance.requestWellnessBreak()],
       ['respondToWellnessBreak', (instance: ApiAIAssistant) => instance.respondToWellnessBreak({action: WELLNESS_BREAK_USER_ACTIONS.ACCEPTED})],
-    ] as const)('rejects %s before HTTP when the owner is absent', async (_name, invoke) => {
+    ] as const;
+
+    it.each(wellnessOperations)('rejects %s before HTTP when the station owner is absent', async (_name, invoke) => {
       owner = undefined;
       await expect(invoke(createOwnedAssistant())).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
       expect(mockWebex.request).not.toHaveBeenCalled();
       expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
     });
 
-    const ownedHttpOperations = [
-      ['event', sendEvent],
-      ['transcripts', (instance: ApiAIAssistant) => instance.fetchHistoricTranscripts('agent', 'interaction')],
-      ['wellness', (instance: ApiAIAssistant) => instance.requestWellnessBreak()],
-    ] as const;
-
-    it.each(ownedHttpOperations)('rejects %s before dispatch when preparation invalidates its owner', async (_name, invoke) => {
+    it.each(wellnessOperations)('rejects %s before dispatch when preparation invalidates its owner', async (_name, invoke) => {
       mockMetricsManager.timeEvent.mockImplementationOnce(() => controller.abort());
       await expect(invoke(createOwnedAssistant())).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
       expect(mockWebex.request).not.toHaveBeenCalled();
     });
 
-    it.each(ownedHttpOperations)('interrupts a pending %s HTTP request without waiting for its result', async (_name, invoke) => {
+    it.each(wellnessOperations)('interrupts a pending %s HTTP request without waiting for its result', async (_name, invoke) => {
       const http = deferred<unknown>();
       (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
       const observed = expect(invoke(createOwnedAssistant())).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
@@ -307,10 +313,10 @@ describe('ApiAIAssistant', () => {
       expect(LoggerProxy.error).not.toHaveBeenCalled();
     });
 
-    it.each(['generation', 'signal'])('rejects a late HTTP completion when the owner changes %s', async (field) => {
+    it.each(['generation', 'signal'])('rejects a late wellness completion when the owner changes %s', async (field) => {
       const http = deferred<unknown>();
       (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
-      const observed = expect(sendEvent(createOwnedAssistant())).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+      const observed = expect(createOwnedAssistant().requestWellnessBreak()).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
       owner = {
         generation: field === 'generation' ? 2 : 1,
         signal: field === 'signal' ? new AbortController().signal : controller.signal,
@@ -318,6 +324,20 @@ describe('ApiAIAssistant', () => {
       http.resolve({statusCode: 202, body: httpBody});
       await observed;
       expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
+    });
+
+    it('interrupts an RTD wait after its event arrives while the HTTP acknowledgement is pending', async () => {
+      const http = deferred<unknown>();
+      (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
+      const instance = createOwnedAssistant();
+      const observed = expect(instance.requestAndWaitForRtd(options())).rejects.toMatchObject({
+        data: {reason: 'RECOVERY_INTERRUPTED'},
+      });
+      await flush();
+      expect(instance.resolveFromRtdEvent('POST_CALL_SUMMARY', 'conversation', {})).toBe('resolved');
+      controller.abort();
+      await observed;
+      await observeLateSettlement(() => http.resolve({body: {accepted: true}}));
     });
 
     it('RTD cleanup allows admitted HTTP to finish under an equivalent owner', async () => {

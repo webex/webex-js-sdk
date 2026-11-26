@@ -780,6 +780,26 @@ describe.each([
     expect(lifecycle.mapWxAppVoiceError).not.toHaveBeenCalled();
   });
 
+  it('checks ownership again when a diagnostic interrupts the task before dispatch', async () => {
+    const error = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    const interrupt = () => {
+      admission.mockImplementation(() => {
+        throw error;
+      });
+    };
+    if (operation === 'outdialDecline') {
+      jest.mocked(deps.metricsManager.timeEvent).mockImplementation(interrupt);
+    } else {
+      jest.spyOn(wxAppDiagnosticLogging, 'logWxAppTelephonyAction').mockImplementation((params) => {
+        if (params.phase === 'started') interrupt();
+      });
+    }
+
+    await expect(invoke()).rejects.toBe(error);
+    expect(dependency).not.toHaveBeenCalled();
+    expect(deps.metricsManager.trackEvent).not.toHaveBeenCalled();
+  });
+
   it.each(['service pending', 'inner action completed'] as const)('fences the continuation when interrupted with %s', async (boundary) => {
     const pending = createDeferred<void>();
     dependency.mockReturnValue(pending.promise);

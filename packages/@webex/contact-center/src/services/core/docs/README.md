@@ -202,7 +202,7 @@ Do not remove or reinterpret exported symbols/events without a documented consum
 | CORE-R-015 | `getErrorDetails` and `generateTaskErrorObject` keep the error shapes and the logging and log-upload side effects specified under Caller-visible failure modes. | Callers rely on one error shape per flow for metrics, UI messages, and station-login field hints. | `src/services/core/Utils.ts` | `test/unit/spec/services/core/Utils.ts` | `generateTaskErrorObject` has no unit case in this module's tests. | PRESENT |
 | CORE-R-016 | An admission attempt owns its authenticated subscribe request, the returned URL, socket, Welcome deadline and keepalive resources. Retain the secure hostname check. Bound subscribe at 20 seconds and Welcome at 30 seconds. Supersession, timeout, close-before-Welcome, or abort disposes that attempt and fences late completions. | A stale URL, unresolved Welcome, or late callback cannot claim the current transport. | `src/services/core/websocket/WebSocketManager.ts`, `src/services/core/constants.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | T-003, T-005. Only an open, current socket with accepted Welcome is usable. | PRESENT |
 | CORE-R-017 | Ordinary reconnect uses five-second slots under a 50-second watchdog. An expired reconnect episode disposes its candidate. An admitted quiet socket can still receive a late keepalive. Region recovery uses one in-flight attempt, with base delays of 100/60/30/15 seconds plus fresh jitter up to 50 percent and repeated 15-second slots. A recognized subscribe mismatch and terminal authentication stop the relevant recovery. The region driver never uses the ordinary watchdog. | Each retry policy needs its own timing and terminal behavior while preventing overlapping admission. | `src/services/core/websocket/connection-service.ts`, `src/services/core/Utils.ts` | `test/unit/spec/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` | T-004, T-005, T-012. Socket success is separate from session acceptance. | PRESENT |
-| CORE-R-018 | A generation-owned AQM request follows the per-kind recovery gate and settles once, clearing timers and owned binds on abort or interruption. For recovery-owned session and state operations, both outcome bindings match the bare nested `data.trackingId` UUID from the request header `webex-js-sdk_<uuid>`. Ordinary operations use the existing outer and nested event types and preserve duplicate rejection. Recent known local IDs fence late replies. Recovery diagnostics retain normalized tracking and reason fields while redacting credentials and station payloads. | Only the current operation can consume a recovery result. Ordinary bindings remain compatible with backends that assign their own notification tracking IDs. | `src/services/core/aqm-reqs.ts`, `src/services/core/Utils.ts`, `src/services/core/types.ts` | `test/unit/spec/services/core/aqm-reqs.ts`, `test/unit/spec/cc.ts` | T-007, T-008, T-012, T-013, including “gateKindAndSessionOwnerMatrix” and “exact session owner”. Deployed nested UUID echo and compatibility sign-off remain release evidence. | PRESENT |
+| CORE-R-018 | A generation-owned AQM request follows the per-kind recovery gate and settles once, clearing timers and owned binds on abort or interruption. For recovery-owned session and state operations, both outcome bindings match the bare nested `data.trackingId` UUID from the request header `webex-js-sdk_<uuid>`. Ordinary operations use the existing outer and nested event types and preserve duplicate rejection. Recent known local IDs fence late replies. Recovery diagnostics retain normalized tracking and reason fields while redacting credentials and station payloads. | Only the current operation can consume a recovery result. Ordinary bindings remain compatible with backends that assign their own notification tracking IDs. | `src/services/core/aqm-reqs.ts`, `src/services/core/Utils.ts`, `src/services/core/types.ts` | `test/unit/spec/services/core/aqm-reqs.ts`, `test/unit/spec/cc.ts` | T-007, T-008, T-012, T-013, including recovery admission and current-session signal checks. Deployed nested UUID echo and compatibility sign-off remain release evidence. | PRESENT |
 | CORE-R-019 | In ordinary mode without an admission flight, `ConnectionService.onPing` guards JSON parsing and object validation. Malformed JSON and non-object/array payloads produce fixed `LoggerProxy.error` diagnostics and return without throwing or changing liveness state/timers; valid objects retain keepalive and recovery handling. Diagnostic sink exceptions are contained. | One malformed server frame or failing logger must not disrupt the liveness loop, and the frame must not enter logs. | `src/services/core/websocket/connection-service.ts` (onPing, diagnose) | `test/unit/spec/services/core/websocket/connection-service.ts` T-012 malformed-ping matrix and ordinary recovery cases | Non-ordinary modes and an active admission flight return before parsing or logging. | PRESENT |
 
 ## Design overview
@@ -499,14 +499,14 @@ ContactCenter calls `beginGeneration`, `setRecoveryGate`, and `interruptPending`
 `fenceRecoveryWork`. The first two change admission and ownership. `interruptPending` settles each
 owned operation once and removes its binds, timer and abort listener.
 
-`AqmRequestContext` carries `generation` and optional `signal`, `sessionOwner`, `correlationId`, and
-`requireCorrelation`. Invocation context takes precedence over request configuration. With neither,
-AqmReqs uses its current generation. ContactCenter supplies an exact session owner for restore or
-manual login. Use the [wire contract](#protocol-and-wire-format) for tracking ID format.
+`AqmRequestContext` carries `generation` and optional `signal`, `correlationId`, and
+`requireCorrelation`. AqmReqs uses its current generation when a caller supplies no context.
+ContactCenter gives each restore or manual login its own abort signal.
+Use the [wire contract](#protocol-and-wire-format) for tracking ID format.
 
-`AqmRecoveryGate` starts at `{state: 'open'}`. Closed states are `recovering` with an optional
-`AqmSessionOwner<'restore'>`, `manualLoginRequired` with an optional `AqmSessionOwner<'manual'>`,
-or `unavailable` with reason `RECOVERY_INTERRUPTED` or `REGION_RELOAD_REQUIRED`.
+`AqmRecoveryGate` starts at `{state: 'open'}`. During `recovering` or `manualLoginRequired`,
+the gate can hold the current `sessionSignal`. The `unavailable` gate carries
+`RECOVERY_INTERRUPTED` or `REGION_RELOAD_REQUIRED`.
 
 Admission first rejects **every kind**, even queries under an open gate, with
 `RECOVERY_INTERRUPTED` if the context generation is stale or its signal is aborted. For a current,
@@ -516,11 +516,11 @@ unaborted context the complete matrix is:
 | ---------- | ------ | ------------ | --------------------- | ------------- |
 | `command` or omitted | Admit | `RECOVERY_IN_PROGRESS` | `RECOVERY_IN_PROGRESS` | `gate.reason` |
 | `query` | Admit | Admit | Admit | Admit |
-| `session` | Admit without an owner check | Admit only with the exact current `restore` owner; otherwise `RECOVERY_IN_PROGRESS` | Admit only with the exact current `manual` owner; otherwise `RECOVERY_IN_PROGRESS` | `gate.reason` |
+| `session` | Admit | Admit only with the active restore signal; otherwise `RECOVERY_IN_PROGRESS` | Admit only with the active manual login signal; otherwise `RECOVERY_IN_PROGRESS` | `gate.reason` |
 | `teardown` | Admit without a socket check | Admit only with a usable primary; otherwise `RECOVERY_INTERRUPTED` | Admit only with a usable primary; otherwise `RECOVERY_INTERRUPTED` | Admit only with a usable primary; otherwise `RECOVERY_INTERRUPTED` |
 
-An exact session owner requires reference equality with `gate.sessionOwner`, the current generation,
-the gate's phase, an unaborted owner signal, and `context.signal === owner.signal`.
+In either closed recovery phase, AQM admits the request only when its signal is the same object
+as `gate.sessionSignal`. The caller must still supply the current generation and an unaborted signal.
 A usable primary means `WebSocketManager.hasUsableSocket()`: the current open socket with accepted
 Welcome. Admission evaluates open/query first, then closed-gate teardown, then unavailable reason,
 then the session-owner check. Thus query/teardown exceptions precede `gate.reason`, while stale or
@@ -533,8 +533,8 @@ bind checks apply only to admitted requests. See CORE-R-018 and Verification.
 
 - `reset(options)` binds ordinary recovery to the current registration. It monitors an admitted
   socket or schedules an ordinary reconnect if the socket is down. `pause()` cancels timers and the
-  pending attempt while retaining an adopted socket. `stop()` also disposes that socket and removes
-  the listeners.
+  driver's pending attempt while retaining an adopted socket. `stop()` also disposes that socket
+  and removes the listeners. Initial admission follows the registration's own signal.
 - `recoverRegion(options)` runs one attempt at a time. It passes accepted Welcome to `afterWelcome`,
   then adopts the current socket and resumes ordinary monitoring before publishing its outcome.
 - A `RegionRecoveryInvocation` owns the retry count and result across attempts. Each
@@ -870,7 +870,7 @@ Unit tests mirror module paths under `test/unit/spec/services/core`. Preserve po
 | `CORE-R-015` | Unit (partial) | `test/unit/spec/services/core/Utils.ts` getErrorDetails and getStationLoginErrorData cases | `test/unit/spec/services/core/Utils.ts` silent-relogin AGENT_NOT_FOUND case | `generateTaskErrorObject` has no unit case |
 | `CORE-R-016` | Unit | `test/unit/spec/services/core/websocket/WebSocketManager.ts` T-003 | Separate deadlines, early close and late attempt suppression | None |
 | `CORE-R-017` | Unit | `test/unit/spec/services/core/websocket/connection-service.ts` T-004 | Mismatch and authentication stop in T-005 and T-012; T-004 “terminalSettlementCommittedBeforeHook” crosses auth/mismatch/post-Welcome failure with recoverRegion/pause/stop/reset reentry, failure mutation and hook exceptions, preserving terminal rejection and replacement registration ownership | None |
-| `CORE-R-018` | Unit | `test/unit/spec/services/core/aqm-reqs.ts` T-007/T-008 “gateKindAndSessionOwnerMatrix” and “exact session owner” | Stale/aborted contexts, both unavailable reasons, unusable-primary teardown, pre-HTTP resource assertions, “timeoutDisabledAliasDisplacementInterrupted”, duplicate and foreign correlation tests with redacted T-013 diagnostics | Deployed nested UUID echo remains release evidence |
+| `CORE-R-018` | Unit | `test/unit/spec/services/core/aqm-reqs.ts` T-007/T-008 recovery admission and current-session signal checks | Stale/aborted contexts, both unavailable reasons, unusable-primary teardown, pre-HTTP resource assertions, “timeoutDisabledAliasDisplacementInterrupted”, duplicate and foreign correlation tests with redacted T-013 diagnostics | Deployed nested UUID echo remains release evidence |
 | `CORE-R-010` timeout projection | Unit | `test/unit/spec/services/core/aqm-reqs.ts` T-013 “redacts AQM diagnostics” timeout cases verify the four-field projection and that the acknowledgement callback receives the original response. | The same cases exclude credential and body values, settle once, and clear binds and timers even when diagnostics throw. | No dedicated assertion of the null/empty-object timeout projection |
 | `CORE-R-019`, `INV-003` | Unit | `test/unit/spec/services/core/websocket/connection-service.ts` ordinary ping/reconnect cases | T-012 malformed ping is ignored safely crosses malformed JSON, null, boolean, number, string and array with normal/throwing logging; asserts exact fixed diagnostics, unchanged timers/events, no secrets and next retry at five seconds | No browser execution required |
 

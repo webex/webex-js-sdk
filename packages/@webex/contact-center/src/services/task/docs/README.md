@@ -499,7 +499,7 @@ TaskManager maintains a map of active tasks, `taskCollection: Record<TaskId, ITa
 object can be reachable under an old and a new key while it is re-keyed; `updateTaskData` removes every
 alias other than the new `interactionId`, and removal deletes all aliases.
 
-TaskManager uses a staged pipeline in `registerTaskListeners()`. For each primary WebSocket `message`:
+TaskManager handles each primary WebSocket `message` in `handleWebsocketMessage`:
 parse the JSON and drop keepalives (`parseWebSocketMessage`, which also runs `normalizeTaskData`); build
 the event context, which resolves the task, adjusts the payload, and maps the CC event to a `TaskEvent`
 (`prepareEventContext` and `mapEventToTaskStateMachineEvent`, whose mapping table is in the state machine

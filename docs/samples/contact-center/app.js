@@ -2651,6 +2651,7 @@ async function startOutdial() {
 // Campaign Preview Contact Functions
 
 function getCampaignPreviewPayload() {
+  if (stationActionsPaused()) return null;
   const interactionId = document.getElementById('campaign-interaction-id').value.trim();
   const campaignId = document.getElementById('campaign-id').value.trim();
   console.log('[CampaignPreview] getCampaignPreviewPayload:', { interactionId, campaignId });
@@ -2702,6 +2703,7 @@ function startCampaignCountdown(timeoutTimestamp) {
 }
 
 function handleCampaignTimeout() {
+  if (stationActionsPaused()) return;
   console.log('[CampaignPreview] Countdown expired, autoAction:', campaignPreviewAutoAction);
   const statusElm = document.getElementById('campaign-preview-status');
   const acceptBtn = document.getElementById('acceptPreviewContact');
@@ -3987,7 +3989,8 @@ function setWellnessMessage(message, isError = false) {
 
 function isWellnessReady() {
   return Boolean(
-    wellnessState.enabled &&
+    !stationActionsPaused() &&
+      wellnessState.enabled &&
       agentId &&
       wellnessState.agentSessionId &&
       wellnessState.idleCode
@@ -4631,6 +4634,7 @@ function scheduleLegacyRestoreRecovery(operationGeneration) {
 }
 
 async function restoreWellnessState(options = {}) {
+  if (stationActionsPaused()) return false;
   if (wellnessState.restorePromise) {
     return wellnessState.restorePromise;
   }
@@ -4668,6 +4672,7 @@ async function restoreWellnessState(options = {}) {
         return true;
       } catch (error) {
         latestError = error;
+        if (stationActionsPaused()) break;
         if (attempt < maxAttempts) {
           setWellnessMessage(
             `Restoration attempt ${attempt} failed. Retrying in 10 seconds.`,
@@ -4677,6 +4682,7 @@ async function restoreWellnessState(options = {}) {
           if (!(await waitForWellnessRestoreRetry(WELLNESS_RESTORE_RETRY_MS, operationGeneration))) {
             return false;
           }
+          if (stationActionsPaused()) break;
         }
       }
     }
@@ -4696,7 +4702,7 @@ async function restoreWellnessState(options = {}) {
       true
     );
     renderWellnessState();
-    scheduleLegacyRestoreRecovery(operationGeneration);
+    if (!stationActionsPaused()) scheduleLegacyRestoreRecovery(operationGeneration);
     return false;
   })();
 
@@ -4807,6 +4813,11 @@ function setRegionRecoveryDialog(open) {
   if (!open && regionRecoveryDialog.open) regionRecoveryDialog.close();
 }
 
+function stationActionsPaused() {
+  const {status} = regionRecoveryStatus.dataset;
+  return Boolean(status && status !== 'ready');
+}
+
 function cancelRegionRestart() {
   if (regionRestartTimer === undefined) return;
   clearTimeout(regionRestartTimer);
@@ -4890,19 +4901,23 @@ function showRegionRecoveryState(state, keepDialogOpen = false) {
   if (status !== 'reloadRequired') cancelRegionRestart();
   regionRecoveryStatus.dataset.status = status ?? '';
   regionRecoveryStatus.textContent = regionRecoveryMessages[status] ?? '';
+  const stateActionsPaused = stationActionsPaused() || state?.autoAvailable === 'requesting';
+  idleCodesDropdown.disabled = stateActionsPaused;
+  setAgentStateButton.disabled = stateActionsPaused;
   const restarting = regionRestartTimer !== undefined;
   regionRecoveryReloadBtn.hidden = restarting || !['reloadRequired', 'unavailable'].includes(status);
   setRegionRecoveryDialog(restarting || status === 'recovering' || keepDialogOpen === true);
   if (!state) return;
 
   if (status === 'ready') {
-    setAgentStatusButton.disabled = !Array.from(idleCodesDropdown.options).some(
+    setAgentStatusButton.disabled = stateActionsPaused || !Array.from(idleCodesDropdown.options).some(
       (option) => option.value && !option.disabled && !option.hidden
     );
     if (state.reason === 'region-switch') updateTaskList();
     return;
   }
 
+  stopCampaignCountdown();
   renderTaskList({});
   setAgentStatusButton.disabled = true;
   loginAgentElm.disabled = status !== 'stationLoginRequired';
@@ -4998,7 +5013,7 @@ function register(resumingRegion = false) {
         }
 
         const idleCodesList = getSelectableIdleCodes(agentProfile.idleCodes);
-        setAgentStatusButton.disabled = idleCodesList.length === 0;
+        setAgentStatusButton.disabled = idleCodesDropdown.disabled || idleCodesList.length === 0;
         idleCodesList.forEach((idleCodes) => {
             const option  = document.createElement('option');
             option.text = idleCodes.name;

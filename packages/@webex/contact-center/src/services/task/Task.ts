@@ -1251,8 +1251,8 @@ export default abstract class Task extends EventEmitter implements ITask {
         const isEntryPointTransfer =
           transferPayload.destinationType === DESTINATION_TYPE.ENTRYPOINT;
 
+        this.assertTaskCommandAllowed();
         if (isQueueTransfer || isEntryPointTransfer) {
-          this.assertTaskCommandAllowed();
           result = await this.contact.vteamTransfer({
             interactionId: this.data.interactionId,
             data: {
@@ -1262,15 +1262,13 @@ export default abstract class Task extends EventEmitter implements ITask {
                 : DESTINATION_TYPE.QUEUE,
             },
           });
-          this.assertTaskCommandAllowed();
         } else {
-          this.assertTaskCommandAllowed();
           result = await this.contact.blindTransfer({
             interactionId: this.data.interactionId,
             data: transferPayload,
           });
-          this.assertTaskCommandAllowed();
         }
+        this.assertTaskCommandAllowed();
 
         this.metricsManager.trackEvent(
           METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,

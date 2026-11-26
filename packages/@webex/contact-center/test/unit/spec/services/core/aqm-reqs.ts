@@ -819,14 +819,13 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     'strict $operation matches the nested UUID only, success=$success', async ({operation, success}) => {
       const uuid = '8f5ec5e4-80b8-4f5d-9720-10bfe56e7ca1';
       const signal = new AbortController().signal;
-      const sessionOwner = operation === 'stationLogin'
-        ? {generation: 0, signal, phase: 'manual' as const}
-        : {generation: 0, signal, phase: 'restore' as const};
       const context: AqmRequestContext = operation === 'stateChange'
         ? {generation: 0, signal, correlationId: uuid, requireCorrelation: true}
-        : {generation: 0, signal, sessionOwner};
-      if (sessionOwner.phase === 'manual') aqm.setRecoveryGate({state: 'manualLoginRequired', sessionOwner});
-      else if (operation === 'reload') aqm.setRecoveryGate({state: 'recovering', sessionOwner});
+        : {generation: 0, signal};
+      if (operation === 'stationLogin')
+        aqm.setRecoveryGate({state: 'manualLoginRequired', sessionSignal: signal});
+      else if (operation === 'reload')
+        aqm.setRecoveryGate({state: 'recovering', sessionSignal: signal});
       const data = operation === 'stateChange' ? {state: 'Available', auxCodeId: '0'}
         : operation === 'reload' ? {} : {teamId: 'team', dialNumber: 'number', roles: ['agent']};
       const promise = invoke(operation, {data, context});
@@ -969,11 +968,14 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     }});
     const settled = jest.fn();
     const observed = first.then(settled, settled);
+    const bindKeys = Object.keys(aqm['pendingRequests']);
+    expect(bindKeys).toHaveLength(2);
+    expect(bindKeys.join('')).not.toContain(requestUuid());
     await expect(invoke(operation, {data, context: {
       generation: 0,
       correlationId: 'a0010213-add8-47f0-88ca-de81bfa7ec6f',
       requireCorrelation: true,
-    }})).rejects.toMatchObject({id: 'Service.aqm.reqs.Pending'});
+    }})).rejects.toMatchObject({id: 'Service.aqm.reqs.Pending', details: {key: bindKeys.join('')}});
     expect(http).toHaveBeenCalledTimes(1);
     expect(aqm['operations'].size).toBe(1);
     expect(jest.getTimerCount()).toBe(1);
@@ -1012,7 +1014,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     {gate: 'unavailable-reload', kind: 'command', contextState: 'stale'},
     {gate: 'unavailable-reload', kind: 'teardown', usablePrimary: true, contextState: 'aborted'},
   ].map(row => ({usablePrimary: false, contextState: 'current', ...row})))(
-    'gateKindAndSessionOwnerMatrix gate=$gate kind=$kind primary=$usablePrimary context=$contextState',
+    'recovery admission gate=$gate kind=$kind primary=$usablePrimary context=$contextState',
     async ({gate, kind, usablePrimary, contextState}) => {
       aqm.beginGeneration(1);
       socket.hasUsableSocket = jest.fn(() => usablePrimary);
@@ -1058,15 +1060,18 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     }
   );
 
-  it.each(['restore', 'manual'].flatMap((phase) => ['valid', 'missing', 'different-reference', 'different-signal', 'wrong-phase', 'stale-owner', 'aborted', 'stale-context'].map((variant) => [phase, variant])))(
-    'exact session owner phase=%s variant=%s', async (phase, variant) => {
+  it.each((['recovering', 'manualLoginRequired'] as const).flatMap(gate =>
+    ['valid', 'missing', 'different-signal', 'aborted', 'stale-context'].map(variant => [gate, variant] as const)
+  ))('recovery session uses the current signal in %s with %s context', async (gate, variant) => {
       aqm.beginGeneration(7);
       const controller = new AbortController();
-      const owner: any = {generation: variant === 'stale-owner' ? 6 : 7, phase: variant === 'wrong-phase' ? 'other' : phase, signal: controller.signal};
-      aqm.setRecoveryGate({state: phase === 'restore' ? 'recovering' : 'manualLoginRequired', sessionOwner: owner} as any);
+      aqm.setRecoveryGate({state: gate, sessionSignal: controller.signal});
       if (variant === 'aborted') controller.abort();
-      const context: any = {generation: variant === 'stale-context' ? 6 : 7, signal: variant === 'different-signal' ? new AbortController().signal : owner.signal,
-        sessionOwner: variant === 'missing' ? undefined : variant === 'different-reference' ? {...owner} : owner};
+      const context = {
+        generation: variant === 'stale-context' ? 6 : 7,
+        signal: variant === 'different-signal' ? new AbortController().signal
+          : variant === 'missing' ? undefined : controller.signal,
+      };
       const promise = agent.reload(undefined, context); const observed = promise.catch((error) => error);
       expect(http).toHaveBeenCalledTimes(variant === 'valid' ? 1 : 0);
       if (variant === 'valid') aqm.interruptPending(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
@@ -1075,9 +1080,8 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     }
   );
 
-  it('does not infer restore owner and rejects recovering teardown without usable primary', async () => {
-    const owner = {generation: 0, phase: 'restore' as const, signal: new AbortController().signal};
-    aqm.setRecoveryGate({state: 'recovering', sessionOwner: owner});
+  it('does not infer the restore signal and rejects recovering teardown without usable primary', async () => {
+    aqm.setRecoveryGate({state: 'recovering', sessionSignal: new AbortController().signal});
     await expect(agent.reload()).rejects.toMatchObject({data: {reason: 'RECOVERY_IN_PROGRESS'}});
     socket.hasUsableSocket = () => false;
     await expect(agent.logout({data: {logoutReason: 'User'}})).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
@@ -1295,7 +1299,6 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       const observed = promise.then(resolved, settled);
       expect(aqm['operations'].size).toBe(1);
       expect(jest.getTimerCount()).toBe(1);
-      const [key] = Object.keys(aqm['pendingRequests']);
       const response = {
         statusCode: 202,
         id: 'acknowledgement-id',
@@ -1370,9 +1373,8 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       };
       assertSettledAndCleaned();
       if (scenario === 'timeout') {
-        expect(key).toContain(id);
         expect(error.id).toBe('Service.aqm.reqs.Timeout');
-        expect(error.details).toEqual({key, response: {
+        expect(error.details).toEqual({key: expect.stringContaining(id), response: {
           statusCode: 202,
           reasonCode: 1037,
           trackingId: 'acknowledgement-tracking-id',

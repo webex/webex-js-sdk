@@ -19,30 +19,22 @@ export type RecoveryFailure = {
 
 /** Command admission belongs to the current generation; retained for Req declarations. */
 export type AqmOperationKind = 'command' | 'query' | 'session' | 'teardown';
-export type AqmSessionOwner<P extends 'restore' | 'manual'> = Readonly<{
-  generation: number;
-  phase: P;
-  signal: AbortSignal;
-}>;
 /** @internal Request ownership and correlation are assigned by the SDK. */
 export type AqmRequestContext = Readonly<{
   generation: number;
   signal?: AbortSignal;
-  sessionOwner?: AqmSessionOwner<'restore' | 'manual'>;
   correlationId?: string;
   requireCorrelation?: boolean;
 }>;
 export type AqmRecoveryGate =
   | Readonly<{state: 'open'}>
-  | Readonly<{state: 'recovering'; sessionOwner?: AqmSessionOwner<'restore'>}>
-  | Readonly<{state: 'manualLoginRequired'; sessionOwner?: AqmSessionOwner<'manual'>}>
+  | Readonly<{state: 'recovering' | 'manualLoginRequired'; sessionSignal?: AbortSignal}>
   | Readonly<{state: 'unavailable'; reason: 'RECOVERY_INTERRUPTED' | 'REGION_RELOAD_REQUIRED'}>;
 
 export type Pending = {
   check: (msg: Msg) => boolean;
   handle: (msg: Msg) => void;
   operationId: string;
-  logicalBindKey: string;
 };
 
 export type BindType = string | string[] | {[key: string]: BindType};

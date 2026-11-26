@@ -5,6 +5,7 @@ import {
   calculateDestType,
   getErrorDetails,
   isRegionRecoveryError,
+  waitForRecoveryDelay,
 } from '../../core/Utils';
 import routingContact from '../contact';
 import {
@@ -277,23 +278,6 @@ export default class Voice extends Task implements IVoice {
     return this.wxAppMuted;
   }
 
-  private static delay(ms: number, signal: AbortSignal): Promise<void> {
-    return new Promise((resolve, reject) => {
-      let timer: ReturnType<typeof setTimeout>;
-      const abort = (): void => {
-        clearTimeout(timer);
-        signal.removeEventListener('abort', abort);
-        reject(signal.reason);
-      };
-      timer = setTimeout(() => {
-        signal.removeEventListener('abort', abort);
-        resolve();
-      }, ms);
-      signal.addEventListener('abort', abort, {once: true});
-      if (signal.aborted) abort();
-    });
-  }
-
   private canRetryWxAppMuteSync(): boolean {
     if (!this.enableWxBetterTogether) {
       return false;
@@ -370,7 +354,7 @@ export default class Voice extends Task implements IVoice {
     let callId = this.getWebexCallingCallId();
     if (!callId) {
       if (retryAttempt < Voice.WXAPP_MUTE_SYNC_MAX_RETRIES && this.canRetryWxAppMuteSync()) {
-        await Voice.delay(Voice.WXAPP_MUTE_SYNC_RETRY_DELAY_MS, signal);
+        await waitForRecoveryDelay(Voice.WXAPP_MUTE_SYNC_RETRY_DELAY_MS, signal);
         this.assertTaskLifetimeActive(signal);
 
         return this.performWxAppMuteSync(retryAttempt + 1, signal);
@@ -477,12 +461,9 @@ export default class Voice extends Task implements IVoice {
   public async accept(): Promise<TaskResponse> {
     return this.runTaskOperation(async () => {
       if (this.enableWxBetterTogether && this.isWebexAppCallingOffer()) {
-        await runWxAppAccept(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
+        return runWxAppAccept(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
           acceptReason: this.getWxAppAcceptReasonForMetrics(),
         });
-        this.assertTaskCommandAllowed();
-
-        return Promise.resolve();
       }
 
       return super.unsupportedMethodError(METHODS.ACCEPT);
@@ -494,22 +475,18 @@ export default class Voice extends Task implements IVoice {
    */
   public async decline(): Promise<TaskResponse> {
     const timedEventKeys: string[] = [];
+    const wxAppDeclineMetrics = [
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
+    ];
 
     return this.runTaskOperation(async () => {
       if (this.enableWxBetterTogether && this.isWebexAppInboundCallingOffer()) {
-        await this.runTaskOperation(
-          () =>
-            runWxAppReject(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
-              acceptReason: this.getWxAppAcceptReasonForMetrics(),
-            }),
-          [
-            METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
-            METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
-          ]
-        );
-        this.assertTaskCommandAllowed();
+        timedEventKeys.push(...wxAppDeclineMetrics);
 
-        return Promise.resolve();
+        return runWxAppReject(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
+          acceptReason: this.getWxAppAcceptReasonForMetrics(),
+        });
       }
 
       const isOutdial = this.data?.interaction?.outboundType === 'OUTDIAL';
@@ -542,10 +519,7 @@ export default class Voice extends Task implements IVoice {
               () => this.contact.cancelTask({interactionId}),
               {acceptReason: declineAcceptReason}
             ),
-          [
-            METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
-            METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
-          ]
+          wxAppDeclineMetrics
         );
         this.assertTaskCommandAllowed();
 
@@ -596,13 +570,11 @@ export default class Voice extends Task implements IVoice {
           );
 
         this.wxAppMuteToggleTail = togglePromise.catch(() => undefined);
-        await togglePromise;
-        this.assertTaskCommandAllowed();
 
-        return;
+        return togglePromise;
       }
 
-      super.unsupportedMethodError(METHODS.TOGGLE_MUTE);
+      return super.unsupportedMethodError(METHODS.TOGGLE_MUTE);
     }, [METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_SUCCESS, METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_FAILED]);
   }
 
@@ -623,13 +595,11 @@ export default class Voice extends Task implements IVoice {
           );
 
         this.wxAppDtmfTail = dtmfPromise.catch(() => undefined);
-        await dtmfPromise;
-        this.assertTaskCommandAllowed();
 
-        return;
+        return dtmfPromise;
       }
 
-      super.unsupportedMethodError(METHODS.TRANSMIT_DTMF);
+      return super.unsupportedMethodError(METHODS.TRANSMIT_DTMF);
     }, [METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_SUCCESS, METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_FAILED]);
   }
 
@@ -747,8 +717,8 @@ export default class Voice extends Task implements IVoice {
 
       try {
         let response: TaskResponse;
+        this.assertTaskCommandAllowed();
         if (shouldHold) {
-          this.assertTaskCommandAllowed();
           response = await this.contact.hold({
             interactionId: this.data.interactionId,
             data: {mediaResourceId: mainMediaResource},
@@ -779,7 +749,6 @@ export default class Voice extends Task implements IVoice {
             interactionId: this.data.interactionId,
           });
         } else {
-          this.assertTaskCommandAllowed();
           response = await this.contact.unHold({
             interactionId: this.data.interactionId,
             data: {mediaResourceId: mainMediaResource},
@@ -1883,8 +1852,8 @@ export default class Voice extends Task implements IVoice {
       ]);
 
       try {
+        this.assertTaskCommandAllowed();
         if (isOnConsultLeg) {
-          this.assertTaskCommandAllowed();
           const response = await this.contact.unHold({
             interactionId: this.data.interactionId,
             data: {mediaResourceId: this.data.mediaResourceId},
@@ -1912,7 +1881,6 @@ export default class Voice extends Task implements IVoice {
           return response;
         }
 
-        this.assertTaskCommandAllowed();
         const response = await this.contact.hold({
           interactionId: this.data.interactionId,
           data: {mediaResourceId: this.data.mediaResourceId},

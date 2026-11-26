@@ -1081,10 +1081,9 @@ describe('webex.cc', () => {
           webex.cc['handleAutoAvailableVoiceChange'](); await settle();
           expect(webex.cc.services.agent.stateChange).not.toHaveBeenCalled();
           expect(webex.cc['autoAvailable']).toBeUndefined();
-          expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
         });
 
-        it.each(['before Welcome', 'during reload', 'during fallback', 'during post1035 reload'])('T-007 explicitIntentBeforeArmAndDuringFlight %s prevents later DR arming', async timing => {
+        it.each(['before Welcome', 'during reload', 'during fallback', 'during post1035 reload'])('T-007 state change blocked %s leaves auto-Available eligible', async timing => {
           await prepare(true, true);
           const reload = createDeferred<any>();
           const fallback = createDeferred<any>();
@@ -1109,7 +1108,8 @@ describe('webex.cc', () => {
           expect(webex.cc['lastPublishedRegionState'].status).toBe('recovering');
           await expect(webex.cc.setAgentState({state: 'Idle', auxCodeId: 'manual'}))
             .rejects.toMatchObject({data: {reason: 'RECOVERY_IN_PROGRESS'}});
-          expect(webex.cc['stateIntentRevision']).toBe(revision + 1);
+          expect(webex.cc['stateIntentRevision']).toBe(revision);
+          expect(webex.cc.services.agent.stateChange).not.toHaveBeenCalled();
           expect(restored).not.toHaveBeenCalled();
           if (timing === 'during fallback') {
             fallback.reject({data: {reasonCode: 1035}}); await settle();
@@ -1117,13 +1117,10 @@ describe('webex.cc', () => {
           }
           reload.resolve(result({lastStateChangeReason: 'agent-wss-disconnect'}));
           await (restoring || welcome(options));
-          expect(webex.cc['lastPublishedRegionState']).toEqual(readySnapshot());
-          webex.cc['handleAutoAvailableVoiceChange'](); await settle();
-          expect(webex.cc.services.agent.stateChange).not.toHaveBeenCalled();
-          expect(mockWebexRequest.request).not.toHaveBeenCalled();
-          expect(webex.cc['stateIntentRevision']).toBe(revision + 1);
-          expect(webex.cc['autoAvailable']).toBeUndefined();
-          expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
+          expect(webex.cc['lastPublishedRegionState']).toEqual(readySnapshot('requesting'));
+          expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(1);
+          expect(webex.cc.services.agent.stateChange.mock.calls[0][0].data.state).toBe('Available');
+          expect(webex.cc['stateIntentRevision']).toBe(revision);
         });
 
         it.each([LoginOption.AGENT_DN, LoginOption.EXTENSION])
@@ -1195,7 +1192,6 @@ describe('webex.cc', () => {
           const cc = webex.cc;
           const auto = cc['autoAvailable'];
           const revision = cc['stateIntentRevision'];
-          const barrier = cc['inFlightDrAutoState'];
           const removed = jest.spyOn(auto.signal, 'removeEventListener');
           const snapshots: any[] = [];
           cc.webCallingService.off.mockClear();
@@ -1234,7 +1230,6 @@ describe('webex.cc', () => {
           expect(removed).toHaveBeenCalledWith('abort', cc['handleAutoAvailableAbort']);
           expect(cc['stateIntentRevision']).toBe(revision);
           expect(cc['autoAvailable']).toBeUndefined();
-          expect(cc['inFlightDrAutoState']).toBe(barrier);
           const published = snapshots.slice();
           const acceptedState = [cc.agentConfig?.lastStateAuxCodeId, cc.agentConfig?.lastStateChangeTimestamp,
             cc.agentConfig?.lastIdleCodeChangeTimestamp];
@@ -1247,7 +1242,6 @@ describe('webex.cc', () => {
           await settle();
           expect(snapshots).toEqual(published);
           expect(cc.services.agent.stateChange).toHaveBeenCalledTimes(requesting ? 1 : 0);
-          expect(cc['inFlightDrAutoState']).toBeUndefined();
           if (boundary !== 'ordinary relogin') expect([cc.agentConfig?.lastStateAuxCodeId,
             cc.agentConfig?.lastStateChangeTimestamp, cc.agentConfig?.lastIdleCodeChangeTimestamp]).toEqual(acceptedState);
         });
@@ -1278,7 +1272,6 @@ describe('webex.cc', () => {
           const revision = webex.cc['stateIntentRevision'];
           await startAuto(false, () => webex.cc.on('region:stateChange', state => snapshots.push(state)));
           expect(webex.cc['lastPublishedRegionState']).toEqual(readySnapshot('waitingForVoice'));
-          expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
           expect(webex.cc.services.agent.stateChange).not.toHaveBeenCalled();
           webex.cc.webCallingService.isVoiceReady.mockReturnValue(true);
           webex.cc['handleAutoAvailableVoiceChange'](); webex.cc['handleAutoAvailableVoiceChange']();
@@ -1293,7 +1286,6 @@ describe('webex.cc', () => {
             readySnapshot('waitingForVoice'), readySnapshot('requesting'), readySnapshot('succeeded'),
           ]);
           expect(webex.cc['stateIntentRevision']).toBe(revision);
-          expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
         });
 
         it('T-008 acceptance fences commands and interrupts Tasks before cancellation and recovering observers', async () => {
@@ -1326,59 +1318,11 @@ describe('webex.cc', () => {
           expect(mockTaskManager.invalidateRegionalTasks).not.toHaveBeenCalled();
         });
 
-        it('T-007 explicitWaitsOnlyForDispatchedDrAuto and concurrentExplicitStateKeepsPending', async () => {
-          const automatic = createDeferred<any>(); const explicit = createDeferred<any>();
-          webex.cc.services.agent.stateChange.mockReturnValueOnce(automatic.promise).mockReturnValueOnce(explicit.promise);
-          await startAuto();
-          const first = webex.cc.setAgentState({state: 'Idle', auxCodeId: 'manual'});
-          const observed = first.catch(() => undefined);
-          await expect(webex.cc.setAgentState({state: 'Available', auxCodeId: '0'}))
-            .rejects.toMatchObject({message: 'Error while performing setAgentState'});
-          expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(1);
-          automatic.reject(new Error('timeout')); await settle();
-          expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(2);
-          const id = webex.cc.services.agent.stateChange.mock.calls[1][2].correlationId;
-          const frame = ack(id, {auxCodeId: 'manual', subStatus: 'Idle'});
-          webex.cc['handleWebsocketMessage'](JSON.stringify(frame)); explicit.resolve(frame);
-          await first; await observed;
-          expect(webex.cc['stateIntentRevision']).toBe(2);
-          expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe('manual');
-          expect(webex.cc['explicitStateWaiter']).toBeUndefined();
-        });
-
-        it('T-007 cancelled sent request own acknowledgment preserves outcome and public forwarding', async () => {
-          const automatic = createDeferred<any>(); const explicit = createDeferred<any>();
-          webex.cc.services.agent.stateChange.mockReturnValueOnce(automatic.promise).mockReturnValueOnce(explicit.promise);
-          const snapshots: any[] = [];
-          await startAuto(true, () => webex.cc.on('region:stateChange', state => snapshots.push(state)));
-          const id = webex.cc.services.agent.stateChange.mock.calls[0][2].correlationId;
-          const generic = jest.fn(); const success = jest.fn(); const raw = jest.fn();
-          webex.cc.on(AGENT_EVENTS.AGENT_STATE_CHANGE, generic);
-          webex.cc.on(AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS, success);
-          webex.cc.on(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, raw);
-          const request = webex.cc.setAgentState({state: 'Idle', auxCodeId: 'manual'});
-          const frame = ack(id);
-          expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(1);
-          webex.cc['handleWebsocketMessage'](JSON.stringify(frame)); automatic.resolve(frame); await settle();
-
-          expect(snapshots).toEqual([{...readySnapshot(), status: 'recovering'},
-            readySnapshot('requesting'), readySnapshot('cancelled')]);
-          expect(generic.mock.calls).toEqual([[frame.data]]);
-          expect(success.mock.calls).toEqual([[frame.data]]);
-          expect(raw.mock.calls).toEqual([[frame.data]]);
-          const explicitId = webex.cc.services.agent.stateChange.mock.calls[1][2].correlationId;
-          const accepted = ack(explicitId, {subStatus: 'Idle', auxCodeId: 'manual', lastStateChangeTimestamp: 30});
-          webex.cc['handleWebsocketMessage'](JSON.stringify(accepted)); explicit.resolve(accepted); await request;
-          expect(webex.cc['lastPublishedRegionState']).toEqual(readySnapshot('cancelled'));
-
-        });
-
         it('T-007 registerReloginUsesNonExplicitSource / distinctStateRequestIdsAcrossPaths uses separate IDs', async () => {
           const dispatch = jest.spyOn(webex.cc, 'performAgentStateChange');
           const revision = webex.cc['stateIntentRevision'];
           const disconnected = result({lastStateChangeReason: 'agent-wss-disconnect', status: 'LoggedIn', subStatus: 'Idle'});
           webex.cc.services.agent.stateChange.mockImplementation(({data}, _callback, {correlationId: requestId}) => {
-            expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
             const frame = ack(requestId, {subStatus: data.state, auxCodeId: data.auxCodeId});
             webex.cc['handleWebsocketMessage'](JSON.stringify(frame));
             return Promise.resolve(frame);
@@ -1386,7 +1330,6 @@ describe('webex.cc', () => {
           await prepare(true, true, disconnected);
           expect(dispatch.mock.calls.map(([, context]) => context.source)).toEqual(['relogin-auto']);
           expect(webex.cc['stateIntentRevision']).toBe(revision);
-          expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
           webex.cc.services.agent.reload.mockResolvedValue(disconnected);
           await welcome(accept());
           expect(webex.cc['stateIntentRevision']).toBe(revision);
@@ -1398,7 +1341,6 @@ describe('webex.cc', () => {
             .toEqual(['relogin-auto', 'dr-auto', 'explicit', 'relogin-auto']);
           expect(webex.cc.services.agent.stateChange.mock.calls.map(([, , context]) => context.correlationId))
             .toEqual(['state-1', 'state-2', 'state-3', 'state-4']);
-          expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
         });
 
         it.each(['register relogin-auto', 'ordinary relogin-auto', 'explicit'])
@@ -1420,66 +1362,13 @@ describe('webex.cc', () => {
           await settle();
           expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(1);
           expect(dispatch.mock.calls[0][1].source).toBe(source === 'explicit' ? 'explicit' : 'relogin-auto');
-          expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
           expect(webex.cc['stateIntentRevision']).toBe(revision + (source === 'explicit' ? 1 : 0));
           const [{data}, , {correlationId: requestId}] = webex.cc.services.agent.stateChange.mock.calls[0];
           const frame = ack(requestId, {subStatus: data.state, auxCodeId: data.auxCodeId});
           webex.cc['handleWebsocketMessage'](JSON.stringify(frame)); pending.resolve(frame); await operation;
-          expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
           expect(webex.cc['autoAvailableDispatches'].size).toBe(0);
           expect(webex.cc.services.agent.stateChange.mock.calls[0][2]).not.toHaveProperty('requireCorrelation');
-        });
-
-        it.each(['fulfilled', 'rejected'])('T-007 DR-only barrier survives cancellation until %s settlement', async outcome => {
-          const automatic = createDeferred<any>();
-          webex.cc.services.agent.stateChange.mockImplementation(() => {
-            expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
-            return automatic.promise;
-          });
-          await startAuto(false);
-          expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
-          const beforeDispatch: unknown[] = [];
-          webex.cc.on('region:stateChange', state => {
-            if (state.autoAvailable === 'requesting') beforeDispatch.push({
-              calls: webex.cc.services.agent.stateChange.mock.calls.length,
-              barrier: webex.cc['inFlightDrAutoState'],
-            });
-          });
-          webex.cc.webCallingService.isVoiceReady.mockReturnValue(true);
-          webex.cc['handleAutoAvailableVoiceChange'](); await settle();
-          expect(beforeDispatch).toEqual([{calls: 0, barrier: undefined}]);
-          const barrier = webex.cc['inFlightDrAutoState'];
-          expect(barrier).toBeInstanceOf(Promise);
-          webex.cc.services.agent.reload.mockResolvedValue(result());
-          await triggerLifecycle('ordinary relogin');
-          expect(webex.cc['inFlightDrAutoState']).toBe(barrier);
-          if (outcome === 'fulfilled') automatic.resolve(ack('state-1'));
-          else automatic.reject(new Error('late rejection'));
-          await settle();
-          expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
-          expect(webex.cc['lastPublishedRegionState']).toEqual(readySnapshot('cancelled'));
-        });
-
-        it.each(['fulfilled', 'rejected'])('T-007 obsolete %s settlement cannot clear a newer DR barrier', async outcome => {
-          const old = createDeferred<any>(); const current = createDeferred<any>();
-          webex.cc.services.agent.stateChange.mockReturnValueOnce(old.promise).mockReturnValueOnce(current.promise);
-          await startAuto();
-          const oldBarrier = webex.cc['inFlightDrAutoState'];
-          webex.cc['handleWebsocketMessage'](switchEvent('replacement-switch'));
-          await welcome(webex.cc.services.connectionService.recoverRegion.mock.calls.slice(-1)[0][0]);
-          const currentBarrier = webex.cc['inFlightDrAutoState'];
-          expect(currentBarrier).toBeInstanceOf(Promise);
-          expect(currentBarrier).not.toBe(oldBarrier);
-          expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(2);
-          if (outcome === 'fulfilled') old.resolve(ack('state-1'));
-          else old.reject(new Error('obsolete rejection'));
-          await settle();
-          expect(webex.cc['inFlightDrAutoState']).toBe(currentBarrier);
-          const id = webex.cc.services.agent.stateChange.mock.calls[1][2].correlationId;
-          const frame = ack(id); webex.cc['handleWebsocketMessage'](JSON.stringify(frame));
-          current.resolve(frame); await settle();
-          expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
-          expect(webex.cc['lastPublishedRegionState']).toEqual({...readySnapshot('succeeded'), trackingId: 'replacement-switch'});
+          expect(webex.cc.services.agent.stateChange.mock.calls[0][2]).not.toHaveProperty('signal');
         });
 
         it('T-007 timeoutLateReplyWithoutNewerStateRetainsFailed', async () => {
@@ -1495,7 +1384,6 @@ describe('webex.cc', () => {
           expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(1);
           expect(snapshots).toEqual([{...readySnapshot(), status: 'recovering'},
             readySnapshot('requesting'), readySnapshot('failed')]);
-          expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
         });
 
         it.each([
@@ -1579,7 +1467,6 @@ describe('webex.cc', () => {
           expect(mockWebexRequest.uploadLogs).not.toHaveBeenCalled();
           expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(ready ? 1 : 0);
           expect(sequence).toBe(ready ? 1 : 0);
-          expect(Boolean(webex.cc['inFlightDrAutoState'])).toBe(ready);
           expect(failure).not.toHaveBeenCalled();
           expect(specializedFailure).not.toHaveBeenCalled();
           expect(webex.cc['lastPublishedRegionState'].autoAvailable).toBe(ready ? 'requesting' : 'waitingForVoice');
@@ -2126,7 +2013,8 @@ describe('webex.cc', () => {
         let replacement: Promise<Profile>;
         if (boundary === 'superseded') {
           // The abandoned Profile reader cannot lend ownership to a replacement before Welcome.
-          mockWebSocketManager.initWebSocket.mockReturnValueOnce(new Promise(() => {}));
+          mockWebSocketManager.initWebSocket.mockImplementationOnce(({signal}) =>
+            Utils.awaitRecoveryWork(new Promise(() => {}), signal));
           replacement = webex.cc.register(); replacement.catch(() => undefined);
         }
         const owner = captureSwitchOwner(); const actions = switchActions();
@@ -2669,14 +2557,14 @@ describe('webex.cc', () => {
       });
 
       it.each(['waiting', 'restoringSession', 'manualLoginRequired',
-        'unavailable', 'reloadRequired', 'cancelled'])('T-008 setAgentStateAdmissionAdvancesIntent %s', async (phase) => {
+        'unavailable', 'reloadRequired', 'cancelled'])('T-008 rejected state changes preserve intent in %s', async (phase) => {
         await prepare(); webex.cc['setRecoveryPhase'](phase);
         const revision = webex.cc['stateIntentRevision'];
         const reason = phase === 'reloadRequired' ? 'REGION_RELOAD_REQUIRED' :
           ['unavailable', 'cancelled'].includes(phase) ? 'RECOVERY_INTERRUPTED' : 'RECOVERY_IN_PROGRESS';
         await expect(webex.cc.setAgentState({state: 'Available', auxCodeId: '0'}))
           .rejects.toMatchObject({data: {reason}});
-        expect(webex.cc['stateIntentRevision']).toBe(revision + 1);
+        expect(webex.cc['stateIntentRevision']).toBe(revision);
         expect(webex.cc.services.agent.stateChange).not.toHaveBeenCalled();
       });
 
@@ -3225,7 +3113,8 @@ describe('webex.cc', () => {
       it.each(['superseded registration', 'changed organization'])(
         'ignores a late recognized subscription 409 after %s', async (boundary) => {
           const subscription = createDeferred<{agentId: string}>();
-          mockWebSocketManager.initWebSocket.mockReturnValueOnce(subscription.promise);
+          mockWebSocketManager.initWebSocket.mockImplementationOnce(({signal}) =>
+            Utils.awaitRecoveryWork(subscription.promise, signal));
           const listener = jest.fn();
           webex.cc.on('region:stateChange', listener);
           const requireReload = jest.spyOn(webex.cc, 'requireRegionReload');
@@ -6793,7 +6682,7 @@ describe('webex.cc', () => {
 
       await webex.cc.setAgentState(payload);
 
-      expect(stateChangeSpy).toHaveBeenCalledWith({data: payload}, undefined, {generation: 0, signal: undefined, correlationId: 'mock-tracking-uuid'});
+      expect(stateChangeSpy).toHaveBeenCalledWith({data: payload}, undefined, {generation: 0, correlationId: 'mock-tracking-uuid'});
     });
 
     it('should preserve state changes when browser voice registration is not required', async () => {
@@ -6807,7 +6696,7 @@ describe('webex.cc', () => {
 
       await webex.cc.setAgentState(expectedPayload);
 
-      expect(stateChangeSpy).toHaveBeenCalledWith({data: expectedPayload}, undefined, {generation: 0, signal: undefined, correlationId: 'mock-tracking-uuid'});
+      expect(stateChangeSpy).toHaveBeenCalledWith({data: expectedPayload}, undefined, {generation: 0, correlationId: 'mock-tracking-uuid'});
     });
 
     it('should set agent status successfully when status is Available', async () => {
@@ -6837,7 +6726,7 @@ describe('webex.cc', () => {
         }
       );
 
-      expect(setAgentStatusMock).toHaveBeenCalledWith({data: expectedPayload}, undefined, {generation: 0, signal: undefined, correlationId: 'mock-tracking-uuid'});
+      expect(setAgentStatusMock).toHaveBeenCalledWith({data: expectedPayload}, undefined, {generation: 0, correlationId: 'mock-tracking-uuid'});
       expect(result).toEqual({data: expectedPayload});
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
@@ -6859,7 +6748,7 @@ describe('webex.cc', () => {
 
       const result = await webex.cc.setAgentState(expectedPayload);
 
-      expect(setAgentStatusMock).toHaveBeenCalledWith({data: expectedPayload}, undefined, {generation: 0, signal: undefined, correlationId: 'mock-tracking-uuid'});
+      expect(setAgentStatusMock).toHaveBeenCalledWith({data: expectedPayload}, undefined, {generation: 0, correlationId: 'mock-tracking-uuid'});
       expect(result).toEqual({data: expectedPayload});
       expect(LoggerProxy.log).toHaveBeenCalledWith(
         `Agent state changed successfully to auxCodeId: ${expectedPayload.auxCodeId}`,
@@ -6868,7 +6757,7 @@ describe('webex.cc', () => {
           method: 'setAgentState',
         }
       );
-      expect(setAgentStatusMock).toHaveBeenCalledWith({data: expectedPayload}, undefined, {generation: 0, signal: undefined, correlationId: 'mock-tracking-uuid'});
+      expect(setAgentStatusMock).toHaveBeenCalledWith({data: expectedPayload}, undefined, {generation: 0, correlationId: 'mock-tracking-uuid'});
       expect(result).toEqual({data: expectedPayload});
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
@@ -11994,7 +11883,7 @@ describe('realRecoveryWiring', () => {
       const resetFlag = jest.spyOn(cc, 'resetEnableWxBetterTogetherConfig');
 
       const restore = await deferAutomaticStationRestore(h);
-      const {signal} = cc['sessionRequest'].owner;
+      const {signal} = cc['sessionRequest'].controller;
       await restore.accept();
       expect(cc['recoveryPhase']).toBe('restoringSession');
       const suspended = {
@@ -12394,7 +12283,6 @@ describe('realRecoveryWiring', () => {
       const subscribeCount = requests.filter(r => r.resource === 'v1/realtime/subscribe').length;
       const detach = jest.spyOn(epoch, 'detach');
       const clear = jest.spyOn(cc.taskManager, 'clearAISummaryState');
-      const cancel = jest.spyOn(cc.services.rtdWebSocketManager, 'cancelPending');
       const delivered = jest.spyOn(cc.taskManager, 'handleRealtimeWebsocketEvent');
       jest.spyOn(cc.apiAIAssistant, 'sendEvent').mockResolvedValue(undefined);
       const summary = cc.apiAIAssistant.requestAndWaitForRtd({
@@ -12438,7 +12326,6 @@ describe('realRecoveryWiring', () => {
       expect(released).toEqual([[true, 3, 0, 0]]);
       expect(epoch.controller.signal.aborted).toBe(true);
       expect(detach).toHaveBeenCalledTimes(1);
-      expect(cancel).toHaveBeenCalledTimes(1);
       expect(clear).toHaveBeenCalledTimes(1);
       expect(old.close).toHaveBeenCalledTimes(1);
       expect(old.readyState).toBe(3);
@@ -12516,7 +12403,6 @@ describe('realRecoveryWiring', () => {
       const detach = jest.spyOn(epoch, 'detach');
       const removed = jest.spyOn(epoch.parent, 'removeEventListener');
       const manager = cc.services.rtdWebSocketManager;
-      const cancel = jest.spyOn(manager, 'cancelPending');
       const close = jest.spyOn(manager, 'close');
       const sink = jest.spyOn(graph.LoggerProxy, 'info');
       expect(manager.hasUsableSocket()).toBe(false);
@@ -12543,8 +12429,6 @@ describe('realRecoveryWiring', () => {
       expect(removed).toHaveBeenCalledWith('abort', expect.any(Function));
       expect(manager.listenerCount('message')).toBe(0);
       expect(manager['attempt']).toBeUndefined();
-      expect(cancel).toHaveBeenCalled();
-      expect(cancel.mock.calls[0][0].data).toEqual({reason: 'RECOVERY_INTERRUPTED'});
       expect(close).toHaveBeenCalledWith(false, 'regionRecovery');
       expect(manager.shouldReconnect).toBe(false);
       if (outcome === 'resolve') expect(rtd.close).toHaveBeenCalledTimes(1);
@@ -12618,11 +12502,14 @@ describe('realRecoveryWiring', () => {
       }
       return boundary(request);
     });
+    const observe = (name, pending) => pending.then(
+      value => { settled(name); return {value}; },
+      error => { settled(name); return {error}; }
+    );
     const start = () => Promise.all([
-      cc.apiAIAssistant.requestWellnessBreak(),
-      cc.apiAIAssistant.fetchHistoricTranscripts('agent', 'interaction'),
-    ].map(pending => pending.then(value => { settled(); return {value}; },
-      error => { settled(); return {error}; })));
+      observe('wellness', cc.apiAIAssistant.requestWellnessBreak()),
+      observe('transcripts', cc.apiAIAssistant.fetchHistoricTranscripts('agent', 'interaction')),
+    ]);
 
     return {http, dispatched, settled, start};
   };
@@ -12765,7 +12652,7 @@ describe('realRecoveryWiring', () => {
   });
 
   it.each(['switch', 'deregister'].flatMap(boundary => [false, true].map(success => [boundary, success])))
-  ('T-012 HTTP after RTD termination is still interrupted by %s with lateSuccess=%s', async (boundary, success) => {
+  ('T-012 %s interrupts wellness while the transcript request settles through HTTP, success=%s', async (boundary, success) => {
     await withGraph(async h => {
       const {cc, sockets, login, flush} = h;
       await login();
@@ -12780,21 +12667,28 @@ describe('realRecoveryWiring', () => {
       if (boundary === 'switch') sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'http-switch'});
       else await cc.deregister();
       expect(commandOwner.signal.aborted).toBe(true);
-      // Cancellation settles both callers before the external HTTP boundary settles.
-      const results = await operation;
-      expect(results.map(result => result.error?.data.reason)).toEqual([
-        'RECOVERY_INTERRUPTED', 'RECOVERY_INTERRUPTED',
-      ]);
-      expect(http.settled).toHaveBeenCalledTimes(2);
-      const track = jest.spyOn(cc['metricsManager'], 'trackEvent');
-      if (success) http.http.resolve({statusCode: 202, body: {interactionId: 'interaction', data: []}});
-      else http.http.reject(new Error('late AI HTTP failure'));
       await flush();
+      expect(http.settled.mock.calls).toEqual([['wellness']]);
+
+      const track = jest.spyOn(cc['metricsManager'], 'trackEvent');
+      const transcripts = {interactionId: 'interaction', data: []};
+      const failure = new Error('AI HTTP failure');
+      if (success) http.http.resolve({statusCode: 202, body: transcripts});
+      else http.http.reject(failure);
+      await expect(operation).resolves.toEqual([
+        {error: expect.objectContaining({data: {reason: 'RECOVERY_INTERRUPTED'}})},
+        success ? {value: transcripts} : {error: failure},
+      ]);
       expect(track.mock.calls.filter(([name]) => [
         METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_ACCEPTED,
+        METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_FAILED,
         METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS,
-      ].includes(name))).toEqual([]);
-      expect(http.settled).toHaveBeenCalledTimes(2);
+        METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED,
+      ].includes(name)).map(([name]) => name)).toEqual([
+        success ? METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS
+          : METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED,
+      ]);
+      expect(http.settled.mock.calls).toEqual([['wellness'], ['transcripts']]);
       expect(cc['rtdEpoch']).toBeUndefined();
       track.mockRestore();
     }, undefined, {enabled: true});
@@ -15298,6 +15192,55 @@ describe('realRecoveryWiring', () => {
     expect(cc['lastPublishedRegionState'].autoAvailable).toBe(ready ? 'requesting' : 'waitingForVoice');
   };
 
+  it('T-007 rejects an overlapping manual state through AQM and permits retry after auto-Available', async () => {
+    await withGraph(async h => {
+      const {cc, requests, sockets, frame, flush} = h;
+      await restoreAutoAvailable(h);
+      const primary = sockets.filter(socket => socket.url.includes('routing.')).slice(-1)[0];
+      const stateRequests = () => requests.filter(request => request.resource === '/v1/agents/session/state');
+      const stateChange = jest.spyOn(cc.services.agent, 'stateChange');
+      const publications = jest.fn(); cc.on('region:stateChange', publications);
+      const generic = jest.fn(); const success = jest.fn(); const raw = jest.fn();
+      cc.on(AGENT_EVENTS.AGENT_STATE_CHANGE, generic);
+      cc.on(AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS, success);
+      cc.on(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, raw);
+      const manualData = {state: 'Idle', auxCodeId: 'manual'} as const;
+      const revision = cc['stateIntentRevision'];
+      expect(stateRequests()).toHaveLength(1);
+
+      await expect(cc.setAgentState(manualData)).rejects.toThrow('Error while performing setAgentState');
+      await expect(stateChange.mock.results[0].value).rejects.toMatchObject({id: 'Service.aqm.reqs.Pending'});
+      expect(stateRequests()).toHaveLength(1);
+      expect(cc['stateIntentRevision']).toBe(revision);
+      expect(publications).not.toHaveBeenCalled();
+
+      const automatic = {...frame(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, stateRequests()[0].headers.trackingid,
+        {subStatus: 'Available', auxCodeId: '0', lastStateChangeTimestamp: 2, lastIdleCodeChangeTimestamp: 3}),
+        type: CC_EVENTS.AGENT_STATE_CHANGE};
+      primary.message(automatic); await flush();
+      expect(cc['lastPublishedRegionState'].autoAvailable).toBe('succeeded');
+      expect(cc.agentConfig.lastStateAuxCodeId).toBe('0');
+      expect(generic.mock.calls).toEqual([[automatic.data]]);
+      expect(success.mock.calls).toEqual([[automatic.data]]);
+      expect(raw.mock.calls).toEqual([[automatic.data]]);
+      expect(stateRequests()).toHaveLength(1);
+
+      const retry = cc.setAgentState(manualData);
+      const settled = jest.fn(); const observed = retry.then(settled, settled); await flush();
+      expect(stateRequests()).toHaveLength(2);
+      expect(stateRequests()[1].body).toMatchObject(manualData);
+      expect(settled).not.toHaveBeenCalled();
+      const manual = {...frame(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, undefined,
+        {subStatus: 'Idle', auxCodeId: 'manual', lastStateChangeTimestamp: 4, lastIdleCodeChangeTimestamp: 5}),
+        type: CC_EVENTS.AGENT_STATE_CHANGE};
+      primary.message(manual);
+      await expect(retry).resolves.toEqual(manual); await observed;
+      expect(cc.agentConfig.lastStateAuxCodeId).toBe('manual');
+      expect(cc['stateIntentRevision']).toBe(revision + 1);
+      expect(publications.mock.calls.map(([state]) => state.autoAvailable)).toEqual(['succeeded']);
+    });
+  });
+
   const expectAutoListenersDetached = (cc, removed) => {
     expect(cc['autoAvailable']).toBeUndefined();
     expect(cc.webCallingService.listeners(VOICE_CONNECTION_EVENTS.STATE_CHANGE))
@@ -15933,7 +15876,6 @@ describe('realRecoveryWiring', () => {
       const auto = cc['autoAvailable'];
       const removed = jest.spyOn(auto.signal, 'removeEventListener');
       const listener = jest.fn(); cc.on('region:stateChange', listener);
-      const barrier = cc['inFlightDrAutoState'];
       cc['suppressAutomaticRelogin'] = true;
       cc.services.webSocketManager.shouldReconnect = reconnect;
       sockets[1].lost();
@@ -15944,10 +15886,7 @@ describe('realRecoveryWiring', () => {
         status: 'ready', reason: 'region-switch', trackingId: 'switch', homeRegion: 'produs1',
         autoAvailable: outcome,
       }]);
-      if (ready) expect(cc['inFlightDrAutoState']).toBe(barrier);
       await flush();
-      if (barrier) await barrier;
-      expect(cc['inFlightDrAutoState']).toBeUndefined();
       jest.advanceTimersByTime(5000); await flush();
       if (reconnect) { sockets[2].welcome(); await flush(); }
       cc.webCallingService.isVoiceReady.mockReturnValue(true);
@@ -16083,7 +16022,6 @@ describe('realRecoveryWiring', () => {
       expect(listener.mock.calls.filter(([state]) => state.autoAvailable !== undefined)
         .map(([state]) => [state.status, state.autoAvailable])).toEqual([['ready', 'cancelled']]);
       expect(cc['lastPublishedRegionState']?.status).toBe(boundary === 'switch' ? 'recovering' : undefined);
-      expect(cc['inFlightDrAutoState']).toBeUndefined();
       removed.mockRestore();
     });
   });

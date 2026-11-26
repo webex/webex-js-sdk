@@ -94,19 +94,7 @@ export default class AqmReqs {
       return;
     }
     if (gate.state === 'unavailable') throw createRegionRecoveryError(gate.reason);
-    if (kind === 'session') {
-      const owner = gate.sessionOwner;
-      const phase = gate.state === 'recovering' ? 'restore' : 'manual';
-      if (
-        owner &&
-        owner === context.sessionOwner &&
-        owner.generation === this.generation &&
-        owner.phase === phase &&
-        !owner.signal.aborted &&
-        context.signal === owner.signal
-      )
-        return;
-    }
+    if (kind === 'session' && context.signal && context.signal === gate.sessionSignal) return;
     throw createRegionRecoveryError('RECOVERY_IN_PROGRESS');
   }
 
@@ -119,17 +107,14 @@ export default class AqmReqs {
       const context = requestContext ?? {generation: this.generation};
       this.assertAdmission(c, context);
       const {generation} = context;
-      const logicalSuccess = this.bindPrint(c.notifSuccess.bind);
-      const logicalFail = c.notifFail ? this.bindPrint(c.notifFail.bind) : undefined;
-      const duplicates = Object.values(this.pendingRequests).filter(
-        (entry) =>
-          entry.logicalBindKey === logicalSuccess ||
-          (logicalFail && entry.logicalBindKey === logicalFail)
-      );
-      if (duplicates.length && c.timeout !== 'disabled') {
+      const keySuccess = this.bindPrint(c.notifSuccess.bind);
+      const keyFail = c.notifFail && this.bindPrint(c.notifFail.bind);
+      const duplicateSuccess = this.pendingRequests[keySuccess];
+      const duplicateFail = keyFail && keyFail !== keySuccess && this.pendingRequests[keyFail];
+      if ((duplicateSuccess || duplicateFail) && c.timeout !== 'disabled') {
         reject(
           new Err.Details('Service.aqm.reqs.Pending', {
-            key: [...new Set(duplicates.map((entry) => entry.logicalBindKey))].join(''),
+            key: `${duplicateSuccess ? keySuccess : ''}${duplicateFail ? keyFail : ''}`,
             msg: 'The request has been already created, multiple requests are not allowed.',
           })
         );
@@ -139,14 +124,12 @@ export default class AqmReqs {
       const operationId = uuidv4();
       const session = c.kind === 'session';
       const correlationId = session ? uuidv4() : context.correlationId;
-      const strict = context.requireCorrelation || !!context.sessionOwner;
+      const strict = context.requireCorrelation || (session && this.recoveryGate.state !== 'open');
       const correlate = (bind: any) =>
         strict && correlationId ? {...bind, data: {...bind.data, trackingId: correlationId}} : bind;
       const successBind = correlate(c.notifSuccess.bind);
       const failBind = c.notifFail && correlate(c.notifFail.bind);
       const cancelBind = c.notifCancel?.bind;
-      const keySuccess = this.bindPrint(successBind);
-      const keyFail = failBind && this.bindPrint(failBind);
       const keyCancel = cancelBind && this.bindPrint(cancelBind);
       let response: WebexRequestPayload | null = null;
       let timeoutId: ReturnType<typeof setTimeout>;
@@ -195,14 +178,12 @@ export default class AqmReqs {
       };
       this.pendingRequests[keySuccess] = {
         operationId,
-        logicalBindKey: logicalSuccess,
         check: (msg) => matches(successBind, msg),
         handle: success,
       };
       if (keyFail) {
         this.pendingRequests[keyFail] = {
           operationId,
-          logicalBindKey: logicalFail,
           check: (msg) => matches(failBind, msg),
           handle: (msg) => {
             if (!current()) return;
@@ -223,7 +204,6 @@ export default class AqmReqs {
       if (keyCancel) {
         this.pendingNotifCancelrequest[keyCancel] = {
           operationId,
-          logicalBindKey: this.bindPrint(cancelBind),
           check: (msg) => this.bindCheck(cancelBind, msg),
           handle: success,
         };
@@ -245,7 +225,10 @@ export default class AqmReqs {
                 }
               : null;
             rejectOperation(
-              new Err.Details('Service.aqm.reqs.Timeout', {key: keySuccess, response: safeResponse})
+              new Err.Details('Service.aqm.reqs.Timeout', {
+                key: this.bindPrint(successBind),
+                response: safeResponse,
+              })
             );
             AqmReqs.diagnose('error', 'Routing request timeout', response);
           },

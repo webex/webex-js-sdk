@@ -278,7 +278,6 @@ export async function acceptOnWebex(
   deps: WxAppVoiceDependencies,
   options?: {lineOwnerId?: string}
 ): Promise<void> {
-  deps.assertCommandAllowed?.();
   const interactionId = getInteractionId(deps);
   logWxAppTelephonyAction({action: 'accept', phase: 'started', interactionId});
   assertWxAppEnabled(deps);
@@ -294,10 +293,12 @@ export async function acceptOnWebex(
     throw new Error('WxApp calling device details are unavailable');
   }
 
+  const lineOwnerId = resolveWxAppLineOwnerId(deps, options?.lineOwnerId);
+  deps.assertCommandAllowed?.();
   await deps.answerCallOnWebexService.answerCall({
     callId: details.deviceCallId,
     endpointId: details.deviceId,
-    lineOwnerId: resolveWxAppLineOwnerId(deps, options?.lineOwnerId),
+    lineOwnerId,
   });
   deps.assertCommandAllowed?.();
   logWxAppTelephonyAction({action: 'accept', phase: 'success', interactionId});
@@ -307,7 +308,6 @@ export async function rejectOnWebex(
   deps: WxAppVoiceDependencies,
   options?: {lineOwnerId?: string}
 ): Promise<void> {
-  deps.assertCommandAllowed?.();
   const interactionId = getInteractionId(deps);
   logWxAppTelephonyAction({action: 'decline', phase: 'started', interactionId});
   assertWxAppEnabled(deps);
@@ -323,9 +323,11 @@ export async function rejectOnWebex(
     throw new Error('WxApp calling device details are unavailable');
   }
 
+  const lineOwnerId = resolveWxAppLineOwnerId(deps, options?.lineOwnerId);
+  deps.assertCommandAllowed?.();
   await deps.answerCallOnWebexService.rejectCall({
     callId: details.deviceCallId,
-    lineOwnerId: resolveWxAppLineOwnerId(deps, options?.lineOwnerId),
+    lineOwnerId,
   });
   deps.assertCommandAllowed?.();
   logWxAppTelephonyAction({action: 'decline', phase: 'success', interactionId});
@@ -335,7 +337,6 @@ export async function toggleMuteOnWebex(
   deps: WxAppVoiceDependencies,
   options?: {lineOwnerId?: string; muted?: boolean}
 ): Promise<void> {
-  deps.assertCommandAllowed?.();
   const interactionId = getInteractionId(deps);
   logWxAppTelephonyAction({action: 'mute', phase: 'started', interactionId});
   assertWxAppEnabled(deps);
@@ -351,9 +352,11 @@ export async function toggleMuteOnWebex(
     ? deps.answerCallOnWebexService.muteCall.bind(deps.answerCallOnWebexService)
     : deps.answerCallOnWebexService.unmuteCall.bind(deps.answerCallOnWebexService);
 
+  const lineOwnerId = resolveWxAppLineOwnerId(deps, options?.lineOwnerId);
+  deps.assertCommandAllowed?.();
   await request({
     callId,
-    lineOwnerId: resolveWxAppLineOwnerId(deps, options?.lineOwnerId),
+    lineOwnerId,
   });
   deps.assertCommandAllowed?.();
   deps.setWxAppMuted(targetMuted);
@@ -364,7 +367,6 @@ export async function transmitDtmfOnWebex(
   deps: WxAppVoiceDependencies,
   options: {dtmf: string; lineOwnerId?: string}
 ): Promise<void> {
-  deps.assertCommandAllowed?.();
   const interactionId = getInteractionId(deps);
   logWxAppTelephonyAction({action: 'dtmf', phase: 'started', interactionId});
   assertWxAppEnabled(deps);
@@ -386,10 +388,12 @@ export async function transmitDtmfOnWebex(
     },
   });
 
+  const lineOwnerId = resolveWxAppLineOwnerId(deps, options.lineOwnerId);
+  deps.assertCommandAllowed?.();
   await deps.answerCallOnWebexService.transmitDtmf({
     callId,
     dtmf: options.dtmf,
-    lineOwnerId: resolveWxAppLineOwnerId(deps, options.lineOwnerId),
+    lineOwnerId,
   });
   deps.assertCommandAllowed?.();
   logWxAppTelephonyAction({action: 'dtmf', phase: 'success', interactionId});
@@ -508,6 +512,7 @@ export async function runWxAppOutdialDecline<T>(
   ]);
 
   try {
+    deps.assertCommandAllowed?.();
     const result = await executeCancel();
     deps.assertCommandAllowed?.();
 
