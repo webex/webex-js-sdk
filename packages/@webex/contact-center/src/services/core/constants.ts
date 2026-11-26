@@ -35,6 +35,12 @@ export const WELCOME_TIMEOUT = 30000;
 export const RTD_PING_EVENT = 'rtd-online-status';
 
 /**
+ * WebSocket envelope type for all AQM routing notifications (agent and task).
+ * @ignore
+ */
+export const ROUTING_MESSAGE_TYPE = 'RoutingMessage';
+
+/**
  * Timeout in milliseconds for individual HTTP requests.
  * @ignore
  */

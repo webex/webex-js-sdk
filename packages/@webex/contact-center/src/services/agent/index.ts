@@ -4,6 +4,7 @@ import * as Agent from './types';
 import AqmReqs from '../core/aqm-reqs';
 import {HTTP_METHODS} from '../../types';
 import {WCC_API_GATEWAY} from '../constants';
+import {ROUTING_MESSAGE_TYPE} from '../core/constants';
 import {CC_EVENTS} from '../config/types';
 
 /**
@@ -215,7 +216,7 @@ export default function routingAgent(routing: AqmReqs) {
       method: HTTP_METHODS.PUT,
       notifSuccess: {
         bind: {
-          type: ['AgentRequestEvent', 'RoutingMessage', CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE],
+          type: ['AgentRequestEvent', ROUTING_MESSAGE_TYPE, CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE],
           data: {
             type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
             channelType: p.data.channelType,
@@ -262,7 +263,7 @@ export default function routingAgent(routing: AqmReqs) {
       },
       notifFail: {
         bind: {
-          type: ['AgentRequestEvent', 'RoutingMessage', CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE],
+          type: ['AgentRequestEvent', ROUTING_MESSAGE_TYPE, CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE],
           data: {
             type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED,
             channelType: p.data.channelType,

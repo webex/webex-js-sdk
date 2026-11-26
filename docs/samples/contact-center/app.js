@@ -4348,14 +4348,10 @@ function captureWellnessSession(event) {
         // marker.
         const marker = wellnessState.recoveryMarker;
         if (marker && marker.agentSessionId === event.agentSessionId) {
-          webex.cc.setAgentState({
-            state: 'Available',
-            auxCodeId: '0',
-            lastStateChangeReason: 'wellness-break-complete',
-            agentId,
-            wellnessRestoration: true,
-          }).catch((err) => {
-            console.warn('[Wellness] Failed to restore remaining wellness channels:', err);
+          // Use the normal restore lifecycle so a failed or partial V2
+          // confirmation keeps ownership and enters the bounded retry flow.
+          void restoreWellnessState({
+            completionMessage: 'Agent state restored after browser refresh.',
           });
         } else {
           console.info(

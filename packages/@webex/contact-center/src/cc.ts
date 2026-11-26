@@ -2266,6 +2266,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         break;
       }
       case CC_EVENTS.AGENT_RELOGIN_SUCCESS: {
+        // Guard: reject a stale V1 reload notification whose session does not
+        // match the current active session.  A reload may still be in-flight
+        // (or arrive after AQM timeout clears v2ReloadPromise) while the agent
+        // logs out and starts a new session.  Its V1 response must not
+        // downgrade manageChannelAvailability or overwrite the new session.
+        if (
+          this.currentAgentSessionId &&
+          eventData.data.agentSessionId &&
+          eventData.data.agentSessionId !== this.currentAgentSessionId
+        ) {
+          break;
+        }
+
         // V1-only relogin. Downgrade V2 flag if needed so listeners route through V1.
         if (this.agentConfig?.manageChannelAvailability === true) {
           this.agentConfig.manageChannelAvailability = false;
@@ -3030,20 +3043,28 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const data = eventData.data;
     const channelType = data.channelType as ChannelType;
 
-    if (this.agentConfig?.manageChannelAvailability !== true) return; // Not V2
+    // During a tracked initial reload the session mode is unresolved: the
+    // cached profile flag may be false while the persisted server session is
+    // actually V2.  Buffer own-agent updates by session ID so the reload
+    // handler can replay them once the returned session type is known,
+    // regardless of the current manageChannelAvailability value.
+    const duringInitialReload =
+      !this.currentAgentSessionId &&
+      this.initialReloadGeneration !== undefined &&
+      this.initialReloadGeneration === this.reloadGeneration &&
+      !!data.agentSessionId &&
+      !!this.agentConfig;
+
+    if (!duringInitialReload) {
+      if (this.agentConfig?.manageChannelAvailability !== true) return; // Not V2
+    }
 
     // Session guard: discard notifications for ended or mismatched sessions.
-    // During an explicitly tracked initial reload, buffer by session ID so
-    // only updates matching the reload response can be applied later.
     if (this.currentAgentSessionId) {
       if (data.agentSessionId && data.agentSessionId !== this.currentAgentSessionId) {
         return; // Different session
       }
-    } else if (
-      !this.agentConfig ||
-      this.initialReloadGeneration !== this.reloadGeneration ||
-      !data.agentSessionId
-    ) {
+    } else if (!duringInitialReload) {
       return; // Session ended or not part of the active initial reload
     }
 
@@ -3054,7 +3075,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // Unknown channel
       LoggerProxy.warn(
         `Ignoring AgentChannelStateChanged for unknown channelType: ${data.channelType}`,
-        {module: CC_FILE, method: 'handleChannelStateChanged'}
+        {module: CC_FILE, method: METHODS.HANDLE_CHANNEL_STATE_CHANGED}
       );
 
       return;
@@ -3277,14 +3298,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.reloadGeneration += 1; // Invalidate in-flight silentRelogin
       this.clearTelephonyRecoveryTimer(); // Cancel deferred telephony recovery
       // @ts-ignore
-      this.emit(AGENT_EVENTS.AGENT_CONNECTION_LOST, {});
+      this.trigger(AGENT_EVENTS.AGENT_CONNECTION_LOST, {});
     } else if (msg.isSocketReconnected) {
       LoggerProxy.log(
         'event=handleConnectionReconnect | Connection reconnected attempting to request silent relogin',
         {module: CC_FILE, method: METHODS.HANDLE_CONNECTION_LOST}
       );
       // @ts-ignore
-      this.emit(AGENT_EVENTS.AGENT_CONNECTION_RECONNECTED, {});
+      this.trigger(AGENT_EVENTS.AGENT_CONNECTION_RECONNECTED, {});
       if (this.$config && this.$config.allowAutomatedRelogin) {
         await this.silentRelogin();
       }
@@ -3463,6 +3484,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       } else {
         // ─── V1 path ─────────────────────────────────────────────
 
+        // Re-check: a new session may have been established between await
+        // points in the V2 path (which fell through) or during coalescing.
+        if (this.reloadGeneration !== myGeneration) return;
+
         // Mismatch: server is V1 but flag is true → downgrade for this session.
         if (this.agentConfig?.manageChannelAvailability === true) {
           LoggerProxy.warn(
@@ -3536,6 +3561,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         CC_FILE
       );
       if (reason === 'AGENT_NOT_FOUND') {
+        // If this reload generation was superseded (e.g. the agent logged out
+        // and back in while this reload was pending), the AGENT_NOT_FOUND
+        // belongs to the old session and must not tear down the new one.
+        if (this.reloadGeneration !== myGeneration) {
+          LoggerProxy.log(
+            'event=silentRelogin | AGENT_NOT_FOUND from a superseded reload generation; ignoring',
+            {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
+          );
+
+          return;
+        }
+
         LoggerProxy.log('Agent not found during relogin, handling silently', {
           module: CC_FILE,
           method: METHODS.SILENT_RELOGIN,

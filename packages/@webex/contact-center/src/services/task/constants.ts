@@ -6,7 +6,6 @@
 
 import {CC_EVENTS} from '../config/types';
 
-export const TASK_MESSAGE_TYPE = 'RoutingMessage';
 export const TASK_API = '/v1/tasks/';
 export const HOLD = '/hold';
 export const UNHOLD = '/unhold';

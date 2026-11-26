@@ -13,6 +13,24 @@ const {
 const {readFileSync} = require('fs');
 const {resolve} = require('path');
 
+function loadSampleRestoreWellnessState(dependencies) {
+  const appSource = readFileSync(
+    resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
+    'utf8'
+  );
+  const start = appSource.indexOf('async function restoreWellnessState(options = {}) {');
+  const end = appSource.indexOf('\nasync function recoverWellnessBreakIfNeeded()', start);
+  if (start < 0 || end < 0) throw new Error('Could not locate restoreWellnessState in sample app');
+
+  const dependencyNames = Object.keys(dependencies);
+  const restoreFactory = new Function(
+    ...dependencyNames,
+    `${appSource.slice(start, end)}\nreturn restoreWellnessState;`
+  );
+
+  return restoreFactory(...Object.values(dependencies));
+}
+
 describe('Contact Center wellness sample utilities', () => {
   describe('safe task detection', () => {
     it.each([
@@ -145,6 +163,117 @@ describe('Contact Center wellness sample utilities', () => {
   });
 
   describe('sample public surface guard', () => {
+    it('routes owned mixed-snapshot recovery through the retry lifecycle', () => {
+      const appSource = readFileSync(
+        resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
+        'utf8'
+      );
+
+      expect(appSource).toMatch(
+        /if \(marker && marker\.agentSessionId === event\.agentSessionId\) \{\s*\/\/ Use the normal restore lifecycle[\s\S]*?void restoreWellnessState\(/m
+      );
+    });
+
+    it('retries a failed owned mixed-snapshot restore and keeps the recovery marker until success', async () => {
+      const wellnessState = {
+        operationGeneration: 1,
+        agentSessionId: 'session-1',
+        lifecycle: 'Ready',
+        idleCode: {id: 'wellness'},
+        recoveryMarker: {agentSessionId: 'session-1'},
+      };
+      const channelStates = {
+        telephony: {agentState: 'Idle', auxCodeId: 'lunch'},
+        chat: {agentState: 'Idle', auxCodeId: 'wellness'},
+      };
+      const restoreCall = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('Chat state change failed'))
+        .mockImplementationOnce(async () => {
+          channelStates.chat.auxCodeId = '0';
+        });
+      const clearOwnership = jest.fn(() => {
+        wellnessState.recoveryMarker = undefined;
+      });
+      const waitForRetry = jest.fn().mockImplementation(async () => {
+        expect(wellnessState.recoveryMarker).toEqual({agentSessionId: 'session-1'});
+        return true;
+      });
+      const restoreWellnessState = loadSampleRestoreWellnessState({
+        wellnessState,
+        WELLNESS_RESTORE_MAX_ATTEMPTS: 3,
+        WELLNESS_RESTORE_RETRY_MS: 10000,
+        WELLNESS_COPY: {restoreFailure: 'Restoration failed.'},
+        clearWellnessBreakTimer: jest.fn(),
+        clearWellnessSafeStateTimer: jest.fn(),
+        setWellnessMessage: jest.fn(),
+        renderWellnessState: jest.fn(),
+        performSingleWellnessRestore: restoreCall,
+        waitForWellnessRestoreRetry: waitForRetry,
+        clearWellnessLifecycleOwnership: clearOwnership,
+        scheduleLegacyRestoreRecovery: jest.fn(),
+        isWellnessReady: () => true,
+        webex: {cc: {getChannelStates: () => channelStates}},
+      });
+
+      await expect(restoreWellnessState()).resolves.toBe(true);
+
+      expect(restoreCall).toHaveBeenCalledTimes(2);
+      expect(waitForRetry).toHaveBeenCalledWith(10000, 1);
+      expect(clearOwnership).toHaveBeenCalledTimes(1);
+      expect(wellnessState.recoveryMarker).toBeUndefined();
+      expect(wellnessState.lifecycle).toBe('Ready');
+    });
+
+    it('retries when the SDK resolves before every wellness channel confirms restoration', async () => {
+      const wellnessState = {
+        operationGeneration: 1,
+        agentSessionId: 'session-1',
+        lifecycle: 'Ready',
+        idleCode: {id: 'wellness'},
+        recoveryMarker: {agentSessionId: 'session-1'},
+      };
+      const channelStates = {
+        telephony: {agentState: 'Idle', auxCodeId: 'lunch'},
+        chat: {agentState: 'Idle', auxCodeId: 'wellness'},
+      };
+      const restoreCall = jest.fn().mockImplementationOnce(async () => {}).mockImplementationOnce(
+        async () => {
+          channelStates.chat.auxCodeId = '0';
+        }
+      );
+      const clearOwnership = jest.fn(() => {
+        wellnessState.recoveryMarker = undefined;
+      });
+      const waitForRetry = jest.fn().mockImplementation(async () => {
+        expect(wellnessState.recoveryMarker).toEqual({agentSessionId: 'session-1'});
+        return true;
+      });
+      const restoreWellnessState = loadSampleRestoreWellnessState({
+        wellnessState,
+        WELLNESS_RESTORE_MAX_ATTEMPTS: 3,
+        WELLNESS_RESTORE_RETRY_MS: 10000,
+        WELLNESS_COPY: {restoreFailure: 'Restoration failed.'},
+        clearWellnessBreakTimer: jest.fn(),
+        clearWellnessSafeStateTimer: jest.fn(),
+        setWellnessMessage: jest.fn(),
+        renderWellnessState: jest.fn(),
+        performSingleWellnessRestore: restoreCall,
+        waitForWellnessRestoreRetry: waitForRetry,
+        clearWellnessLifecycleOwnership: clearOwnership,
+        scheduleLegacyRestoreRecovery: jest.fn(),
+        isWellnessReady: () => true,
+        webex: {cc: {getChannelStates: () => channelStates}},
+      });
+
+      await expect(restoreWellnessState()).resolves.toBe(true);
+
+      expect(restoreCall).toHaveBeenCalledTimes(2);
+      expect(waitForRetry).toHaveBeenCalledWith(10000, 1);
+      expect(clearOwnership).toHaveBeenCalledTimes(1);
+      expect(wellnessState.recoveryMarker).toBeUndefined();
+    });
+
     it('attaches the wellness constants consumed by the standalone browser sample', () => {
       const webexSource = readFileSync(resolve(__dirname, '../../../src/webex.js'), 'utf8');
       const appSource = readFileSync(

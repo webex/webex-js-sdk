@@ -188,7 +188,9 @@ await cc.stationLogout({
 - `agentId` (string, optional): Agent ID (defaults to current agent)
 - `channelType` (`ChannelType | ChannelType[]`, optional): V2 sessions only. The channels to change; when omitted, every selectable channel (`telephony`, `chat`, `email`, `social`) with capacity. Ignored on V1.
 
-**Returns**: `Promise<SetStateResponse>`; on a V2 session, the first `AgentChannelStateChanged`.
+**Returns**: `Promise<SetStateResponse>`. On V2 sessions, the response is normalized to the
+`StateChangeSuccess` shape; read per-channel details from `agent:channelStateChange` events or
+`cc.getChannelStates()`.
 
 ```typescript
 // Go Available
