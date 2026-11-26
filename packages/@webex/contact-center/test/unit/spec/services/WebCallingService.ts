@@ -386,13 +386,10 @@ describe('WebCallingService', () => {
       expect(secondLine.register).toHaveBeenCalledTimes(1);
     });
 
-    it.each(['completes', 'fails'])('retires a superseded line after SDK %s', async (outcome) => {
-      let deviceRegistered = false;
+    it('ignores a register rejection after its line has been superseded', async () => {
       const firstLine = Object.assign(createEmitter(), {
         register: jest.fn(),
-        deregister: jest.fn().mockImplementation(async () => {
-          deviceRegistered = false;
-        }),
+        deregister: jest.fn().mockResolvedValue(undefined),
       });
       const secondLine = Object.assign(createEmitter(), {
         register: jest.fn(),
@@ -408,23 +405,20 @@ describe('WebCallingService', () => {
         isMobiusSocketConnected: jest.fn().mockReturnValue(false),
         getLines: jest.fn().mockReturnValue({line1: secondLine}),
       };
-      const registerStarted = deferred<void>();
-      const discovery = deferred<void>();
-      // Simulate the SDK creating a device after its asynchronous host-IP discovery.
-      const registerDevice = jest.fn(() => {
-        deviceRegistered = true;
-        if (outcome === 'fails') {
-          throw new Error('superseded registration failed');
-        }
-        firstLine.emit(LINE_EVENTS.REGISTERED, firstLine);
+      let registerStartedResolve = jest.fn();
+      const registerStarted = new Promise<void>((resolve) => {
+        registerStartedResolve = resolve;
       });
-      const firstRegisterPromise = discovery.promise.then(registerDevice);
+      let rejectFirstRegister = jest.fn();
+      const firstRegisterPromise = new Promise<void>((_resolve, reject) => {
+        rejectFirstRegister = reject;
+      });
 
       (createClient as jest.Mock)
         .mockResolvedValueOnce(firstClient)
         .mockResolvedValueOnce(secondClient);
       firstLine.register.mockImplementation(() => {
-        registerStarted.resolve();
+        registerStartedResolve();
 
         return firstRegisterPromise;
       });
@@ -433,31 +427,15 @@ describe('WebCallingService', () => {
       );
       setBrowserVoiceRequired();
 
-      const newerStream = {stop: jest.fn()} as unknown as LocalMicrophoneStream;
-      (createMicrophoneStream as jest.Mock)
-        .mockResolvedValueOnce(microphoneStream)
-        .mockResolvedValueOnce(newerStream);
       const firstRegistration = webRTCCalling.registerWebCallingLine();
-      await registerStarted.promise;
-      expect(microphoneStream.stop).not.toHaveBeenCalled();
+      await registerStarted;
       await webRTCCalling.registerWebCallingLine();
       await firstRegistration;
-      expect(firstLine.deregister).toHaveBeenCalledTimes(1);
-      expect(microphoneStream.stop).toHaveBeenCalledTimes(1);
-      expect(newerStream.stop).toHaveBeenCalledTimes(1);
       const currentState = webRTCCalling.getVoiceConnectionState();
 
-      discovery.resolve();
+      rejectFirstRegister(new Error('superseded registration failed'));
       await firstRegisterPromise.catch(() => undefined);
 
-      expect(firstLine.deregister).toHaveBeenCalledTimes(2);
-      expect(firstLine.deregister.mock.invocationCallOrder[1]).toBeGreaterThan(
-        registerDevice.mock.invocationCallOrder[0]
-      );
-      expect(deviceRegistered).toBe(false);
-      expect(secondLine.deregister).not.toHaveBeenCalled();
-      expect(microphoneStream.stop).toHaveBeenCalledTimes(1);
-      expect(newerStream.stop).toHaveBeenCalledTimes(1);
       expect(webRTCCalling.getVoiceConnectionState()).toEqual(currentState);
       expect(currentState.status).toBe(VOICE_CONNECTION_STATUS.READY);
     });

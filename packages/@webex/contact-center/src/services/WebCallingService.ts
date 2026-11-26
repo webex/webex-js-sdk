@@ -531,19 +531,11 @@ export default class WebCallingService extends EventEmitter {
         );
 
         // ILine declares register() as void, although its implementation is async.
-        const registeringLine = this.line;
-        Promise.resolve(registeringLine.register())
-          .finally(async () => {
-            // Host-IP discovery can finish after cleanup has already retired this line.
-            if (registrationGeneration !== this.registrationGeneration) {
-              await registeringLine.deregister();
-            }
-          })
-          .catch((error: LineError) => {
-            if (registrationGeneration === this.registrationGeneration) {
-              this.handleLineError(error);
-            }
-          });
+        Promise.resolve(this.line.register()).catch((error: LineError) => {
+          if (registrationGeneration === this.registrationGeneration) {
+            this.handleLineError(error);
+          }
+        });
       });
     } catch (error) {
       if (registrationGeneration !== this.registrationGeneration) {
