@@ -88,8 +88,6 @@ export type ResEmpty<TRes> = {
 /** @internal Pending request completed by a correlated RTD response. */
 export type PendingRtdRequest<T> = {
   detachAbort?: () => void;
-  correlationId: string;
-  rtdEventType: string;
   timeoutId?: ReturnType<typeof setTimeout>;
   resolve: (payload: T) => void;
   reject: (error: Error) => void;

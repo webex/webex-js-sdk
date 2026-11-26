@@ -293,12 +293,11 @@ export async function acceptOnWebex(
     throw new Error('WxApp calling device details are unavailable');
   }
 
-  const lineOwnerId = resolveWxAppLineOwnerId(deps, options?.lineOwnerId);
   deps.assertCommandAllowed?.();
   await deps.answerCallOnWebexService.answerCall({
     callId: details.deviceCallId,
     endpointId: details.deviceId,
-    lineOwnerId,
+    lineOwnerId: resolveWxAppLineOwnerId(deps, options?.lineOwnerId),
   });
   deps.assertCommandAllowed?.();
   logWxAppTelephonyAction({action: 'accept', phase: 'success', interactionId});
@@ -323,11 +322,9 @@ export async function rejectOnWebex(
     throw new Error('WxApp calling device details are unavailable');
   }
 
-  const lineOwnerId = resolveWxAppLineOwnerId(deps, options?.lineOwnerId);
-  deps.assertCommandAllowed?.();
   await deps.answerCallOnWebexService.rejectCall({
     callId: details.deviceCallId,
-    lineOwnerId,
+    lineOwnerId: resolveWxAppLineOwnerId(deps, options?.lineOwnerId),
   });
   deps.assertCommandAllowed?.();
   logWxAppTelephonyAction({action: 'decline', phase: 'success', interactionId});
@@ -352,11 +349,9 @@ export async function toggleMuteOnWebex(
     ? deps.answerCallOnWebexService.muteCall.bind(deps.answerCallOnWebexService)
     : deps.answerCallOnWebexService.unmuteCall.bind(deps.answerCallOnWebexService);
 
-  const lineOwnerId = resolveWxAppLineOwnerId(deps, options?.lineOwnerId);
-  deps.assertCommandAllowed?.();
   await request({
     callId,
-    lineOwnerId,
+    lineOwnerId: resolveWxAppLineOwnerId(deps, options?.lineOwnerId),
   });
   deps.assertCommandAllowed?.();
   deps.setWxAppMuted(targetMuted);
@@ -388,12 +383,10 @@ export async function transmitDtmfOnWebex(
     },
   });
 
-  const lineOwnerId = resolveWxAppLineOwnerId(deps, options.lineOwnerId);
-  deps.assertCommandAllowed?.();
   await deps.answerCallOnWebexService.transmitDtmf({
     callId,
     dtmf: options.dtmf,
-    lineOwnerId,
+    lineOwnerId: resolveWxAppLineOwnerId(deps, options.lineOwnerId),
   });
   deps.assertCommandAllowed?.();
   logWxAppTelephonyAction({action: 'dtmf', phase: 'success', interactionId});
@@ -409,7 +402,6 @@ export async function runWxAppAccept(
   lifecycle: WxAppVoiceLifecycle,
   options?: WxAppAcceptRejectOptions
 ): Promise<void> {
-  deps.assertCommandAllowed?.();
   const taskId = getInteractionId(deps);
   const acceptReason = options?.acceptReason ?? 'wxApp_offer_ready';
 
@@ -444,16 +436,7 @@ export async function runWxAppAccept(
     );
     lifecycle.mapWxAppVoiceError(error, METHODS.ACCEPT);
   } finally {
-    if (!deps.assertCommandAllowed) {
-      lifecycle.setWxAppAcceptInFlight(false);
-    } else {
-      try {
-        deps.assertCommandAllowed();
-        lifecycle.setWxAppAcceptInFlight(false);
-      } catch {
-        // A retired operation cannot update its Task flags.
-      }
-    }
+    lifecycle.setWxAppAcceptInFlight(false);
   }
 }
 
@@ -462,7 +445,6 @@ export async function runWxAppReject(
   lifecycle: WxAppVoiceLifecycle,
   options?: WxAppAcceptRejectOptions
 ): Promise<void> {
-  deps.assertCommandAllowed?.();
   const taskId = getInteractionId(deps);
   const acceptReason = options?.acceptReason ?? 'wxApp_offer_ready';
 
@@ -473,7 +455,6 @@ export async function runWxAppReject(
 
   try {
     await rejectOnWebex(deps, options);
-    deps.assertCommandAllowed?.();
 
     deps.metricsManager.trackEvent(
       METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
@@ -502,7 +483,6 @@ export async function runWxAppOutdialDecline<T>(
   executeCancel: () => Promise<T>,
   options?: WxAppOutdialDeclineOptions
 ): Promise<T> {
-  deps.assertCommandAllowed?.();
   const taskId = getInteractionId(deps);
   const acceptReason = options?.acceptReason ?? 'wxApp_offer_ready';
 
@@ -512,7 +492,6 @@ export async function runWxAppOutdialDecline<T>(
   ]);
 
   try {
-    deps.assertCommandAllowed?.();
     const result = await executeCancel();
     deps.assertCommandAllowed?.();
 
@@ -551,7 +530,6 @@ export async function runWxAppToggleMute(
 
   try {
     await toggleMuteOnWebex(deps, options);
-    deps.assertCommandAllowed?.();
 
     deps.metricsManager.trackEvent(
       METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_SUCCESS,
@@ -586,7 +564,6 @@ export async function runWxAppTransmitDtmf(
 
   try {
     await transmitDtmfOnWebex(deps, options);
-    deps.assertCommandAllowed?.();
 
     deps.metricsManager.trackEvent(
       METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_SUCCESS,

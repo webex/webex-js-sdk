@@ -443,6 +443,14 @@ export default class Voice extends Task implements IVoice {
     return this.stateMachineService?.getSnapshot?.();
   }
 
+  private runTimedRequest<T>(request: () => Promise<T>, timedEvents: string[]): Promise<T> {
+    return this.runTaskOperation(() => {
+      this.metricsManager.timeEvent(timedEvents);
+
+      return request();
+    }, timedEvents);
+  }
+
   private getWxAppAcceptReasonForMetrics(): WxAppAcceptReason {
     if (this.wxAppAcceptInFlight) {
       return 'wxApp_accept_in_flight';
@@ -474,83 +482,84 @@ export default class Voice extends Task implements IVoice {
    * Declines the task. Routes wxApp inbound to telephony reject; wxApp outdial offer to cancelTask.
    */
   public async decline(): Promise<TaskResponse> {
-    const timedEventKeys: string[] = [];
+    this.assertTaskCommandAllowed();
     const wxAppDeclineMetrics = [
       METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
       METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
     ];
 
-    return this.runTaskOperation(async () => {
-      if (this.enableWxBetterTogether && this.isWebexAppInboundCallingOffer()) {
-        timedEventKeys.push(...wxAppDeclineMetrics);
+    if (this.enableWxBetterTogether && this.isWebexAppInboundCallingOffer()) {
+      return this.runTaskOperation(
+        () =>
+          runWxAppReject(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
+            acceptReason: this.getWxAppAcceptReasonForMetrics(),
+          }),
+        wxAppDeclineMetrics
+      );
+    }
 
-        return runWxAppReject(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
-          acceptReason: this.getWxAppAcceptReasonForMetrics(),
-        });
+    const isOutdial = this.data?.interaction?.outboundType === 'OUTDIAL';
+    if (!this.enableWxBetterTogether || !isOutdial || !this.isWebexAppCallingOffer()) {
+      return super.unsupportedMethodError(METHODS.REJECT);
+    }
+
+    const interactionId = this.data.interactionId;
+    LoggerProxy.log(`Declining wxApp outdial task for taskId:${interactionId}`, {
+      module: CC_FILE,
+      method: METHODS.REJECT,
+      interactionId,
+    });
+
+    const declineMetrics = [
+      METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
+      METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
+    ];
+    try {
+      this.metricsManager.timeEvent(declineMetrics);
+      const declineAcceptReason = this.wxAppAnswerPending
+        ? 'wxApp_answer_pending'
+        : 'wxApp_offer_ready';
+      this.setWxAppAnswerPending(false);
+      const response = await this.runTaskOperation(
+        () =>
+          runWxAppOutdialDecline(
+            this.getWxAppVoiceDependencies(),
+            () => this.contact.cancelTask({interactionId}),
+            {acceptReason: declineAcceptReason}
+          ),
+        wxAppDeclineMetrics
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
+        {
+          taskId: interactionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral']
+      );
+
+      return response;
+    } catch (error) {
+      if (isRegionRecoveryError(error)) {
+        this.metricsManager.cancelTimedEvent(declineMetrics);
+        throw error;
       }
 
-      const isOutdial = this.data?.interaction?.outboundType === 'OUTDIAL';
-      if (!this.enableWxBetterTogether || !isOutdial || !this.isWebexAppCallingOffer()) {
-        return super.unsupportedMethodError(METHODS.REJECT);
-      }
-
-      const interactionId = this.data.interactionId;
-      LoggerProxy.log(`Declining wxApp outdial task for taskId:${interactionId}`, {
-        module: CC_FILE,
-        method: METHODS.REJECT,
-        interactionId,
-      });
-
-      try {
-        timedEventKeys.push(
-          METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
-          METRIC_EVENT_NAMES.TASK_DECLINE_FAILED
-        );
-        this.metricsManager.timeEvent(timedEventKeys);
-
-        const declineAcceptReason = this.wxAppAnswerPending
-          ? 'wxApp_answer_pending'
-          : 'wxApp_offer_ready';
-        this.setWxAppAnswerPending(false);
-        const response = await this.runTaskOperation(
-          () =>
-            runWxAppOutdialDecline(
-              this.getWxAppVoiceDependencies(),
-              () => this.contact.cancelTask({interactionId}),
-              {acceptReason: declineAcceptReason}
-            ),
-          wxAppDeclineMetrics
-        );
-        this.assertTaskCommandAllowed();
-
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
-          {
-            taskId: interactionId,
-            ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
-          },
-          ['operational', 'behavioral']
-        );
-
-        return response;
-      } catch (error) {
-        if (isRegionRecoveryError(error)) throw error;
-        this.assertTaskCommandAllowed();
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
-          {
-            taskId: interactionId,
-            error: error.toString(),
-            ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(
-              (error as any).details || {}
-            ),
-          },
-          ['operational', 'behavioral']
-        );
-        const {error: detailedError} = getErrorDetails(error, METHODS.REJECT, CC_FILE);
-        throw detailedError;
-      }
-    }, timedEventKeys);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
+        {
+          taskId: interactionId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(
+            (error as any).details || {}
+          ),
+        },
+        ['operational', 'behavioral']
+      );
+      const {error: detailedError} = getErrorDetails(error, METHODS.REJECT, CC_FILE);
+      throw detailedError;
+    }
   }
 
   /**
@@ -640,178 +649,181 @@ export default class Voice extends Task implements IVoice {
    * ```
    * */
   public async holdResume(): Promise<TaskResponse> {
-    const timedEventKeys: string[] = [];
-
-    return this.runTaskOperation(async () => {
-      /*
+    this.assertTaskCommandAllowed();
+    /*
     Determine if the task is being held or resumed based on the media resource state
     If the media resource is not found, default to resuming the task
     */
-      const snapshot = this.getStateMachineSnapshot();
-      const snapshotState = snapshot?.value as TaskState | undefined;
-      const mainInteractionId = this.data.interaction?.mainInteractionId || this.data.interactionId;
-      const mainMediaResource =
-        this.data.interaction?.media?.[mainInteractionId]?.mediaResourceId ||
-        this.data.mediaResourceId;
-      const mediaHoldState =
-        this.data.interaction?.media?.[mainInteractionId]?.isHold ??
-        this.data.interaction.media?.[mainMediaResource]?.isHold;
-      let shouldHold = !(mediaHoldState ?? false);
-      if (snapshotState === TaskState.HELD || snapshotState === TaskState.RESUME_INITIATING) {
-        shouldHold = false;
-      } else if (snapshotState === TaskState.CONNECTED && mediaHoldState !== true) {
-        // CONNECTED with isHold:true can happen after consult RONA/decline when event ordering
-        // leaves the machine in CONNECTED while main media is still on hold — resume on first click.
-        shouldHold = true;
-      }
+    const snapshot = this.getStateMachineSnapshot();
+    const snapshotState = snapshot?.value as TaskState | undefined;
+    const mainInteractionId = this.data.interaction?.mainInteractionId || this.data.interactionId;
+    const mainMediaResource =
+      this.data.interaction?.media?.[mainInteractionId]?.mediaResourceId ||
+      this.data.mediaResourceId;
+    const mediaHoldState =
+      this.data.interaction?.media?.[mainInteractionId]?.isHold ??
+      this.data.interaction.media?.[mainMediaResource]?.isHold;
+    let shouldHold = !(mediaHoldState ?? false);
+    if (snapshotState === TaskState.HELD || snapshotState === TaskState.RESUME_INITIATING) {
+      shouldHold = false;
+    } else if (snapshotState === TaskState.CONNECTED && mediaHoldState !== true) {
+      // CONNECTED with isHold:true can happen after consult RONA/decline when event ordering
+      // leaves the machine in CONNECTED while main media is still on hold — resume on first click.
+      shouldHold = true;
+    }
 
-      // Validate operation is allowed in current state
-      const state = snapshot;
-      if (state) {
-        const currentState = state.value as TaskState;
-        if (shouldHold) {
-          if (!state.matches(TaskState.CONNECTED)) {
-            const error = new Error(`Cannot hold call in current state: ${currentState}`);
-            LoggerProxy.error('Hold operation not allowed', {
-              module: CC_FILE,
-              method: METHODS.HOLD_RESUME,
-              interactionId: this.data.interactionId,
-            });
-            throw error;
-          }
-        } else if (
-          !state.matches(TaskState.HELD) &&
-          !(state.matches(TaskState.CONFERENCING) && mediaHoldState === true) &&
-          !(state.matches(TaskState.CONNECTED) && mediaHoldState === true)
-        ) {
-          const error = new Error(`Cannot resume call in current state: ${currentState}`);
-          LoggerProxy.error('Resume operation not allowed', {
+    // Validate operation is allowed in current state
+    const state = snapshot;
+    if (state) {
+      const currentState = state.value as TaskState;
+      if (shouldHold) {
+        if (!state.matches(TaskState.CONNECTED)) {
+          const error = new Error(`Cannot hold call in current state: ${currentState}`);
+          LoggerProxy.error('Hold operation not allowed', {
             module: CC_FILE,
             method: METHODS.HOLD_RESUME,
             interactionId: this.data.interactionId,
           });
           throw error;
         }
-      }
-
-      // Send initiating event to transition to intermediate state
-      if (this.stateMachineService) {
-        const initiatingEvent = shouldHold ? TaskEvent.HOLD_INITIATED : TaskEvent.UNHOLD_INITIATED;
-        this.stateMachineService.send({
-          type: initiatingEvent,
-          mediaResourceId: mainMediaResource,
+      } else if (
+        !state.matches(TaskState.HELD) &&
+        !(state.matches(TaskState.CONFERENCING) && mediaHoldState === true) &&
+        !(state.matches(TaskState.CONNECTED) && mediaHoldState === true)
+      ) {
+        const error = new Error(`Cannot resume call in current state: ${currentState}`);
+        LoggerProxy.error('Resume operation not allowed', {
+          module: CC_FILE,
+          method: METHODS.HOLD_RESUME,
+          interactionId: this.data.interactionId,
         });
+        throw error;
       }
+    }
 
-      LoggerProxy.info(`${shouldHold ? 'Holding' : 'Resuming'} task`, {
-        module: CC_FILE,
-        method: METHODS.HOLD_RESUME,
-        interactionId: this.data.interactionId,
+    // Send initiating event to transition to intermediate state
+    if (this.stateMachineService) {
+      const initiatingEvent = shouldHold ? TaskEvent.HOLD_INITIATED : TaskEvent.UNHOLD_INITIATED;
+      this.stateMachineService.send({
+        type: initiatingEvent,
+        mediaResourceId: mainMediaResource,
       });
-      const [successEvt, failedEvt] = shouldHold
-        ? [METRIC_EVENT_NAMES.TASK_HOLD_SUCCESS, METRIC_EVENT_NAMES.TASK_HOLD_FAILED]
-        : [METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS, METRIC_EVENT_NAMES.TASK_RESUME_FAILED];
+    }
 
-      timedEventKeys.push(successEvt, failedEvt);
-      this.metricsManager.timeEvent(timedEventKeys);
+    LoggerProxy.info(`${shouldHold ? 'Holding' : 'Resuming'} task`, {
+      module: CC_FILE,
+      method: METHODS.HOLD_RESUME,
+      interactionId: this.data.interactionId,
+    });
+    const [successEvt, failedEvt] = shouldHold
+      ? [METRIC_EVENT_NAMES.TASK_HOLD_SUCCESS, METRIC_EVENT_NAMES.TASK_HOLD_FAILED]
+      : [METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS, METRIC_EVENT_NAMES.TASK_RESUME_FAILED];
 
-      try {
-        let response: TaskResponse;
+    const timedEvents = [successEvt, failedEvt];
+
+    try {
+      let response: TaskResponse;
+      if (shouldHold) {
+        response = await this.runTimedRequest(
+          () =>
+            this.contact.hold({
+              interactionId: this.data.interactionId,
+              data: {mediaResourceId: mainMediaResource},
+            }),
+          timedEvents
+        );
         this.assertTaskCommandAllowed();
-        if (shouldHold) {
-          response = await this.contact.hold({
-            interactionId: this.data.interactionId,
-            data: {mediaResourceId: mainMediaResource},
-          });
-          this.assertTaskCommandAllowed();
 
-          // Send success event to complete the transition
-          if (this.stateMachineService) {
-            this.stateMachineService.send({
-              type: TaskEvent.HOLD_SUCCESS,
-              mediaResourceId: mainMediaResource,
-            });
-          }
-
-          this.metricsManager.trackEvent(
-            successEvt,
-            {
-              taskId: this.data.interactionId,
-              mediaResourceId: mainMediaResource,
-              ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
-            },
-            ['operational', 'behavioral']
-          );
-          LoggerProxy.log(`Task placed on hold successfully`, {
-            module: CC_FILE,
-            method: METHODS.HOLD_RESUME,
-            trackingId: response.trackingId,
-            interactionId: this.data.interactionId,
-          });
-        } else {
-          response = await this.contact.unHold({
-            interactionId: this.data.interactionId,
-            data: {mediaResourceId: mainMediaResource},
-          });
-          this.assertTaskCommandAllowed();
-
-          // Send success event to complete the transition
-          if (this.stateMachineService) {
-            this.stateMachineService.send({
-              type: TaskEvent.UNHOLD_SUCCESS,
-              mediaResourceId: mainMediaResource,
-            });
-          }
-
-          this.metricsManager.trackEvent(
-            successEvt,
-            {
-              taskId: this.data.interactionId,
-              mainInteractionId,
-              mediaResourceId: mainMediaResource,
-              ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
-            },
-            ['operational', 'behavioral']
-          );
-          LoggerProxy.log(`Task resumed successfully`, {
-            module: CC_FILE,
-            method: METHODS.HOLD_RESUME,
-            trackingId: response.trackingId,
-            interactionId: this.data.interactionId,
+        // Send success event to complete the transition
+        if (this.stateMachineService) {
+          this.stateMachineService.send({
+            type: TaskEvent.HOLD_SUCCESS,
+            mediaResourceId: mainMediaResource,
           });
         }
 
-        return response;
-      } catch (error) {
-        if (isRegionRecoveryError(error)) throw error;
-        this.assertTaskCommandAllowed();
-        const failureEvent = shouldHold ? TaskEvent.HOLD_FAILED : TaskEvent.UNHOLD_FAILED;
-        this.stateMachineService.send({
-          type: failureEvent,
-          reason: error.toString(),
-          mediaResourceId: this.data.mediaResourceId,
-        });
-
-        const {error: detailedError} = getErrorDetails(error, 'holdResume', CC_FILE);
         this.metricsManager.trackEvent(
-          failedEvt,
-          shouldHold
-            ? {
-                taskId: this.data.interactionId,
-                mediaResourceId: this.data.mediaResourceId,
-                error: error.toString(),
-                ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
-              }
-            : {
-                taskId: this.data.interactionId,
-                error: error.toString(),
-                ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
-              },
+          successEvt,
+          {
+            taskId: this.data.interactionId,
+            mediaResourceId: mainMediaResource,
+            ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+          },
           ['operational', 'behavioral']
         );
-        throw detailedError;
+        LoggerProxy.log(`Task placed on hold successfully`, {
+          module: CC_FILE,
+          method: METHODS.HOLD_RESUME,
+          trackingId: response.trackingId,
+          interactionId: this.data.interactionId,
+        });
+      } else {
+        response = await this.runTimedRequest(
+          () =>
+            this.contact.unHold({
+              interactionId: this.data.interactionId,
+              data: {mediaResourceId: mainMediaResource},
+            }),
+          timedEvents
+        );
+        this.assertTaskCommandAllowed();
+
+        // Send success event to complete the transition
+        if (this.stateMachineService) {
+          this.stateMachineService.send({
+            type: TaskEvent.UNHOLD_SUCCESS,
+            mediaResourceId: mainMediaResource,
+          });
+        }
+
+        this.metricsManager.trackEvent(
+          successEvt,
+          {
+            taskId: this.data.interactionId,
+            mainInteractionId,
+            mediaResourceId: mainMediaResource,
+            ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+          },
+          ['operational', 'behavioral']
+        );
+        LoggerProxy.log(`Task resumed successfully`, {
+          module: CC_FILE,
+          method: METHODS.HOLD_RESUME,
+          trackingId: response.trackingId,
+          interactionId: this.data.interactionId,
+        });
       }
-    }, timedEventKeys);
+
+      return response;
+    } catch (error) {
+      if (isRegionRecoveryError(error)) throw error;
+      this.assertTaskCommandAllowed();
+      const failureEvent = shouldHold ? TaskEvent.HOLD_FAILED : TaskEvent.UNHOLD_FAILED;
+      this.stateMachineService.send({
+        type: failureEvent,
+        reason: error.toString(),
+        mediaResourceId: this.data.mediaResourceId,
+      });
+
+      const {error: detailedError} = getErrorDetails(error, 'holdResume', CC_FILE);
+      this.metricsManager.trackEvent(
+        failedEvt,
+        shouldHold
+          ? {
+              taskId: this.data.interactionId,
+              mediaResourceId: this.data.mediaResourceId,
+              error: error.toString(),
+              ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+            }
+          : {
+              taskId: this.data.interactionId,
+              error: error.toString(),
+              ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+            },
+        ['operational', 'behavioral']
+      );
+      throw detailedError;
+    }
   }
 
   /**
@@ -824,74 +836,70 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async pauseRecording(): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      // Validate recording is active
-      const state = this.getStateMachineSnapshot();
-      if (state) {
-        const {recordingControlsAvailable, recordingInProgress} = state.context as {
-          recordingControlsAvailable?: boolean;
-          recordingInProgress?: boolean;
-        };
-        const recordingActive = Boolean(recordingControlsAvailable && recordingInProgress);
-        if (!recordingActive) {
-          const error = new Error('Recording is not active or already paused');
-          LoggerProxy.error('Pause recording operation not allowed', {
-            module: CC_FILE,
-            method: 'pauseRecording',
-            interactionId: this.data.interactionId,
-          });
-          throw error;
-        }
-      }
-
-      try {
-        LoggerProxy.info(`Pausing recording`, {
+    this.assertTaskCommandAllowed();
+    // Validate recording is active
+    const state = this.getStateMachineSnapshot();
+    if (state) {
+      const {recordingControlsAvailable, recordingInProgress} = state.context as {
+        recordingControlsAvailable?: boolean;
+        recordingInProgress?: boolean;
+      };
+      const recordingActive = Boolean(recordingControlsAvailable && recordingInProgress);
+      if (!recordingActive) {
+        const error = new Error('Recording is not active or already paused');
+        LoggerProxy.error('Pause recording operation not allowed', {
           module: CC_FILE,
           method: 'pauseRecording',
           interactionId: this.data.interactionId,
         });
-        this.metricsManager.timeEvent([
-          METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_SUCCESS,
-          METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_FAILED,
-        ]);
-        this.assertTaskCommandAllowed();
-        const result = await this.contact.pauseRecording({interactionId: this.data.interactionId});
-        this.assertTaskCommandAllowed();
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_SUCCESS,
-          {
-            taskId: this.data.interactionId,
-            ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
-          },
-          ['operational', 'behavioral', 'business']
-        );
-        LoggerProxy.log(`Recording paused successfully`, {
-          module: CC_FILE,
-          method: 'pauseRecording',
-          trackingId: result.trackingId,
-          interactionId: this.data.interactionId,
-        });
-
-        return result;
-      } catch (error) {
-        if (isRegionRecoveryError(error)) throw error;
-        this.assertTaskCommandAllowed();
-        const {error: detailedError} = getErrorDetails(error, 'pauseRecording', CC_FILE);
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_FAILED,
-          {
-            taskId: this.data.interactionId,
-            error: error.toString(),
-            ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
-          },
-          ['operational', 'behavioral', 'business']
-        );
-        throw detailedError;
+        throw error;
       }
-    }, [
-      METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_SUCCESS,
-      METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_FAILED,
-    ]);
+    }
+
+    try {
+      LoggerProxy.info(`Pausing recording`, {
+        module: CC_FILE,
+        method: 'pauseRecording',
+        interactionId: this.data.interactionId,
+      });
+      const timedEvents = [
+        METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_FAILED,
+      ];
+      const result = await this.runTimedRequest(
+        () => this.contact.pauseRecording({interactionId: this.data.interactionId}),
+        timedEvents
+      );
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+      LoggerProxy.log(`Recording paused successfully`, {
+        module: CC_FILE,
+        method: 'pauseRecording',
+        trackingId: result.trackingId,
+        interactionId: this.data.interactionId,
+      });
+
+      return result;
+    } catch (error) {
+      if (isRegionRecoveryError(error)) throw error;
+      const {error: detailedError} = getErrorDetails(error, 'pauseRecording', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_FAILED,
+        {
+          taskId: this.data.interactionId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+      throw detailedError;
+    }
   }
 
   /**
@@ -907,79 +915,76 @@ export default class Voice extends Task implements IVoice {
   public async resumeRecording(
     resumeRecordingPayload?: ResumeRecordingPayload
   ): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      // Validate recording is paused
-      const state = this.getStateMachineSnapshot();
-      if (state) {
-        const {recordingControlsAvailable, recordingInProgress} = state.context as {
-          recordingControlsAvailable?: boolean;
-          recordingInProgress?: boolean;
-        };
-        const recordingPaused = Boolean(recordingControlsAvailable && !recordingInProgress);
-        if (!recordingPaused) {
-          const error = new Error('Recording is not paused');
-          LoggerProxy.error('Resume recording operation not allowed', {
-            module: CC_FILE,
-            method: 'resumeRecording',
+    this.assertTaskCommandAllowed();
+    // Validate recording is paused
+    const state = this.getStateMachineSnapshot();
+    if (state) {
+      const {recordingControlsAvailable, recordingInProgress} = state.context as {
+        recordingControlsAvailable?: boolean;
+        recordingInProgress?: boolean;
+      };
+      const recordingPaused = Boolean(recordingControlsAvailable && !recordingInProgress);
+      if (!recordingPaused) {
+        const error = new Error('Recording is not paused');
+        LoggerProxy.error('Resume recording operation not allowed', {
+          module: CC_FILE,
+          method: 'resumeRecording',
+          interactionId: this.data.interactionId,
+        });
+        throw error;
+      }
+    }
+
+    try {
+      LoggerProxy.info(`Resuming recording`, {
+        module: CC_FILE,
+        method: 'resumeRecording',
+        interactionId: this.data.interactionId,
+      });
+      const timedEvents = [
+        METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_FAILED,
+      ];
+      resumeRecordingPayload ??= {autoResumed: false};
+
+      const result = await this.runTimedRequest(
+        () =>
+          this.contact.resumeRecording({
             interactionId: this.data.interactionId,
-          });
-          throw error;
-        }
-      }
+            data: resumeRecordingPayload,
+          }),
+        timedEvents
+      );
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+      LoggerProxy.log(`Recording resumed successfully`, {
+        module: CC_FILE,
+        method: 'resumeRecording',
+        trackingId: result.trackingId,
+        interactionId: this.data.interactionId,
+      });
 
-      try {
-        LoggerProxy.info(`Resuming recording`, {
-          module: CC_FILE,
-          method: 'resumeRecording',
-          interactionId: this.data.interactionId,
-        });
-        this.metricsManager.timeEvent([
-          METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_SUCCESS,
-          METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_FAILED,
-        ]);
-        resumeRecordingPayload ??= {autoResumed: false};
-
-        this.assertTaskCommandAllowed();
-        const result = await this.contact.resumeRecording({
-          interactionId: this.data.interactionId,
-          data: resumeRecordingPayload,
-        });
-        this.assertTaskCommandAllowed();
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_SUCCESS,
-          {
-            taskId: this.data.interactionId,
-            ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
-          },
-          ['operational', 'behavioral', 'business']
-        );
-        LoggerProxy.log(`Recording resumed successfully`, {
-          module: CC_FILE,
-          method: 'resumeRecording',
-          trackingId: result.trackingId,
-          interactionId: this.data.interactionId,
-        });
-
-        return result;
-      } catch (error) {
-        if (isRegionRecoveryError(error)) throw error;
-        this.assertTaskCommandAllowed();
-        const {error: detailedError} = getErrorDetails(error, 'resumeRecording', CC_FILE);
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_FAILED,
-          {
-            taskId: this.data.interactionId,
-            error: error.toString(),
-            ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
-          },
-          ['operational', 'behavioral', 'business']
-        );
-        throw detailedError;
-      }
-    }, [
-      METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_SUCCESS,
-      METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_FAILED,
-    ]);
+      return result;
+    } catch (error) {
+      if (isRegionRecoveryError(error)) throw error;
+      const {error: detailedError} = getErrorDetails(error, 'resumeRecording', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_FAILED,
+        {
+          taskId: this.data.interactionId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+      throw detailedError;
+    }
   }
 
   /**
@@ -997,109 +1002,108 @@ export default class Voice extends Task implements IVoice {
    * ```
    * */
   public async consult(consultPayload?: ConsultPayload): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      // Validate consult is allowed
-      const state = this.getStateMachineSnapshot();
-      const canConsult =
-        state &&
-        (state.matches(TaskState.CONNECTED) ||
-          state.matches(TaskState.HELD) ||
-          state.matches(TaskState.CONFERENCING));
+    this.assertTaskCommandAllowed();
+    // Validate consult is allowed
+    const state = this.getStateMachineSnapshot();
+    const canConsult =
+      state &&
+      (state.matches(TaskState.CONNECTED) ||
+        state.matches(TaskState.HELD) ||
+        state.matches(TaskState.CONFERENCING));
 
-      if (!canConsult) {
-        const currentState = state?.value as TaskState;
-        const error = new Error(`Cannot initiate consult in ${currentState} state`);
-        LoggerProxy.error('Consult operation not allowed', {
-          module: CC_FILE,
-          method: 'consult',
-          interactionId: this.data.interactionId,
-        });
-        throw error;
-      }
+    if (!canConsult) {
+      const currentState = state?.value as TaskState;
+      const error = new Error(`Cannot initiate consult in ${currentState} state`);
+      LoggerProxy.error('Consult operation not allowed', {
+        module: CC_FILE,
+        method: 'consult',
+        interactionId: this.data.interactionId,
+      });
+      throw error;
+    }
 
-      // Send initiating event to transition to CONSULT_INITIATING state
+    // Send initiating event to transition to CONSULT_INITIATING state
+    if (this.stateMachineService) {
+      this.stateMachineService.send({
+        type: TaskEvent.CONSULT,
+        destination: consultPayload.to,
+        destinationType: consultPayload.destinationType,
+      });
+    }
+
+    const requestInteractionId =
+      this.data.interaction?.mainInteractionId || this.data.interactionId;
+
+    try {
+      LoggerProxy.info(`Starting consult`, {
+        module: CC_FILE,
+        method: 'consult',
+        interactionId: requestInteractionId,
+      });
+      const timedEvents = [
+        METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
+      ];
+      const result = await this.runTimedRequest(
+        () =>
+          this.contact.consult({
+            interactionId: requestInteractionId,
+            data: consultPayload,
+          }),
+        timedEvents
+      );
+      this.assertTaskCommandAllowed();
+
+      // Send success event to transition to CONSULTING state
       if (this.stateMachineService) {
         this.stateMachineService.send({
-          type: TaskEvent.CONSULT,
+          type: TaskEvent.CONSULT_SUCCESS,
+          taskData: result.data,
+        });
+      }
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          requestInteractionId,
           destination: consultPayload.to,
           destinationType: consultPayload.destinationType,
-        });
-      }
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+      LoggerProxy.log(`Consult successfully initiated to ${consultPayload.to}`, {
+        module: CC_FILE,
+        method: 'consult',
+        trackingId: result.trackingId,
+        interactionId: requestInteractionId,
+      });
 
-      const requestInteractionId =
-        this.data.interaction?.mainInteractionId || this.data.interactionId;
+      return result;
+    } catch (error) {
+      if (isRegionRecoveryError(error)) throw error;
+      this.assertTaskCommandAllowed();
+      this.stateMachineService.send({
+        type: TaskEvent.CONSULT_FAILED,
+        reason: error.toString(),
+      });
 
-      try {
-        LoggerProxy.info(`Starting consult`, {
-          module: CC_FILE,
-          method: 'consult',
-          interactionId: requestInteractionId,
-        });
-        this.metricsManager.timeEvent([
-          METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS,
-          METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
-        ]);
-        this.assertTaskCommandAllowed();
-        const result = await this.contact.consult({
-          interactionId: requestInteractionId,
-          data: consultPayload,
-        });
-        this.assertTaskCommandAllowed();
-
-        // Send success event to transition to CONSULTING state
-        if (this.stateMachineService) {
-          this.stateMachineService.send({
-            type: TaskEvent.CONSULT_SUCCESS,
-            taskData: result.data,
-          });
-        }
-
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS,
-          {
-            taskId: this.data.interactionId,
-            requestInteractionId,
-            destination: consultPayload.to,
-            destinationType: consultPayload.destinationType,
-            ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
-          },
-          ['operational', 'behavioral', 'business']
-        );
-        LoggerProxy.log(`Consult successfully initiated to ${consultPayload.to}`, {
-          module: CC_FILE,
-          method: 'consult',
-          trackingId: result.trackingId,
-          interactionId: requestInteractionId,
-        });
-
-        return result;
-      } catch (error) {
-        if (isRegionRecoveryError(error)) throw error;
-        this.assertTaskCommandAllowed();
-        this.stateMachineService.send({
-          type: TaskEvent.CONSULT_FAILED,
-          reason: error.toString(),
-        });
-
-        const {error: detailedError} = getErrorDetails(error, 'consult', CC_FILE);
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
-          {
-            taskId: this.data.interactionId,
-            requestInteractionId,
-            destination: consultPayload.to,
-            destinationType: consultPayload.destinationType,
-            error: error.toString(),
-            ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
-          },
-          ['operational', 'behavioral', 'business']
-        );
-        throw detailedError;
-      }
-    }, [
-      METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS,
-      METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
-    ]);
+      const {error: detailedError} = getErrorDetails(error, 'consult', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
+        {
+          taskId: this.data.interactionId,
+          requestInteractionId,
+          destination: consultPayload.to,
+          destinationType: consultPayload.destinationType,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+      throw detailedError;
+    }
   }
 
   /**
@@ -1117,60 +1121,60 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async endConsult(consultEndPayload?: ConsultEndPayload): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      const requestInteractionId =
-        this.data.interaction?.mainInteractionId || this.data.interactionId;
+    this.assertTaskCommandAllowed();
+    const requestInteractionId =
+      this.data.interaction?.mainInteractionId || this.data.interactionId;
 
-      try {
-        LoggerProxy.info(`Ending consult`, {
-          module: CC_FILE,
-          method: 'endConsult',
-          interactionId: requestInteractionId,
-        });
-        this.metricsManager.timeEvent([
-          METRIC_EVENT_NAMES.TASK_CONSULT_END_SUCCESS,
-          METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
-        ]);
-        this.assertTaskCommandAllowed();
-        const result = await this.contact.consultEnd({
-          interactionId: requestInteractionId,
-          data: consultEndPayload,
-        });
-        this.assertTaskCommandAllowed();
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_CONSULT_END_SUCCESS,
-          {
-            taskId: this.data.interactionId,
-            requestInteractionId,
-            ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
-          },
-          ['operational', 'behavioral', 'business']
-        );
-        LoggerProxy.log(`Consult ended successfully`, {
-          module: CC_FILE,
-          method: 'endConsult',
-          trackingId: result.trackingId,
-          interactionId: this.data.interactionId,
-        });
+    try {
+      LoggerProxy.info(`Ending consult`, {
+        module: CC_FILE,
+        method: 'endConsult',
+        interactionId: requestInteractionId,
+      });
+      const timedEvents = [
+        METRIC_EVENT_NAMES.TASK_CONSULT_END_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
+      ];
+      const result = await this.runTimedRequest(
+        () =>
+          this.contact.consultEnd({
+            interactionId: requestInteractionId,
+            data: consultEndPayload,
+          }),
+        timedEvents
+      );
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONSULT_END_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          requestInteractionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+      LoggerProxy.log(`Consult ended successfully`, {
+        module: CC_FILE,
+        method: 'endConsult',
+        trackingId: result.trackingId,
+        interactionId: this.data.interactionId,
+      });
 
-        return result;
-      } catch (error) {
-        if (isRegionRecoveryError(error)) throw error;
-        this.assertTaskCommandAllowed();
-        const {error: detailedError} = getErrorDetails(error, 'endConsult', CC_FILE);
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
-          {
-            taskId: this.data.interactionId,
-            requestInteractionId,
-            error: error.toString(),
-            ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
-          },
-          ['operational', 'behavioral', 'business']
-        );
-        throw detailedError;
-      }
-    }, [METRIC_EVENT_NAMES.TASK_CONSULT_END_SUCCESS, METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED]);
+      return result;
+    } catch (error) {
+      if (isRegionRecoveryError(error)) throw error;
+      const {error: detailedError} = getErrorDetails(error, 'endConsult', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
+        {
+          taskId: this.data.interactionId,
+          requestInteractionId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+      throw detailedError;
+    }
   }
 
   /**
@@ -1188,222 +1192,222 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async transfer(payload: TransferPayLoad): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      try {
-        LoggerProxy.info(`Transferring task to ${payload.to}`, {
-          module: CC_FILE,
-          method: METHODS.TRANSFER_CALL,
-          interactionId: this.data.interactionId,
-        });
-        this.metricsManager.timeEvent([
-          METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
-          METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
-        ]);
+    this.assertTaskCommandAllowed();
+    try {
+      LoggerProxy.info(`Transferring task to ${payload.to}`, {
+        module: CC_FILE,
+        method: METHODS.TRANSFER_CALL,
+        interactionId: this.data.interactionId,
+      });
+      const timedEvents = [
+        METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
+      ];
 
-        // consult transfer path
-        if (this.data.interaction.state === 'consulting') {
-          const normalizedDestinationType =
-            payload.destinationType === 'Agent' || payload.destinationType === 'Queue'
-              ? (payload.destinationType.toLowerCase() as ConsultTransferPayLoad['destinationType'])
-              : payload.destinationType;
-          let consultPayload: ConsultTransferPayLoad = {
-            to: payload.to,
-            destinationType: normalizedDestinationType,
-          };
+      // consult transfer path
+      if (this.data.interaction.state === 'consulting') {
+        const normalizedDestinationType =
+          payload.destinationType === 'Agent' || payload.destinationType === 'Queue'
+            ? (payload.destinationType.toLowerCase() as ConsultTransferPayLoad['destinationType'])
+            : payload.destinationType;
+        let consultPayload: ConsultTransferPayLoad = {
+          to: payload.to,
+          destinationType: normalizedDestinationType,
+        };
 
-          if (normalizedDestinationType === CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE) {
-            const consultContext = this.getStateMachineSnapshot()?.context;
-            const destAgent = consultContext?.consultDestinationAgentId || this.data.destAgentId;
-            if (!destAgent) {
-              throw new Error('No agent has accepted this queue consult yet');
-            }
-            consultPayload = {
-              to: destAgent,
-              destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
-            };
+        if (normalizedDestinationType === CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE) {
+          const consultContext = this.getStateMachineSnapshot()?.context;
+          const destAgent = consultContext?.consultDestinationAgentId || this.data.destAgentId;
+          if (!destAgent) {
+            throw new Error('No agent has accepted this queue consult yet');
           }
-
-          this.assertTaskCommandAllowed();
-          const result = await this.contact.consultTransfer({
-            interactionId: this.data.interactionId,
-            data: consultPayload,
-          });
-          this.assertTaskCommandAllowed();
-          this.metricsManager.trackEvent(
-            METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
-            {
-              taskId: this.data.interactionId,
-              destination: consultPayload.to,
-              destinationType: consultPayload.destinationType,
-              isConsultTransfer: true,
-              ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
-            },
-            ['operational', 'behavioral', 'business']
-          );
-          LoggerProxy.log(`Consult transfer completed successfully to ${consultPayload.to}`, {
-            module: CC_FILE,
-            method: METHODS.TRANSFER_CALL,
-            trackingId: result.trackingId,
-            interactionId: this.data.interactionId,
-          });
-
-          return result;
+          consultPayload = {
+            to: destAgent,
+            destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
+          };
         }
 
-        // standard blind transfer
-        return await super.transfer({
-          to: payload.to,
-          destinationType: payload.destinationType,
-        });
-      } catch (err) {
-        if (isRegionRecoveryError(err)) throw err;
-        this.assertTaskCommandAllowed();
-        const {error: detailedError} = getErrorDetails(err, METHODS.TRANSFER_CALL, CC_FILE);
+        const result = await this.runTimedRequest(
+          () =>
+            this.contact.consultTransfer({
+              interactionId: this.data.interactionId,
+              data: consultPayload,
+            }),
+          timedEvents
+        );
         this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
+          METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
           {
             taskId: this.data.interactionId,
-            destination: payload.to,
-            destinationType: payload.destinationType,
-            isConsultTransfer: this.data.interaction.state === 'consulting',
-            error: err.toString(),
-            ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(err.details || {}),
+            destination: consultPayload.to,
+            destinationType: consultPayload.destinationType,
+            isConsultTransfer: true,
+            ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
           },
           ['operational', 'behavioral', 'business']
         );
-        throw detailedError;
+        LoggerProxy.log(`Consult transfer completed successfully to ${consultPayload.to}`, {
+          module: CC_FILE,
+          method: METHODS.TRANSFER_CALL,
+          trackingId: result.trackingId,
+          interactionId: this.data.interactionId,
+        });
+
+        return result;
       }
-    }, [METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS, METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED]);
+
+      // standard blind transfer
+      return await super.transfer({
+        to: payload.to,
+        destinationType: payload.destinationType,
+      });
+    } catch (err) {
+      if (isRegionRecoveryError(err)) throw err;
+      const {error: detailedError} = getErrorDetails(err, METHODS.TRANSFER_CALL, CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
+        {
+          taskId: this.data.interactionId,
+          destination: payload.to,
+          destinationType: payload.destinationType,
+          isConsultTransfer: this.data.interaction.state === 'consulting',
+          error: err.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(err.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+      throw detailedError;
+    }
   }
 
   /**
    * Start a consult conference, merging main and consult calls.
    */
   public async consultConference(): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      const derivedDestAgentId =
-        this.data.interaction && this.data.agentId
-          ? calculateDestAgentId(this.data.interaction, this.data.agentId)
-          : '';
-      const derivedDestType =
-        this.data.interaction && this.data.agentId
-          ? calculateDestType(this.data.interaction, this.data.agentId)
-          : '';
+    this.assertTaskCommandAllowed();
+    const derivedDestAgentId =
+      this.data.interaction && this.data.agentId
+        ? calculateDestAgentId(this.data.interaction, this.data.agentId)
+        : '';
+    const derivedDestType =
+      this.data.interaction && this.data.agentId
+        ? calculateDestType(this.data.interaction, this.data.agentId)
+        : '';
 
-      // derivedDestType is most reliable as it inspects live interaction participants
-      const resolvedDestinationType =
-        derivedDestType ||
-        this.getStateMachineSnapshot()?.context?.consultDestinationType ||
-        this.data.destinationType ||
-        'agent';
+    // derivedDestType is most reliable as it inspects live interaction participants
+    const resolvedDestinationType =
+      derivedDestType ||
+      this.getStateMachineSnapshot()?.context?.consultDestinationType ||
+      this.data.destinationType ||
+      'agent';
 
-      const consultationData: consultConferencePayloadData = {
-        agentId: this.data.agentId,
-        destinationType: resolvedDestinationType,
-        // derivedDestAgentId is most reliable as it resolves epId for EP_DN
-        // and agent ID for regular agents from live interaction data
-        destAgentId:
-          derivedDestAgentId ||
-          this.getStateMachineSnapshot()?.context?.consultDestinationAgentId ||
-          this.data.destAgentId,
-      };
+    const consultationData: consultConferencePayloadData = {
+      agentId: this.data.agentId,
+      destinationType: resolvedDestinationType,
+      // derivedDestAgentId is most reliable as it resolves epId for EP_DN
+      // and agent ID for regular agents from live interaction data
+      destAgentId:
+        derivedDestAgentId ||
+        this.getStateMachineSnapshot()?.context?.consultDestinationAgentId ||
+        this.data.destAgentId,
+    };
 
-      // Send state machine event to transition to CONF_INITIATING
-      if (this.stateMachineService) {
-        this.stateMachineService.send({
-          type: TaskEvent.MERGE_TO_CONFERENCE,
-        });
+    // Send state machine event to transition to CONF_INITIATING
+    if (this.stateMachineService) {
+      this.stateMachineService.send({
+        type: TaskEvent.MERGE_TO_CONFERENCE,
+      });
+    }
+
+    try {
+      if (!consultationData.destAgentId) {
+        throw new Error('Unable to determine consult destination for conference');
       }
 
-      try {
-        if (!consultationData.destAgentId) {
-          throw new Error('Unable to determine consult destination for conference');
-        }
+      LoggerProxy.info(`Initiating consult conference to ${consultationData.destAgentId}`, {
+        module: CC_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
 
-        LoggerProxy.info(`Initiating consult conference to ${consultationData.destAgentId}`, {
-          module: CC_FILE,
-          method: METHODS.CONSULT_CONFERENCE,
-          interactionId: this.data.interactionId,
-        });
+      const paramsDataForConferenceV2 = buildConsultConferenceParamData(
+        consultationData,
+        this.data.interactionId
+      );
 
-        const paramsDataForConferenceV2 = buildConsultConferenceParamData(
-          consultationData,
-          this.data.interactionId
-        );
-
-        this.assertTaskCommandAllowed();
-        const response = await this.contact.consultConference({
+      const response = await this.runTaskOperation(() =>
+        this.contact.consultConference({
           interactionId: paramsDataForConferenceV2.interactionId,
           data: paramsDataForConferenceV2.data,
+        })
+      );
+      this.assertTaskCommandAllowed();
+
+      // Send success event to transition to CONFERENCING
+      if (this.stateMachineService) {
+        this.stateMachineService.send({
+          type: TaskEvent.CONFERENCE_START,
         });
-        this.assertTaskCommandAllowed();
-
-        // Send success event to transition to CONFERENCING
-        if (this.stateMachineService) {
-          this.stateMachineService.send({
-            type: TaskEvent.CONFERENCE_START,
-          });
-        }
-
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_CONFERENCE_START_SUCCESS,
-          {
-            taskId: this.data.interactionId,
-            destination: paramsDataForConferenceV2.data.to,
-            destinationType: paramsDataForConferenceV2.data.destinationType,
-            agentId: paramsDataForConferenceV2.data.agentId,
-            ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
-          },
-          ['operational', 'behavioral', 'business']
-        );
-
-        LoggerProxy.log(`Consult conference started successfully`, {
-          module: CC_FILE,
-          method: METHODS.CONSULT_CONFERENCE,
-          interactionId: this.data.interactionId,
-        });
-
-        return response;
-      } catch (error) {
-        if (isRegionRecoveryError(error)) throw error;
-        this.assertTaskCommandAllowed();
-        // Send failure event to revert state
-        if (this.stateMachineService) {
-          this.stateMachineService.send({
-            type: TaskEvent.CONFERENCE_FAILED,
-            reason: error.toString(),
-          });
-        }
-
-        const {error: detailedError} = getErrorDetails(error, METHODS.CONSULT_CONFERENCE, CC_FILE);
-
-        const failedParamsData = buildConsultConferenceParamData(
-          consultationData,
-          this.data.interactionId
-        );
-
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_CONFERENCE_START_FAILED,
-          {
-            taskId: this.data.interactionId,
-            destination: failedParamsData.data.to,
-            destinationType: failedParamsData.data.destinationType,
-            agentId: failedParamsData.data.agentId,
-            error: error.toString(),
-            ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
-          },
-          ['operational', 'behavioral', 'business']
-        );
-
-        LoggerProxy.error(`Failed to start consult conference`, {
-          module: CC_FILE,
-          method: METHODS.CONSULT_CONFERENCE,
-          interactionId: this.data.interactionId,
-        });
-
-        throw detailedError;
       }
-    });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_START_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          destination: paramsDataForConferenceV2.data.to,
+          destinationType: paramsDataForConferenceV2.data.destinationType,
+          agentId: paramsDataForConferenceV2.data.agentId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log(`Consult conference started successfully`, {
+        module: CC_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      return response;
+    } catch (error) {
+      if (isRegionRecoveryError(error)) throw error;
+      this.assertTaskCommandAllowed();
+      // Send failure event to revert state
+      if (this.stateMachineService) {
+        this.stateMachineService.send({
+          type: TaskEvent.CONFERENCE_FAILED,
+          reason: error.toString(),
+        });
+      }
+
+      const {error: detailedError} = getErrorDetails(error, METHODS.CONSULT_CONFERENCE, CC_FILE);
+
+      const failedParamsData = buildConsultConferenceParamData(
+        consultationData,
+        this.data.interactionId
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_START_FAILED,
+        {
+          taskId: this.data.interactionId,
+          destination: failedParamsData.data.to,
+          destinationType: failedParamsData.data.destinationType,
+          agentId: failedParamsData.data.agentId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.error(`Failed to start consult conference`, {
+        module: CC_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      throw detailedError;
+    }
   }
 
   /**
@@ -1415,97 +1419,94 @@ export default class Voice extends Task implements IVoice {
   public async dropConferenceParticipant(
     payload: DropConferenceParticipantPayload
   ): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      // The TypeScript contract requires payload, but the published SDK is also callable from
-      // untyped JavaScript. Keep an explicit runtime boundary check before direct property access.
-      if (!payload) {
-        throw new Error('participantId must be a non-empty string');
-      }
+    this.assertTaskCommandAllowed();
+    // The TypeScript contract requires payload, but the published SDK is also callable from
+    // untyped JavaScript. Keep an explicit runtime boundary check before direct property access.
+    if (!payload) {
+      throw new Error('participantId must be a non-empty string');
+    }
 
-      const {participantId} = payload;
+    const {participantId} = payload;
 
-      if (typeof participantId !== 'string' || participantId.trim().length === 0) {
-        throw new Error('participantId must be a non-empty string');
-      }
+    if (typeof participantId !== 'string' || participantId.trim().length === 0) {
+      throw new Error('participantId must be a non-empty string');
+    }
 
-      const requestInteractionId =
-        this.data.interaction?.mainInteractionId || this.data.interactionId;
-      // taskId identifies the SDK task instance, which can remain child-interaction keyed after
-      // consult/EP-DN flows. requestInteractionId identifies the main interaction sent to AQM.
+    const requestInteractionId =
+      this.data.interaction?.mainInteractionId || this.data.interactionId;
+    // taskId identifies the SDK task instance, which can remain child-interaction keyed after
+    // consult/EP-DN flows. requestInteractionId identifies the main interaction sent to AQM.
 
-      LoggerProxy.info('Dropping conference participant', {
+    LoggerProxy.info('Dropping conference participant', {
+      module: CC_FILE,
+      method: METHODS.DROP_CONFERENCE_PARTICIPANT,
+      interactionId: requestInteractionId,
+    });
+
+    try {
+      const timedEvents = [
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED,
+      ];
+
+      const response = await this.runTimedRequest(
+        () =>
+          this.contact.dropConferenceParticipant({
+            interactionId: requestInteractionId,
+            participantId,
+          }),
+        timedEvents
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          requestInteractionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+          agentId: this.agentId,
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log('Successfully dropped conference participant', {
         module: CC_FILE,
         method: METHODS.DROP_CONFERENCE_PARTICIPANT,
+        trackingId: response?.trackingId,
         interactionId: requestInteractionId,
       });
 
-      try {
-        this.metricsManager.timeEvent([
-          METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS,
-          METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED,
-        ]);
+      return response;
+    } catch (error) {
+      if (isRegionRecoveryError(error)) throw error;
+      const failureTrackingFields = MetricsManager.getCommonTrackingFieldForAQMResponseFailed(
+        error?.details || {}
+      );
 
-        this.assertTaskCommandAllowed();
-        const response = await this.contact.dropConferenceParticipant({
-          interactionId: requestInteractionId,
-          participantId,
-        });
-        this.assertTaskCommandAllowed();
-
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS,
-          {
-            taskId: this.data.interactionId,
-            requestInteractionId,
-            ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
-            agentId: this.agentId,
-          },
-          ['operational', 'behavioral', 'business']
-        );
-
-        LoggerProxy.log('Successfully dropped conference participant', {
-          module: CC_FILE,
-          method: METHODS.DROP_CONFERENCE_PARTICIPANT,
-          trackingId: response?.trackingId,
-          interactionId: requestInteractionId,
-        });
-
-        return response;
-      } catch (error) {
-        if (isRegionRecoveryError(error)) throw error;
-        this.assertTaskCommandAllowed();
-        const failureTrackingFields = MetricsManager.getCommonTrackingFieldForAQMResponseFailed(
-          error?.details || {}
-        );
-
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED,
-          {
-            taskId: this.data.interactionId,
-            requestInteractionId,
-            agentId: this.agentId,
-            trackingId: failureTrackingFields.trackingId,
-            notifTrackingId: failureTrackingFields.notifTrackingId,
-            orgId: failureTrackingFields.orgId,
-            failureType: failureTrackingFields.failureType,
-            reasonCode: failureTrackingFields.reasonCode,
-          },
-          ['operational', 'behavioral', 'business']
-        );
-
-        LoggerProxy.error('Failed to drop conference participant', {
-          module: CC_FILE,
-          method: METHODS.DROP_CONFERENCE_PARTICIPANT,
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED,
+        {
+          taskId: this.data.interactionId,
+          requestInteractionId,
+          agentId: this.agentId,
           trackingId: failureTrackingFields.trackingId,
-          interactionId: requestInteractionId,
-        });
+          notifTrackingId: failureTrackingFields.notifTrackingId,
+          orgId: failureTrackingFields.orgId,
+          failureType: failureTrackingFields.failureType,
+          reasonCode: failureTrackingFields.reasonCode,
+        },
+        ['operational', 'behavioral', 'business']
+      );
 
-        throw error;
-      }
-    }, [
-      METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS,
-      METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED,
-    ]);
+      LoggerProxy.error('Failed to drop conference participant', {
+        module: CC_FILE,
+        method: METHODS.DROP_CONFERENCE_PARTICIPANT,
+        trackingId: failureTrackingFields.trackingId,
+        interactionId: requestInteractionId,
+      });
+
+      throw error;
+    }
   }
 
   /**
@@ -1523,144 +1524,141 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async exitConference(): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      // Validate we're in conference state OR conference is in progress per task data
-      // This handles cases where:
-      // 1. State machine is in CONFERENCING state
-      // 2. State machine is in CONNECTED but conference is active (e.g., ownership transferred)
-      const state = this.getStateMachineSnapshot();
-      const isConferencingState = state?.matches(TaskState.CONFERENCING);
+    this.assertTaskCommandAllowed();
+    // Validate we're in conference state OR conference is in progress per task data
+    // This handles cases where:
+    // 1. State machine is in CONFERENCING state
+    // 2. State machine is in CONNECTED but conference is active (e.g., ownership transferred)
+    const state = this.getStateMachineSnapshot();
+    const isConferencingState = state?.matches(TaskState.CONFERENCING);
 
-      const isConferenceInProgressFromData = this.data
-        ? getIsConferenceInProgress(this.data)
-        : false;
+    const isConferenceInProgressFromData = this.data ? getIsConferenceInProgress(this.data) : false;
 
-      if (!state || (!isConferencingState && !isConferenceInProgressFromData)) {
-        const currentState = state?.value as TaskState;
-        const error = new Error(`Cannot exit conference in ${currentState} state`);
-        LoggerProxy.error('Exit conference operation not allowed', {
-          module: CC_FILE,
-          method: 'exitConference',
-          interactionId: this.data.interactionId,
+    if (!state || (!isConferencingState && !isConferenceInProgressFromData)) {
+      const currentState = state?.value as TaskState;
+      const error = new Error(`Cannot exit conference in ${currentState} state`);
+      LoggerProxy.error('Exit conference operation not allowed', {
+        module: CC_FILE,
+        method: 'exitConference',
+        interactionId: this.data.interactionId,
+      });
+      throw error;
+    }
+
+    // Send state machine event
+    if (this.stateMachineService) {
+      this.stateMachineService.send({
+        type: TaskEvent.EXIT_CONFERENCE,
+        agentId: this.data.agentId,
+      });
+    }
+
+    const requestInteractionId =
+      this.data.interaction?.mainInteractionId || this.data.interactionId;
+
+    try {
+      LoggerProxy.info(`Exiting conference`, {
+        module: CC_FILE,
+        method: 'exitConference',
+        interactionId: requestInteractionId,
+      });
+
+      const timedEvents = [
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_FAILED,
+      ];
+
+      const response = await this.runTimedRequest(
+        () =>
+          this.contact.exitConference({
+            interactionId: requestInteractionId,
+          }),
+        timedEvents
+      );
+      this.assertTaskCommandAllowed();
+
+      // Send success event to transition state
+      if (this.stateMachineService) {
+        const responseTaskData = (response?.data ?? {}) as TaskData;
+        const snapshot = this.stateMachineService.getSnapshot();
+        const wrapUpContext = (snapshot?.context ?? {
+          uiControlConfig: this.uiControlConfig,
+          taskData: this.data,
+        }) as TaskContext;
+        const mergedTaskData = {
+          ...this.data,
+          ...responseTaskData,
+        };
+        // Pending-list precedence is response-only; do not keep a cached snapshot list.
+        if (!Object.prototype.hasOwnProperty.call(responseTaskData, 'agentsPendingWrapUp')) {
+          delete mergedTaskData.agentsPendingWrapUp;
+        }
+        let wrapUpRequired = shouldWrapUpForThisAgent(wrapUpContext, mergedTaskData);
+        // Confirmed self-exit: empty/absent response pending matches TaskManager leave stamp.
+        if (!wrapUpRequired && !hasNonemptyPendingWrapUp(responseTaskData)) {
+          wrapUpRequired = !isConsultedNonOwner(mergedTaskData, this.data);
+        }
+
+        this.stateMachineService.send({
+          type: TaskEvent.EXIT_CONFERENCE_SUCCESS,
+          taskData: {
+            ...responseTaskData,
+            wrapUpRequired,
+          },
         });
-        throw error;
       }
 
-      // Send state machine event
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          requestInteractionId,
+          agentId: this.data.agentId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log(`Successfully exited conference`, {
+        module: CC_FILE,
+        method: 'exitConference',
+        trackingId: response.trackingId,
+        interactionId: requestInteractionId,
+      });
+
+      return response;
+    } catch (error) {
+      if (isRegionRecoveryError(error)) throw error;
+      this.assertTaskCommandAllowed();
+      // Send failure event
       if (this.stateMachineService) {
         this.stateMachineService.send({
-          type: TaskEvent.EXIT_CONFERENCE,
+          type: TaskEvent.EXIT_CONFERENCE_FAILED,
+          reason: error.toString(),
+        });
+      }
+
+      const {error: detailedError} = getErrorDetails(error, 'exitConference', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_FAILED,
+        {
+          taskId: this.data.interactionId,
+          requestInteractionId,
           agentId: this.data.agentId,
-        });
-      }
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
 
-      const requestInteractionId =
-        this.data.interaction?.mainInteractionId || this.data.interactionId;
+      LoggerProxy.error(`Failed to exit conference`, {
+        module: CC_FILE,
+        method: 'exitConference',
+        interactionId: requestInteractionId,
+      });
 
-      try {
-        LoggerProxy.info(`Exiting conference`, {
-          module: CC_FILE,
-          method: 'exitConference',
-          interactionId: requestInteractionId,
-        });
-
-        this.metricsManager.timeEvent([
-          METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_SUCCESS,
-          METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_FAILED,
-        ]);
-
-        this.assertTaskCommandAllowed();
-        const response = await this.contact.exitConference({
-          interactionId: requestInteractionId,
-        });
-        this.assertTaskCommandAllowed();
-
-        // Send success event to transition state
-        if (this.stateMachineService) {
-          const responseTaskData = (response?.data ?? {}) as TaskData;
-          const snapshot = this.stateMachineService.getSnapshot();
-          const wrapUpContext = (snapshot?.context ?? {
-            uiControlConfig: this.uiControlConfig,
-            taskData: this.data,
-          }) as TaskContext;
-          const mergedTaskData = {
-            ...this.data,
-            ...responseTaskData,
-          };
-          // Pending-list precedence is response-only; do not keep a cached snapshot list.
-          if (!Object.prototype.hasOwnProperty.call(responseTaskData, 'agentsPendingWrapUp')) {
-            delete mergedTaskData.agentsPendingWrapUp;
-          }
-          let wrapUpRequired = shouldWrapUpForThisAgent(wrapUpContext, mergedTaskData);
-          // Confirmed self-exit: empty/absent response pending matches TaskManager leave stamp.
-          if (!wrapUpRequired && !hasNonemptyPendingWrapUp(responseTaskData)) {
-            wrapUpRequired = !isConsultedNonOwner(mergedTaskData, this.data);
-          }
-
-          this.stateMachineService.send({
-            type: TaskEvent.EXIT_CONFERENCE_SUCCESS,
-            taskData: {
-              ...responseTaskData,
-              wrapUpRequired,
-            },
-          });
-        }
-
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_SUCCESS,
-          {
-            taskId: this.data.interactionId,
-            requestInteractionId,
-            agentId: this.data.agentId,
-            ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
-          },
-          ['operational', 'behavioral', 'business']
-        );
-
-        LoggerProxy.log(`Successfully exited conference`, {
-          module: CC_FILE,
-          method: 'exitConference',
-          trackingId: response.trackingId,
-          interactionId: requestInteractionId,
-        });
-
-        return response;
-      } catch (error) {
-        if (isRegionRecoveryError(error)) throw error;
-        this.assertTaskCommandAllowed();
-        // Send failure event
-        if (this.stateMachineService) {
-          this.stateMachineService.send({
-            type: TaskEvent.EXIT_CONFERENCE_FAILED,
-            reason: error.toString(),
-          });
-        }
-
-        const {error: detailedError} = getErrorDetails(error, 'exitConference', CC_FILE);
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_FAILED,
-          {
-            taskId: this.data.interactionId,
-            requestInteractionId,
-            agentId: this.data.agentId,
-            error: error.toString(),
-            ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
-          },
-          ['operational', 'behavioral', 'business']
-        );
-
-        LoggerProxy.error(`Failed to exit conference`, {
-          module: CC_FILE,
-          method: 'exitConference',
-          interactionId: requestInteractionId,
-        });
-
-        throw detailedError;
-      }
-    }, [
-      METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_SUCCESS,
-      METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_FAILED,
-    ]);
+      throw detailedError;
+    }
   }
 
   /**
@@ -1676,116 +1674,115 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async transferConference(): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      // Validate we're in conference or consulting state
-      // CONSULTING is allowed because agent can transfer conference while consulting
-      // (transfers ownership to the consulted agent)
-      const state = this.getStateMachineSnapshot();
-      const isValidState =
-        state && (state.matches(TaskState.CONFERENCING) || state.matches(TaskState.CONSULTING));
-      if (!isValidState) {
-        const currentState = state?.value as TaskState;
-        const error = new Error(`Cannot transfer conference in ${currentState} state`);
-        LoggerProxy.error('Transfer conference operation not allowed', {
-          module: CC_FILE,
-          method: 'transferConference',
-          interactionId: this.data.interactionId,
-        });
-        throw error;
-      }
+    this.assertTaskCommandAllowed();
+    // Validate we're in conference or consulting state
+    // CONSULTING is allowed because agent can transfer conference while consulting
+    // (transfers ownership to the consulted agent)
+    const state = this.getStateMachineSnapshot();
+    const isValidState =
+      state && (state.matches(TaskState.CONFERENCING) || state.matches(TaskState.CONSULTING));
+    if (!isValidState) {
+      const currentState = state?.value as TaskState;
+      const error = new Error(`Cannot transfer conference in ${currentState} state`);
+      LoggerProxy.error('Transfer conference operation not allowed', {
+        module: CC_FILE,
+        method: 'transferConference',
+        interactionId: this.data.interactionId,
+      });
+      throw error;
+    }
 
-      // Send state machine event
+    // Send state machine event
+    if (this.stateMachineService) {
+      this.stateMachineService.send({
+        type: TaskEvent.TRANSFER_CONFERENCE,
+        agentId: this.data.agentId,
+      });
+    }
+
+    const requestInteractionId =
+      this.data.interaction?.mainInteractionId || this.data.interactionId;
+
+    try {
+      LoggerProxy.info(`Transferring conference`, {
+        module: CC_FILE,
+        method: 'transferConference',
+        interactionId: requestInteractionId,
+      });
+
+      const timedEvents = [
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED,
+      ];
+
+      const response = await this.runTimedRequest(
+        () =>
+          this.contact.conferenceTransfer({
+            interactionId: requestInteractionId,
+          }),
+        timedEvents
+      );
+      this.assertTaskCommandAllowed();
+
+      // Send success event to transition state
       if (this.stateMachineService) {
         this.stateMachineService.send({
-          type: TaskEvent.TRANSFER_CONFERENCE,
+          type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS,
+          taskData: response.data,
+        });
+      }
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          requestInteractionId,
           agentId: this.data.agentId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log(`Successfully transferred conference`, {
+        module: CC_FILE,
+        method: 'transferConference',
+        trackingId: response.trackingId,
+        interactionId: requestInteractionId,
+      });
+
+      return response;
+    } catch (error) {
+      if (isRegionRecoveryError(error)) throw error;
+      this.assertTaskCommandAllowed();
+      // Send failure event
+      if (this.stateMachineService) {
+        this.stateMachineService.send({
+          type: TaskEvent.TRANSFER_CONFERENCE_FAILED,
+          reason: error.toString(),
         });
       }
 
-      const requestInteractionId =
-        this.data.interaction?.mainInteractionId || this.data.interactionId;
+      const {error: detailedError} = getErrorDetails(error, 'transferConference', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED,
+        {
+          taskId: this.data.interactionId,
+          requestInteractionId,
+          agentId: this.data.agentId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
 
-      try {
-        LoggerProxy.info(`Transferring conference`, {
-          module: CC_FILE,
-          method: 'transferConference',
-          interactionId: requestInteractionId,
-        });
+      LoggerProxy.error(`Failed to transfer conference`, {
+        module: CC_FILE,
+        method: 'transferConference',
+        interactionId: requestInteractionId,
+      });
 
-        this.metricsManager.timeEvent([
-          METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS,
-          METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED,
-        ]);
-
-        this.assertTaskCommandAllowed();
-        const response = await this.contact.conferenceTransfer({
-          interactionId: requestInteractionId,
-        });
-        this.assertTaskCommandAllowed();
-
-        // Send success event to transition state
-        if (this.stateMachineService) {
-          this.stateMachineService.send({
-            type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS,
-            taskData: response.data,
-          });
-        }
-
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS,
-          {
-            taskId: this.data.interactionId,
-            requestInteractionId,
-            agentId: this.data.agentId,
-            ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
-          },
-          ['operational', 'behavioral', 'business']
-        );
-
-        LoggerProxy.log(`Successfully transferred conference`, {
-          module: CC_FILE,
-          method: 'transferConference',
-          trackingId: response.trackingId,
-          interactionId: requestInteractionId,
-        });
-
-        return response;
-      } catch (error) {
-        if (isRegionRecoveryError(error)) throw error;
-        this.assertTaskCommandAllowed();
-        // Send failure event
-        if (this.stateMachineService) {
-          this.stateMachineService.send({
-            type: TaskEvent.TRANSFER_CONFERENCE_FAILED,
-            reason: error.toString(),
-          });
-        }
-
-        const {error: detailedError} = getErrorDetails(error, 'transferConference', CC_FILE);
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED,
-          {
-            taskId: this.data.interactionId,
-            requestInteractionId,
-            agentId: this.data.agentId,
-            error: error.toString(),
-            ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
-          },
-          ['operational', 'behavioral', 'business']
-        );
-
-        LoggerProxy.error(`Failed to transfer conference`, {
-          module: CC_FILE,
-          method: 'transferConference',
-          interactionId: requestInteractionId,
-        });
-
-        throw detailedError;
-      }
-    }, [
-      METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS,
-      METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED,
-    ]);
+      throw detailedError;
+    }
   }
 
   /**
@@ -1801,104 +1798,79 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async switchCall(): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      // Validate we're in CONSULTING state
-      const state = this.getStateMachineSnapshot();
-      if (!state?.matches(TaskState.CONSULTING)) {
-        const currentState = state?.value as TaskState;
-        const error = new Error(`Cannot switch call in ${currentState} state`);
-        LoggerProxy.error('Switch call operation not allowed', {
-          module: CC_FILE,
-          method: 'switchCall',
-          interactionId: this.data.interactionId,
-        });
-        throw error;
-      }
+    this.assertTaskCommandAllowed();
+    // Validate we're in CONSULTING state
+    const state = this.getStateMachineSnapshot();
+    if (!state?.matches(TaskState.CONSULTING)) {
+      const currentState = state?.value as TaskState;
+      const error = new Error(`Cannot switch call in ${currentState} state`);
+      LoggerProxy.error('Switch call operation not allowed', {
+        module: CC_FILE,
+        method: 'switchCall',
+        interactionId: this.data.interactionId,
+      });
+      throw error;
+    }
 
-      // Validate we have a consult media resource
-      const consultMediaResourceId = getConsultMediaResourceId(
-        this.data.interaction,
-        this.data.consultMediaResourceId,
-        this.data.agentId
-      );
-      if (!consultMediaResourceId) {
-        const error = new Error('No consult media resource available');
-        LoggerProxy.error('Switch call failed - no consult media resource', {
-          module: CC_FILE,
-          method: 'switchCall',
-          interactionId: this.data.interactionId,
-        });
-        throw error;
-      }
+    // Validate we have a consult media resource
+    const consultMediaResourceId = getConsultMediaResourceId(
+      this.data.interaction,
+      this.data.consultMediaResourceId,
+      this.data.agentId
+    );
+    if (!consultMediaResourceId) {
+      const error = new Error('No consult media resource available');
+      LoggerProxy.error('Switch call failed - no consult media resource', {
+        module: CC_FILE,
+        method: 'switchCall',
+        interactionId: this.data.interactionId,
+      });
+      throw error;
+    }
 
-      const context = state.context;
-      const isOnConsultLeg = !context.consultCallHeld;
+    const context = state.context;
+    const isOnConsultLeg = !context.consultCallHeld;
 
-      // Determine direction and send appropriate state machine event
-      const targetEvent = isOnConsultLeg
-        ? TaskEvent.SWITCH_TO_MAIN_CALL
-        : TaskEvent.SWITCH_TO_CONSULT;
-      const revertEvent = isOnConsultLeg
-        ? TaskEvent.SWITCH_TO_CONSULT
-        : TaskEvent.SWITCH_TO_MAIN_CALL;
+    // Determine direction and send appropriate state machine event
+    const targetEvent = isOnConsultLeg
+      ? TaskEvent.SWITCH_TO_MAIN_CALL
+      : TaskEvent.SWITCH_TO_CONSULT;
+    const revertEvent = isOnConsultLeg
+      ? TaskEvent.SWITCH_TO_CONSULT
+      : TaskEvent.SWITCH_TO_MAIN_CALL;
 
-      if (this.stateMachineService) {
-        this.stateMachineService.send({type: targetEvent});
-      }
+    if (this.stateMachineService) {
+      this.stateMachineService.send({type: targetEvent});
+    }
 
-      this.metricsManager.timeEvent([
-        METRIC_EVENT_NAMES.TASK_SWITCH_CALL_SUCCESS,
-        METRIC_EVENT_NAMES.TASK_SWITCH_CALL_FAILED,
-      ]);
+    const timedEvents = [
+      METRIC_EVENT_NAMES.TASK_SWITCH_CALL_SUCCESS,
+      METRIC_EVENT_NAMES.TASK_SWITCH_CALL_FAILED,
+    ];
 
-      try {
-        this.assertTaskCommandAllowed();
-        if (isOnConsultLeg) {
-          const response = await this.contact.unHold({
-            interactionId: this.data.interactionId,
-            data: {mediaResourceId: this.data.mediaResourceId},
-          });
-          this.assertTaskCommandAllowed();
-
-          this.metricsManager.trackEvent(
-            METRIC_EVENT_NAMES.TASK_SWITCH_CALL_SUCCESS,
-            {
-              taskId: this.data.interactionId,
-              direction: 'toMainCall',
-              mediaResourceId: consultMediaResourceId,
-              ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
-            },
-            ['operational', 'behavioral']
-          );
-
-          LoggerProxy.log(`Switched to main call successfully`, {
-            module: CC_FILE,
-            method: 'switchCall',
-            trackingId: response.trackingId,
-            interactionId: this.data.interactionId,
-          });
-
-          return response;
-        }
-
-        const response = await this.contact.hold({
-          interactionId: this.data.interactionId,
-          data: {mediaResourceId: this.data.mediaResourceId},
-        });
-        this.assertTaskCommandAllowed();
+    try {
+      if (isOnConsultLeg) {
+        const response = await this.runTimedRequest(
+          () =>
+            this.contact.unHold({
+              interactionId: this.data.interactionId,
+              data: {mediaResourceId: this.data.mediaResourceId},
+            }),
+          timedEvents
+        );
 
         this.metricsManager.trackEvent(
           METRIC_EVENT_NAMES.TASK_SWITCH_CALL_SUCCESS,
           {
             taskId: this.data.interactionId,
-            direction: 'toConsultCall',
+            direction: 'toMainCall',
             mediaResourceId: consultMediaResourceId,
             ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
           },
           ['operational', 'behavioral']
         );
 
-        LoggerProxy.log(`Switched to consult call successfully`, {
+        LoggerProxy.log(`Switched to main call successfully`, {
           module: CC_FILE,
           method: 'switchCall',
           trackingId: response.trackingId,
@@ -1906,34 +1878,63 @@ export default class Voice extends Task implements IVoice {
         });
 
         return response;
-      } catch (error) {
-        if (isRegionRecoveryError(error)) throw error;
-        this.assertTaskCommandAllowed();
-        if (this.stateMachineService) {
-          this.stateMachineService.send({type: revertEvent});
-        }
-
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_SWITCH_CALL_FAILED,
-          {
-            taskId: this.data.interactionId,
-            direction: isOnConsultLeg ? 'toMainCall' : 'toConsultCall',
-            mediaResourceId: consultMediaResourceId,
-            error: error.toString(),
-            ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
-          },
-          ['operational', 'behavioral']
-        );
-
-        const {error: detailedError} = getErrorDetails(error, 'switchCall', CC_FILE);
-        LoggerProxy.error(`Failed to switch call`, {
-          module: CC_FILE,
-          method: 'switchCall',
-          interactionId: this.data.interactionId,
-        });
-        throw detailedError;
       }
-    }, [METRIC_EVENT_NAMES.TASK_SWITCH_CALL_SUCCESS, METRIC_EVENT_NAMES.TASK_SWITCH_CALL_FAILED]);
+
+      const response = await this.runTimedRequest(
+        () =>
+          this.contact.hold({
+            interactionId: this.data.interactionId,
+            data: {mediaResourceId: this.data.mediaResourceId},
+          }),
+        timedEvents
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_SWITCH_CALL_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          direction: 'toConsultCall',
+          mediaResourceId: consultMediaResourceId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral']
+      );
+
+      LoggerProxy.log(`Switched to consult call successfully`, {
+        module: CC_FILE,
+        method: 'switchCall',
+        trackingId: response.trackingId,
+        interactionId: this.data.interactionId,
+      });
+
+      return response;
+    } catch (error) {
+      if (isRegionRecoveryError(error)) throw error;
+      this.assertTaskCommandAllowed();
+      if (this.stateMachineService) {
+        this.stateMachineService.send({type: revertEvent});
+      }
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_SWITCH_CALL_FAILED,
+        {
+          taskId: this.data.interactionId,
+          direction: isOnConsultLeg ? 'toMainCall' : 'toConsultCall',
+          mediaResourceId: consultMediaResourceId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral']
+      );
+
+      const {error: detailedError} = getErrorDetails(error, 'switchCall', CC_FILE);
+      LoggerProxy.error(`Failed to switch call`, {
+        module: CC_FILE,
+        method: 'switchCall',
+        interactionId: this.data.interactionId,
+      });
+      throw detailedError;
+    }
   }
 
   protected override getChannelSpecificActionOverrides() {

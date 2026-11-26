@@ -929,7 +929,7 @@ describe('contact-center root public contract', () => {
     expect(assistantDeclaration).toContain(
       'constructor(webex: WebexSDK, wellnessContextProvider?: WellnessBreakContextProvider);'
     );
-    expect(assistantDeclaration).not.toContain('RecoveryOwner | undefined');
+    expect(assistantDeclaration.match(/\bconstructor\(/g)).toHaveLength(1);
   });
 
   it('preserves the literal root barrel export list and omits package internals', () => {

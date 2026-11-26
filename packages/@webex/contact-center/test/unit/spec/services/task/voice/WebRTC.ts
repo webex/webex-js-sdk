@@ -283,8 +283,11 @@ describe('WebRTC Task', () => {
       expect(calling.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(0);
     });
 
-    it.each(['parent-abort', 'task-manager'].flatMap(path => [false, true].map(cleanup => [path, cleanup] as const)))(
-      'lateMediaDuringWaitAndAfterWipeStopsTracks: path=%s cleanup=%s', async (path, cleanup) => {
+    it.each([
+      {path: 'task-manager', cleanup: false},
+      {path: 'parent-abort', cleanup: true},
+    ])(
+      'stops late microphone tracks after $path interruption (disposed: $cleanup)', async ({path, cleanup}) => {
         let acquired: (stream: MediaStream) => void;
         const stream = new Promise<MediaStream>(resolve => { acquired = resolve; });
         const brokenTrack = {stop: jest.fn(() => {throw new Error('track stop failed');})};

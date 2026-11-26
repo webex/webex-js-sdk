@@ -12,7 +12,7 @@ import WebexRequest from './core/WebexRequest';
 import MetricsManager from '../metrics/MetricsManager';
 import {AGENT, WCC_API_GATEWAY} from './constants';
 import {endPointMap} from './config/constants';
-import {awaitRecoveryWork, isRecord, isValidDialNumber} from './core/Utils';
+import {isRecord, isValidDialNumber} from './core/Utils';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
 
 const SAVED_STATION_READ_TIMEOUT = 10000;
@@ -24,32 +24,23 @@ const normalizeSavedNumber = (value: unknown): string =>
 export async function readSavedStationLogin(
   webexRequest: WebexRequest,
   orgId: string,
-  profile: Profile,
-  signal: AbortSignal
+  profile: Profile
 ): Promise<AgentLogin | undefined> {
   const {agentId} = profile;
-  if (signal.aborted || !orgId?.trim() || !agentId?.trim()) return undefined;
+  if (!orgId?.trim() || !agentId?.trim()) return undefined;
 
-  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const deadline = new Promise<undefined>((resolve) => {
-      timer = setTimeout(() => resolve(undefined), SAVED_STATION_READ_TIMEOUT);
-    });
-    const request = webexRequest.request({
+    const response = await webexRequest.request({
       service: WCC_API_GATEWAY,
       resource: endPointMap.userPreference(orgId, agentId),
       method: HTTP_METHODS.GET,
       headers: {'X-ORGANIZATION-ID': orgId},
       timeout: SAVED_STATION_READ_TIMEOUT,
     });
-    const response = await awaitRecoveryWork(Promise.race([request, deadline]), signal);
     const body: unknown = response?.body;
     if (
-      signal.aborted ||
-      profile.agentId !== agentId ||
       response?.statusCode !== 200 ||
       !isRecord(body) ||
-      Array.isArray(body) ||
       body.id !== agentId ||
       (body.organizationId !== undefined && body.organizationId !== orgId) ||
       (body.userId !== undefined && body.userId !== agentId) ||
@@ -58,12 +49,7 @@ export async function readSavedStationLogin(
       return undefined;
 
     const saved: unknown = JSON.parse(body.desktopPreference);
-    if (
-      !isRecord(saved) ||
-      Array.isArray(saved) ||
-      saved.dontShowAgain !== true ||
-      saved.selectedRoleName !== AGENT
-    )
+    if (!isRecord(saved) || saved.dontShowAgain !== true || saved.selectedRoleName !== AGENT)
       return undefined;
     const {deviceType: loginOption, teamId} = saved;
     if (
@@ -89,8 +75,6 @@ export async function readSavedStationLogin(
     return {loginOption, teamId, dialNumber};
   } catch {
     return undefined;
-  } finally {
-    clearTimeout(timer);
   }
 }
 

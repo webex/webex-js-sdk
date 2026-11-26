@@ -117,7 +117,6 @@ export default class WebRTC extends Voice implements IWebRTC {
         tracks.forEach((track) => this.ownedTracks.add(track));
         const audioTrack = localStream.getAudioTracks()[0];
         this.localAudioStream = new LocalMicrophoneStream(new MediaStream([audioTrack]));
-        this.assertTaskCommandAllowed();
         this.webCallingService.answerCall(this.localAudioStream, this.data.interactionId);
 
         this.metricsManager.trackEvent(
@@ -161,46 +160,43 @@ export default class WebRTC extends Voice implements IWebRTC {
    * ```
    */
   public async decline(): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      LoggerProxy.log(`Declining WebRTC task for taskId:${this.data.interactionId}`, {
-        module: 'WebRTC',
-        method: 'decline',
-      });
-      try {
-        this.metricsManager.timeEvent([
-          METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
-          METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
-        ]);
+    this.assertTaskCommandAllowed();
+    LoggerProxy.log(`Declining WebRTC task for taskId:${this.data.interactionId}`, {
+      module: 'WebRTC',
+      method: 'decline',
+    });
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
+      ]);
 
-        this.assertTaskCommandAllowed();
-        this.webCallingService.declineCall(this.data.interactionId);
-        this.unregisterWebCallListeners();
+      this.webCallingService.declineCall(this.data.interactionId);
+      this.unregisterWebCallListeners();
 
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
-          {taskId: this.data.interactionId},
-          ['operational', 'behavioral']
-        );
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
+        {taskId: this.data.interactionId},
+        ['operational', 'behavioral']
+      );
 
-        return Promise.resolve();
-      } catch (error) {
-        if (isRegionRecoveryError(error)) throw error;
-        this.assertTaskCommandAllowed();
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
-          {
-            taskId: this.data.interactionId,
-            error: error.toString(),
-            ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(
-              (error as any).details || {}
-            ),
-          },
-          ['operational', 'behavioral']
-        );
-        const {error: detailedError} = getErrorDetails(error, 'decline', CC_FILE);
-        throw detailedError;
-      }
-    }, [METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS, METRIC_EVENT_NAMES.TASK_DECLINE_FAILED]);
+      return Promise.resolve();
+    } catch (error) {
+      if (isRegionRecoveryError(error)) throw error;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
+        {
+          taskId: this.data.interactionId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(
+            (error as any).details || {}
+          ),
+        },
+        ['operational', 'behavioral']
+      );
+      const {error: detailedError} = getErrorDetails(error, 'decline', CC_FILE);
+      throw detailedError;
+    }
   }
 
   /**
@@ -213,25 +209,21 @@ export default class WebRTC extends Voice implements IWebRTC {
    * ```
    */
   public async toggleMute(options?: TaskToggleMuteOptions) {
-    return this.runTaskOperation(async () => {
-      if (options) {
-        // parameter intentionally unused — WebRTC toggles from local stream state
-      }
-      LoggerProxy.log(`Toggling mute WebRTC task for taskId:${this.data.interactionId}`, {
-        module: 'WebRTC',
-        method: 'toggleMute',
-      });
-      try {
-        this.assertTaskCommandAllowed();
-        this.webCallingService.muteUnmuteCall(this.localAudioStream);
-
-        return Promise.resolve();
-      } catch (error) {
-        if (isRegionRecoveryError(error)) throw error;
-        this.assertTaskCommandAllowed();
-        const {error: detailedError} = getErrorDetails(error, 'mute', CC_FILE);
-        throw detailedError;
-      }
+    this.assertTaskCommandAllowed();
+    if (options) {
+      // parameter intentionally unused — WebRTC toggles from local stream state
+    }
+    LoggerProxy.log(`Toggling mute WebRTC task for taskId:${this.data.interactionId}`, {
+      module: 'WebRTC',
+      method: 'toggleMute',
     });
+    try {
+      this.webCallingService.muteUnmuteCall(this.localAudioStream);
+
+      return Promise.resolve();
+    } catch (error) {
+      const {error: detailedError} = getErrorDetails(error, 'mute', CC_FILE);
+      throw detailedError;
+    }
   }
 }

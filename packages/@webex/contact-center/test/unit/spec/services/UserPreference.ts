@@ -6,7 +6,6 @@ import {METRIC_EVENT_NAMES} from '../../../../src/metrics/constants';
 import WebexRequest from '../../../../src/services/core/WebexRequest';
 import MetricsManager from '../../../../src/metrics/MetricsManager';
 import LoggerProxy from '../../../../src/logger-proxy';
-import {createDeferred, flushMicrotasks} from '../../fixtures/aiSummaryTestUtils';
 
 jest.mock('../../../../src/metrics/MetricsManager');
 jest.mock('../../../../src/logger-proxy');
@@ -81,19 +80,8 @@ describe('UserPreference', () => {
           ...fields,
         },
       }) as IHttpResponse;
-    const read = (
-      profile = defaultProfile,
-      signal = new AbortController().signal,
-      orgId = 'test-org-id'
-    ) => readSavedStationLogin(WebexRequest.getInstance({webex: mockWebex}), orgId, profile, signal);
-
-    beforeEach(() => {
-      jest.useFakeTimers();
-    });
-
-    afterEach(() => {
-      jest.useRealTimers();
-    });
+    const read = (profile = defaultProfile, orgId = 'test-org-id') =>
+      readSavedStationLogin(WebexRequest.getInstance({webex: mockWebex}), orgId, profile);
 
     it('reads the current CI user and returns a normalized opted-in DN for the Routing team', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(respond());
@@ -112,7 +100,6 @@ describe('UserPreference', () => {
         timeout: 10000,
         body: undefined,
       });
-      expect(jest.getTimerCount()).toBe(0);
     });
 
     it('uses the resource ID when there is no Routing ID and accepts a matching saved extension', async () => {
@@ -155,7 +142,6 @@ describe('UserPreference', () => {
 
       await expect(read()).resolves.toBeUndefined();
       expect(LoggerProxy.error).not.toHaveBeenCalled();
-      expect(jest.getTimerCount()).toBe(0);
     });
 
     it.each([
@@ -187,51 +173,22 @@ describe('UserPreference', () => {
       await expect(read({...defaultProfile, ...fields})).resolves.toBeUndefined();
     });
 
-    it('skips I/O when cancelled or missing the current identity', async () => {
-      const controller = new AbortController();
-      controller.abort();
-
-      await expect(read(defaultProfile, controller.signal)).resolves.toBeUndefined();
+    it('skips I/O when the current identity is missing', async () => {
       await expect(read({...defaultProfile, agentId: ''})).resolves.toBeUndefined();
-      await expect(read(defaultProfile, new AbortController().signal, '')).resolves.toBeUndefined();
+      await expect(read(defaultProfile, '')).resolves.toBeUndefined();
       expect(mockWebex.request).not.toHaveBeenCalled();
-      expect(jest.getTimerCount()).toBe(0);
     });
 
     it('returns no station when the gateway fails without logging raw errors', async () => {
       (mockWebex.request as jest.Mock).mockRejectedValueOnce(new Error('private backend details'));
       (mockWebex.request as jest.Mock).mockResolvedValueOnce({...respond(), statusCode: 404});
+      (mockWebex.request as jest.Mock).mockRejectedValueOnce(
+        Object.assign(new Error('Request timed out'), {code: 'ETIMEDOUT'})
+      );
 
       await expect(read()).resolves.toBeUndefined();
       await expect(read()).resolves.toBeUndefined();
-      expect(LoggerProxy.error).not.toHaveBeenCalled();
-      expect(jest.getTimerCount()).toBe(0);
-    });
-
-    it.each(['abort', 'deadline'])('settles on %s while the host request is pending', async (boundary) => {
-      const pending = createDeferred<IHttpResponse>();
-      const controller = new AbortController();
-      (mockWebex.request as jest.Mock).mockReturnValue(pending.promise);
-      const result = read(defaultProfile, controller.signal);
-      const settled = jest.fn();
-      result.then(settled);
-
-      if (boundary === 'abort') {
-        controller.abort();
-      } else {
-        jest.advanceTimersByTime(9999);
-        await flushMicrotasks();
-        expect(jest.getTimerCount()).toBe(1);
-        expect(settled).not.toHaveBeenCalled();
-        jest.advanceTimersByTime(1);
-      }
-
-      await expect(result).resolves.toBeUndefined();
-      expect(jest.getTimerCount()).toBe(0);
-      if (boundary === 'abort') pending.reject(new Error('private late error'));
-      else pending.resolve(respond());
-      await flushMicrotasks();
-      expect(settled).toHaveBeenCalledTimes(1);
+      await expect(read()).resolves.toBeUndefined();
       expect(LoggerProxy.error).not.toHaveBeenCalled();
     });
   });

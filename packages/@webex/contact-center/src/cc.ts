@@ -1443,8 +1443,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
               const saved = await readSavedStationLogin(
                 this.webexRequest,
                 recovery.orgId,
-                this.agentConfig,
-                context.signal
+                this.agentConfig
               );
               if (!this.isCurrentRecovery(recovery) || context.signal.aborted)
                 throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
@@ -1801,7 +1800,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           agentId: this.agentConfig?.agentId,
           agentSessionId: this.currentAgentSessionId,
         }),
-        () => this.getHttpRecoveryGuard()
+        () => this.getHttpRecoverySignal()
       );
       this.metricsManager = MetricsManager.getInstance({webex: this.$webex});
       this.taskManager = TaskManager.getTaskManager(
@@ -1994,8 +1993,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     );
   }
 
-  /** Borrow shared lifecycle ownership independently of the optional RTD connection. */
-  private getHttpRecoveryGuard(): Pick<TaskRecoveryGuard, 'generation' | 'signal'> | undefined {
+  /** Shares the command lifetime independently of the RTD connection. */
+  private getHttpRecoverySignal(): AbortSignal | undefined {
     const signal = this.registrationAbortController?.signal;
     if (
       !signal ||
@@ -2012,7 +2011,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     )
       return undefined;
 
-    return {generation: this.recoveryGeneration, signal: this.commandController.signal};
+    return this.commandController.signal;
   }
 
   private isCurrentRtdEpoch(epoch: RtdEpoch): boolean {
@@ -2052,7 +2051,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (
       signal !== this.registrationAbortController?.signal ||
       !this.shouldSubscribeRtd() ||
-      !this.getHttpRecoveryGuard() ||
+      !this.getHttpRecoverySignal() ||
       (this.rtdTerminatedFor?.registration === this.registrationGeneration &&
         (!this.currentAgentSessionId ||
           this.rtdTerminatedFor.sessionId === this.currentAgentSessionId))

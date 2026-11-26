@@ -7263,7 +7263,7 @@ describe('T-008 TaskManager recovery owners', () => {
           prepare.mockImplementationOnce((message) => {
             const context = prepareContext(message);
             expect(context.stateMachineEvent.type).toBe(mapped);
-            // The ingress fence already passed: the lifecycle fence must stand on its own.
+            // The frame reached context preparation, but must never reach task handling.
             revoke();
 
             return context;
@@ -7281,8 +7281,7 @@ describe('T-008 TaskManager recovery owners', () => {
         primary.emit('message', JSON.stringify({data: payload}));
 
         expect(prepare).toHaveBeenCalledTimes(phase === 'after-context' ? 1 : 0);
-        expect(lifecycle).toHaveBeenCalledTimes(phase === 'after-context' ? 1 : 0);
-        if (phase === 'after-context') expect(lifecycle.mock.results[0].value).toEqual({});
+        expect(lifecycle).not.toHaveBeenCalled();
         expect(factory).not.toHaveBeenCalled();
         expect(send).not.toHaveBeenCalled();
         expect(actorSend).not.toHaveBeenCalled();

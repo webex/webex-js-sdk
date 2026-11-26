@@ -12121,9 +12121,9 @@ describe('realRecoveryWiring', () => {
         const ready = jest.fn(); cc.on('region:stateChange', ready);
         const restore = await deferAutomaticStationRestore(h); await restore.accept();
         const epoch = cc['rtdEpoch'];
-        const guard = cc['getHttpRecoveryGuard']();
+        const signal = cc['getHttpRecoverySignal']();
         const publications = ready.mock.calls.map(([state]) => state);
-        expect(guard).toBeDefined();
+        expect(signal).toBeDefined();
         expect(cc['lastPublishedRegionState'].status).toBe('ready');
         expect(publications.filter(state => state.status === 'ready')).toHaveLength(1);
         expect(requests.filter(r => r.resource === 'v1/realtime/subscribe')).toHaveLength(2);
@@ -12138,8 +12138,8 @@ describe('realRecoveryWiring', () => {
         expect(ready.mock.calls.map(([state]) => state)).toEqual(publications);
         expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
         expect(cc['registrationAbortController'].signal.aborted).toBe(false);
-        expect(cc['getHttpRecoveryGuard']()).toEqual(guard);
-        expect(guard.signal.aborted).toBe(false);
+        expect(cc['getHttpRecoverySignal']()).toBe(signal);
+        expect(signal.aborted).toBe(false);
         expect(cc['rtdEpoch']?.active).not.toBe(true);
         expect(cc['rtdEpoch']).toBeUndefined();
         expect(epoch.controller.signal.aborted).toBe(true);
@@ -12894,7 +12894,7 @@ describe('realRecoveryWiring', () => {
       expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
       expect(cc['lastPublishedRegionState'].status).toBe('ready');
       expect(cc['rtdEpoch']?.active).not.toBe(true);
-      expect(cc['getHttpRecoveryGuard']()).toBeDefined();
+      expect(cc['getHttpRecoverySignal']()).toBeDefined();
     }, undefined, {enabled: true, pending: pending.promise});
   });
 
@@ -16218,7 +16218,7 @@ describe('realRecoveryWiring', () => {
       expect(cc['recovery']).toBeUndefined();
       expect(cc['recoveryPhase']).toBe('reloadRequired');
       expect(cc['rtdEpoch']?.active).not.toBe(true);
-      expect(cc['getHttpRecoveryGuard']()).toBeUndefined();
+      expect(cc['getHttpRecoverySignal']()).toBeUndefined();
       expect(primary.shouldReconnect).toBe(false);
       expect(rtd.shouldReconnect).toBe(false);
       expect(primary.hasUsableSocket()).toBe(false);
@@ -16875,7 +16875,6 @@ describe('realRecoveryWiring', () => {
         expect(jest.isMockFunction(task.accept)).toBe(false);
         const ended = jest.fn(); task.on(TASK_EVENTS.TASK_END, ended);
         const controller = cc['commandController'];
-        const interrupt = jest.spyOn(cc.taskManager, 'interruptTaskOperations');
         const rejected = jest.fn();
         const result = task.accept().catch(error => {rejected(error); return error;});
         expect(getUserMedia).toHaveBeenCalledWith({audio: true});
@@ -16892,9 +16891,8 @@ describe('realRecoveryWiring', () => {
         }
         if (boundary === 'agent replacement') sockets[0].message({type: 'Welcome', data: {agentId: 'replacement-agent'}});
         expect(controller.signal.aborted).toBe(true);
-        expect(interrupt).toHaveBeenCalled();
         await flush();
-        // Assert settlement while acquisition is still pending, before any cleanup can mask it.
+        // Assert settlement while microphone acquisition is still pending.
         expect(rejected).toHaveBeenCalledTimes(1);
         expect((await result).data.reason).toBe('RECOVERY_INTERRUPTED');
         if (boundary === 'register') {
