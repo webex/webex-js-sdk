@@ -10,7 +10,7 @@ import {createCameraStream, createDisplayStream, createMicrophoneStream, LocalTr
 
 import testUtils from '../../utils/testUtils';
 import integrationTestUtils from '../../utils/integrationTestUtils';
-import {EVENT_TRIGGERS} from '../../../dist/constants';
+import {EVENT_TRIGGERS, LOCUSINFO} from '../../../dist/constants';
 
 require('dotenv').config();
 
@@ -273,7 +273,7 @@ skipInNode(describe)('plugin-meetings', () => {
                   {scope: chris.meeting, event: 'meeting:stateChange', user: chris},
                 ])
                 .then((response) => {
-                  assert.equal(response[0].result.payload.currentState, 'ACTIVE');
+                  assert.equal(response['meeting:stateChange'].result.payload.currentState, 'ACTIVE');
                 }),
             ]);
           });
@@ -338,7 +338,7 @@ skipInNode(describe)('plugin-meetings', () => {
                   {scope: alice.meeting, event: 'meeting:stateChange', user: alice},
                 ])
                 .then((response) => {
-                  assert.equal(response[0].result.payload.currentState, 'ACTIVE');
+                  assert.equal(response['meeting:stateChange'].result.payload.currentState, 'ACTIVE');
                 }),
             ]);
           })
@@ -558,15 +558,35 @@ skipInNode(describe)('plugin-meetings', () => {
             }),
         ]));
 
-      it('alice unmutes bob', () =>
-        Promise.all([
-          testUtils.delayedPromise(alice.meeting.mute(bob.meeting.members.selfId, false)),
-          testUtils
-            .waitForEvents([{scope: bob.meeting, event: 'meeting:self:unmutedByOthers'}])
-            .then((response) => {
-              console.log('meeting:self:unmutedByOthers event ', response[0].result);
-            }),
-        ]));
+      it('alice clears bob remote mute and bob unmutes locally', async () => {
+        const remoteMuteCleared = testUtils.waitForEvents([{
+          scope: bob.meeting.locusInfo,
+          event: LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
+          match: ({muted}) => muted === false,
+        }]);
+
+        await Promise.all([
+          remoteMuteCleared,
+          alice.meeting.mute(bob.meeting.members.selfId, false),
+        ]);
+
+        assert.isFalse(bob.meeting.audio.isRemotelyMuted());
+        assert.isTrue(bob.meeting.audio.isMuted());
+        assert.isTrue(localStreams.bob.microphone.userMuted);
+
+        const bobUnmuted = testUtils.waitForEvents([{
+          scope: alice.meeting.members,
+          event: 'members:update',
+          match: (event) => event.delta.updated.some(
+            (member) => member.id === bob.meeting.members.selfId && member.isAudioMuted === false
+          ),
+        }]);
+
+        localStreams.bob.microphone.setUserMuted(false);
+        await bobUnmuted;
+
+        assert.isFalse(localStreams.bob.microphone.muted);
+      });
 
       it('bob audio mute, so alice cannot unmute bob', async () => {
         const checkEvent = (event) =>
@@ -585,21 +605,18 @@ skipInNode(describe)('plugin-meetings', () => {
 
         assert.equal(localStreams.bob.microphone.userMuted, true);
 
-        // now alice tries to unmmute bob
-        await testUtils.delayedPromise(alice.meeting.mute(bob.meeting.members.selfId, false))
-          // expect the waitForEvents to timeout
-          .then(() =>
-            testUtils.waitForEvents(
-              [{scope: bob.meeting, event: 'meeting:self:unmutedByOthers'}],
-              2000
-            )
-          )
-          .then(() => {
-            assert.fail('bob received unexpected meeting:self:unmutedByOthers event');
-          })
-          .catch(() => {
-            assert.equal(localStreams.bob.microphone.userMuted, true);
-          });
+        const unmutedByOthers = sinon.spy();
+        bob.meeting.on(EVENT_TRIGGERS.MEETING_SELF_UNMUTED_BY_OTHERS, unmutedByOthers);
+
+        try {
+          await alice.meeting.mute(bob.meeting.members.selfId, false);
+          await testUtils.waitUntil(2000);
+          assert.notCalled(unmutedByOthers);
+          assert.isTrue(localStreams.bob.microphone.userMuted);
+          assert.isTrue(localStreams.bob.microphone.muted);
+        } finally {
+          bob.meeting.off(EVENT_TRIGGERS.MEETING_SELF_UNMUTED_BY_OTHERS, unmutedByOthers);
+        }
       });
 
       it('bob audio unmute ', async () => {
@@ -944,18 +961,22 @@ skipInNode(describe)('plugin-meetings', () => {
       it('leave on the meeting object', () => {
         const checkInactive = (result) => result.reason === 'CALL_INACTIVE';
 
-        Promise.all([
-          testUtils.delayedPromise(bob.meeting.leave()),
+        return Promise.all([
           testUtils.waitForEvents([
             {scope: alice.meeting.members, event: 'members:update', user: alice},
+          ]),
+          testUtils.waitForEvents([
             {
               scope: bob.webex.meetings,
               event: 'meeting:removed',
               user: bob,
               match: checkInactive,
             },
+          ]),
+          testUtils.waitForEvents([
             {scope: alice.webex.meetings, event: 'meeting:removed', user: alice},
           ]),
+          testUtils.delayedPromise(bob.meeting.leave()),
         ])
           .then(() => {
             assert.equal(bob.meeting, null);
