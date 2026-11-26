@@ -56,6 +56,7 @@ describe('plugin-meetings', () => {
       meeting.reconnectionManager = {cleanUp: sinon.stub()};
       meeting.stopKeepAlive = sinon.stub();
       meeting.cleanupLLMConneciton = sinon.stub().resolves();
+      meeting.e2ee = {stop: sinon.stub().resolves()};
       meeting.breakouts = {cleanUp: sinon.stub()};
       meeting.webinar = {cleanUp: sinon.stub()};
       meeting.annotaion = {cleanUp: sinon.stub()};
@@ -83,6 +84,7 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.closeRemoteStreams);
         assert.calledOnce(meeting.closePeerConnections);
         assert.calledOnce(meeting.stopPeriodicLogUpload);
+        assert.calledOnce(meeting.e2ee.stop);
 
         assert.calledOnce(meeting.unsetRemoteStreams);
         assert.calledOnce(meeting.unsetPeerConnections);
@@ -120,6 +122,7 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.cleanupLocalStreams);
         assert.calledOnce(meeting.closeRemoteStreams);
         assert.calledOnce(meeting.closePeerConnections);
+        assert.calledOnce(meeting.e2ee.stop);
 
         assert.calledOnce(meeting.unsetRemoteStreams);
         assert.calledOnce(meeting.unsetPeerConnections);
@@ -142,6 +145,7 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.cleanupLocalStreams);
         assert.calledOnce(meeting.closeRemoteStreams);
         assert.calledOnce(meeting.closePeerConnections);
+        assert.calledOnce(meeting.e2ee.stop);
 
         assert.calledOnce(meeting.unsetRemoteStreams);
         assert.calledOnce(meeting.unsetPeerConnections);

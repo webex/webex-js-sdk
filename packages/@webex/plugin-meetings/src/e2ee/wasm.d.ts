@@ -85,6 +85,8 @@ export interface RosterMember {
 }
 
 export interface WebE2EEInstance {
+  delete(): void;
+
   initialize(
     participantId: string,
     deviceUrl: string,
@@ -123,20 +125,22 @@ export interface WebE2EEInstance {
   setJoinTimeout(milliseconds: number): void;
   setPurgeKeysTimeout(milliseconds: number): void;
 
-  setOnNewTransaction(callback: (transaction: Transaction) => void): void;
-  setOnCompleteTransaction(callback: (id: string, result: TransactionResult) => void): void;
-  setOnHttpRequest(callback: (request: HTTPRequest) => void): void;
-  setOnWait(callback: (milliseconds: number, handlerId: number) => void): void;
-  setOnGotKey(callback: (epoch: EpochInfo) => void): void;
-  setOnUseKey(callback: (epoch: number) => void): void;
-  setOnLeader(callback: () => void): void;
-  setOnPurgeBefore(callback: (epoch: number) => void): void;
-  setOnEvicted(callback: () => void): void;
-  setOnAddRoster(callback: (added: RosterMember[]) => void): void;
-  setOnRemoveRoster(callback: (removed: string[]) => void): void;
-  setOnE2eeVersion(callback: (version: number) => void): void;
-  setOnMissingCommit(callback: (mlsEpoch: number, useKeyEpoch: number) => void): void;
-  setOnLog(callback: (level: number, message: string) => void): void;
+  setOnNewTransaction(callback: ((transaction: Transaction) => void) | null): void;
+  setOnCompleteTransaction(
+    callback: ((id: string, result: TransactionResult) => void) | null
+  ): void;
+  setOnHttpRequest(callback: ((request: HTTPRequest) => void) | null): void;
+  setOnWait(callback: ((milliseconds: number, handlerId: number) => void) | null): void;
+  setOnGotKey(callback: ((epoch: EpochInfo) => void) | null): void;
+  setOnUseKey(callback: ((epoch: number) => void) | null): void;
+  setOnLeader(callback: (() => void) | null): void;
+  setOnPurgeBefore(callback: ((epoch: number) => void) | null): void;
+  setOnEvicted(callback: (() => void) | null): void;
+  setOnAddRoster(callback: ((added: RosterMember[]) => void) | null): void;
+  setOnRemoveRoster(callback: ((removed: string[]) => void) | null): void;
+  setOnE2eeVersion(callback: ((version: number) => void) | null): void;
+  setOnMissingCommit(callback: ((mlsEpoch: number, useKeyEpoch: number) => void) | null): void;
+  setOnLog(callback: ((level: number, message: string) => void) | null): void;
 
   completeHttpRequest(
     handlerId: number,
