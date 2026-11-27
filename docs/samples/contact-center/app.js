@@ -2,7 +2,6 @@
 let webex = undefined;
 let sdk;
 let voiceConnectionLogClient;
-let registrationEventClient;
 const voiceConnectionStateElm = document.getElementById('voice-connection-state');
 let agentDeviceType;
 let deviceId;
@@ -4842,9 +4841,8 @@ regionRecoveryDialog.addEventListener('cancel', (event) => event.preventDefault(
 function register() {
     registerBtn.disabled = true;
     attachWellnessSdkListeners();
-    const cc = webex.cc;
     showRegionRecoveryState();
-    cc.register().then((agentProfile) => {
+    webex.cc.register().then((agentProfile) => {
         registerStatus.innerHTML = 'Subscribed';
         // Update button states upon successful registration
         deregisterBtn.disabled = false;
@@ -4921,8 +4919,6 @@ function register() {
             idleCodesDropdown.add(option);
         });
         entryPointId = agentProfile.outDialEp;
-        if (registrationEventClient !== cc) {
-        registrationEventClient = cc;
         webex.cc.on('task:incoming', (task) => {
           console.log('Incoming task received: ', task);
           updateTaskList();
@@ -5009,7 +5005,6 @@ function register() {
       startStateTimer(data.lastStateChangeTimestamp, data.lastIdleCodeChangeTimestamp);
     });
 
-        }
         updateTaskList();
     }).catch((error) => {
         registerBtn.disabled = false;

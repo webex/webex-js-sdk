@@ -761,7 +761,11 @@ describe('webex.cc', () => {
       );
       expect(mockTaskManager.clearAISummaryState).not.toHaveBeenCalled();
       expect(reloadSpy).toHaveBeenCalled();
-      expect(result).toEqual({...mockAgentProfile, agentSessionId: 'session-after-refresh'});
+      expect(result).toEqual({
+        ...mockAgentProfile,
+        orgId: 'mockOrgId',
+        agentSessionId: 'session-after-refresh',
+      });
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
@@ -1091,7 +1095,7 @@ describe('webex.cc', () => {
           webRtcEnabled: true,
           aiFeature,
         });
-        const expectedProfile = {...configuredProfile, dn: defaultDn};
+        const expectedProfile = {...configuredProfile, orgId: 'mockOrgId', dn: defaultDn};
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
         jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
         const configSpy = jest
@@ -1129,7 +1133,11 @@ describe('webex.cc', () => {
           webRtcEnabled: true,
           aiFeature,
         });
-        const expectedProfile = {...configuredProfile, dn: configuredProfile.defaultDn};
+        const expectedProfile = {
+          ...configuredProfile,
+          orgId: 'mockOrgId',
+          dn: configuredProfile.defaultDn,
+        };
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
         const mercuryConnect = jest
           .spyOn(webex.internal.mercury, 'connect')
@@ -4553,6 +4561,17 @@ describe('webex.cc', () => {
       mockTaskManager.clearAISummaryState.mockImplementation(() => undefined);
       mockRTDWebSocketManager.off.mockImplementation(() => undefined);
       mockRTDWebSocketManager.close.mockImplementation(() => undefined);
+    });
+
+    it('releases existing browser resources after a replacement registration fails', async () => {
+      const error = new Error('subscribe failed');
+      webex.cc.services.connectionService.connect.mockRejectedValueOnce(error);
+
+      await expect(webex.cc.register()).rejects.toThrow(error);
+      await webex.cc.deregister();
+
+      expect(mercuryDisconnectSpy).toHaveBeenCalledTimes(1);
+      expect(deviceUnregisterSpy).toHaveBeenCalledTimes(1);
     });
 
     it('invalidates wellness context before deregistration cleanup can fail', async () => {

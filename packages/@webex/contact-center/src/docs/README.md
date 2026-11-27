@@ -588,7 +588,7 @@ ContactCenter retains in-memory `agentConfig`, collaborator references and event
 
 | State or slice | Owner | Initial state | Transition triggers | Reset or persistence boundary |
 | -------------- | ----- | ------------- | ------------------- | ----------------------------- |
-| `agentConfig` (Profile) | `ContactCenter` | undefined | Set by `register()`; updated by station login, silent relogin, and login notifications | Set to null by `deregister()`; memory only |
+| `agentConfig` (Profile) | `ContactCenter` | undefined | Set by `register()` with the validated agent ID and registration organization ID; updated by station login, silent relogin, and login notifications | Replaced on registration; retained after failed retries for resource cleanup; cleared after deregistration; memory only |
 | `currentAgentSessionId` | `ContactCenter` | undefined | Station login, relogin, and login-success notifications set it | Cleared on logout, current-session multi-login close, registration failure, each profile fetch during register, and deregister |
 | `wellbeingBreakIdleCode`, `wellnessRegistrationGeneration` | `ContactCenter` | undefined, 0 | A lookup fills the cache; each `register()` and `deregister()` increments the generation | The cache is cleared on every register, profile fetch, and deregister |
 | `multiRegionSettings` and the last accepted switch tracking ID | ConnectionService | Unknown eligibility, no tracking ID | Accepted registration config and validated switch | Registration reset clears both; each accepted switch replaces the previous tracking ID. |

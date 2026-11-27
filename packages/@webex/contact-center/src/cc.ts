@@ -338,9 +338,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     rejectConnectionWait?: (error: Error) => void;
   };
 
-  private registrationOrgId?: string;
-  private registrationAgentId?: string;
-
   private acceptedStation?: Agent.UserStationLogin;
   private rtdConnection?: Promise<unknown>;
 
@@ -381,7 +378,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.services.connectionService.resetRecovery(identityFailure);
     this.wellnessRegistrationGeneration += 1;
     this.clearAcceptedStation();
-    this.registrationAgentId = undefined;
     this.wellbeingBreakIdleCode = undefined;
     this.services.connectionService.stop();
     this.pauseRtd('registrationEnded');
@@ -425,7 +421,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (
       typeof agentId !== 'string' ||
       !agentId.trim() ||
-      (this.registrationAgentId && agentId !== this.registrationAgentId)
+      (this.agentConfig?.agentId && agentId !== this.agentConfig.agentId)
     ) {
       this.terminateRegistration(true);
       throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
@@ -545,8 +541,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       data?.type === CC_EVENTS.AGENT_LOGOUT_SUCCESS &&
       this.currentAgentSessionId &&
       data.agentSessionId === this.currentAgentSessionId &&
-      data.orgId === this.registrationOrgId &&
-      data.agentId === this.registrationAgentId
+      data.orgId === this.agentConfig?.orgId &&
+      data.agentId === this.agentConfig?.agentId
     )
       this.clearStationSession();
   }
@@ -729,8 +725,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         agent: this.services.agent,
         metricsManager: this.metricsManager,
         getSession: () => ({
-          orgId: this.registrationOrgId,
-          agentId: this.registrationAgentId,
+          orgId: this.agentConfig?.orgId,
+          agentId: this.agentConfig?.agentId,
           connectionConfig: this.getConnectionConfig(),
           isAgentLoggedIn: this.agentConfig?.isAgentLoggedIn,
           station: this.acceptedStation,
@@ -1060,18 +1056,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.services.connectionService.resetRecovery();
     this.pauseRtd();
     this.services.connectionService.stop();
-    if (this.registrationAgentId) {
+    const previousProfile = this.agentConfig;
+    if (this.agentConfig?.agentId) {
       this.services.webSocketManager.close(false, 'register');
       this.taskManager.unregisterIncomingCallEvent();
       this.taskManager.invalidateRegionalTasks();
     }
     this.clearAcceptedStation();
     this.wellnessRegistrationGeneration += 1;
-    this.registrationAgentId = undefined;
+    this.agentConfig = null;
     this.wellbeingBreakIdleCode = undefined;
     const orgId = this.$webex.credentials.getOrgId();
     this.pendingRegistration = {};
-    this.registrationOrgId = orgId;
     LoggerProxy.log('Starting CC SDK registration', {
       module: CC_FILE,
       method: METHODS.REGISTER,
@@ -1086,7 +1082,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.services.webSocketManager.off('message', this.handleWebsocketMessage);
       this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
-      const resp = await this.connectWebsocket();
+      const resp = await this.connectWebsocket(orgId);
       if (this.pendingRegistration.failure) throw this.pendingRegistration.failure;
       // Ensure 'dn' is always populated from 'defaultDn'
       resp.dn = resp.defaultDn;
@@ -1112,7 +1108,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         : resp;
     } catch (error) {
       const failure = this.pendingRegistration.failure ?? error;
-      this.registrationAgentId = undefined;
+      // Retain the browser flags needed by deregister if profile retrieval failed.
+      if (!this.agentConfig) this.agentConfig = previousProfile;
       this.services.connectionService.stop();
       this.services.webSocketManager.close(false, 'registrationFailed');
       this.pauseRtd();
@@ -1176,7 +1173,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async deregister(): Promise<void> {
     this.terminateRegistration();
-    this.registrationOrgId = undefined;
     this.updateWellnessSession();
     try {
       this.metricsManager.timeEvent([
@@ -1346,12 +1342,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /**
    * Connects to the websocket and fetches the agent profile
+   * @param {string} orgId - Organization used for this registration
    * @returns {Promise<Profile>} Agent profile information
    * @throws {Error} If connection fails or profile cannot be fetched
    * @private
    */
-  private async connectWebsocket() {
-    const orgId = this.registrationOrgId;
+  private async connectWebsocket(orgId: string) {
     LoggerProxy.log('Connecting to websocket', {
       module: CC_FILE,
       method: METHODS.CONNECT_WEBSOCKET,
@@ -1373,8 +1369,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const {multiRegionSettings} = profile;
       // Keep recovery settings private when register() returns this profile.
       delete profile.multiRegionSettings;
+      profile.orgId = orgId;
       this.agentConfig = profile;
-      this.registrationAgentId = agentId;
       this.services.connectionService.reset();
       this.services.connectionService.setMultiRegionSettings(multiRegionSettings);
       this.taskManager.registerIncomingCallEvent();
@@ -1951,7 +1947,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return;
     }
-    if (eventData.type === CC_EVENTS.WELCOME && this.registrationAgentId) {
+    if (eventData.type === CC_EVENTS.WELCOME && this.agentConfig?.agentId) {
       try {
         this.assertPrimaryIdentity(eventData.data?.agentId);
       } catch {
