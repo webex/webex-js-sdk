@@ -499,12 +499,12 @@ sequenceDiagram
 
 Automatic relogin on WebSocket reconnection: `handleConnectionLost` runs `silentRelogin()` only
 when `isConnectionLost` is false, `isSocketReconnected` is true, `allowAutomatedRelogin` is enabled,
-no initial registration is pending, `suppressAutomaticRelogin` is false, and the recovery phase is
+no initial registration is pending, `agentConfig.isAgentLoggedIn !== false`, and the recovery phase is
 `idle` or `ready`. Explicit logout suppresses automatic restoration; enabling the config flag alone
 does not bypass suppression or regional recovery ownership. Separately, `connectWebsocket` during
 `cc.register()` calls `silentRelogin(true)` when `allowAutomatedRelogin` is enabled, after awaiting
 registration connection ownership; a relogin failure there rejects `cc.register()`. Regional restore
-uses its own generation-owned session path, and `stationLoginRequired` requires explicit station
+uses its own bounded session retry path, and `stationLoginRequired` requires explicit station
 login. Evidence: `src/cc.ts`, `test/unit/spec/cc.ts`.
 
 When reload reports a missing station and an accepted login payload is available, the SDK tries
@@ -634,7 +634,7 @@ The [AQM request contract](../../core/docs/README.md#aqmreqs-members) describes 
 | HTTP rejection, timeout after 20000 ms, or the same request already pending | AqmReqs rejects with `Service.aqm.agent.stationLogin`, `Service.reqs.generic.failure`, `Service.aqm.reqs.Timeout`, or `Service.aqm.reqs.Pending` details; these carry no `data.reason`, so the wrapper throws `Error` with the message Error while performing followed by the method name | Treat the outcome as unknown and wait for an agent event; never synthesize success | Call again once the pending call has settled | `src/services/core/aqm-reqs.ts`, `src/services/core/Utils.ts` |
 | Available requested while browser voice is not ready | `Error` whose message is `VOICE_CONNECTION_ERROR.NOT_READY`; no request sent | Wait for `voice:connectionStateChange` to report voice ready, or choose an Idle code | Call again when voice is ready | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | Silent relogin finds no agent session and has no accepted station to restore | Reason `AGENT_NOT_FOUND`; returns without throwing, error logging, or log upload | Nothing to handle; the agent is logged out | Call `stationLogin` | `src/cc.ts`, `src/services/core/Utils.ts` |
-| Ordinary reconnect does not run silent relogin | No reload unless `isConnectionLost` is false, `isSocketReconnected` is true, `allowAutomatedRelogin` is true (the default), no registration is pending, `suppressAutomaticRelogin` is false, and phase is `idle` or `ready` | Preserve logout intent and recovery ownership; changing the flag alone does not satisfy all gates | A later eligible reconnect can relogin; `stationLoginRequired` needs explicit login. Register-time relogin is a separate path gated by the flag and current registration ownership | `src/config.ts`, `src/cc.ts`, `test/unit/spec/cc.ts` |
+| Ordinary reconnect does not run silent relogin | No reload unless `isConnectionLost` is false, `isSocketReconnected` is true, `allowAutomatedRelogin` is true (the default), no registration is pending, `agentConfig.isAgentLoggedIn !== false`, and phase is `idle` or `ready` | Preserve logout intent and recovery ownership; changing the flag alone does not satisfy all gates | A later eligible reconnect can relogin; `stationLoginRequired` needs explicit login. Register-time relogin is a separate path gated by the flag and current registration ownership | `src/config.ts`, `src/cc.ts`, `test/unit/spec/cc.ts` |
 
 For `stationLogin`, special error handling extracts field-specific messages: `getStationLoginErrorData`
 in `src/services/core/Utils.ts` builds an `errorCodeMessageMap` in which `DUPLICATE_LOCATION` gives the

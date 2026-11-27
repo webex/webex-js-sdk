@@ -670,7 +670,7 @@
         "publication": "internal",
         "source_kind": "repository-path",
         "source": "src/services/core/aqm-reqs.ts",
-        "summary": "AqmReqs request/notification correlation, WebexRequest HTTP calls, WebSocketManager and ConnectionService socket lifecycle, and the shared error and utility helpers. Specified in src/services/core/docs/README.md. Owns AQM event matching and timeout, URL-only WebSocket admission and cleanup, Welcome deadlines, and ordinary reconnect timing. Services owns HTTP subscription and ContactCenter owns regional recovery policy."
+        "summary": "AqmReqs request/notification correlation, WebexRequest HTTP calls, WebSocketManager and ConnectionService socket lifecycle, and the shared error and utility helpers. Specified in src/services/core/docs/README.md. Owns AQM event matching and timeout, WebSocket subscription/connect and cleanup, Welcome deadlines, and ordinary reconnect timing. ContactCenter owns regional recovery policy."
       },
       "contact-center-metrics": {
         "kind": "event",

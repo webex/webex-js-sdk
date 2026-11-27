@@ -173,35 +173,34 @@ export class WebSocketManager extends EventEmitter {
       this.websocket.onopen = () => {
         if (this.websocket !== websocket) return;
         this.isSocketClosed = false;
-        try {
-          this.websocket.send(JSON.stringify({keepalive: 'true'}));
-          this.keepaliveWorker.onmessage = (keepAliveEvent: MessageEvent) => {
-            if (this.websocket !== websocket) return;
-            if (keepAliveEvent?.data?.type === 'keepalive' && this.websocket.readyState === 1) {
-              this.websocket.send(JSON.stringify({keepalive: 'true'}));
-            }
-            if (
-              keepAliveEvent?.data?.type === 'closeSocket' &&
-              this.isConnectionLost &&
-              this.shouldReconnect
-            ) {
-              this.close(true, 'WebSocket did not auto close within 16 secs');
-              LoggerProxy.error(
-                '[webSocketTimeout] | event=webSocketTimeout | WebSocket connection closed forcefully',
-                {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
-              );
-            }
-          };
-          this.keepaliveWorker.postMessage({
-            type: 'start',
-            intervalDuration: KEEPALIVE_WORKER_INTERVAL, // Keepalive interval
-            isSocketClosed: this.isSocketClosed,
-            closeSocketTimeout: CLOSE_SOCKET_TIMEOUT, // Close socket timeout
-          });
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
+
+        this.websocket.send(JSON.stringify({keepalive: 'true'}));
+        this.keepaliveWorker.onmessage = (keepAliveEvent: MessageEvent) => {
+          if (this.websocket !== websocket) return;
+          if (keepAliveEvent?.data?.type === 'keepalive' && this.websocket.readyState === 1) {
+            this.websocket.send(JSON.stringify({keepalive: 'true'}));
+          }
+
+          if (
+            keepAliveEvent?.data?.type === 'closeSocket' &&
+            this.isConnectionLost &&
+            this.shouldReconnect
+          ) {
+            this.close(true, 'WebSocket did not auto close within 16 secs');
+            LoggerProxy.error(
+              '[webSocketTimeout] | event=webSocketTimeout | WebSocket connection closed forcefully',
+              {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
+            );
+          }
+        };
+
+        this.keepaliveWorker.postMessage({
+          type: 'start',
+          intervalDuration: KEEPALIVE_WORKER_INTERVAL, // Keepalive interval
+          isSocketClosed: this.isSocketClosed,
+          closeSocketTimeout: CLOSE_SOCKET_TIMEOUT, // Close socket timeout
+        });
+        resolve();
       };
 
       this.websocket.onerror = () => {
@@ -213,11 +212,13 @@ export class WebSocketManager extends EventEmitter {
         this.webSocketOnCloseHandler(websocket, error);
         reject(error);
       };
+
       this.websocket.onclose = () => {
         const error = new Error('WebSocket closed');
         this.webSocketOnCloseHandler(websocket, error);
         reject(error);
       };
+
       this.websocket.onmessage = (e: MessageEvent) => {
         if (this.websocket !== websocket) return;
         let eventData;
@@ -228,6 +229,7 @@ export class WebSocketManager extends EventEmitter {
 
           return;
         }
+
         if (
           eventData?.type === CC_EVENTS.WELCOME &&
           !this.isWelcomeReceived &&
@@ -236,10 +238,13 @@ export class WebSocketManager extends EventEmitter {
         ) {
           this.isWelcomeReceived = true;
           clearTimeout(this.welcomeTimer);
-          this.welcomePromiseResolve?.(eventData.data as WelcomeResponse);
-          this.welcomePromiseResolve = null;
+          if (this.welcomePromiseResolve) {
+            this.welcomePromiseResolve(eventData.data as WelcomeResponse);
+            this.welcomePromiseResolve = null;
+          }
           this.welcomePromiseReject = null;
         }
+
         if (eventData?.type === 'AGENT_MULTI_LOGIN') {
           this.close(false, 'multiLogin');
           LoggerProxy.error(
