@@ -524,7 +524,7 @@ bindings and operation settlement. ConnectionService owns transport scheduling a
 
 | State or slice | Owner | Initial state | Transition triggers | Reset or persistence boundary |
 | -------------- | ----- | ------------- | ------------------- | ----------------------------- |
-| Current `attempt` and accepted socket | `WebSocketManager` | No attempt | URL connection, Welcome, error, close, or supersession | Superseding attempt or explicit close releases timer, socket and worker |
+| Current `websocket`, `keepaliveWorker` and `isWelcomeReceived` | `WebSocketManager` | No socket | URL connection, Welcome, error, close, or replacement | Socket replacement or explicit close releases the timer, socket and worker |
 | Pending success, failure, and cancel bindings | `AqmReqs` | Empty | Dispatch, notification, host rejection, or timeout | Clear pending bindings on settlement |
 | `mode`, `retryTimer`, `pending` and ordinary liveness timers | `ConnectionService` | Stopped until registration binds ordinary recovery | Registration reset, socket loss, pause, region recovery or stop | Reset or stop invalidates outstanding work and prevents obsolete callbacks from changing state |
 | `WebexRequest.instance` | `WebexRequest` class | Unset until the first `getInstance({webex})` | First call with `webex` | Process lifetime |

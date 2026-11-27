@@ -1,7 +1,6 @@
 import EventEmitter from 'events';
-import type {ConnectionLostDetails} from './types';
-import {CC_EVENTS} from '../../config/types';
-import type {WelcomeResponse} from '../../config/types';
+import {ConnectionLostDetails} from './types';
+import {CC_EVENTS, WelcomeResponse} from '../../config/types';
 import LoggerProxy from '../../../logger-proxy';
 import workerScript from './keepalive.worker';
 import {
@@ -17,18 +16,6 @@ import {isAllowedUrlHost, isRecord} from '../Utils';
 const interrupted = (): Error =>
   Object.assign(new Error('WebSocket connection interrupted'), {name: 'AbortError'});
 
-type SocketAttempt = {
-  signal?: AbortSignal;
-  onAbort: () => void;
-  socket?: WebSocket;
-  worker?: Worker;
-  workerUrl?: string;
-  accepted: boolean;
-  timer?: ReturnType<typeof setTimeout>;
-  resolve: (welcome: WelcomeResponse) => void;
-  reject: (error: unknown) => void;
-};
-
 /**
  * WebSocketManager handles the WebSocket connection for Contact Center operations.
  * It connects the supplied URL and handles socket lifecycle and message delivery.
@@ -36,102 +23,98 @@ type SocketAttempt = {
  * @ignore
  */
 export class WebSocketManager extends EventEmitter {
-  public shouldReconnect = true;
-  private isConnectionLost = false;
-  private attempt?: SocketAttempt;
-  initWebSocket(options: {url: string; signal?: AbortSignal}): Promise<WelcomeResponse> {
-    if (options.signal?.aborted) {
-      return Promise.reject(interrupted());
-    }
+  private websocket?: WebSocket;
+  shouldReconnect: boolean;
+  isSocketClosed: boolean;
+  private isWelcomeReceived: boolean;
+  private url: string | null = null;
+  private isConnectionLost: boolean;
+  private welcomePromiseResolve:
+    | ((value: WelcomeResponse | PromiseLike<WelcomeResponse>) => void)
+    | null = null;
 
-    let secure = false;
+  private welcomePromiseReject: ((error: unknown) => void) | null = null;
+  private welcomeTimer?: ReturnType<typeof setTimeout>;
+  private connectionSignal?: AbortSignal;
+  private onConnectionAbort?: () => void;
+  private keepaliveWorker?: Worker;
+  private workerUrl?: string;
+
+  constructor() {
+    super();
+    this.shouldReconnect = true;
+    this.isSocketClosed = false;
+    this.isWelcomeReceived = false;
+    this.isConnectionLost = false;
+  }
+
+  async initWebSocket(options: {url: string; signal?: AbortSignal}): Promise<WelcomeResponse> {
+    if (options.signal?.aborted) throw interrupted();
+    const {url: webSocketUrl, signal} = options;
+    let isWssUrl = false;
     try {
-      secure = new URL(options.url).protocol === 'wss:';
+      isWssUrl = new URL(webSocketUrl).protocol === 'wss:';
     } catch {
-      secure = false;
+      isWssUrl = false;
     }
-    if (!secure || !isAllowedUrlHost(options.url, ALLOWED_ROUTING_NOTIFS_DOMAINS)) {
-      return Promise.reject(new Error('Rejected WebSocket URL: scheme or host not allow-listed'));
+    if (!isWssUrl || !isAllowedUrlHost(webSocketUrl, ALLOWED_ROUTING_NOTIFS_DOMAINS)) {
+      throw new Error('Rejected WebSocket URL: scheme or host not allow-listed');
     }
 
-    const previous = this.attempt;
-    if (previous) this.disposeAttempt(previous, interrupted());
+    this.cleanupWebSocket(interrupted());
+    this.url = webSocketUrl;
     this.shouldReconnect = true;
 
     return new Promise((resolve, reject) => {
-      const attempt: SocketAttempt = {
-        signal: options.signal,
-        accepted: false,
-        resolve,
-        reject,
-        onAbort: () => this.disposeAttempt(attempt, interrupted()),
-      };
-      this.attempt = attempt;
-      attempt.signal?.addEventListener('abort', attempt.onAbort, {once: true});
-      attempt.timer = setTimeout(
-        () => this.disposeAttempt(attempt, new Error('Welcome deadline exceeded')),
+      this.welcomePromiseResolve = resolve;
+      this.welcomePromiseReject = reject;
+      this.connectionSignal = signal;
+      this.onConnectionAbort = () => this.cleanupWebSocket(interrupted());
+      signal?.addEventListener('abort', this.onConnectionAbort, {once: true});
+      this.welcomeTimer = setTimeout(
+        () => this.cleanupWebSocket(new Error('Welcome deadline exceeded')),
         WELCOME_TIMEOUT
       );
       try {
-        this.connect(attempt, options.url);
+        this.connect();
       } catch (error) {
-        this.disposeAttempt(attempt, error);
+        this.cleanupWebSocket(error);
       }
     });
   }
 
   public hasUsableSocket(): boolean {
-    const attempt = this.attempt;
-
-    return !!(
-      attempt &&
-      this.ownsAttempt(attempt) &&
-      attempt.accepted &&
-      attempt.socket?.readyState === 1
-    );
+    return !this.isSocketClosed && this.isWelcomeReceived && this.websocket?.readyState === 1;
   }
 
-  close(shouldReconnect: boolean, reason = 'Unknown'): void {
+  close(shouldReconnect: boolean, reason = 'Unknown') {
     this.shouldReconnect = shouldReconnect;
-    const attempt = this.attempt;
-    if (!attempt) return;
-    this.disposeAttempt(attempt, interrupted());
+    if (!this.websocket) return;
+    this.cleanupWebSocket(interrupted());
     this.emit('socketClose', {shouldReconnect});
     if (reason) WebSocketManager.diagnose('WebSocket connection closed', METHODS.CLOSE);
   }
 
-  handleConnectionLost(event: ConnectionLostDetails): void {
+  handleConnectionLost(event: ConnectionLostDetails) {
     this.isConnectionLost = event.isConnectionLost;
   }
 
-  private ownsAttempt(attempt: SocketAttempt): boolean {
-    return this.attempt === attempt && !attempt.signal?.aborted;
-  }
-
-  /** Diagnostics never own admission, disposal or message delivery. */
-  private static diagnose(message: string, method: string): void {
-    try {
-      LoggerProxy.log(message, {module: WEB_SOCKET_MANAGER_FILE, method});
-    } catch {
-      // An unavailable diagnostic sink cannot change transport progress.
-    }
-  }
-
-  private connect(attempt: SocketAttempt, url: string): void {
-    const socket = new WebSocket(url);
-    attempt.socket = socket;
-    socket.onopen = () => {
-      if (!this.ownsAttempt(attempt) || attempt.worker) return;
+  private connect() {
+    const websocket = new WebSocket(this.url);
+    this.websocket = websocket;
+    websocket.onopen = () => {
+      if (this.websocket !== websocket || this.keepaliveWorker) return;
+      this.isSocketClosed = false;
       try {
-        socket.send(JSON.stringify({keepalive: 'true'}));
+        websocket.send(JSON.stringify({keepalive: 'true'}));
         const workerScriptBlob = new Blob([workerScript], {type: 'application/javascript'});
-        attempt.workerUrl = URL.createObjectURL(workerScriptBlob);
-        const worker = new Worker(attempt.workerUrl);
-        attempt.worker = worker;
-        worker.onmessage = (keepAliveEvent: MessageEvent) => {
-          if (!this.ownsAttempt(attempt)) return;
-          if (keepAliveEvent?.data?.type === 'keepalive' && socket.readyState === 1)
-            socket.send(JSON.stringify({keepalive: 'true'}));
+        this.workerUrl = URL.createObjectURL(workerScriptBlob);
+        this.keepaliveWorker = new Worker(this.workerUrl);
+        this.keepaliveWorker.onmessage = (keepAliveEvent: MessageEvent) => {
+          if (this.websocket !== websocket) return;
+          if (keepAliveEvent?.data?.type === 'keepalive' && websocket.readyState === 1) {
+            websocket.send(JSON.stringify({keepalive: 'true'}));
+          }
           if (
             keepAliveEvent?.data?.type === 'closeSocket' &&
             this.isConnectionLost &&
@@ -140,96 +123,111 @@ export class WebSocketManager extends EventEmitter {
             this.close(true, 'WebSocket did not auto close within 16 secs');
           }
         };
-        worker.postMessage({
+        this.keepaliveWorker.postMessage({
           type: 'start',
           intervalDuration: KEEPALIVE_WORKER_INTERVAL, // Keepalive interval
-          isSocketClosed: false,
+          isSocketClosed: this.isSocketClosed,
           closeSocketTimeout: CLOSE_SOCKET_TIMEOUT, // Close socket timeout
         });
       } catch (error) {
-        this.disposeAttempt(attempt, error);
+        this.cleanupWebSocket(error);
       }
     };
-    socket.onerror = () =>
-      this.webSocketOnCloseHandler(attempt, new Error('WebSocket connection failed'));
-    socket.onclose = () => this.webSocketOnCloseHandler(attempt, new Error('WebSocket closed'));
-    socket.onmessage = (event: MessageEvent) => {
-      if (!this.ownsAttempt(attempt)) return;
-      let data: unknown;
+
+    websocket.onerror = () =>
+      this.webSocketOnCloseHandler(websocket, new Error('WebSocket connection failed'));
+    websocket.onclose = () =>
+      this.webSocketOnCloseHandler(websocket, new Error('WebSocket closed'));
+    websocket.onmessage = (e: MessageEvent) => {
+      if (this.websocket !== websocket) return;
+      let eventData;
       try {
-        data = JSON.parse(event.data);
+        eventData = JSON.parse(e.data);
       } catch {
-        if (attempt.accepted) this.emit('message', event.data);
+        if (this.isWelcomeReceived) this.emit('message', e.data);
 
         return;
       }
-      const frame = isRecord(data) ? data : undefined;
-      const messageType = frame?.type;
-      const messageData = frame?.data;
       if (
-        messageType === CC_EVENTS.WELCOME &&
-        !attempt.accepted &&
-        isRecord(messageData) &&
-        !Array.isArray(messageData)
+        eventData?.type === CC_EVENTS.WELCOME &&
+        !this.isWelcomeReceived &&
+        isRecord(eventData.data) &&
+        !Array.isArray(eventData.data)
       ) {
-        attempt.accepted = true;
-        clearTimeout(attempt.timer);
-        attempt.resolve(messageData as WelcomeResponse);
+        this.isWelcomeReceived = true;
+        clearTimeout(this.welcomeTimer);
+        this.welcomePromiseResolve?.(eventData.data as WelcomeResponse);
+        this.welcomePromiseResolve = null;
+        this.welcomePromiseReject = null;
       }
-      if (messageType === CC_EVENTS.AGENT_MULTI_LOGIN) {
-        // Capture and close the receiving owner before observers can replace it.
-        this.shouldReconnect = false;
-        this.disposeAttempt(attempt, interrupted());
-        this.emit('socketClose', {shouldReconnect: false});
-      } else if (!attempt.accepted) {
+      if (eventData?.type === 'AGENT_MULTI_LOGIN') {
+        this.close(false, 'multiLogin');
+      } else if (!this.isWelcomeReceived) {
         return;
       }
-      this.emit('message', event.data);
+      this.emit('message', e.data);
     };
   }
 
-  private webSocketOnCloseHandler(attempt: SocketAttempt, error: Error): void {
-    if (this.attempt !== attempt) return;
-    const reconnect = this.shouldReconnect;
-    const admitted = attempt.accepted;
-    this.disposeAttempt(attempt, error, false);
-    if (admitted) this.emit('socketClose', {shouldReconnect: reconnect});
+  private webSocketOnCloseHandler(websocket: WebSocket, error: Error) {
+    if (this.websocket !== websocket) return;
+    const shouldReconnect = this.shouldReconnect;
+    const isWelcomeReceived = this.isWelcomeReceived;
+    this.cleanupWebSocket(error, false);
+    if (isWelcomeReceived) this.emit('socketClose', {shouldReconnect});
   }
 
-  /** Invalidate ownership before releasing any resource or invoking rejection callbacks. */
-  private disposeAttempt(attempt: SocketAttempt, error: unknown, closeSocket = true): void {
-    if (this.attempt !== attempt) return;
-    this.attempt = undefined;
-    clearTimeout(attempt.timer);
-    attempt.signal?.removeEventListener('abort', attempt.onAbort);
-    if (!attempt.accepted) attempt.reject(error);
-    if (attempt.socket) {
-      attempt.socket.onopen = null;
-      attempt.socket.onmessage = null;
-      attempt.socket.onerror = null;
-      attempt.socket.onclose = null;
+  private cleanupWebSocket(error: unknown, closeSocket = true): void {
+    const websocket = this.websocket;
+    const keepaliveWorker = this.keepaliveWorker;
+    const workerUrl = this.workerUrl;
+    this.websocket = undefined;
+    this.keepaliveWorker = undefined;
+    this.workerUrl = undefined;
+    this.isSocketClosed = true;
+    this.isWelcomeReceived = false;
+    clearTimeout(this.welcomeTimer);
+    this.connectionSignal?.removeEventListener('abort', this.onConnectionAbort);
+    this.connectionSignal = undefined;
+    this.onConnectionAbort = undefined;
+    this.welcomePromiseReject?.(error);
+    this.welcomePromiseResolve = null;
+    this.welcomePromiseReject = null;
+    if (websocket) {
+      websocket.onopen = null;
+      websocket.onmessage = null;
+      websocket.onerror = null;
+      websocket.onclose = null;
       if (closeSocket) {
         try {
-          attempt.socket.close();
+          websocket.close();
         } catch {
           WebSocketManager.diagnose('Socket disposal failed', METHODS.DISPOSE_ATTEMPT);
         }
       }
     }
-    if (attempt.worker) {
-      attempt.worker.onmessage = null;
+    if (keepaliveWorker) {
+      keepaliveWorker.onmessage = null;
       try {
-        attempt.worker.terminate();
+        keepaliveWorker.terminate();
       } catch {
         WebSocketManager.diagnose('Worker disposal failed', METHODS.DISPOSE_ATTEMPT);
       }
     }
-    if (attempt.workerUrl) {
+    if (workerUrl) {
       try {
-        URL.revokeObjectURL(attempt.workerUrl);
+        URL.revokeObjectURL(workerUrl);
       } catch {
         WebSocketManager.diagnose('Worker URL disposal failed', METHODS.DISPOSE_ATTEMPT);
       }
+    }
+  }
+
+  private static diagnose(message: string, method: string): void {
+    try {
+      LoggerProxy.log(message, {module: WEB_SOCKET_MANAGER_FILE, method});
+    } catch {
+      // Diagnostics cannot interrupt socket cleanup.
     }
   }
 }
