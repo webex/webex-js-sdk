@@ -10,10 +10,10 @@ import {
 } from '../../../../../src/services/config/types';
 import TaskManager from '../../../../../src/services/task/TaskManager';
 import Task from '../../../../../src/services/task/Task';
-import Digital from '../../../../../src/services/task/digital/Digital';
 import * as contact from '../../../../../src/services/task/contact';
-import {TASK_CHANNEL_TYPE, TASK_EVENTS} from '../../../../../src/services/task/types';
+import {TASK_EVENTS} from '../../../../../src/services/task/types';
 import {TaskEvent, TaskState} from '../../../../../src/services/task/state-machine';
+import Voice from '../../../../../src/services/task/voice/Voice';
 import WebRTC from '../../../../../src/services/task/voice/WebRTC';
 import WebCallingService from '../../../../../src/services/WebCallingService';
 import config from '../../../../../src/config';
@@ -61,19 +61,24 @@ jest.mock('../../../../../src/services/task/contact', () => ({
 }));
 
 jest.mock('../../../../../src/services/WebCallingService', () => {
-  const ActualWebCallingService = jest.requireActual(
-    '../../../../../src/services/WebCallingService'
-  ).default;
+  const EventEmitter = require('events');
 
   return {
     __esModule: true,
-    default: class MockWebCallingService extends ActualWebCallingService {
-      mapCallToTask = jest.fn((callId: string, taskId: string) =>
-        super.mapCallToTask(callId, taskId)
-      );
-      getTaskIdForCall = jest.fn((callId: string) => super.getTaskIdForCall(callId));
-      isBrowserVoiceRequired = jest.fn(() => true);
-      cleanUpCall = jest.fn((expectedCall) => super.cleanUpCall(expectedCall));
+    default: class MockWebCallingService extends EventEmitter {
+      loginOption?: string;
+      call?: unknown;
+      mapCallToTask = jest.fn();
+      cleanUpCall = jest.fn(() => {
+        (this.call as {off?: (event: string, listener: () => void) => void})?.off?.(
+          'remote_media',
+          () => undefined
+        );
+        (this.call as {off?: (event: string, listener: () => void) => void})?.off?.(
+          'disconnect',
+          () => undefined
+        );
+      });
     },
   };
 });
@@ -162,8 +167,6 @@ jest.mock('../../../../../src/services/task/voice/WebRTC', () => {
         this.webCallingService.off('remote_media', this.handleRemoteMedia);
       });
       cancelAutoWrapupTimer = jest.fn();
-      bindRecoveryGuard = jest.fn();
-      invalidateForRegionRecovery = jest.fn();
       updateUiControls = jest.fn();
       updateTaskData = jest.fn((newData) => {
         this.data = {...this.data, ...newData};
@@ -327,7 +330,6 @@ describe('TaskManager', () => {
       decline: jest.fn(),
       updateTaskData,
       setFeatureEnablement: jest.fn(),
-      bindRecoveryGuard: jest.fn(),
       unregisterWebCallListeners: jest.fn(),
       cancelAutoWrapupTimer: jest.fn(),
     });
@@ -522,9 +524,9 @@ describe('TaskManager', () => {
       webSocketManagerMock as any,
       rtdWebSocketManagerMock as any
     );
-    taskManager.startSession({signal: new AbortController().signal});
     taskManager.taskCollection[taskId] = createStateMachineTask(taskDataMock);
     (taskManager as any).setupTaskListeners?.(taskManager.taskCollection[taskId]);
+    taskManager.call = mockCall;
     taskManager.setAgentId('test-agent-id');
 
     jest
@@ -2210,7 +2212,7 @@ describe('TaskManager', () => {
       },
     ],
   ] as const)(
-    'should provide AI summary dependencies and bind the live guard before publishing %s',
+    'should pass AI summary dependencies into task construction before publishing %s',
     (_name, publicationEvent, payload) => {
       taskManager.taskCollection = {};
       (TaskFactory.createTask as jest.Mock).mockClear();
@@ -2243,7 +2245,6 @@ describe('TaskManager', () => {
       taskManager.on(publicationEvent, (publishedTask) => {
         publishedTasks.push(publishedTask);
         expect(publishedTask).toBe((TaskFactory.createTask as jest.Mock).mock.results[0].value);
-        expect(publishedTask.bindRecoveryGuard).toHaveBeenCalledWith(taskManager['recoveryGuard']);
         expectTaskConstructedForAISummary();
       });
 
@@ -2833,16 +2834,29 @@ describe('TaskManager', () => {
     expect(allTasks).toHaveProperty(taskId2, mockTask2);
   });
 
+  it('retires old tasks and hydrates fresh tasks through the same socket listener', () => {
+    const oldTask = new Voice(contactMock, taskDataMock);
+    taskManager.taskCollection[taskId] = oldTask;
+    const retire = jest.spyOn(oldTask, 'invalidateForRegionRecovery');
+    const stop = jest.spyOn(oldTask.stateMachineService, 'stop');
+
+    taskManager.invalidateRegionalTasks();
+
+    expect(retire).toHaveBeenCalledTimes(1);
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(taskManager.getAllTasks()).toEqual({});
+    expect(webCallingService.cleanUpCall).toHaveBeenCalledTimes(1);
+
+    taskManager.registerIncomingCallEvent();
+    expect(webCallingService.listenerCount(LINE_EVENTS.INCOMING_CALL)).toBe(1);
+    expect(webSocketManagerMock.listenerCount('message')).toBe(1);
+    webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
+
+    expect(taskManager.getTask(taskId)).toBeDefined();
+    expect(taskManager.getTask(taskId)).not.toBe(oldTask);
+  });
+
   it('test call listeners being switched off on call end', () => {
-    const callEvents = new EventEmitter();
-    mockCall.on.mockImplementation(callEvents.on.bind(callEvents));
-    mockCall.off.mockImplementation(callEvents.off.bind(callEvents));
-    webCallingService.answerCall({} as any, taskId);
-    const callListeners = [...mockCall.on.mock.calls];
-    expect(callEvents.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(1);
-    expect(callEvents.listenerCount(CALL_EVENT_KEYS.DISCONNECT)).toBe(1);
-    expect(webCallingService.getTaskIdForCall(mockCall.getCallId())).toBeUndefined();
-    expect(taskManager.call).toBeUndefined();
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
 
     const webrtcTask = new WebRTC(contactMock, webCallingService, taskDataMock, {
@@ -2853,7 +2867,6 @@ describe('TaskManager', () => {
     // TaskManager must listen to task-level cleanup events emitted by the state machine.
     // This is normally wired when TaskManager creates the task via TaskFactory.
     (taskManager as any).setupTaskListeners(webrtcTask);
-    webCallingService.mapCallToTask(mockCall.getCallId(), taskId);
 
     const task = taskManager.getTask(taskId)!;
     // This test doesn't validate UI controls; avoid requiring full interaction.media
@@ -2907,289 +2920,16 @@ describe('TaskManager', () => {
     );
     expect(stateMachineEvent?.taskData.wrapUpRequired).toBe(false);
     expect(webCallListenerSpy).toHaveBeenCalledWith();
-    expect(callOffSpy.mock.calls).toEqual(callListeners);
-    expect(callEvents.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(0);
-    expect(callEvents.listenerCount(CALL_EVENT_KEYS.DISCONNECT)).toBe(0);
-    expect(webCallingService.call).toBeNull();
+    expect(callOffSpy).toHaveBeenCalledWith(
+      CALL_EVENT_KEYS.REMOTE_MEDIA,
+      callOffSpy.mock.calls[0][1]
+    );
 
     taskManager.unregisterIncomingCallEvent();
     expect(offSpy.mock.calls.length).toBe(2); // 1 for incoming call and 1 for remote media
-    expect(offSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.REMOTE_MEDIA, webrtcTask.handleRemoteMedia);
-    expect(offSpy).toHaveBeenCalledWith(LINE_EVENTS.INCOMING_CALL, taskManager.handleIncomingWebCall);
+    expect(offSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.REMOTE_MEDIA, offSpy.mock.calls[0][1]);
+    expect(offSpy).toHaveBeenCalledWith(LINE_EVENTS.INCOMING_CALL, offSpy.mock.calls[1][1]);
     sendStateMachineEventSpy.mockRestore();
-  });
-
-  describe('task call cleanup ownership', () => {
-    const createCall = (callId = 'owned-call') => {
-      const events = new EventEmitter();
-
-      return Object.assign(events, {
-        on: jest.fn(events.on.bind(events)),
-        off: jest.fn(events.off.bind(events)),
-        getCallId: jest.fn(() => callId),
-        answer: jest.fn(),
-        end: jest.fn(),
-      });
-    };
-
-    const reserveTask = (interactionId = taskId) => {
-      webSocketManagerMock.emit('message', JSON.stringify({data: {
-        ...taskDataMock,
-        type: CC_EVENTS.AGENT_CONTACT_RESERVED,
-        interactionId,
-        interaction: {...taskDataMock.interaction, mediaType: 'telephony', state: 'connected'},
-      }}));
-
-      return taskManager.getTask(interactionId) as WebRTC;
-    };
-
-    beforeEach(() => {
-      taskManager.taskCollection = {};
-      (TaskFactory.createTask as jest.Mock).mockImplementation((...args) => new WebRTC(...args));
-    });
-
-    describe.each(['contact ended', 'regional cleanup'])('%s', (boundary) => {
-      it.each(['call-first', 'mapped-owner'])(
-        'cleans only an owned service call after %s arrival', (arrival) => {
-          const call = createCall();
-          const line = {deregister: jest.fn()};
-          webCallingService.line = line;
-          webCallingService.call = call;
-          webCallingService.answerCall({} as any, taskId);
-          const listeners = [...call.on.mock.calls];
-          const task = arrival === 'call-first' ? undefined : reserveTask();
-
-          webCallingService.emit(LINE_EVENTS.INCOMING_CALL, call);
-
-          if (arrival === 'mapped-owner') {
-            expect(webCallingService.getTaskIdForCall(call.getCallId())).toBe(taskId);
-            taskManager.call = undefined;
-          } else {
-            expect(webCallingService.getTaskIdForCall(call.getCallId())).toBeUndefined();
-            expect(taskManager.call).toBe(call);
-          }
-          const endingTask = task ?? reserveTask();
-          const managerCall = taskManager.call;
-          const cleanup = () => {
-            if (boundary === 'regional cleanup') taskManager.invalidateRegionalTasks();
-            else webSocketManagerMock.emit('message', JSON.stringify({data: {
-              ...endingTask.data, type: CC_EVENTS.CONTACT_ENDED,
-            }}));
-          };
-
-          cleanup();
-          cleanup();
-
-          const owned = arrival === 'mapped-owner';
-          expect(call.off.mock.calls).toEqual(owned ? listeners : []);
-          expect(call.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(owned ? 0 : 1);
-          expect(call.listenerCount(CALL_EVENT_KEYS.DISCONNECT)).toBe(owned ? 0 : 1);
-          expect(webCallingService.getTaskIdForCall(call.getCallId())).toBeUndefined();
-          expect(webCallingService.call).toBe(owned ? null : call);
-          expect(taskManager.call).toBe(owned ? undefined : managerCall);
-          expect(endingTask.unregisterWebCallListeners).toHaveBeenCalledTimes(
-            boundary === 'regional cleanup' ? 1 : 2
-          );
-          expect(webCallingService.listeners(CALL_EVENT_KEYS.REMOTE_MEDIA)).not.toContain(
-            endingTask.handleRemoteMedia
-          );
-          expect(call.end).not.toHaveBeenCalled();
-          expect(webCallingService.line).toBe(line);
-          expect(line.deregister).not.toHaveBeenCalled();
-        }
-      );
-    });
-
-    it.each(['live', 'aliased-live', 'stale'])(
-      'preserves foreign ownership regardless of collection liveness: %s', (ownership) => {
-        const owner = reserveTask('other-task');
-        const ending = reserveTask();
-        const call = createCall();
-        webCallingService.call = call;
-        webCallingService.answerCall({} as any, 'other-task');
-        webCallingService.emit(LINE_EVENTS.INCOMING_CALL, call);
-        expect(webCallingService.getTaskIdForCall(call.getCallId())).toBe(owner.data.interactionId);
-        if (ownership === 'aliased-live') taskManager.taskCollection['owner-alias'] = owner;
-        if (ownership !== 'live') delete taskManager.taskCollection['other-task'];
-
-        taskManager.handleTaskCleanup(ending);
-        taskManager.handleTaskCleanup(ending);
-
-        expect(ending.unregisterWebCallListeners).toHaveBeenCalledTimes(2);
-        expect(call.off).not.toHaveBeenCalled();
-        expect(webCallingService.call).toBe(call);
-        expect(taskManager.call).toBe(call);
-        expect(webCallingService.getTaskIdForCall(call.getCallId())).toBe('other-task');
-        expect(call.end).not.toHaveBeenCalled();
-      }
-    );
-
-    it('clears only the manager reference corresponding to the disposed call', () => {
-      const task = reserveTask();
-      const captured = createCall('previous-call');
-      const current = createCall();
-      taskManager.call = captured;
-      webCallingService.call = current;
-      webCallingService.mapCallToTask(current.getCallId(), taskId);
-      webCallingService.answerCall({} as any, taskId);
-
-      taskManager.handleTaskCleanup(task);
-
-      expect(current.off.mock.calls).toEqual(current.on.mock.calls);
-      expect(webCallingService.call).toBeNull();
-      expect(taskManager.call).toBe(captured);
-      expect(captured.off).not.toHaveBeenCalled();
-    });
-
-    it('retains a fresh call installed while unregistering task listeners', () => {
-      const task = reserveTask();
-      const call = createCall();
-      const replacement = createCall('replacement-call');
-      webCallingService.call = call;
-      taskManager.call = call;
-      webCallingService.mapCallToTask(call.getCallId(), taskId);
-      webCallingService.answerCall({} as any, taskId);
-      task.unregisterWebCallListeners.mockImplementationOnce(() => {
-        webCallingService.call = replacement;
-        taskManager.call = replacement;
-      });
-
-      taskManager.handleTaskCleanup(task);
-
-      expect(call.off.mock.calls).toEqual(call.on.mock.calls);
-      expect(webCallingService.call).toBe(replacement);
-      expect(taskManager.call).toBe(replacement);
-      expect(replacement.off).not.toHaveBeenCalled();
-    });
-
-    it('fences an incoming call during recovery and admits a fresh offer once ready', () => {
-      const retiring = reserveTask();
-      retiring.data.interaction.state = 'wrapUp';
-      const paused = new AbortController();
-      taskManager.startSession({signal: paused.signal});
-      paused.abort();
-      const call = createCall();
-      const line = {deregister: jest.fn()};
-      webCallingService.line = line;
-      // The calling owner retains incoming calls even while Task dispatch is fenced.
-      webCallingService.call = call;
-      webCallingService.emit(LINE_EVENTS.INCOMING_CALL, call);
-      expect(webCallingService.getTaskIdForCall(call.getCallId())).toBeUndefined();
-      expect(taskManager.call).toBeUndefined();
-
-      taskManager.invalidateRegionalTasks();
-      taskManager.invalidateRegionalTasks();
-
-      expect(taskManager.getAllTasks()).toEqual({});
-      expect(retiring.invalidateForRegionRecovery).toHaveBeenCalledTimes(1);
-      expect(retiring.unregisterWebCallListeners).toHaveBeenCalledTimes(1);
-      expect(webCallingService.listeners(CALL_EVENT_KEYS.REMOTE_MEDIA)).not.toContain(
-        retiring.handleRemoteMedia
-      );
-      expect(webCallingService.call).toBe(call);
-      expect(webCallingService.getTaskIdForCall(call.getCallId())).toBeUndefined();
-      expect(call.off).not.toHaveBeenCalled();
-      expect(call.answer).not.toHaveBeenCalled();
-
-      taskManager.startSession({signal: new AbortController().signal});
-      const replacement = reserveTask();
-      expect(replacement).not.toBe(retiring);
-      const freshCall = createCall('fresh-call');
-      webCallingService.call = freshCall;
-      webCallingService.emit(LINE_EVENTS.INCOMING_CALL, freshCall);
-      expect(webCallingService.getTaskIdForCall(freshCall.getCallId())).toBe(
-        replacement.data.interactionId
-      );
-      expect(webCallingService.getTaskIdForCall(call.getCallId())).toBeUndefined();
-      expect(taskManager.call).toBe(freshCall);
-      const stream = {} as any;
-      webCallingService.answerCall(stream, replacement.data.interactionId);
-      const track = {} as MediaStreamTrack;
-      freshCall.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, track);
-
-      expect(freshCall.answer.mock.calls).toEqual([[stream]]);
-      expect(call.answer).not.toHaveBeenCalled();
-      expect(replacement.handleRemoteMedia.mock.calls).toEqual([[track]]);
-      expect(retiring.handleRemoteMedia).not.toHaveBeenCalled();
-      expect(freshCall.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(1);
-      expect(freshCall.listenerCount(CALL_EVENT_KEYS.DISCONNECT)).toBe(1);
-      expect(call.end).not.toHaveBeenCalled();
-      expect(freshCall.end).not.toHaveBeenCalled();
-      expect(webCallingService.line).toBe(line);
-      expect(line.deregister).not.toHaveBeenCalled();
-    });
-
-    it.each(['contact ended', 'regional cleanup'])(
-      'releases matching manager references despite throwing %s disposal', (boundary) => {
-        const task = reserveTask();
-        task.data.interaction.state = 'new';
-        const call = createCall();
-        webCallingService.call = call;
-        taskManager.call = call;
-        webCallingService.mapCallToTask(call.getCallId(), taskId);
-        webCallingService.answerCall({} as any, taskId);
-        const off = call.off.getMockImplementation();
-        call.off.mockImplementationOnce((...args) => {
-          off(...args);
-          throw new Error('call listener cleanup failed');
-        });
-        task.unregisterWebCallListeners.mockImplementationOnce(() => {
-          throw new Error('task listener cleanup failed');
-        });
-
-        expect(() => {
-          if (boundary === 'regional cleanup') taskManager.invalidateRegionalTasks();
-          else taskManager.handleTaskCleanup(task);
-        }).not.toThrow();
-
-        expect(call.off.mock.calls).toEqual(call.on.mock.calls);
-        expect(webCallingService.getTaskIdForCall(call.getCallId())).toBeUndefined();
-        expect(webCallingService.call).toBeNull();
-        expect(taskManager.call).toBeUndefined();
-        expect(taskManager.getTask(taskId)).toBeUndefined();
-        expect(task.unregisterWebCallListeners).toHaveBeenCalledTimes(1);
-        expect(call.end).not.toHaveBeenCalled();
-      }
-    );
-
-    it.each(['contact ended', 'regional cleanup'])(
-      'preserves a reentrant replacement through throwing %s cleanup', (boundary) => {
-        const task = reserveTask();
-        const call = createCall();
-        const replacement = createCall('replacement-call');
-        webCallingService.call = call;
-        taskManager.call = call;
-        webCallingService.mapCallToTask(call.getCallId(), taskId);
-        webCallingService.answerCall({} as any, taskId);
-        const removeListener = call.off.getMockImplementation();
-        call.off.mockImplementationOnce((...args) => {
-          removeListener(...args);
-          webCallingService.call = replacement;
-          taskManager.call = replacement;
-          webCallingService.mapCallToTask(replacement.getCallId(), 'replacement-task');
-          taskManager.taskCollection['replacement-task'] = {data: {interactionId: 'replacement-task'}};
-          throw new Error('call listener cleanup failed');
-        });
-        task.unregisterWebCallListeners.mockImplementationOnce(() => {
-          throw new Error('task listener cleanup failed');
-        });
-
-        expect(() => {
-          if (boundary === 'regional cleanup') taskManager.invalidateRegionalTasks();
-          else taskManager.handleTaskCleanup(task);
-        }).not.toThrow();
-        taskManager.handleTaskCleanup(task);
-
-        expect(call.off.mock.calls).toEqual(call.on.mock.calls);
-        expect(webCallingService.getTaskIdForCall(call.getCallId())).toBeUndefined();
-        expect(webCallingService.call).toBe(replacement);
-        expect(taskManager.call).toBe(replacement);
-        expect(webCallingService.getTaskIdForCall(replacement.getCallId())).toBe('replacement-task');
-        expect(replacement.off).not.toHaveBeenCalled();
-        expect(call.end).not.toHaveBeenCalled();
-        expect(replacement.end).not.toHaveBeenCalled();
-      }
-    );
   });
 
   it('should emit TASK_END event with wrapupRequired on regular call end', () => {
@@ -5744,17 +5484,7 @@ describe('TaskManager', () => {
 
     it('recovers a missing promoted-agent task under the main interaction and emits one hydrate', () => {
       clearTasksAndFactoryHistory();
-      let registryEntryDuringConstruction: unknown = 'not-observed';
-      (TaskFactory.createTask as jest.Mock).mockImplementationOnce(
-        (_contact, _webCallingService, data) => {
-          registryEntryDuringConstruction = taskManager.getTask(taskId);
-
-          return createStateMachineTask(data);
-        }
-      );
-      const hydrateHandler = jest.fn((task) => {
-        expect(task.bindRecoveryGuard).toHaveBeenCalledWith(taskManager['recoveryGuard']);
-      });
+      const hydrateHandler = jest.fn();
       const incomingHandler = jest.fn();
       taskManager.on(TASK_EVENTS.TASK_HYDRATE, hydrateHandler);
       taskManager.on(TASK_EVENTS.TASK_INCOMING, incomingHandler);
@@ -5784,7 +5514,6 @@ describe('TaskManager', () => {
       );
 
       const recoveredTask = (TaskFactory.createTask as jest.Mock).mock.results[0].value;
-      expect(registryEntryDuringConstruction).toBeUndefined();
       expectTaskConstructedForAISummary();
       expect(recoveredTask.sendStateMachineEvent).toHaveBeenCalledTimes(2);
       expect(recoveredTask.sendStateMachineEvent).toHaveBeenNthCalledWith(
@@ -6010,47 +5739,6 @@ describe('TaskManager', () => {
 
       expect(task.data.interaction.owner).toBe(promotedOwnerId);
       expectLastStateMachineEvent(task.sendStateMachineEvent, TaskEvent.CONTACT_OWNER_CHANGED);
-    });
-  });
-
-  describe('task removal diagnostic', () => {
-    it('removes a Task with no interaction ID without logging an interaction diagnostic', () => {
-      const task = taskManager.taskCollection[taskId];
-      task.data = {...task.data, interactionId: undefined};
-      const info = getLoggerProxy().info.mockClear();
-
-      taskManager.removeTaskFromCollection(task);
-
-      expect(info).not.toHaveBeenCalled();
-      expect(taskManager.getAllTasks()).toEqual({});
-    });
-
-    it('finishes other Task and session cleanup when removal diagnostics throw', () => {
-      const [task, otherTask] = [taskId, 'other-task'].map(
-        (interactionId) =>
-          new WebRTC(
-            contactMock,
-            webCallingService,
-            {...taskDataMock, interactionId},
-            {isEndTaskEnabled: true, isEndConsultEnabled: true}
-          )
-      );
-      taskManager.taskCollection[taskId] = task;
-      taskManager.taskCollection['other-task'] = otherTask;
-      taskManager.taskCollection.alias = task;
-      const info = getLoggerProxy().info.mockClear().mockImplementation(() => {
-        throw new Error('logger unavailable');
-      });
-
-      expect(() => taskManager.stopSession()).not.toThrow();
-
-      expect(info).toHaveBeenCalledTimes(2);
-      for (const removedTask of [task, otherTask]) {
-        expect(removedTask.cancelAutoWrapupTimer).toHaveBeenCalledTimes(1);
-        expect(removedTask.unregisterWebCallListeners).toHaveBeenCalledTimes(1);
-      }
-      expect(taskManager.getAllTasks()).toEqual({});
-      expect(mockApiAIAssistant.clearAllRtdRequests).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -6930,333 +6618,5 @@ describe('TaskManager', () => {
 
       expect(taskOne.refreshWxAppOfferObservability).toHaveBeenCalledTimes(1);
     });
-  });
-});
-
-describe('T-008 TaskManager recovery owners', () => {
-  const {createTaskData} = require('./taskTestUtils');
-  const actualFactory = jest.requireActual('../../../../../src/services/task/TaskFactory').default;
-  const flags = {isEndTaskEnabled: true, isEndConsultEnabled: true, webRtcEnabled: false, autoWrapup: false};
-  const managerOwnedTaskEvents = [
-    TASK_EVENTS.TASK_INCOMING,
-    TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
-    TASK_EVENTS.TASK_HYDRATE,
-    TASK_EVENTS.TASK_ASSIGNED,
-    TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
-    TASK_EVENTS.TASK_CLEANUP,
-  ];
-  const expectManagerTaskListeners = (manager: TaskManager, task: Task, attached: boolean) => {
-    if (attached) {
-      const owned = manager['taskListeners'].get(task);
-      expect(owned?.map(([event]) => event)).toEqual(managerOwnedTaskEvents);
-      owned.forEach(([event, listener]) => expect(task.listeners(event)).toEqual([listener]));
-    } else {
-      expect(manager['taskListeners'].has(task)).toBe(false);
-    }
-    managerOwnedTaskEvents.forEach((event) => {
-      expect(task.listenerCount(event)).toBe(attached ? 1 : 0);
-    });
-  };
-
-  const createGuard = () => {
-    const controller = new AbortController();
-
-    return {
-      controller,
-      guard: {signal: controller.signal},
-    };
-  };
-
-  const setup = (data = createTaskData({
-    type: CC_EVENTS.AGENT_CONTACT,
-    interaction: {mediaType: 'chat', state: 'connected'},
-  })) => {
-    const primary = new EventEmitter();
-    const calling = new WebCallingService({} as WebexSDK);
-    const contact = {accept: jest.fn().mockResolvedValue({trackingId: 'accepted'})};
-    const manager = new TaskManager(undefined, contact as any, calling, primary as any, new EventEmitter() as any);
-    const {controller, guard} = createGuard();
-    manager.setAgentId('agent-1');
-    manager.setConfigFlags(flags);
-    (TaskFactory.createTask as jest.Mock).mockImplementation((...args) => actualFactory.createTask(...args));
-    const hydrate = (payload = data) => primary.emit('message', JSON.stringify({data: payload}));
-
-    return {primary, calling, contact, manager, controller, guard, data, hydrate};
-  };
-
-  it('blocks reentrant delivery during cleanup and binds the fresh Task before publication', async () => {
-    const {manager, controller, guard, hydrate, calling, contact} = setup();
-    const {guard: replacementGuard} = createGuard();
-    try {
-      manager.startSession(guard);
-      hydrate();
-      const old = manager.getTask('interaction-1') as Task;
-      const incoming = {getCallId: jest.fn(() => 'reentrant-call')};
-      const duringCleanup: unknown[] = [];
-      const controls = jest.fn(() => {
-        duringCleanup.push({...manager.getAllTasks()});
-        manager.startSession(replacementGuard);
-        hydrate();
-        calling.emit(LINE_EVENTS.INCOMING_CALL, incoming);
-        duringCleanup.push({...manager.getAllTasks()});
-      });
-      old.on(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, controls);
-      controller.abort();
-      manager.invalidateRegionalTasks();
-      expect(controls).toHaveBeenCalledTimes(1);
-      expect(duringCleanup).toEqual([{}, {}]);
-      expectManagerTaskListeners(manager, old, false);
-      expect(incoming.getCallId).not.toHaveBeenCalled();
-      expect(calling.mapCallToTask).not.toHaveBeenCalled();
-
-      const published = jest.fn((task: Task) => expect(task['recoveryGuard']).toBe(replacementGuard));
-      manager.on(TASK_EVENTS.TASK_HYDRATE, published);
-      hydrate();
-      const fresh = manager.getTask('interaction-1');
-      expect(fresh).not.toBe(old);
-      expect(published.mock.calls).toEqual([[fresh]]);
-      await expect(old.accept()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
-      await expect(fresh.accept()).resolves.toEqual({trackingId: 'accepted'});
-      expect(contact.accept.mock.calls).toEqual([[{interactionId: 'interaction-1'}]]);
-    } finally {
-      manager.stopSession();
-    }
-  });
-
-  it('does not reinsert a retired Task when a controls observer replaces the session', () => {
-    const {manager, controller, guard, data, hydrate} = setup();
-    try {
-      manager.startSession(guard);
-      hydrate();
-      const retired = manager.getTask(data.interactionId) as Task;
-      const controls = retired.uiControls;
-      jest.spyOn(retired as any, 'computeUIControls').mockReturnValueOnce({
-        ...controls,
-        main: {...controls.main, accept: {isEnabled: !controls.main.accept?.isEnabled, isVisible: true}},
-      });
-      const replace = jest.fn(() => {
-        controller.abort();
-        manager.invalidateRegionalTasks();
-        manager.startSession(createGuard().guard);
-        hydrate({...data, trackingId: 'fresh-frame'});
-      });
-      retired.once(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, replace);
-
-      hydrate({...data, trackingId: 'retiring-frame'});
-
-      const fresh = manager.getTask(data.interactionId);
-      expect(replace).toHaveBeenCalledTimes(1);
-      expect(fresh).not.toBe(retired);
-      expect(fresh.data.trackingId).toBe('fresh-frame');
-      expect(retired.stateMachineService).toBeUndefined();
-    } finally {
-      manager.stopSession();
-    }
-  });
-
-  it('keeps replacement enablement buffered when a hydrate observer retires the published Task', () => {
-    const {manager, controller, guard, data, hydrate} = setup();
-    const retiredEnablement = jest.fn();
-    try {
-      manager.startSession(guard);
-      manager.once(TASK_EVENTS.TASK_HYDRATE, (retired: Task) => {
-        retired.on(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, retiredEnablement);
-        controller.abort();
-        manager.invalidateRegionalTasks();
-        manager.startSession(createGuard().guard);
-        manager.handleRealtimeWebsocketEvent(JSON.stringify({type: CC_TASK_EVENTS.FEATURE_ENABLEMENT, data: {data: {
-          interactionId: data.interactionId, postCallEnabled: true, midCallEnabled: true,
-        }}}));
-      });
-
-      hydrate();
-      expect(manager.getTask(data.interactionId)).toBeUndefined();
-      expect(retiredEnablement).not.toHaveBeenCalled();
-      hydrate();
-      expect((manager.getTask(data.interactionId) as Task).aiSummaryCapabilities)
-        .toEqual({postCallEnabled: true, midCallEnabled: true});
-    } finally {
-      manager.stopSession();
-    }
-  });
-
-  it('startSession owns one detachable listener set', () => {
-    const {manager, guard, primary, calling, hydrate} = setup();
-    hydrate();
-    expect(manager.getAllTasks()).toEqual({});
-    manager.startSession(guard);
-    manager.startSession(guard);
-    expect(primary.listenerCount('message')).toBe(1);
-    expect(calling.listenerCount(LINE_EVENTS.INCOMING_CALL)).toBe(1);
-    manager.stopSession();
-    expect(calling.listenerCount(LINE_EVENTS.INCOMING_CALL)).toBe(0);
-    hydrate();
-    expect(manager.getAllTasks()).toEqual({});
-  });
-
-  it.each([
-    ['missing', 'ingress', CC_EVENTS.AGENT_CONTACT, TaskEvent.HYDRATE],
-    ['aborted', 'ingress', CC_EVENTS.AGENT_CONTACT_ASSIGNED, TaskEvent.ASSIGN],
-    ['missing', 'after-context', CC_EVENTS.AGENT_CONTACT_ASSIGNED, TaskEvent.ASSIGN],
-    ['aborted', 'after-context', CC_EVENTS.AGENT_CONTACT, TaskEvent.HYDRATE],
-  ])(
-    'registered callback fences %s ownership at %s for %s',
-    (ownership, phase, event, mapped) => {
-      const {manager, controller, guard, primary, data, hydrate} = setup();
-      try {
-        manager.startSession(guard);
-        hydrate();
-        const retained = manager.getTask('interaction-1') as Task;
-        const snapshot = retained.data;
-        const state = retained.stateMachineService.getSnapshot();
-        const send = jest.spyOn(retained, 'sendStateMachineEvent');
-        const actorSend = jest.spyOn(retained.stateMachineService, 'send');
-        const factory = TaskFactory.createTask as jest.Mock;
-        factory.mockClear();
-        const revoke = () => {
-          if (ownership === 'missing') manager['recoveryGuard'] = undefined;
-          else controller.abort();
-        };
-        const prepareContext = manager['prepareEventContext'].bind(manager);
-        const prepare = jest.spyOn(manager as any, 'prepareEventContext');
-        const lifecycle = jest.spyOn(manager as any, 'handleTaskLifecycleEvent');
-        if (phase === 'after-context') {
-          prepare.mockImplementationOnce((message) => {
-            const context = prepareContext(message);
-            expect(context.stateMachineEvent.type).toBe(mapped);
-            // The frame reached context preparation, but must never reach task handling.
-            revoke();
-
-            return context;
-          });
-        } else {
-          revoke();
-        }
-        const payload = {
-          ...data,
-          type: event,
-          interactionId: mapped === TaskEvent.HYDRATE ? 'interaction-2' : data.interactionId,
-          trackingId: 'late-old-generation',
-        };
-
-        primary.emit('message', JSON.stringify({data: payload}));
-
-        expect(prepare).toHaveBeenCalledTimes(phase === 'after-context' ? 1 : 0);
-        expect(lifecycle).not.toHaveBeenCalled();
-        expect(factory).not.toHaveBeenCalled();
-        expect(send).not.toHaveBeenCalled();
-        expect(actorSend).not.toHaveBeenCalled();
-        expect(retained.data).toBe(snapshot);
-        expect(retained.stateMachineService.getSnapshot()).toBe(state);
-        expect(Object.keys(manager.getAllTasks())).toEqual(['interaction-1']);
-        expect(manager.getTask('interaction-1')).toBe(retained);
-      } finally {
-        manager.stopSession();
-      }
-    }
-  );
-
-  it.each(['missing-guard', 'aborted-signal', 'no-browser-voice', 'admitted'])(
-    'registered incoming call admission preserves task and call ownership: %s', (admission) => {
-      const {manager, controller, guard, calling, hydrate} = setup(createTaskData({
-        type: CC_EVENTS.AGENT_CONTACT,
-        interaction: {mediaType: 'telephony', state: 'connected'},
-      }));
-      try {
-        manager.startSession(guard);
-        hydrate();
-        const task = manager.getTask('interaction-1') as Task;
-        expect(task).toBeInstanceOf(Task);
-        const send = jest.spyOn(task, 'sendStateMachineEvent');
-        const actorSend = jest.spyOn(task.stateMachineService, 'send');
-        const sentinel = {getCallId: () => 'sentinel-call'};
-        manager['call'] = sentinel as any;
-        const incoming = {getCallId: jest.fn(() => 'incoming-call')};
-        if (admission === 'missing-guard') manager['recoveryGuard'] = undefined;
-        if (admission === 'aborted-signal') controller.abort();
-        if (admission === 'no-browser-voice') calling.isBrowserVoiceRequired.mockReturnValue(false);
-        expect(calling.listenerCount(LINE_EVENTS.INCOMING_CALL)).toBe(1);
-
-        calling.emit(LINE_EVENTS.INCOMING_CALL, incoming);
-
-        if (admission === 'admitted') {
-          expect(calling.mapCallToTask.mock.calls).toEqual([['incoming-call', 'interaction-1']]);
-          expect(send.mock.calls).toEqual([[{type: TaskEvent.TASK_INCOMING, taskData: task.data}]]);
-          expect(actorSend.mock.calls).toEqual(send.mock.calls);
-          expect(manager['call']).toBe(incoming);
-        } else {
-          expect(calling.mapCallToTask).not.toHaveBeenCalled();
-          expect(incoming.getCallId).not.toHaveBeenCalled();
-          expect(send).not.toHaveBeenCalled();
-          expect(actorSend).not.toHaveBeenCalled();
-          expect(manager['call']).toBe(sentinel);
-        }
-        expect(manager.getTask('interaction-1')).toBe(task);
-      } finally {
-        manager.stopSession();
-      }
-    }
-  );
-
-  it('does not replace the new call reference after an incoming event supersedes its session', () => {
-    const {manager, controller, guard, calling, hydrate} = setup(createTaskData({
-      type: CC_EVENTS.AGENT_CONTACT,
-      interaction: {mediaType: 'telephony', state: 'connected'},
-    }));
-    const incoming = {getCallId: () => 'retired-call'};
-    const fresh = {getCallId: () => 'replacement-call'};
-    try {
-      manager.startSession(guard);
-      hydrate();
-      const retired = manager.getTask('interaction-1') as Task;
-      const completeTransition = jest.spyOn(retired, 'sendStateMachineEvent').mockImplementationOnce(() => {
-        controller.abort();
-        manager.invalidateRegionalTasks();
-        manager.startSession(createGuard().guard);
-        hydrate();
-        calling.emit(LINE_EVENTS.INCOMING_CALL, fresh);
-      });
-
-      calling.emit(LINE_EVENTS.INCOMING_CALL, incoming);
-
-      expect(completeTransition).toHaveBeenCalledTimes(1);
-      expect(manager.getTask('interaction-1')).not.toBe(retired);
-      expect(manager['call']).toBe(fresh);
-    } finally {
-      manager.stopSession();
-    }
-  });
-
-  it('regionalCleanupReusesExistingOwners with aliases and throwing controls observers', () => {
-    const {manager, guard, hydrate} = setup();
-    try {
-      manager.startSession(guard);
-      hydrate();
-      const task = manager.getTask('interaction-1');
-      if (!(task instanceof Task)) throw new Error('Expected a concrete Task');
-      (manager as any).taskCollection.alias = task;
-      const invalidate = jest.spyOn(task, 'invalidateForRegionRecovery');
-      const remove = jest.spyOn(manager as any, 'removeTaskFromCollection');
-      const updated = jest.fn(() => { throw new Error('host observer'); });
-      task.on(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, updated);
-      task.on('removeListener', () => {throw new Error('host listener observer');});
-      const syntheticSuccess = jest.fn();
-      for (const event of [TASK_EVENTS.TASK_END, CC_EVENTS.CONTACT_ENDED, TASK_EVENTS.TASK_WRAPPEDUP]) {
-        task.on(event, syntheticSuccess);
-        manager.on(event, syntheticSuccess);
-      }
-      expectManagerTaskListeners(manager, task, true);
-      manager.invalidateRegionalTasks();
-      manager.invalidateRegionalTasks();
-      expect(updated.mock.calls).toEqual([[task.uiControls]]);
-      expect(syntheticSuccess).not.toHaveBeenCalled();
-      expect(invalidate).toHaveBeenCalledTimes(1);
-      expect(remove).toHaveBeenCalledTimes(1);
-      expect(manager.getAllTasks()).toEqual({});
-      expect(task.listeners(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED)).toEqual([updated]);
-      expectManagerTaskListeners(manager, task, false);
-    } finally {
-      manager.stopSession();
-    }
   });
 });

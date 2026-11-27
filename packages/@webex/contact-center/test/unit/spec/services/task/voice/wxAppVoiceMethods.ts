@@ -22,14 +22,6 @@ import {TaskData} from '../../../../../../src/services/task/types';
 import AnswerCallOnWebexService from '../../../../../../src/services/AnswerCallOnWebexService';
 import MetricsManager from '../../../../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../../../../src/metrics/constants';
-import * as Utils from '../../../../../../src/services/core/Utils';
-
-jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
-  __esModule: true,
-  default: {
-    getInstance: jest.fn().mockReturnValue({uploadLogs: jest.fn().mockResolvedValue(undefined)}),
-  },
-}));
 
 const WX_APP_DEVICE = {
   deviceType: 'wxApp',
@@ -724,20 +716,4 @@ describe('runWxAppTransmitDtmf metrics', () => {
       ['operational', 'behavioral']
     );
   });
-});
-
-it('blocks answer if the task retires while publishing pending controls', async () => {
-  const service = makeMockService();
-  const assertCommandAllowed = jest.fn();
-  const error = Utils.createRegionRecoveryError('STALE_TASK');
-  const deps = makeDeps({answerCallOnWebexService: service, assertCommandAllowed});
-  const lifecycle = makeLifecycle({
-    setWxAppAnswerPending: jest.fn(() => {
-      assertCommandAllowed.mockImplementation(() => { throw error; });
-    }),
-    mapWxAppVoiceError: jest.fn((failure, name) => mapWxAppVoiceError(failure, name, 'cc')),
-  });
-
-  await expect(runWxAppAccept(deps, lifecycle)).rejects.toBe(error);
-  expect(service.answerCall).not.toHaveBeenCalled();
 });

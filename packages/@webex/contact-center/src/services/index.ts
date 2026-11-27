@@ -29,8 +29,6 @@ export default class Services {
   public readonly rtdWebSocketManager: WebSocketManager;
   /** Connection service for managing websocket connections */
   public readonly connectionService: ConnectionService;
-  /** Identifies local station replies during recovery. @internal */
-  public readonly aqmReqs: AqmReqs;
   /** Singleton instance of the Services class */
   private static instance: Services;
 
@@ -45,7 +43,6 @@ export default class Services {
     // TODO: Implement reconnection logic for this websocket in upcoming PR
     this.rtdWebSocketManager = new WebSocketManager({webex});
     const aqmReq = new AqmReqs(this.webSocketManager);
-    this.aqmReqs = aqmReq;
     this.config = new AgentConfigService();
     this.agent = routingAgent(aqmReq);
     this.contact = routingContact(aqmReq);

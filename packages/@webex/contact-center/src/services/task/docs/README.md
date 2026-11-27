@@ -437,7 +437,6 @@ Stack: TypeScript 5.4, EventEmitter, XState 5, @webex/calling, AQM/WebSocket int
 | TASK-R-012 | `Task.updateTaskData` deep-merges incoming data but treats `interaction.media` and `interaction.participants` as complete snapshots, deleting entries the backend dropped. | The `pruneStaleInteractionMaps` comment: stale consult-leg media and participants left by a deep merge drove incorrect UI controls until a page refresh. | `src/services/task/Task.ts` | `test/unit/spec/services/task/Task.ts` | Every other field keeps the deep-merge path. | Present |
 | TASK-R-013 | Summary requests require both the organization-level generated-summary flag (`ApiAIAssistant.aiFeature.generatedSummaries.wrapUpSummariesEnabled` or `consultTransferSummariesEnabled`; missing flags disable the corresponding request) and the task-level feature enablement flag (`aiSummaryCapabilities`). A request resolves only after the event POST succeeds and the matching RTD payload arrives within `AI_SUMMARY_DURATION_MS` (15000 ms); otherwise it rejects with `POST_CALL_SUMMARY_DISABLED`, `MID_CALL_SUMMARY_DISABLED`, `POST_CALL_SUMMARY_TIMEOUT`, `MID_CALL_SUMMARY_TIMEOUT`, or the transport error. | The `AI_SUMMARY_DURATION_MS` comment in `constants.ts` fixes the RTD result deadline at 15 seconds while the initiating HTTP acknowledgement keeps the 20-second service timeout; a summary must never be requested for an organization or task that has not enabled it. | `src/services/task/Task.ts`, `src/services/task/constants.ts`, `src/services/ApiAiAssistant.ts` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/ApiAiAssistant.ts` | None. | Present |
 | TASK-R-014 | TaskManager buffers RTD feature-enablement frames that arrive before their task exists and receiving-agent summaries that arrive before the task exists or leaves `IDLE` or `OFFERED` (latest summary per conversation, no expiry timer); it applies the flags when the task is created or re-keyed, emits `task:midCallSummaryReceived` once the task is answered, drops a held summary when an unanswered task is removed, and empties both maps in `clearAISummaryState()`. Task-level feature flags survive `updateTaskData()`, including interaction ID changes during consults or task re-keying, remain available throughout wrapup for post-call summary requests, and are cleared when the task is removed or the session is cleaned up. | The code comments state that RTD feature frames can arrive before AQM creates the task and that a receiving summary is emitted only once the task is answered; an unanswered offer's summary must be dropped instead of emitted. | `src/services/task/TaskManager.ts`, `src/services/task/Task.ts` | `test/unit/spec/services/task/TaskManager.ts` | No expiry bounds the buffers; they are cleared only by delivery, removal, or session cleanup. | Present |
-| TASK-R-015 | Applications pause task controls during recovery. Pending routing and call actions follow their existing completion and timeout behavior. A retired WebRTC task releases its microphone tracks, including tracks that arrive after the browser permission prompt. AI summary waits use the Task interruption signal. Before admitting replacement work, the owner invalidates stale Tasks, removes them from the collection, and cleans call/media resources and AI summary state. If the replacement socket is lost before adoption, Tasks hydrated during that attempt are retired. The next attempt opens a new Task lifetime after Welcome. Stale Tasks keep their control layout with each action disabled. Actions on retired Tasks fail with `STALE_TASK`. | Hosts may retain old objects across transport recovery. Those objects must not act on a newer station. | `src/services/task/Task.ts`, `src/services/task/TaskManager.ts`, `src/services/task/types.ts`, `src/cc.ts` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/cc.ts` | T-008, T-009, T-010, T-013. The internal `TaskRecoveryGuard` has no root package export. | PRESENT |
 
 ## Design overview
 
@@ -459,8 +458,6 @@ returns a `Task`:
 - A missing `interaction.mediaType` defaults to telephony; `configFlags` supplies `isEndTaskEnabled`,
   `isEndConsultEnabled`, `enableWxBetterTogether`, and the `consultTransfer` Desktop Profile policy,
   and `callProcessingDetails.pauseResumeEnabled` (default true) sets `isRecordingEnabled` for voice.
-
-TaskManager binds its current recovery guard to the returned Task before hydration or delivery.
 
 | Channel | Description |
 | ------- | ----------- |
@@ -499,7 +496,12 @@ TaskManager maintains a map of active tasks, `taskCollection: Record<TaskId, ITa
 object can be reachable under an old and a new key while it is re-keyed; `updateTaskData` removes every
 alias other than the new `interactionId`, and removal deletes all aliases.
 
-TaskManager handles each primary WebSocket `message` in `handleWebsocketMessage`:
+On a region switch, TaskManager retires the old tasks, stops their actors and timers, and releases
+WebRTC microphone tracks. The replacement socket uses the same TaskManager listeners to hydrate
+fresh tasks. Applications pause task controls during recovery and read the current tasks when the
+station is ready. Pending AI summaries are cleared when the old RTD stream closes.
+
+TaskManager uses a staged pipeline in `registerTaskListeners()`. For each primary WebSocket `message`:
 parse the JSON and drop keepalives (`parseWebSocketMessage`, which also runs `normalizeTaskData`); build
 the event context, which resolves the task, adjusts the payload, and maps the CC event to a `TaskEvent`
 (`prepareEventContext` and `mapEventToTaskStateMachineEvent`, whose mapping table is in the state machine
@@ -615,10 +617,6 @@ Outside that wxApp routing, `Voice.accept()`, `Voice.decline()`, `Voice.toggleMu
 **wxApp decline observability:** Inbound wxApp offers decline via telephony `rejectCall` (`runWxAppReject` → `WXAPP_TASK_DECLINE_*`). wxApp outdial cancellations use CC routing `cancelTask` (`runWxAppOutdialDecline` → additive `WXAPP_TASK_DECLINE_*` plus existing `TASK_DECLINE_*`).
 
 **wxApp mute backfill guard (`Voice.syncWxAppMuteFromCallDetails`):** Skips telephony `GET /calls/{callId}` when the interaction is terminated or the task is a pre-accept wxApp OFFERED offer (`wxAppAnswerPending` false). Post-accept OFFERED and engaged CONNECTED sync still run. `isWxAppEngagedForControls` and `getWebexCallingCallId` exclude `TERMINATED` and `COMPLETED`. Expected 400 / "Call not found" / `101002` responses are not logged as errors.
-
-After the actor commits the hydrated state, the replacement Voice task can seed its mute state during
-`restoringSession`. A retired task skips further reads and discards late mute results.
-The first `toggleMute()` after recovery uses the seeded state.
 
 ### Participant departure and merge
 
@@ -1437,7 +1435,7 @@ Request, response, and event payload ownership is anchored in `src/services/task
 | Message or frame | Version | Producer or serializer | Consumer or parser | Compatibility and ordering rule |
 | ---------------- | ------- | ---------------------- | ------------------ | ------------------------------- |
 | `POST /v1/tasks/{id}/accept`, `/hold`, `/unhold`, `/record/pause`, `/record/resume`, `/consult`, `/consult/accept`, `/consult/end`, `/transfer`, `/consult/transfer`, `/end`, `/wrapup`, `/cancelCtq`, `/consult/conference`, `/conference/exit`, `/conference/transfer` | — | `src/services/task/contact.ts` | WCC API gateway | `cancelTask` reuses `/end` and settles on `ContactEnded`; `blindTransfer` and `vteamTransfer` share `/transfer` |
-| `POST /v1/tasks/{id}/conference/participants/{encodeURIComponent(participantId)}/drop` with `{}` | — | `src/services/task/contact.ts` | WCC API gateway | AQM redacts diagnostics. Success `ParticipantLeftConference`, failure `ParticipantDropConferenceFailed`. |
+| `POST /v1/tasks/{id}/conference/participants/{encodeURIComponent(participantId)}/drop` with `{}` | — | `src/services/task/contact.ts` | WCC API gateway | `redactSensitiveLogs: true`; success `ParticipantLeftConference`, failure `ParticipantDropConferenceFailed` |
 | `POST /v1/tasks/` (outdial) | — | `src/services/task/dialer.ts` | WCC API gateway | Success `AgentOfferContact`, failure `AgentOutboundFailed` |
 | `POST /v1/dialer/campaign/{encodeURIComponent(campaignId)}/preview-task/{interactionId}/accept`, `/skip`, `/remove` | — | `src/services/task/dialer.ts` | WCC API gateway | Accept times out at 80000 ms and settles on `AgentContactAssigned` matched by `reservationInteractionId` or `ContactEnded`; skip and remove settle on `CampaignContactUpdated` or `ContactEnded` |
 | `RoutingMessage` notifications (`data.type` from `CC_EVENTS`) | — | Contact Center backend | `TaskManager.parseWebSocketMessage`, AqmReqs binds | Known string booleans are coerced; unknown types are ignored |
@@ -1561,7 +1559,6 @@ Use `test/unit/spec/services/task/Task.ts`, `TaskFactory.ts`, `TaskManager.ts`, 
 | `TASK-R-012` | Unit | `test/unit/spec/services/task/Task.ts` stale media and participants case | `test/unit/spec/services/task/Task.ts` partial-update case | `normalizeTaskData` has no dedicated suite |
 | `TASK-R-013` | Unit | `test/unit/spec/services/task/Task.ts` (Task AI summary APIs), `test/unit/spec/services/ApiAiAssistant.ts` | `test/unit/spec/services/task/Task.ts` disabled and timeout cases | None |
 | `TASK-R-014` | Unit | `test/unit/spec/services/task/TaskManager.ts` | `test/unit/spec/services/task/TaskManager.ts` case dropping a receiving summary held for a ringing task | No expiry bounds the pending maps |
-| `TASK-R-015` | Unit | `test/unit/spec/services/task/TaskManager.ts` checks that replacement Tasks hydrate under the current guard. | `test/unit/spec/services/task/Task.ts` and `test/unit/spec/cc.ts` cover stale actions, disabled controls and media cleanup across recovery attempts. | Active-call continuity requires live verification. |
 
 The focused TaskManager tests cover owner-changing versus data-only
 `ContactUpdated`, exact and child-keyed correlation, collection-key and

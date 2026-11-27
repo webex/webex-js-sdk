@@ -165,8 +165,7 @@ describe('WebSocketManager owned admission', () => {
   };
   const expectReleasedWorker = (index = 0) => {
     expect(workers[index].onmessage).toBeNull();
-    expect(workers[index].postMessage).toHaveBeenCalledTimes(2);
-    expect(workers[index].postMessage).toHaveBeenLastCalledWith({type: 'terminate'});
+    expect(workers[index].postMessage).toHaveBeenCalledTimes(1);
     expect(workers[index].terminate).toHaveBeenCalledTimes(1);
     expect(URL.revokeObjectURL).toHaveBeenNthCalledWith(index + 1, `blob:attempt-${index}`);
   };
@@ -462,9 +461,7 @@ describe('WebSocketManager owned admission', () => {
     manager.close(false); manager.close(false);
     workerMessage({data: {type: 'keepalive'}});
     expect(socket.send).toHaveBeenCalledTimes(2);
-    expect(workers[0].postMessage).toHaveBeenCalledWith({type: 'terminate'});
-    expect(workers[0].terminate).toHaveBeenCalledTimes(1);
-    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
+    expectReleasedWorker();
   });
 
   it.each([true, false])('T-003 workerAndBlobOwnership forced close requires connection loss=%s', async (isConnectionLost) => {
@@ -534,45 +531,49 @@ describe('WebSocketManager owned admission', () => {
     expect(manager.hasUsableSocket()).toBe(false);
   });
 
-  it('T-012 welcomeSettlesDespiteThrowingMessageDiagnostics / messageFanoutContinuesAfterThrow', async () => {
-    const {promise, socket} = await start(); socket.open();
-    throwOnDiagnostics();
-    const welcomeObservations: Array<{usable: boolean; timers: number}> = [];
-    const onceObservations: Array<{receiver: unknown; registered: boolean}> = [];
-    const early = jest.fn(() => {
-      welcomeObservations.push({usable: manager.hasUsableSocket(), timers: jest.getTimerCount()});
-      throw new Error('consumer');
+  it('delivers a region switch only after Welcoming the socket', async () => {
+    const {promise, socket} = await start();
+    socket.open();
+    const received = jest.fn(() => {
+      expect(manager.hasUsableSocket()).toBe(true);
     });
-    const later = jest.fn(); const once = jest.fn(function (this: WebSocketManager) {
-      onceObservations.push({receiver: this, registered: manager.listeners('message').includes(once)});
-    });
-    manager.on('message', early); manager.on('message', later); manager.once('message', once);
-    const raw = JSON.stringify({type: 'Welcome', data: {}});
-    expect(jest.getTimerCount()).toBe(1);
-    expect(() => socket.message(raw)).not.toThrow();
-    expect(welcomeObservations).toEqual([{usable: true, timers: 0}]);
-    expect(onceObservations).toHaveLength(1);
-    expect(onceObservations[0].receiver).toBe(manager);
-    expect(onceObservations[0].registered).toBe(false);
+    manager.on('message', received);
+    const regionSwitch = JSON.stringify({type: 'SYSTEM_REGION_SWITCH'});
+    socket.message(regionSwitch);
+    expect(received).not.toHaveBeenCalled();
+
+    socket.message({type: 'Welcome', data: {}});
     await expect(promise).resolves.toEqual({});
-    manager.off('message', early);
-    socket.message({keepalive: 'true'});
-    expect(later).toHaveBeenCalledTimes(2); expect(once).toHaveBeenCalledTimes(1);
-    jest.advanceTimersByTime(30000); expect(manager.hasUsableSocket()).toBe(true);
-    socket.message({type: 'AGENT_MULTI_LOGIN'}); expect(socket.close).toHaveBeenCalledTimes(1);
-    expectSafeDiagnostics([
-      ['WebSocket message consumer failed', {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.DELIVER_MESSAGE}],
-    ], true);
+    socket.message(regionSwitch);
+    expect(received).toHaveBeenLastCalledWith(regionSwitch);
   });
 
-  it('preserves raw payload and EventEmitter snapshot semantics', async () => {
-    const socket = await admit(); const order: string[] = [];
-    const removed = () => order.push('removed'); const added = () => order.push('added');
-    manager.once('message', () => { order.push('first'); manager.off('message', removed); manager.on('message', added); });
-    manager.on('message', removed);
-    const raw = jest.fn(); manager.on('message', raw);
-    socket.message('not JSON'); socket.message('still not JSON');
-    expect(order).toEqual(['first', 'removed', 'added']); expect(raw).toHaveBeenNthCalledWith(1, 'not JSON');
+  it('passes the raw payload to message listeners', async () => {
+    const {promise, socket} = await start();
+    socket.open();
+    const raw = jest.fn();
+    manager.on('message', raw);
+    socket.message('not JSON');
+    expect(raw).not.toHaveBeenCalled();
+
+    socket.message({type: 'Welcome', data: {}});
+    await promise;
+    socket.message('not JSON');
+    expect(raw).toHaveBeenLastCalledWith('not JSON');
+    socket.message('null');
+    expect(raw).toHaveBeenLastCalledWith('null');
+  });
+
+  it('releases the socket if the keepalive worker could not start', async () => {
+    const error = new Error('Keepalive worker blocked');
+    (global.Worker as jest.Mock).mockImplementationOnce(() => { throw error; });
+    const {promise, socket} = await start();
+
+    socket.open();
+
+    await expect(promise).rejects.toBe(error);
+    expectReleasedSocket(socket);
+    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
   });
 
   it('does not close an observer-created replacement after raw multi-login', async () => {
@@ -603,12 +604,11 @@ describe('WebSocketManager owned admission', () => {
       expectSafeDiagnostics([]);
     });
 
-    it('sanitizes native socket errors and continues worker cleanup after a stop failure', async () => {
+    it('sanitizes native socket errors and releases the worker', async () => {
       request.mockResolvedValueOnce({body: {webSocketUrl: signedUrl}});
       const {promise, socket} = await start(); socket.open();
       const failure = new Error(`Native socket error ${signedUrl} ${bearer}`);
       const socketClose = jest.fn(); manager.on('socketClose', socketClose);
-      workers[0].postMessage.mockImplementationOnce(() => { throw failure; });
       const rejected = promise.catch((error) => error);
 
       expect(() => socket.onerror!({type: 'error', message: failure.message, error: failure, target: socket})).not.toThrow();
@@ -621,29 +621,22 @@ describe('WebSocketManager owned admission', () => {
       expect(socket.close).not.toHaveBeenCalled();
       expect(socket.onopen).toBeNull(); expect(socket.onmessage).toBeNull();
       expect(socket.onerror).toBeNull(); expect(socket.onclose).toBeNull();
-      expect(workers[0].onmessage).toBeNull();
-      expect(workers[0].postMessage).toHaveBeenLastCalledWith({type: 'terminate'});
-      expect(workers[0].terminate).toHaveBeenCalledTimes(1);
-      expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
-      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:attempt-0');
+      expectReleasedWorker();
       expect(manager.hasUsableSocket()).toBe(false);
       expect(socketClose).not.toHaveBeenCalled();
       expect(jest.getTimerCount()).toBe(0);
-      expectSafeDiagnostics([
-        ['Worker stop failed', {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.DISPOSE_ATTEMPT}],
-      ]);
+      expectSafeDiagnostics([]);
     });
 
-    it('disposes every resource despite throwing cleanup, close observers and diagnostics', async () => {
+    it('disposes every resource despite throwing cleanup and diagnostics', async () => {
       throwOnDiagnostics();
       request.mockResolvedValueOnce({body: {webSocketUrl: signedUrl}});
       const socket = await admit();
       const failure = new Error(`Disposal failed ${signedUrl} ${bearer}`);
       socket.close.mockImplementationOnce(() => { throw failure; });
-      workers[0].postMessage.mockImplementationOnce(() => { throw failure; });
       workers[0].terminate.mockImplementationOnce(() => { throw failure; });
       (URL.revokeObjectURL as jest.Mock).mockImplementationOnce(() => { throw failure; });
-      const socketClose = jest.fn(() => { throw failure; }); manager.on('socketClose', socketClose);
+      const socketClose = jest.fn(); manager.on('socketClose', socketClose);
 
       expect(() => manager.close(false, `${signedUrl} ${bearer}`)).not.toThrow();
       expect(() => manager.close(false, `${signedUrl} ${bearer}`)).not.toThrow();
@@ -652,7 +645,6 @@ describe('WebSocketManager owned admission', () => {
       expect(socket.onopen).toBeNull(); expect(socket.onmessage).toBeNull();
       expect(socket.onerror).toBeNull(); expect(socket.onclose).toBeNull();
       expect(workers[0].onmessage).toBeNull();
-      expect(workers[0].postMessage).toHaveBeenLastCalledWith({type: 'terminate'});
       expect(workers[0].terminate).toHaveBeenCalledTimes(1);
       expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
       expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:attempt-0');
@@ -662,8 +654,7 @@ describe('WebSocketManager owned admission', () => {
       expect(manager.getServingRegion()).toBeUndefined();
       expect(jest.getTimerCount()).toBe(0);
       expectSafeDiagnostics([
-        ...['Socket disposal failed', 'Worker stop failed', 'Worker disposal failed', 'Worker URL disposal failed'].map((message) => [message, {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.DISPOSE_ATTEMPT}]),
-        ['WebSocket close consumer failed', {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.WEB_SOCKET_ON_CLOSE_HANDLER}],
+        ...['Socket disposal failed', 'Worker disposal failed', 'Worker URL disposal failed'].map((message) => [message, {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.DISPOSE_ATTEMPT}]),
         ['WebSocket connection closed', {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CLOSE}],
       ], true);
     });

@@ -29,7 +29,6 @@ type WxAppParticipant = {
 
 export type WxAppVoiceDependencies = {
   enableWxBetterTogether: boolean;
-  assertCommandAllowed?: () => void;
   answerCallOnWebexService?: AnswerCallOnWebexService;
   agentId?: string;
   metricsManager: MetricsManager;
@@ -293,7 +292,6 @@ export async function acceptOnWebex(
     throw new Error('WxApp calling device details are unavailable');
   }
 
-  deps.assertCommandAllowed?.();
   await deps.answerCallOnWebexService.answerCall({
     callId: details.deviceCallId,
     endpointId: details.deviceId,
@@ -351,7 +349,6 @@ export async function toggleMuteOnWebex(
     callId,
     lineOwnerId: resolveWxAppLineOwnerId(deps, options?.lineOwnerId),
   });
-  deps.assertCommandAllowed?.();
   deps.setWxAppMuted(targetMuted);
   logWxAppTelephonyAction({action: 'mute', phase: 'success', interactionId});
 }
@@ -411,7 +408,6 @@ export async function runWxAppAccept(
     lifecycle.setWxAppAcceptInFlight(true);
     lifecycle.setWxAppAnswerPending(true);
     await acceptOnWebex(deps, options);
-    deps.assertCommandAllowed?.();
     lifecycle.resetWxAppMuted();
     await lifecycle.syncWxAppMuteFromCallDetails();
 
@@ -509,7 +505,6 @@ export async function runWxAppToggleMute(
   lifecycle: WxAppVoiceLifecycle,
   options?: TaskToggleMuteOptions
 ): Promise<void> {
-  deps.assertCommandAllowed?.();
   const taskId = getInteractionId(deps);
 
   deps.metricsManager.timeEvent([
@@ -541,7 +536,6 @@ export async function runWxAppTransmitDtmf(
   lifecycle: WxAppVoiceLifecycle,
   options: TaskTransmitDtmfOptions
 ): Promise<void> {
-  deps.assertCommandAllowed?.();
   const taskId = getInteractionId(deps);
 
   deps.metricsManager.timeEvent([

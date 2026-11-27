@@ -29,9 +29,8 @@ import {
   isSecondaryEpDnAgent,
   shouldAutoAnswerTask,
 } from './TaskUtils';
+import Task from './Task';
 import TaskFactory from './TaskFactory';
-import type Task from './Task';
-import type {TaskRecoveryGuard} from './types';
 import AnswerCallOnWebexService from '../AnswerCallOnWebexService';
 import {getWebexCallingDeviceDetailsForAgent} from './WebexCallingUtils';
 import WebRTC from './voice/WebRTC';
@@ -70,10 +69,10 @@ export default class TaskManager extends EventEmitter {
   private contact: ReturnType<typeof routingContact>;
   /**
    * Collection of tasks indexed by TaskId
-   * @type {Record<TaskId, Task>}
+   * @type {Record<TaskId, ITask>}
    * @private
    */
-  private taskCollection: Record<TaskId, Task>;
+  private taskCollection: Record<TaskId, ITask>;
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
   private rtdWebSocketManager: WebSocketManager;
@@ -111,82 +110,19 @@ export default class TaskManager extends EventEmitter {
     this.rtdWebSocketManager = rtdWebSocketManager;
     this.taskCollection = {};
     this.webRtcEnabled = false;
-  }
-
-  private recoveryGuard?: TaskRecoveryGuard;
-  private taskListeners = new Map<Task, Array<[string, (...args: any[]) => void]>>();
-  private cleaningUpRegionalTasks = false;
-
-  public startSession(guard: TaskRecoveryGuard): void {
-    const starting = !this.recoveryGuard;
-    this.recoveryGuard = guard;
-    if (!starting) return;
-    this.webSocketManager.on('message', this.handleWebsocketMessage);
+    this.registerTaskListeners();
     this.registerIncomingCallEvent();
   }
 
-  private createTask(data: TaskData): Task {
-    const guard = this.recoveryGuard;
-    const task = TaskFactory.createTask(
-      this.contact,
-      this.webCallingService,
-      data,
-      this.configFlags,
-      this.wrapupData,
-      this.agentId,
-      this.agentName,
-      this.answerCallOnWebexService,
-      this.apiAIAssistant
-    );
-    task.bindRecoveryGuard(guard);
-
-    return task;
-  }
-
-  public stopSession(): void {
-    this.recoveryGuard = undefined;
-    this.webSocketManager.off('message', this.handleWebsocketMessage);
-    this.unregisterIncomingCallEvent();
-    this.invalidateRegionalTasks();
-    this.clearAISummaryState();
-  }
-
+  /** Retire the previous station's tasks before the new socket delivers task events. */
   public invalidateRegionalTasks(): void {
-    if (this.cleaningUpRegionalTasks) return;
-    this.cleaningUpRegionalTasks = true;
-    const tasks = new Set(Object.values(this.taskCollection));
-    // Reentrant lifecycle observers must not find or hydrate a retiring Task.
-    this.taskCollection = {};
-    try {
-      for (const task of tasks) {
-        try {
-          task.invalidateForRegionRecovery();
-        } catch {
-          // Controls observers may throw; resource cleanup still belongs here.
-        }
-        try {
-          this.cleanupTaskCallResources(task);
-        } catch {
-          // Keep cleanup of other Task owners independent.
-        }
-        this.removeTaskFromCollection(task);
-      }
-    } finally {
-      this.cleaningUpRegionalTasks = false;
+    for (const task of new Set(Object.values(this.taskCollection))) {
+      if (task instanceof Task) task.invalidateForRegionRecovery();
+      this.removeTaskFromCollection(task);
     }
-  }
-
-  private canHandleIncomingCall(owner: TaskRecoveryGuard | undefined): boolean {
-    return this.ownsTaskDelivery(owner) && this.webCallingService.isBrowserVoiceRequired();
-  }
-
-  private ownsTaskDelivery(owner: TaskRecoveryGuard | undefined): boolean {
-    return Boolean(
-      owner &&
-        owner.signal === this.recoveryGuard?.signal &&
-        !owner.signal.aborted &&
-        !this.cleaningUpRegionalTasks
-    );
+    this.taskCollection = {};
+    this.call = undefined;
+    this.webCallingService.cleanUpCall();
   }
 
   public handleRealtimeWebsocketEvent(event: string) {
@@ -324,8 +260,6 @@ export default class TaskManager extends EventEmitter {
   }
 
   private handleIncomingWebCall = (call: ICall) => {
-    const owner = this.recoveryGuard;
-    if (!this.canHandleIncomingCall(owner)) return;
     const currentTask = Object.values(this.taskCollection).find(
       (task) =>
         task.data.interaction.mediaType === 'telephony' && !isCampaignPreviewReservation(task)
@@ -346,13 +280,14 @@ export default class TaskManager extends EventEmitter {
       );
       if (eventPayload && currentTask) {
         currentTask.sendStateMachineEvent(eventPayload);
-        if (!this.canHandleIncomingCall(owner)) return;
       }
     }
     this.call = call;
   };
 
   public registerIncomingCallEvent() {
+    const listeners = this.webCallingService.listeners(LINE_EVENTS.INCOMING_CALL);
+    if (listeners.includes(this.handleIncomingWebCall)) return;
     this.webCallingService.on(LINE_EVENTS.INCOMING_CALL, this.handleIncomingWebCall);
   }
 
@@ -831,7 +766,9 @@ export default class TaskManager extends EventEmitter {
   }
 
   /**
-   * Processes primary WebSocket task events:
+   * Register WebSocket message listeners for task events
+   *
+   * Main entry point that orchestrates event processing through a clear pipeline:
    * 1. Parse and validate incoming WebSocket messages
    * 2. Prepare event context with task and state machine mappings
    * 3. Handle task lifecycle (creation, updates, collection management)
@@ -842,55 +779,54 @@ export default class TaskManager extends EventEmitter {
    * - TaskManager: Manages task collection lifecycle and operational concerns
    * - State Machine: Manages individual task state and event emissions
    */
-  private handleWebsocketMessage = (event: string): void => {
-    const owner = this.recoveryGuard;
-    if (!this.ownsTaskDelivery(owner)) return;
-    // Step 1: Parse and validate the message
-    const message = TaskManager.parseWebSocketMessage(event);
-    if (!message) return;
+  private registerTaskListeners() {
+    this.webSocketManager.on('message', (event) => {
+      // Step 1: Parse and validate the message
+      const message = TaskManager.parseWebSocketMessage(event);
+      if (!message) return;
 
-    // Step 2: Prepare event context
-    const eventContext = this.prepareEventContext(message);
-    if (!eventContext || !this.ownsTaskDelivery(owner)) return;
+      // Step 2: Prepare event context
+      const eventContext = this.prepareEventContext(message);
+      if (!eventContext) return;
 
-    const actions = this.handleTaskLifecycleEvent(eventContext);
+      const actions = this.handleTaskLifecycleEvent(eventContext);
 
-    const {task} = actions;
-    if (!task || !this.ownsTaskDelivery(owner)) return;
+      const {task} = actions;
+      if (!task) return;
 
-    const {payload, stateMachineEvent} = eventContext;
+      const {payload, stateMachineEvent} = eventContext;
 
-    // Always keep task.data updated (even for mapped events) so consumers relying
-    // on TaskManager-managed task instances see the latest payload.
-    if (payload && !this.updateTaskData(task, payload)) return;
+      // Always keep task.data updated (even for mapped events) so consumers relying
+      // on TaskManager-managed task instances see the latest payload.
+      if (payload) {
+        this.updateTaskData(task, payload);
+      }
 
-    // Send event to state machine - this will trigger all TASK_EVENTS emissions
-    // including TASK_INCOMING which is now handled via the state machine callbacks
-    if (stateMachineEvent) {
-      task.sendStateMachineEvent(stateMachineEvent);
-      if (!this.ownsTaskDelivery(owner)) return;
-    }
+      // Send event to state machine - this will trigger all TASK_EVENTS emissions
+      // including TASK_INCOMING which is now handled via the state machine callbacks
+      if (stateMachineEvent) {
+        task.sendStateMachineEvent(stateMachineEvent);
+      }
 
-    // A receiving summary held while the task rang is emitted right after the answer
-    // event above (AgentContactAssigned / AgentConsulting) has been emitted.
-    const bufferedSummary = this.receivingSummaryBuffer.get(task.data.interactionId);
-    const taskState = task.state?.value;
-    if (bufferedSummary && taskState !== TaskState.IDLE && taskState !== TaskState.OFFERED) {
-      this.receivingSummaryBuffer.delete(task.data.interactionId);
-      task.emit(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, bufferedSummary);
-      if (!this.ownsTaskDelivery(owner)) return;
-    }
+      // A receiving summary held while the task rang is emitted right after the answer
+      // event above (AgentContactAssigned / AgentConsulting) has been emitted.
+      const bufferedSummary = this.receivingSummaryBuffer.get(task.data.interactionId);
+      const taskState = task.state?.value;
+      if (bufferedSummary && taskState !== TaskState.IDLE && taskState !== TaskState.OFFERED) {
+        this.receivingSummaryBuffer.delete(task.data.interactionId);
+        task.emit(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, bufferedSummary);
+      }
 
-    // Emit TASK_POST_CALL_ACTIVITY for ParticipantPostCallActivity events so
-    // consumers (Widgets) can detect the interaction state change to post_call.
-    if (eventContext.eventType === CC_EVENTS.PARTICIPANT_POST_CALL_ACTIVITY) {
-      task.emit(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, task);
-      if (!this.ownsTaskDelivery(owner)) return;
-    }
+      // Emit TASK_POST_CALL_ACTIVITY for ParticipantPostCallActivity events so
+      // consumers (Widgets) can detect the interaction state change to post_call.
+      if (eventContext.eventType === CC_EVENTS.PARTICIPANT_POST_CALL_ACTIVITY) {
+        task.emit(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, task);
+      }
 
-    // Send transcript start/stop events for relevant CC events
-    this.requestRealTimeTranscripts(eventContext.eventType, payload.interactionId);
-  };
+      // Send transcript start/stop events for relevant CC events
+      this.requestRealTimeTranscripts(eventContext.eventType, payload.interactionId);
+    });
+  }
 
   /**
    * Parse and validate WebSocket message
@@ -1168,7 +1104,7 @@ export default class TaskManager extends EventEmitter {
     payload: WebSocketPayload,
     candidateFilter: (task: ITask) => boolean = () => true,
     options: {includeCollectionKeys?: boolean; includeMainCallMediaKeys?: boolean} = {}
-  ): Task | undefined {
+  ): ITask | undefined {
     const candidates = this.findRelatedTasks(payload, options).filter(candidateFilter);
 
     if (candidates.length === 1) {
@@ -1193,7 +1129,7 @@ export default class TaskManager extends EventEmitter {
   private findRelatedTasks(
     payload: WebSocketPayload,
     options: {includeCollectionKeys?: boolean; includeMainCallMediaKeys?: boolean} = {}
-  ): Task[] {
+  ): ITask[] {
     const {includeCollectionKeys = false, includeMainCallMediaKeys = false} = options;
     const payloadInteractionIds = new Set(
       [
@@ -1313,7 +1249,17 @@ export default class TaskManager extends EventEmitter {
       isConsulted: false,
       isAutoAnswering: false,
     };
-    const task = this.createTask(taskData);
+    const task = TaskFactory.createTask(
+      this.contact,
+      this.webCallingService,
+      taskData,
+      this.configFlags,
+      this.wrapupData,
+      this.agentId,
+      this.agentName,
+      this.answerCallOnWebexService,
+      this.apiAIAssistant
+    );
 
     this.taskCollection[stableInteractionId] = task;
 
@@ -1390,7 +1336,7 @@ export default class TaskManager extends EventEmitter {
       });
 
       task = this.updateTaskData(task, updatedData);
-      task?.emit(TASK_EVENTS.TASK_CAMPAIGN_CONTACT_UPDATED, task);
+      task.emit(TASK_EVENTS.TASK_CAMPAIGN_CONTACT_UPDATED, task);
     }
 
     return {task};
@@ -1411,12 +1357,22 @@ export default class TaskManager extends EventEmitter {
     });
 
     if (!task) {
-      task = this.createTask({
-        ...payload,
-        wrapUpRequired: false,
-        isConferenceInProgress: false,
-        isAutoAnswering: false,
-      });
+      task = TaskFactory.createTask(
+        this.contact,
+        this.webCallingService,
+        {
+          ...payload,
+          wrapUpRequired: false,
+          isConferenceInProgress: false,
+          isAutoAnswering: false,
+        },
+        this.configFlags,
+        this.wrapupData,
+        this.agentId,
+        this.agentName,
+        this.answerCallOnWebexService,
+        this.apiAIAssistant
+      );
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
     } else {
@@ -1447,7 +1403,17 @@ export default class TaskManager extends EventEmitter {
       isAutoAnswering: shouldAutoAnswer,
     };
 
-    const task = this.createTask(taskData);
+    const task = TaskFactory.createTask(
+      this.contact,
+      this.webCallingService,
+      taskData,
+      this.configFlags,
+      this.wrapupData,
+      this.agentId,
+      this.agentName,
+      this.answerCallOnWebexService,
+      this.apiAIAssistant
+    );
 
     this.setupTaskListeners(task);
     this.taskCollection[payload.interactionId] = task;
@@ -1480,7 +1446,17 @@ export default class TaskManager extends EventEmitter {
         isAutoAnswering: shouldAutoAnswer,
       };
 
-      task = this.createTask(taskData);
+      task = TaskFactory.createTask(
+        this.contact,
+        this.webCallingService,
+        taskData,
+        this.configFlags,
+        this.wrapupData,
+        this.agentId,
+        this.agentName,
+        this.answerCallOnWebexService,
+        this.apiAIAssistant
+      );
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
     }
@@ -1488,7 +1464,7 @@ export default class TaskManager extends EventEmitter {
     return {task};
   }
 
-  private updateTaskData(task: Task, taskData: TaskData): Task | undefined {
+  private updateTaskData(task: ITask, taskData: TaskData): ITask {
     if (!task) {
       throw new Error('Task not found for update');
     }
@@ -1506,18 +1482,14 @@ export default class TaskManager extends EventEmitter {
         }
       : taskData;
 
-    const owner = this.recoveryGuard;
     task.updateTaskData(updateTaskData);
-    if (!this.ownsTaskDelivery(owner)) return undefined;
 
     // A main-interaction lifecycle event can re-key a child consult task. Remove
     // any aliases first so consumers never observe duplicate task entries.
-    const keys = Object.keys(this.taskCollection).filter(
-      (taskId) => this.taskCollection[taskId] === task
-    );
-    if (!keys.length) return undefined;
-    keys.forEach((taskId) => {
-      if (taskId !== taskData.interactionId) delete this.taskCollection[taskId];
+    Object.entries(this.taskCollection).forEach(([taskId, candidate]) => {
+      if (candidate === task && taskId !== taskData.interactionId) {
+        delete this.taskCollection[taskId];
+      }
     });
     this.taskCollection[taskData.interactionId] = task;
     const enablement = this.pendingFeatureEnablement.get(task.data.interactionId);
@@ -1528,27 +1500,11 @@ export default class TaskManager extends EventEmitter {
     return task;
   }
 
-  private emitPendingTaskEnablement(task: Task, owner: TaskRecoveryGuard): void {
-    const {interactionId} = task.data;
-    const enablement = this.pendingFeatureEnablement.get(interactionId);
-    if (!enablement) return;
-    if (!this.ownsTaskDelivery(owner) || !Object.values(this.taskCollection).includes(task)) return;
-    this.pendingFeatureEnablement.delete(interactionId);
-    task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, enablement);
-  }
-
   /**
    * Setup listeners for task events that need to be bubbled up to TaskManager
    * This replaces the previous callback injection pattern
    */
-  private setupTaskListeners(task: Task): void {
-    if (this.taskListeners.has(task)) return;
-    const listeners: Array<[string, (...args: any[]) => void]> = [];
-    this.taskListeners.set(task, listeners);
-    const on = (event: string, listener: (...args: any[]) => void): void => {
-      listeners.push([event, listener]);
-      task.on(event, listener);
-    };
+  private setupTaskListeners(task: ITask): void {
     // Apply flags before publication; retain the frame until consumers can attach listeners.
     const enablement = this.pendingFeatureEnablement.get(task.data.interactionId);
     if (enablement) {
@@ -1561,9 +1517,7 @@ export default class TaskManager extends EventEmitter {
       TASK_EVENTS.TASK_HYDRATE,
       TASK_EVENTS.TASK_ASSIGNED,
     ].forEach((eventName) => {
-      on(eventName, (t: Task) => {
-        const owner = this.recoveryGuard;
-        if (!this.ownsTaskDelivery(owner)) return;
+      task.on(eventName, (t: ITask) => {
         if (
           eventName === TASK_EVENTS.TASK_INCOMING ||
           eventName === TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION
@@ -1585,16 +1539,20 @@ export default class TaskManager extends EventEmitter {
           this.emit(eventName, t);
         }
 
-        this.emitPendingTaskEnablement(task, owner);
+        const pendingEnablement = this.pendingFeatureEnablement.get(task.data.interactionId);
+        if (pendingEnablement) {
+          this.pendingFeatureEnablement.delete(task.data.interactionId);
+          task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, pendingEnablement);
+        }
       });
     });
 
-    on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, (t: Task) => {
+    task.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, (t: ITask) => {
       this.emit(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, t);
     });
 
     // Listen for internal cleanup signal emitted by the state machine
-    on(TASK_EVENTS.TASK_CLEANUP, (t: Task, options?: {removeFromCollection?: boolean}) => {
+    task.on(TASK_EVENTS.TASK_CLEANUP, (t: ITask, options?: {removeFromCollection?: boolean}) => {
       this.handleTaskCleanup(t);
       if (options?.removeFromCollection) {
         const taskIsStillCollected = Object.values(this.taskCollection).some(
@@ -1607,41 +1565,27 @@ export default class TaskManager extends EventEmitter {
     });
   }
 
-  private removeTaskFromCollection(task: Task): void {
-    const view: ITask = task;
+  private removeTaskFromCollection(task: ITask) {
     task.clearFeatureEnablement?.();
-    view.disposeWxAppOfferObservability?.();
-
-    const listeners = this.taskListeners.get(task) ?? [];
-    this.taskListeners.delete(task);
-    for (const [event, listener] of listeners) {
-      try {
-        task.off(event, listener);
-      } catch {
-        // A throwing removeListener observer cannot retain the other listeners.
-      }
+    task.disposeWxAppOfferObservability?.();
+    if (typeof task.cancelAutoWrapupTimer === 'function') {
+      task.cancelAutoWrapupTimer();
     }
-
-    const interactionId = task.data?.interactionId;
-    for (const [taskId, candidate] of Object.entries(this.taskCollection)) {
-      if (candidate === task) delete this.taskCollection[taskId];
-    }
-    if (interactionId) {
-      this.pendingFeatureEnablement.delete(interactionId);
+    if (task?.data?.interactionId) {
+      this.pendingFeatureEnablement.delete(task.data.interactionId);
       // An offer that ends unanswered (RONA, declined, consult cancelled) is removed here,
       // so its held receiving summary is dropped instead of being emitted.
-      this.receivingSummaryBuffer.delete(interactionId);
-    }
-    try {
-      task.cancelAutoWrapupTimer?.();
-      if (!interactionId) return;
+      this.receivingSummaryBuffer.delete(task.data.interactionId);
+      Object.entries(this.taskCollection).forEach(([taskId, candidate]) => {
+        if (candidate === task) {
+          delete this.taskCollection[taskId];
+        }
+      });
       LoggerProxy.info(`Task removed from collection`, {
         module: TASK_MANAGER_FILE,
         method: METHODS.REMOVE_TASK_FROM_COLLECTION,
-        interactionId,
+        interactionId: task.data.interactionId,
       });
-    } catch {
-      // Diagnostics do not own task or session cleanup.
     }
   }
 
@@ -1667,7 +1611,7 @@ export default class TaskManager extends EventEmitter {
         interactionId: payload.interactionId,
       });
       // update the task data
-      task = this.updateTaskData(task, payload);
+      this.updateTaskData(task, payload);
     } else {
       // Case2 : Task is not present in taskCollection
       LoggerProxy.log(`Got CONTACT_MERGED : Creating new task in taskManager`, {
@@ -1683,7 +1627,17 @@ export default class TaskManager extends EventEmitter {
         isConsulted: false,
       };
 
-      task = this.createTask(taskData);
+      task = TaskFactory.createTask(
+        this.contact,
+        this.webCallingService,
+        taskData,
+        this.configFlags,
+        this.wrapupData,
+        this.agentId,
+        this.agentName,
+        this.answerCallOnWebexService,
+        this.apiAIAssistant
+      );
       this.taskCollection[payload.interactionId] = task;
 
       // Transition the new task out of IDLE immediately so UI controls are
@@ -1701,9 +1655,12 @@ export default class TaskManager extends EventEmitter {
     }
 
     if (task) {
-      const owner = this.recoveryGuard;
       this.emit(TASK_EVENTS.TASK_MERGED, task);
-      this.emitPendingTaskEnablement(task, owner);
+      const enablement = this.pendingFeatureEnablement.get(task.data.interactionId);
+      if (enablement) {
+        this.pendingFeatureEnablement.delete(task.data.interactionId);
+        task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, enablement);
+      }
     }
 
     return {task};
@@ -1714,29 +1671,15 @@ export default class TaskManager extends EventEmitter {
    * @param task - The task to clean up
    * @private
    */
-  private cleanupTaskCallResources(task: Task): void {
+  private handleTaskCleanup(task: ITask) {
     // Clean up Desktop/WebRTC calling resources for browser-based telephony tasks
     if (
       this.webCallingService.loginOption === LoginOption.BROWSER &&
       task.data.interaction.mediaType === MEDIA_CHANNEL.TELEPHONY &&
       task instanceof WebRTC
     ) {
-      // Task listener removal may install a fresh call through a reentrant observer.
-      try {
-        this.webCallingService.cleanUpCallForTask(task.data.interactionId, (disposedCall) => {
-          if (this.call === disposedCall) this.call = undefined;
-        });
-      } finally {
-        task.unregisterWebCallListeners();
-      }
-    }
-  }
-
-  private handleTaskCleanup(task: Task) {
-    try {
-      this.cleanupTaskCallResources(task);
-    } catch {
-      // Backend collection policy still runs after a call-listener cleanup failure.
+      task.unregisterWebCallListeners();
+      this.webCallingService.cleanUpCall();
     }
 
     const isOutdial = task.data.interaction.outboundType === 'OUTDIAL';
@@ -1850,8 +1793,7 @@ export default class TaskManager extends EventEmitter {
    */
   public refreshWxAppOfferObservabilityForAllTasks(): void {
     Object.values(this.taskCollection).forEach((task) => {
-      const view: ITask = task;
-      view.refreshWxAppOfferObservability?.();
+      task.refreshWxAppOfferObservability?.();
     });
   }
 

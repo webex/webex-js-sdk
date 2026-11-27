@@ -34,7 +34,6 @@ import type {WrapupData} from '../../config/types';
 import type ApiAIAssistant from '../../ApiAiAssistant';
 import {getConsultMediaResourceId, getIsConferenceInProgress} from '../TaskUtils';
 import AnswerCallOnWebexService from '../../AnswerCallOnWebexService';
-import type {CallDetailsResponse} from '../../AnswerCallOnWebexService';
 import {isWxAppCallNotFoundError} from '../../wxAppTelephonyUtils';
 import {
   getCallingDeviceDetails,
@@ -140,7 +139,6 @@ export default class Voice extends Task implements IVoice {
         this.wxAppMuted = muted;
       },
       getUsersubPublished: this.getUsersubPublished,
-      assertCommandAllowed: () => this.assertTaskActive(),
     };
   }
 
@@ -158,14 +156,12 @@ export default class Voice extends Task implements IVoice {
   }
 
   private setWxAppAnswerPending(pending: boolean): void {
-    if (this.regionallyInvalidated) return;
     this.wxAppAnswerPending = pending;
     this.uiControlConfig = {...this.uiControlConfig, wxAppAnswerPending: pending};
     this.updateUiControls(true);
   }
 
   private setWxAppAcceptInFlight(inFlight: boolean): void {
-    if (this.regionallyInvalidated) return;
     this.wxAppAcceptInFlight = inFlight;
     this.uiControlConfig = {...this.uiControlConfig, wxAppAcceptInFlight: inFlight};
     this.updateUiControls(true);
@@ -187,7 +183,6 @@ export default class Voice extends Task implements IVoice {
 
   protected updateUiControls(forceEmit = false): void {
     super.updateUiControls(forceEmit);
-    if (this.regionallyInvalidated) return;
     this.getOrCreateWxAppOfferObservability().handleUiControlsUpdate(
       this.getWxAppOfferObservabilityContext()
     );
@@ -198,7 +193,6 @@ export default class Voice extends Task implements IVoice {
    * Used after usersub publish so a pre-publish offer can schedule mismatch grace.
    */
   public refreshWxAppOfferObservability(): void {
-    if (this.regionallyInvalidated) return;
     this.getOrCreateWxAppOfferObservability().handleUiControlsUpdate(
       this.getWxAppOfferObservabilityContext()
     );
@@ -230,7 +224,6 @@ export default class Voice extends Task implements IVoice {
   }
 
   public applyWxAppMuteStateFromSync(incomingCallId: string, muted: boolean): void {
-    if (this.regionallyInvalidated) return;
     if (!this.enableWxBetterTogether) {
       return;
     }
@@ -317,7 +310,6 @@ export default class Voice extends Task implements IVoice {
   }
 
   public async syncWxAppMuteFromCallDetails(retryAttempt = 0): Promise<boolean | undefined> {
-    this.assertTaskActive();
     if (!this.enableWxBetterTogether || !this.answerCallOnWebexService) {
       return undefined;
     }
@@ -357,7 +349,6 @@ export default class Voice extends Task implements IVoice {
     if (!callId) {
       if (retryAttempt < Voice.WXAPP_MUTE_SYNC_MAX_RETRIES && this.canRetryWxAppMuteSync()) {
         await Voice.delay(Voice.WXAPP_MUTE_SYNC_RETRY_DELAY_MS);
-        this.assertTaskActive();
 
         return this.performWxAppMuteSync(retryAttempt + 1);
       }
@@ -368,10 +359,19 @@ export default class Voice extends Task implements IVoice {
       }
     }
 
-    let details: CallDetailsResponse;
     try {
       const lineOwnerId = resolveWxAppLineOwnerId(this.getWxAppVoiceDeps());
-      details = await this.answerCallOnWebexService.getCallDetails({callId, lineOwnerId});
+      const details = await this.answerCallOnWebexService.getCallDetails({callId, lineOwnerId});
+      if (details.muted !== undefined) {
+        this.applyWxAppMuteStateFromSync(callId, details.muted);
+        if (this.wxAppMuted !== details.muted) {
+          this.applyWxAppMuteFromBackfill(callId, details.muted);
+        }
+
+        return details.muted;
+      }
+
+      return this.wxAppMuted;
     } catch (error) {
       if (!isWxAppCallNotFoundError(error)) {
         LoggerProxy.error(`Failed to sync wxApp mute from call details: ${error}`, {
@@ -383,18 +383,6 @@ export default class Voice extends Task implements IVoice {
 
       return undefined;
     }
-
-    this.assertTaskActive();
-    if (details.muted !== undefined) {
-      this.applyWxAppMuteStateFromSync(callId, details.muted);
-      if (this.wxAppMuted !== details.muted) {
-        this.applyWxAppMuteFromBackfill(callId, details.muted);
-      }
-
-      return details.muted;
-    }
-
-    return this.wxAppMuted;
   }
 
   protected onTaskAssigned(): void {
@@ -414,10 +402,7 @@ export default class Voice extends Task implements IVoice {
       this.setWxAppAnswerPending(false);
     }
 
-    // The hydration action runs before the actor publishes the new snapshot.
-    Promise.resolve()
-      .then(() => this.syncWxAppMuteFromCallDetails())
-      .catch(() => undefined);
+    this.syncWxAppMuteFromCallDetails().catch(() => undefined);
   }
 
   public getCallingDeviceDetails() {
@@ -460,7 +445,6 @@ export default class Voice extends Task implements IVoice {
    * Accepts the task. Routes to wxApp telephony answer when `enableWxBetterTogether` and wxApp offer.
    */
   public async accept(): Promise<TaskResponse> {
-    this.assertTaskActive();
     if (this.enableWxBetterTogether && this.isWebexAppCallingOffer()) {
       await runWxAppAccept(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
         acceptReason: this.getWxAppAcceptReasonForMetrics(),
@@ -476,7 +460,6 @@ export default class Voice extends Task implements IVoice {
    * Declines the task. Routes wxApp inbound to telephony reject; wxApp outdial offer to cancelTask.
    */
   public async decline(): Promise<TaskResponse> {
-    this.assertTaskActive();
     if (this.enableWxBetterTogether && this.isWebexAppInboundCallingOffer()) {
       await runWxAppReject(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
         acceptReason: this.getWxAppAcceptReasonForMetrics(),
@@ -544,7 +527,6 @@ export default class Voice extends Task implements IVoice {
    * Toggles mute for wxApp engaged telephony when `enableWxBetterTogether` is active.
    */
   public async toggleMute(options?: TaskToggleMuteOptions): Promise<void> {
-    this.assertTaskActive();
     if (this.enableWxBetterTogether && this.getWebexCallingCallId()) {
       const togglePromise = this.wxAppMuteToggleTail
         .catch(() => undefined)
@@ -565,7 +547,6 @@ export default class Voice extends Task implements IVoice {
    * Sends in-call DTMF for wxApp engaged telephony when `enableWxBetterTogether` is active.
    */
   public async transmitDtmf(options: TaskTransmitDtmfOptions): Promise<void> {
-    this.assertTaskActive();
     if (this.enableWxBetterTogether && this.getWebexCallingCallId()) {
       const dtmfPromise = this.wxAppDtmfTail
         .catch(() => undefined)
@@ -623,8 +604,7 @@ export default class Voice extends Task implements IVoice {
    * ```
    * */
   public async holdResume(): Promise<TaskResponse> {
-    this.assertTaskActive();
-    /*
+    /* 
     Determine if the task is being held or resumed based on the media resource state
     If the media resource is not found, default to resuming the task
     */
@@ -761,7 +741,7 @@ export default class Voice extends Task implements IVoice {
       return response;
     } catch (error) {
       const failureEvent = shouldHold ? TaskEvent.HOLD_FAILED : TaskEvent.UNHOLD_FAILED;
-      this.stateMachineService?.send({
+      this.stateMachineService.send({
         type: failureEvent,
         reason: error.toString(),
         mediaResourceId: this.data.mediaResourceId,
@@ -798,7 +778,6 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async pauseRecording(): Promise<TaskResponse> {
-    this.assertTaskActive();
     // Validate recording is active
     const state = this.getStateMachineSnapshot();
     if (state) {
@@ -873,7 +852,6 @@ export default class Voice extends Task implements IVoice {
   public async resumeRecording(
     resumeRecordingPayload?: ResumeRecordingPayload
   ): Promise<TaskResponse> {
-    this.assertTaskActive();
     // Validate recording is paused
     const state = this.getStateMachineSnapshot();
     if (state) {
@@ -955,7 +933,6 @@ export default class Voice extends Task implements IVoice {
    * ```
    * */
   public async consult(consultPayload?: ConsultPayload): Promise<TaskResponse> {
-    this.assertTaskActive();
     // Validate consult is allowed
     const state = this.getStateMachineSnapshot();
     const canConsult =
@@ -1030,7 +1007,7 @@ export default class Voice extends Task implements IVoice {
 
       return result;
     } catch (error) {
-      this.stateMachineService?.send({
+      this.stateMachineService.send({
         type: TaskEvent.CONSULT_FAILED,
         reason: error.toString(),
       });
@@ -1067,7 +1044,6 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async endConsult(consultEndPayload?: ConsultEndPayload): Promise<TaskResponse> {
-    this.assertTaskActive();
     const requestInteractionId =
       this.data.interaction?.mainInteractionId || this.data.interactionId;
 
@@ -1133,7 +1109,6 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async transfer(payload: TransferPayLoad): Promise<TaskResponse> {
-    this.assertTaskActive();
     try {
       LoggerProxy.info(`Transferring task to ${payload.to}`, {
         module: CC_FILE,
@@ -1220,7 +1195,6 @@ export default class Voice extends Task implements IVoice {
    * Start a consult conference, merging main and consult calls.
    */
   public async consultConference(): Promise<TaskResponse> {
-    this.assertTaskActive();
     const derivedDestAgentId =
       this.data.interaction && this.data.agentId
         ? calculateDestAgentId(this.data.interaction, this.data.agentId)
@@ -1350,7 +1324,6 @@ export default class Voice extends Task implements IVoice {
   public async dropConferenceParticipant(
     payload: DropConferenceParticipantPayload
   ): Promise<TaskResponse> {
-    this.assertTaskActive();
     // The TypeScript contract requires payload, but the published SDK is also callable from
     // untyped JavaScript. Keep an explicit runtime boundary check before direct property access.
     if (!payload) {
@@ -1450,7 +1423,6 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async exitConference(): Promise<TaskResponse> {
-    this.assertTaskActive();
     // Validate we're in conference state OR conference is in progress per task data
     // This handles cases where:
     // 1. State machine is in CONFERENCING state
@@ -1593,7 +1565,6 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async transferConference(): Promise<TaskResponse> {
-    this.assertTaskActive();
     // Validate we're in conference or consulting state
     // CONSULTING is allowed because agent can transfer conference while consulting
     // (transfers ownership to the consulted agent)
@@ -1710,7 +1681,6 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async switchCall(): Promise<TaskResponse> {
-    this.assertTaskActive();
     // Validate we're in CONSULTING state
     const state = this.getStateMachineSnapshot();
     if (!state?.matches(TaskState.CONSULTING)) {

@@ -45,14 +45,6 @@ describe('Digital Task', () => {
     await expect(task.accept()).rejects.toThrow('Error while performing accept');
   });
 
-  it('accept() cannot dispatch from a retired task', async () => {
-    const task = new Digital(dummyContact, dummyData);
-    task.invalidateForRegionRecovery();
-
-    await expect(task.accept()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
-    expect(dummyContact.accept).not.toHaveBeenCalled();
-  });
-
   it('constructor shows accept when offered', () => {
     const task = new Digital(dummyContact, dummyData);
     sendStateEvents(task, [{type: TaskEvent.TASK_INCOMING, taskData: dummyData}]);

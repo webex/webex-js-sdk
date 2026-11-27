@@ -17,7 +17,7 @@ import {
   WELLNESS_BREAK_USER_ACTIONS,
   GenericError,
 } from '../types';
-import {awaitRecoveryWork, createRegionRecoveryError, getErrorDetails} from './core/Utils';
+import {getErrorDetails} from './core/Utils';
 import type {PendingRtdRequest, RtdRequestOptions} from './core/types';
 import {
   AI_ASSISTANT_BASE_URL_TEMPLATE,
@@ -57,33 +57,10 @@ export class ApiAIAssistant {
     return error;
   }
 
-  constructor(webex: WebexSDK, wellnessContextProvider?: WellnessBreakContextProvider);
-
-  /** @internal */
-  constructor(
-    webex: WebexSDK,
-    wellnessContextProvider: WellnessBreakContextProvider | undefined,
-    getRecoverySignal: () => AbortSignal | undefined
-  );
-
-  constructor(
-    webex: WebexSDK,
-    wellnessContextProvider?: WellnessBreakContextProvider,
-    private readonly getRecoverySignal?: () => AbortSignal | undefined
-  ) {
+  constructor(webex: WebexSDK, wellnessContextProvider?: WellnessBreakContextProvider) {
     this.webex = webex;
     this.wellnessContextProvider = wellnessContextProvider;
     this.metricsManager = MetricsManager.getInstance({webex});
-  }
-
-  private requireRecoverySignal(expected?: AbortSignal): AbortSignal | undefined {
-    if (!this.getRecoverySignal) return undefined;
-    const signal = this.getRecoverySignal();
-    if (!signal || signal.aborted || (expected && signal !== expected)) {
-      throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-    }
-
-    return signal;
   }
 
   public setAIFeatureFlags(aiFeature: AIFeatureFlags): void {
@@ -267,99 +244,101 @@ export class ApiAIAssistant {
     return JSON.stringify([rtdEventType, correlationId]);
   }
 
-  private removeRtdRequest(key: string, request: PendingRtdRequest<unknown>): boolean {
-    if (this.pendingRtdRequests.get(key) !== request) return false;
-    this.pendingRtdRequests.delete(key);
-    clearTimeout(request.timeoutId);
-    request.detachAbort?.();
+  private removeRtdRequest<T>(
+    rtdEventType: string,
+    correlationId: string,
+    settle?: (request: PendingRtdRequest<T>) => void
+  ): PendingRtdRequest<T> | undefined {
+    const key = ApiAIAssistant.getRtdRequestKey(rtdEventType, correlationId);
+    const request = this.pendingRtdRequests.get(key) as PendingRtdRequest<T> | undefined;
 
-    return true;
+    if (!request) {
+      return undefined;
+    }
+
+    if (request.timeoutId) {
+      clearTimeout(request.timeoutId);
+    }
+
+    settle?.(request);
+    this.pendingRtdRequests.delete(key);
+
+    return request;
   }
 
   /** Sends an AI event and waits for its matching RTD response. @internal */
   public async requestAndWaitForRtd<T>(options: RtdRequestOptions): Promise<T> {
-    const recoverySignal = this.requireRecoverySignal();
-    const {signal} = options;
-    if (signal?.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
     const key = ApiAIAssistant.getRtdRequestKey(options.rtdEventType, options.correlationId);
-    const previousRequest = this.pendingRtdRequests.get(key);
-    if (previousRequest) {
-      this.removeRtdRequest(key, previousRequest);
-      previousRequest.reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-    }
-
-    let request!: PendingRtdRequest<T>;
+    let resolveResult: (payload: T) => void = () => undefined;
+    let rejectResult: (error: Error) => void = () => undefined;
     const result = new Promise<T>((resolve, reject) => {
-      request = {resolve, reject};
-      this.pendingRtdRequests.set(key, request);
-      request.timeoutId = setTimeout(() => {
-        if (this.removeRtdRequest(key, request)) reject(options.createTimeoutError());
-      }, options.timeoutMs);
-
-      if (signal) {
-        const abort = () => {
-          if (this.removeRtdRequest(key, request))
-            reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-        };
-        request.detachAbort = () => signal.removeEventListener('abort', abort);
-        signal.addEventListener('abort', abort, {once: true});
-      }
+      resolveResult = resolve;
+      rejectResult = reject;
     });
-
-    const publishTimestamp = options.publishTimestamp ?? Date.now();
-    const acknowledgement = Promise.resolve().then(() => {
-      this.requireRecoverySignal(recoverySignal);
-      if (this.pendingRtdRequests.get(key) !== request)
-        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-
-      return this.sendEvent(
-        options.agentId,
-        options.interactionId,
-        options.eventType,
-        options.eventName,
-        options.eventMetaData,
-        undefined,
-        undefined,
-        publishTimestamp,
-        options.timeout
-      );
-    });
-
-    try {
-      const [payload] = await awaitRecoveryWork(
-        Promise.all([result, acknowledgement]),
-        recoverySignal
-      );
-      this.requireRecoverySignal(recoverySignal);
-
-      return payload;
-    } catch (error) {
-      if (this.removeRtdRequest(key, request)) request.reject(error);
-      throw error;
+    const previousRequest = this.pendingRtdRequests.get(key);
+    if (previousRequest?.timeoutId) {
+      clearTimeout(previousRequest.timeoutId);
     }
+    const request: PendingRtdRequest<T> = {
+      correlationId: options.correlationId,
+      rtdEventType: options.rtdEventType,
+      resolve: resolveResult,
+      reject: rejectResult,
+    };
+
+    request.timeoutId = setTimeout(() => {
+      this.removeRtdRequest<T>(options.rtdEventType, options.correlationId, (currentRequest) => {
+        currentRequest.reject(options.createTimeoutError());
+      });
+    }, options.timeoutMs);
+    this.pendingRtdRequests.set(key, request as PendingRtdRequest<unknown>);
+    const publishTimestamp = options.publishTimestamp ?? Date.now();
+    const acknowledgement = Promise.resolve()
+      .then(() =>
+        this.sendEvent(
+          options.agentId,
+          options.interactionId,
+          options.eventType,
+          options.eventName,
+          options.eventMetaData,
+          undefined,
+          undefined,
+          publishTimestamp,
+          options.timeout
+        )
+      )
+      .catch((error) => {
+        if (this.pendingRtdRequests.get(key) === request) {
+          this.removeRtdRequest(options.rtdEventType, options.correlationId);
+        }
+        throw error;
+      });
+
+    const [payload] = await Promise.all([result, acknowledgement]);
+
+    return payload;
   }
 
-  /** Resolves only the captured current RTD request. @internal */
+  /** Resolves a pending request from a parsed RTD event. @internal */
   public resolveFromRtdEvent<T>(
     rtdEventType: string,
     correlationId: string,
     payload: T
   ): 'resolved' | 'not-found' {
-    const key = ApiAIAssistant.getRtdRequestKey(rtdEventType, correlationId);
-    const request = this.pendingRtdRequests.get(key);
-    if (!request) return 'not-found';
-    this.removeRtdRequest(key, request);
-    request.resolve(payload);
+    const request = this.removeRtdRequest<T>(rtdEventType, correlationId, (currentRequest) => {
+      currentRequest.resolve(payload);
+    });
 
-    return 'resolved';
+    return request ? 'resolved' : 'not-found';
   }
 
-  /** Clears each captured request with an independent error. @internal */
-  public clearAllRtdRequests(createError?: () => Error): void {
-    for (const [key, request] of Array.from(this.pendingRtdRequests)) {
-      if (this.removeRtdRequest(key, request))
-        request.reject(createError ? createError() : new Error('RTD request cleared'));
-    }
+  /** Clears pending RTD requests when the RTD lifecycle ends. @internal */
+  public clearAllRtdRequests(): void {
+    Array.from(this.pendingRtdRequests.values()).forEach((request) => {
+      this.removeRtdRequest(request.rtdEventType, request.correlationId, (currentRequest) => {
+        currentRequest.reject(new Error('RTD request cleared'));
+      });
+    });
   }
 
   /**

@@ -47,11 +47,55 @@ describe('Utils', () => {
     jest.clearAllMocks();
   });
 
+  it.each([
+    ['missing org ID', {trackingId: 'switch-1'}],
+    ['missing tracking ID', {orgId: 'org-1'}],
+    ['blank org ID', {orgId: ' ', trackingId: 'switch-1'}],
+    ['blank tracking ID', {orgId: 'org-1', trackingId: ' '}],
+  ])('ignores a regional switch with a %s', (_label, message) => {
+    expect(Utils.normalizeRegionSwitch(message)).toBeUndefined();
+  });
+
+  it.each([
+    [undefined, {}],
+    [{operation: 'UNKNOWN', scope: 'UNKNOWN'}, {}],
+    [{operation: 'FAILBACK', scope: 'REGION'}, {operation: 'FAILBACK', scope: 'REGION'}],
+  ])('keeps supported region-switch metadata %#', (data, expected) => {
+    expect(Utils.normalizeRegionSwitch({orgId: ' org-1 ', trackingId: ' switch-1 ', data})).toEqual({
+      type: 'SYSTEM_REGION_SWITCH',
+      orgId: 'org-1',
+      trackingId: 'switch-1',
+      data: expected,
+    });
+  });
+
+  it.each([false, true])(
+    'registration work rejects on abort (already aborted %s)',
+    async (preAborted) => {
+      const controller = new AbortController();
+      if (preAborted) controller.abort();
+      const work = Utils.awaitRecoveryWork(
+        Promise.reject(new Error('Backend failed')),
+        controller.signal
+      );
+      controller.abort();
+      await expect(work).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+    }
+  );
+
+  it('releases the station retry delay when recovery stops', async () => {
+    const controller = new AbortController();
+    const delay = Utils.waitForRecoveryDelay(30_000, controller.signal);
+    controller.abort();
+    await expect(delay).resolves.toBeUndefined();
+    await expect(Utils.waitForRecoveryDelay(30_000, controller.signal)).resolves.toBeUndefined();
+  });
+
   describe('T-008/T-013 lifecycle recovery errors', () => {
     it.each(Object.values(REGION_RECOVERY_ERROR_CODES))(
       'plainErrorCatalogRoundTrip / lifecycleErrorDataReasonPreserved %s identity and safe data without side effects',
       (reason) => {
-        const error = Utils.createRegionRecoveryError(reason, {trackingId: 'request-1', status: 503});
+        const error = Utils.createRegionRecoveryError(reason);
         const data = Object.assign(error.data, {loginOption: 'BROWSER', fieldName: 'safe'});
         Object.defineProperty(error, 'details', {
           get: () => {
@@ -65,7 +109,7 @@ describe('Utils', () => {
         expect(Utils.getErrorDetails(error, 'stationLogin', 'test')).toEqual({error, reason});
         expect(Utils.getErrorDetails(error, 'silentRelogin', 'test').error).toBe(error);
         expect(error.data).toBe(data);
-        expect(data).toEqual({reason, trackingId: 'request-1', status: 503, loginOption: 'BROWSER', fieldName: 'safe'});
+        expect(data).toEqual({reason, loginOption: 'BROWSER', fieldName: 'safe'});
         expect(LoggerProxy.error).not.toHaveBeenCalled();
         expect(WebexRequest.getInstance).not.toHaveBeenCalled();
       }
@@ -96,8 +140,8 @@ describe('Utils', () => {
       (candidate) => expect(Utils.isRegionRecoveryError(candidate)).toBe(false)
     );
 
-    it('creates independent errors and omits invalid optional diagnostics', () => {
-      const first = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED', {trackingId: ' ', status: NaN});
+    it('creates independent errors containing the recovery reason', () => {
+      const first = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
       const second = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
       expect(first).not.toBe(second);
       expect(first.data).not.toBe(second.data);
@@ -116,6 +160,11 @@ describe('Utils', () => {
   });
 
   describe('T-005 recovery failure normalization', () => {
+    it('ignores a missing or malformed response', () => {
+      expect(Utils.normalizeRecoveryFailure(null)).toEqual({});
+      expect(Utils.getSubscriptionMismatchReason(null)).toBeUndefined();
+    });
+
     it.each([
       [{statusCode: 429}, 429],
       [{status: 502}, 502],

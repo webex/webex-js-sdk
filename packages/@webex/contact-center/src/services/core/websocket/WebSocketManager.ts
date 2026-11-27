@@ -3,7 +3,7 @@ import {HTTP_METHODS} from '../../../types';
 import type {WebexSDK, SubscribeRequest} from '../../../types';
 import {WCC_API_GATEWAY, SUBSCRIBE_API} from '../../constants';
 import type {ConnectionLostDetails} from './types';
-import {CC_EVENTS, SYSTEM_EVENTS} from '../../config/types';
+import {CC_EVENTS} from '../../config/types';
 import type {SubscribeResponse, WelcomeResponse} from '../../config/types';
 import LoggerProxy from '../../../logger-proxy';
 import workerScript from './keepalive.worker';
@@ -93,11 +93,6 @@ export class WebSocketManager extends EventEmitter {
         () => this.disposeAttempt(attempt, new Error('Subscribe deadline exceeded')),
         TIMEOUT_REQ
       );
-      if (attempt.signal?.aborted) {
-        attempt.onAbort();
-
-        return;
-      }
       // Retain both continuations after cancellation: late HTTP cannot install a socket.
       const {body: connectionConfig, resource} = options;
       this.register(connectionConfig, resource).then(
@@ -143,7 +138,7 @@ export class WebSocketManager extends EventEmitter {
     const attempt = this.attempt;
     if (!attempt) return;
     this.disposeAttempt(attempt, createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-    this.notifySocketClose(shouldReconnect);
+    this.emit('socketClose', {shouldReconnect});
     if (reason) WebSocketManager.diagnose('WebSocket connection closed', METHODS.CLOSE);
   }
 
@@ -231,9 +226,7 @@ export class WebSocketManager extends EventEmitter {
           closeSocketTimeout: CLOSE_SOCKET_TIMEOUT, // Close socket timeout
         });
       } catch (error) {
-        const admitted = attempt.accepted;
         this.disposeAttempt(attempt, error);
-        if (admitted) this.notifySocketClose(this.shouldReconnect);
       }
     };
     socket.onerror = () =>
@@ -245,7 +238,7 @@ export class WebSocketManager extends EventEmitter {
       try {
         data = JSON.parse(event.data);
       } catch {
-        if (attempt.accepted) this.deliverMessage(event.data);
+        if (attempt.accepted) this.emit('message', event.data);
 
         return;
       }
@@ -267,34 +260,12 @@ export class WebSocketManager extends EventEmitter {
         // Capture and close the receiving owner before observers can replace it.
         this.shouldReconnect = false;
         this.disposeAttempt(attempt, createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-        this.notifySocketClose(false);
-      } else if (!attempt.accepted && messageType !== SYSTEM_EVENTS.SYSTEM_REGION_SWITCH) {
+        this.emit('socketClose', {shouldReconnect: false});
+      } else if (!attempt.accepted) {
         return;
       }
-      this.deliverMessage(event.data);
+      this.emit('message', event.data);
     };
-  }
-
-  /** Node snapshot and once-wrapper semantics with isolation for internal consumers. */
-  private deliverMessage(payload: string): void {
-    this.rawListeners('message').forEach((listener) => {
-      try {
-        listener.call(this, payload);
-      } catch {
-        WebSocketManager.diagnose('WebSocket message consumer failed', METHODS.DELIVER_MESSAGE);
-      }
-    });
-  }
-
-  private notifySocketClose(shouldReconnect: boolean): void {
-    try {
-      this.emit('socketClose', {shouldReconnect});
-    } catch {
-      WebSocketManager.diagnose(
-        'WebSocket close consumer failed',
-        METHODS.WEB_SOCKET_ON_CLOSE_HANDLER
-      );
-    }
   }
 
   private webSocketOnCloseHandler(attempt: SocketAttempt, error: Error): void {
@@ -302,7 +273,7 @@ export class WebSocketManager extends EventEmitter {
     const reconnect = this.shouldReconnect;
     const admitted = attempt.accepted;
     this.disposeAttempt(attempt, error, false);
-    if (admitted) this.notifySocketClose(reconnect);
+    if (admitted) this.emit('socketClose', {shouldReconnect: reconnect});
   }
 
   /** Invalidate ownership before releasing any resource or invoking rejection callbacks. */
@@ -328,11 +299,6 @@ export class WebSocketManager extends EventEmitter {
     }
     if (attempt.worker) {
       attempt.worker.onmessage = null;
-      try {
-        attempt.worker.postMessage({type: 'terminate'});
-      } catch {
-        WebSocketManager.diagnose('Worker stop failed', METHODS.DISPOSE_ATTEMPT);
-      }
       try {
         attempt.worker.terminate();
       } catch {

@@ -55,7 +55,6 @@ export default class Digital extends Task implements IDigital {
    * ```
    */
   public async accept(): Promise<TaskResponse> {
-    this.assertTaskActive();
     try {
       LoggerProxy.info(`Accepting task`, {
         module: CC_FILE,

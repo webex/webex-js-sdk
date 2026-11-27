@@ -4872,12 +4872,8 @@ function restartSampleForRegion(automatic = true) {
 
     const now = Date.now();
     const guardKey = `cc-sample-region-reload:${sampleEnvironment}:${orgId}`;
-    const previous = automatic ? sessionStorage.getItem(guardKey) : null;
-    if (previous !== null) {
-      const last = JSON.parse(previous);
-      if (!Number.isFinite(last) || last < 0 || last > now ||
-        now - last < REGION_RESTART_WINDOW_MS) return false;
-    }
+    const last = Number(sessionStorage.getItem(guardKey));
+    if (automatic && last && now - last < REGION_RESTART_WINDOW_MS) return false;
 
     sessionStorage.setItem(guardKey, String(now));
     sessionStorage.setItem(REGION_RESUME_KEY, JSON.stringify({
@@ -4961,7 +4957,6 @@ function register(resumingRegion = false) {
     cc.on('region:stateChange', showRegionRecoveryState);
     showRegionRecoveryState(undefined, resumingRegion);
     cc.register().then((agentProfile) => {
-        if (cc !== webex.cc) return;
         registerStatus.innerHTML = 'Subscribed';
         // Update button states upon successful registration
         deregisterBtn.disabled = false;
@@ -5127,12 +5122,11 @@ function register(resumingRegion = false) {
         if (resumingRegion && !regionRecoveryStatus.dataset.status) setRegionRecoveryDialog(false);
     }).catch((error) => {
         cc.off('region:stateChange', showRegionRecoveryState);
-        if (cc !== webex.cc) return;
         const reloadRequired = error?.data?.reason === 'REGION_RELOAD_REQUIRED';
         registerBtn.disabled = reloadRequired;
-        if (reloadRequired && regionRecoveryStatus.dataset.status !== 'reloadRequired') {
+        if (reloadRequired) {
           showRegionRecoveryState({status: 'reloadRequired'});
-        } else if (!reloadRequired && resumingRegion && !regionRecoveryStatus.dataset.status) {
+        } else if (resumingRegion && !regionRecoveryStatus.dataset.status) {
           showRegionRecoveryState({status: 'unavailable'});
         }
         detachWellnessSdkListeners();

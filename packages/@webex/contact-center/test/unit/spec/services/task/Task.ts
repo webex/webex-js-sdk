@@ -1,7 +1,6 @@
 import Task from '../../../../../src/services/task/Task';
 import {
   TaskData,
-  CONSULT_TRANSFER_DESTINATION_TYPE,
   DESTINATION_TYPE,
   TASK_EVENTS,
   TASK_CHANNEL_TYPE,
@@ -11,7 +10,6 @@ import {
   AISummaryResponse,
 } from '../../../../../src/services/task/types';
 import {TaskEvent} from '../../../../../src/services/task/state-machine';
-import {computeUIControls} from '../../../../../src/services/task/state-machine/uiControlsComputer';
 import {ENTRY_POINT_TRANSFER_DESTINATION_TYPE} from '../../../../../src/services/task/constants';
 import LoggerProxy from '../../../../../src/logger-proxy';
 import {createTaskData} from './taskTestUtils';
@@ -241,10 +239,8 @@ jest.mock('../../../../../src/services/task/TaskUtils', () => ({
 }));
 
 jest.mock('../../../../../src/services/core/Utils', () => ({
-  ...jest.requireActual('../../../../../src/services/core/Utils'),
   getErrorDetails: jest.fn((_error, method) => ({
-    error: jest.requireActual('../../../../../src/services/core/Utils').isRegionRecoveryError(_error)
-      ? _error : new Error(`Error while performing ${method}`),
+    error: new Error(`Error while performing ${method}`),
   })),
 }));
 
@@ -252,7 +248,6 @@ jest.mock('../../../../../src/metrics/MetricsManager', () => {
   const metricsInstance = {
     trackEvent: jest.fn(),
     timeEvent: jest.fn(),
-    cancelTimedEvent: jest.fn(),
   };
   const MetricsManager = jest.fn();
 
@@ -279,7 +274,7 @@ jest.mock('../../../../../src/logger-proxy', () => ({
 jest.mock('../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
   default: {
-    getInstance: jest.fn().mockReturnValue({uploadLogs: jest.fn().mockResolvedValue(undefined)}),
+    getInstance: jest.fn().mockReturnValue({uploadLogs: jest.fn()}),
   },
 }));
 
@@ -1300,39 +1295,6 @@ describe('Task AI summary APIs', () => {
   afterEach(() => {
     jest.useRealTimers();
     jest.restoreAllMocks();
-  });
-
-  describe.each([
-    {
-      label: 'post-call', createPayload: createPostCallResponsePayload,
-      invoke: (task: DummyTask, response: AISummaryResponse) => task.sendPostCallSummaryResponse(response),
-    },
-    {
-      label: 'mid-call', createPayload: createMidCallResponsePayload,
-      invoke: (task: DummyTask, response: AISummaryResponse) => task.sendMidCallSummaryResponse(response, 'CONSULT'),
-    },
-  ])('summary response recovery: $label', ({createPayload, invoke}) => {
-    it('rejects an invalidated Task before sending or starting timing', async () => {
-      const task = new DummyTask(dummyContact, createAISummaryTaskData());
-      const {adapter} = createSummaryMocks(task);
-      const metrics = spyOnAISummaryMetrics(task);
-      task.invalidateForRegionRecovery();
-
-      await expect(invoke(task, createPayload())).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
-      expect(adapter.sendEvent).not.toHaveBeenCalled();
-      expect(metrics.timeEvent).not.toHaveBeenCalled();
-    });
-  });
-
-  it.each(summaryRequestCases)('passes the task signal for a $label summary request', async ({invoke}) => {
-    const task = new DummyTask(dummyContact, createAISummaryTaskData());
-    const {adapter} = createSummaryMocks(task);
-    const {signal} = new AbortController();
-    task.bindRecoveryGuard({signal});
-
-    await invoke(task);
-
-    expect(adapter.requestAndWaitForRtd).toHaveBeenCalledWith(expect.objectContaining({signal}));
   });
 
   it('defines the exact AI summary operation metric names', () => {
@@ -2756,148 +2718,6 @@ describe('Task AI summary APIs', () => {
         ['operational']
       );
       expect(responseMetrics.timeEvent).toHaveBeenCalled();
-    }
-  );
-});
-
-describe('T-008 Task regional lifetime', () => {
-  const recovery = jest.requireActual('../../../../../src/services/core/Utils');
-  it('allows a live task command while notification delivery is paused', async () => {
-    const controller = new AbortController();
-    const response = {trackingId: 'current'};
-    const contact = {end: jest.fn().mockResolvedValue(response)};
-    const task = new DummyTask(contact, createTaskData());
-    task.bindRecoveryGuard({signal: controller.signal});
-    controller.abort();
-
-    await expect(task.end()).resolves.toBe(response);
-    task.invalidateForRegionRecovery();
-    await expect(task.end()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
-    expect(contact.end).toHaveBeenCalledTimes(1);
-  });
-
-  it('leaves a retired task unchanged when receiving old updates', () => {
-    const task = new DummyTask({} as any, createTaskData());
-    const data = task.data;
-    const actor = task.stateMachineService;
-    task.invalidateForRegionRecovery();
-    const send = jest.spyOn(actor, 'send');
-    const update = jest.spyOn(task as any, 'updateUiControls');
-    expect(task.updateTaskData(createTaskData({interactionId: 'replacement'}), true)).toBe(task);
-    task.sendStateMachineEvent({type: TaskEvent.ASSIGN, taskData: createTaskData()});
-    (task as any).setupAutoWrapupTimer();
-    expect(task.data).toBe(data);
-    expect(send).not.toHaveBeenCalled();
-    expect(update).not.toHaveBeenCalled();
-    expect(task.autoWrapup).toBeUndefined();
-  });
-
-  it.each([false, true])('staleControlsPreservePreStopSnapshot: throwing observer=%s', (throws) => {
-    const {getDefaultUIControls} = jest.requireActual('../../../../../src/services/task/state-machine/uiControlsComputer');
-    const controls = getDefaultUIControls();
-    controls.main.accept = {isVisible: true, isEnabled: true};
-    controls.main.keypad = {isVisible: true, isEnabled: true};
-    controls.consult.endConsult = {isVisible: true, isEnabled: true};
-    controls.consult.mute = {isVisible: true, isEnabled: true};
-    delete controls.consult.keypad;
-    controls.activeLeg = 'consult';
-    controls.consultTransferDestinations = {
-      consult: [CONSULT_TRANSFER_DESTINATION_TYPE.AGENT, CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE],
-      transfer: [CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE, CONSULT_TRANSFER_DESTINATION_TYPE.AGENT],
-    };
-    const before = JSON.parse(JSON.stringify(controls));
-
-    const expected = getDefaultUIControls();
-    expected.main.accept = {isVisible: true, isEnabled: false};
-    expected.main.keypad = {isVisible: true, isEnabled: false};
-    expected.consult.endConsult = {isVisible: true, isEnabled: false};
-    expected.consult.mute = {isVisible: true, isEnabled: false};
-    delete expected.consult.keypad;
-    expected.activeLeg = 'consult';
-    expected.consultTransferDestinations = {
-      consult: [CONSULT_TRANSFER_DESTINATION_TYPE.AGENT, CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE],
-      transfer: [CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE, CONSULT_TRANSFER_DESTINATION_TYPE.AGENT],
-    };
-
-    const task = new DummyTask({} as any, createTaskData());
-    // Deliver a complete live snapshot through the normal actor subscription.
-    (computeUIControls as jest.Mock).mockReturnValueOnce(controls);
-    task.sendStateMachineEvent({type: TaskEvent.CONFERENCE_START, taskData: task.data});
-    expect(task.uiControls).toBe(controls);
-    expect(task.uiControls).not.toEqual(getDefaultUIControls());
-    const actor = task.stateMachineService;
-    const getSnapshot = jest.spyOn(actor, 'getSnapshot');
-    getSnapshot.mockClear();
-    (computeUIControls as jest.Mock).mockClear();
-    // Attach after construction and the live transitions: only invalidation may deliver this event.
-    const observerError = new Error('controls observer failed');
-    const updated = jest.fn(() => {
-      if (throws) throw observerError;
-    });
-    task.on(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, updated);
-    if (throws) {
-      expect(() => task.invalidateForRegionRecovery()).toThrow(observerError);
-    } else {
-      task.invalidateForRegionRecovery();
-    }
-
-    expect(actor.stop).toHaveBeenCalledTimes(1);
-    expect(task.stateMachineService).toBeUndefined();
-    expect(task.state).toBeUndefined();
-    expect(task.uiControls).toEqual(expected);
-    expect(task.uiControls).not.toBe(controls);
-    expect(Object.prototype.hasOwnProperty.call(task.uiControls.consult, 'keypad')).toBe(false);
-    expect(updated.mock.calls).toEqual([[expected]]);
-    expect(updated.mock.calls[0][0]).toBe(task.uiControls);
-
-    task.invalidateForRegionRecovery();
-    (task as any).updateUiControls();
-    expect(task.uiControls).toEqual(expected);
-    expect(Object.prototype.hasOwnProperty.call(task.uiControls.consult, 'keypad')).toBe(false);
-    if (throws) {
-      expect(() => (task as any).updateUiControls(true)).toThrow(observerError);
-    } else {
-      (task as any).updateUiControls(true);
-    }
-    expect(task.uiControls).toEqual(expected);
-    expect(Object.prototype.hasOwnProperty.call(task.uiControls.consult, 'keypad')).toBe(false);
-    expect(controls).toEqual(before);
-    expect(Object.prototype.hasOwnProperty.call(controls.consult, 'keypad')).toBe(false);
-    expect(getSnapshot).not.toHaveBeenCalled();
-    expect(computeUIControls).not.toHaveBeenCalled();
-    expect(task.stateMachineService).toBeUndefined();
-    expect(actor.stop).toHaveBeenCalledTimes(1);
-    expect(updated.mock.calls).toEqual([[expected], [expected]]);
-    expect(updated.mock.calls[1][0]).toBe(task.uiControls);
-  });
-
-  it('preserves a backend recovery error', async () => {
-    const error = recovery.createRegionRecoveryError('REGION_RELOAD_REQUIRED', {status: 409});
-    const task = new DummyTask({end: jest.fn().mockRejectedValue(error)}, createTaskData());
-    await expect(task.end()).rejects.toBe(error);
-    expect(error.data).toEqual({reason: 'REGION_RELOAD_REQUIRED', status: 409});
-  });
-});
-
-describe('T-009 automatic wrapup cancellation', () => {
-  const {createRegionRecoveryError} = jest.requireActual('../../../../../src/services/core/Utils');
-  const props = {autoWrapup: true, autoWrapupInterval: 100, allowCancelAutoWrapup: false, wrapUpReasonList: [{name: 'default', id: '1', isDefault: true}]};
-  it.each(['queued', 'dispatched'])(
-    'retired task wrap-up never rearms or rejects unhandled: %s', async phase => {
-      const pending = createDeferred<any>();
-      const contact = {wrapup: jest.fn(() => pending.promise)};
-      const task = new DummyTask(contact, createTaskData({wrapUpRequired: true}), {wrapUpProps: props});
-      const callback = (task.autoWrapup as any).start.mock.calls[0][0];
-      if (phase === 'dispatched') expect(callback()).toBeUndefined();
-      task.invalidateForRegionRecovery();
-      expect(callback()).toBeUndefined();
-      (task as any).setupAutoWrapupTimer();
-      expect(task.autoWrapup).toBeUndefined();
-      expect(contact.wrapup).toHaveBeenCalledTimes(phase === 'dispatched' ? 1 : 0);
-      pending.reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-      // Observe a fixture with no dispatched consumer too.
-      await pending.promise.catch(() => undefined);
-      await flushEventLoopTurn();
     }
   );
 });

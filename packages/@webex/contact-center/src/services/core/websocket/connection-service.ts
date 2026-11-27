@@ -23,12 +23,7 @@ import type {SubscribeRequest} from '../../../types';
 import {SUBSCRIBE_API} from '../../constants';
 import type {WelcomeResponse} from '../../config/types';
 import type {RecoveryFailure} from '../types';
-import {
-  awaitRecoveryWork,
-  getSubscriptionMismatchReason,
-  isRecord,
-  normalizeRecoveryFailure,
-} from '../Utils';
+import {getSubscriptionMismatchReason, isRecord, normalizeRecoveryFailure} from '../Utils';
 
 const REGION_RETRY_DELAYS = [100000, 60000, 30000, 15000];
 const SAFE_REASONS = new Set([
@@ -131,8 +126,7 @@ export class ConnectionService extends EventEmitter {
       };
       this.invocation = invocation;
       options.signal.addEventListener('abort', this.onRegionAbort, {once: true});
-      if (options.signal.aborted) this.pause();
-      else this.scheduleRegion(invocation);
+      this.scheduleRegion(invocation);
     });
   }
 
@@ -250,11 +244,7 @@ export class ConnectionService extends EventEmitter {
       if (!this.ownsInvocation(invocation) || this.flight !== flight) return;
       if (signal.aborted) throw terminalError('cancelled');
       welcomed = true;
-      const publishOutcome = await awaitRecoveryWork(
-        invocation.afterWelcome(welcome, signal),
-        signal,
-        () => terminalError('cancelled')
-      );
+      const publishOutcome = await invocation.afterWelcome(welcome, signal);
       if (!this.ownsInvocation(invocation) || this.flight !== flight) return;
       if (signal.aborted) throw terminalError('cancelled');
       this.detachInvocation();
@@ -268,8 +258,7 @@ export class ConnectionService extends EventEmitter {
       const failure = safeFailure(error, mismatch);
       const auth = failure.status === 401 || failure.status === 403;
       const {reconnectOnClose} = flight;
-      const cancelled =
-        reconnectOnClose === false || (signal.aborted && reconnectOnClose === undefined);
+      const cancelled = signal.aborted && !reconnectOnClose;
       let kind: ConnectionRecoveryFailureKind | undefined;
       if (cancelled) kind = 'cancelled';
       else if (auth) kind = 'authentication-failed';
@@ -438,7 +427,7 @@ export class ConnectionService extends EventEmitter {
     } catch (error) {
       if (this.mode !== 'ordinary' || this.flight !== flight) return;
       this.disposeFlight(flight);
-      if (flight.reconnectOnClose === false || !this.webSocketManager.shouldReconnect) {
+      if (!this.webSocketManager.shouldReconnect) {
         this.stop();
 
         return;
@@ -488,15 +477,15 @@ export class ConnectionService extends EventEmitter {
     if (this.mode !== 'ordinary' && this.mode !== 'region') return;
     const shouldReconnect =
       event?.shouldReconnect !== false && this.webSocketManager.shouldReconnect;
-    const flight = this.flight;
-    if (flight) {
-      flight.reconnectOnClose = shouldReconnect;
-      flight.controller.abort();
+    if (!shouldReconnect) {
+      this.stop();
 
       return;
     }
-    if (!shouldReconnect) {
-      this.stop();
+    const flight = this.flight;
+    if (flight) {
+      flight.reconnectOnClose = true;
+      flight.controller.abort();
 
       return;
     }

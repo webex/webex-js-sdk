@@ -36,9 +36,7 @@ import {
   CC_FILE,
   TASK_FILE,
 } from '../../constants';
-import {createRegionRecoveryError, getErrorDetails} from '../core/Utils';
-import {REGION_RECOVERY_ERROR_CODES} from '../core/constants';
-import type {InteractionUIControls, TaskRecoveryGuard} from './types';
+import {getErrorDetails} from '../core/Utils';
 import routingContact from './contact';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
@@ -68,37 +66,6 @@ type UIControlConfigInput = Omit<UIControlConfig, 'channelType'> & {
 };
 
 export default abstract class Task extends EventEmitter implements ITask {
-  private recoveryGuard?: TaskRecoveryGuard;
-  protected regionallyInvalidated = false;
-
-  /** @internal */
-  public bindRecoveryGuard(guard: TaskRecoveryGuard): void {
-    this.recoveryGuard = guard;
-  }
-
-  /** @internal */
-  protected assertTaskActive(): void {
-    if (this.regionallyInvalidated) {
-      throw createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.STALE_TASK);
-    }
-  }
-
-  /** @internal */
-  public invalidateForRegionRecovery(): void {
-    if (this.regionallyInvalidated) return;
-    this.regionallyInvalidated = true;
-    this.cancelAutoWrapupTimer();
-    this.clearFeatureEnablement();
-    this.stopStateMachine();
-    this.disposeRegionalResources();
-    this.updateUiControls(true);
-  }
-
-  /** @internal */
-  protected disposeRegionalResources(): void {
-    this.state = undefined;
-  }
-
   protected contact: ReturnType<typeof routingContact>;
   protected metricsManager: MetricsManager;
   public stateMachineService?: ActorRefFrom<TaskStateMachine>;
@@ -292,7 +259,6 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   public async requestPostCallSummary(): Promise<AISummary> {
-    this.assertTaskActive();
     const metricFields: Record<string, unknown> = {operation: METHODS.REQUEST_POST_CALL_SUMMARY};
 
     try {
@@ -314,7 +280,6 @@ export default abstract class Task extends EventEmitter implements ITask {
       }
 
       const result = await this.apiAIAssistant.requestAndWaitForRtd<AISummary>({
-        signal: this.recoveryGuard?.signal,
         correlationId: conversationId,
         rtdEventType: 'POST_CALL_SUMMARY',
         timeoutMs: AI_SUMMARY_DURATION_MS,
@@ -353,7 +318,6 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   public async sendPostCallSummaryResponse(response: AISummaryResponse): Promise<void> {
-    this.assertTaskActive();
     const metricFields: Record<string, unknown> = {
       operation: METHODS.SEND_POST_CALL_SUMMARY_RESPONSE,
     };
@@ -413,7 +377,6 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   public async requestMidCallSummary(action: AISummaryAction): Promise<AISummary> {
-    this.assertTaskActive();
     const metricFields: Record<string, unknown> = {
       operation: METHODS.REQUEST_MID_CALL_SUMMARY,
       actionType: action,
@@ -443,7 +406,6 @@ export default abstract class Task extends EventEmitter implements ITask {
           ? AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY
           : AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY;
       const result = await this.apiAIAssistant.requestAndWaitForRtd<AISummary>({
-        signal: this.recoveryGuard?.signal,
         correlationId: conversationId,
         rtdEventType: 'MID_CALL_SUMMARY',
         timeoutMs: AI_SUMMARY_DURATION_MS,
@@ -485,7 +447,6 @@ export default abstract class Task extends EventEmitter implements ITask {
     response: AISummaryResponse,
     action: AISummaryAction
   ): Promise<void> {
-    this.assertTaskActive();
     const metricFields: Record<string, unknown> = {
       operation: METHODS.SEND_MID_CALL_SUMMARY_RESPONSE,
       actionType: action,
@@ -586,7 +547,6 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.stateMachineService = createActor(machine);
 
     this.stateMachineService.subscribe((snapshot) => {
-      if (this.regionallyInvalidated) return;
       const previousState = this.lastState;
       const currentState = snapshot.value as TaskState;
       LoggerProxy.log(`State machine transition: ${previousState || 'N/A'} -> ${currentState}`, {
@@ -609,7 +569,6 @@ export default abstract class Task extends EventEmitter implements ITask {
    * Send an event to the state machine
    */
   public sendStateMachineEvent(event: TaskEventPayload): void {
-    if (this.regionallyInvalidated) return;
     if (this.stateMachineService) {
       LoggerProxy.log(`Sending state machine event: ${event?.type}`, {
         module: CC_FILE,
@@ -664,18 +623,6 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   protected computeUIControls(): TaskUIControls {
-    if (this.regionallyInvalidated) {
-      const disable = (leg: InteractionUIControls): InteractionUIControls =>
-        Object.fromEntries(
-          Object.entries(leg).map(([key, control]) => [
-            key,
-            control ? {...control, isEnabled: false} : control,
-          ])
-        ) as InteractionUIControls;
-      const controls = this.currentUiControls;
-
-      return {...controls, main: disable(controls.main), consult: disable(controls.consult)};
-    }
     const snapshot = this.stateMachineService?.getSnapshot?.();
 
     if (!snapshot) {
@@ -704,6 +651,12 @@ export default abstract class Task extends EventEmitter implements ITask {
     }
   }
 
+  /** @internal Stops updates from the old station's task actor. */
+  public invalidateForRegionRecovery(): void {
+    // Keep the stopped actor available to commands already waiting for a reply.
+    this.stateMachineService?.stop();
+  }
+
   private static extractTaskDataFromEvent(event?: TaskEventPayload): TaskData | undefined {
     if (!event || typeof event !== 'object') {
       return undefined;
@@ -717,7 +670,6 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   private async autoAnswerIfNeeded(): Promise<void> {
-    if (this.regionallyInvalidated) return;
     if (!this.data) {
       return;
     }
@@ -744,7 +696,6 @@ export default abstract class Task extends EventEmitter implements ITask {
 
     try {
       await this.accept();
-      if (this.regionallyInvalidated) return;
       LoggerProxy.info(`Task auto-answered successfully`, {
         module: TASK_FILE,
         method: 'autoAnswerIfNeeded',
@@ -763,7 +714,6 @@ export default abstract class Task extends EventEmitter implements ITask {
 
       this.emit(TASK_EVENTS.TASK_AUTO_ANSWERED, this);
     } catch (error) {
-      if (this.regionallyInvalidated) return;
       this.updateTaskData({...this.data, isAutoAnswering: false});
       LoggerProxy.error(`Failed to auto-answer task`, {
         module: TASK_FILE,
@@ -924,7 +874,7 @@ export default abstract class Task extends EventEmitter implements ITask {
         if (event) {
           // parameter intentionally unused
         }
-        this.autoAnswerIfNeeded().catch(() => undefined);
+        this.autoAnswerIfNeeded();
       },
       requestCleanup: () => {
         this.emit(TASK_EVENTS.TASK_CLEANUP, this, {removeFromCollection: false});
@@ -939,7 +889,6 @@ export default abstract class Task extends EventEmitter implements ITask {
    * Sets up the automatic wrap-up timer if wrap-up is required
    */
   protected setupAutoWrapupTimer(): void {
-    if (this.regionallyInvalidated) return;
     if (
       this.data.wrapUpRequired &&
       !this.autoWrapup &&
@@ -976,17 +925,16 @@ export default abstract class Task extends EventEmitter implements ITask {
         return;
       }
       this.autoWrapup = new AutoWrapup(intervalMs, wrapUpProps.allowCancelAutoWrapup);
-      this.autoWrapup.start(() => {
-        if (this.regionallyInvalidated) return;
+      this.autoWrapup.start(async () => {
         LoggerProxy.info(`Auto wrap-up timer triggered`, {
           module: TASK_FILE,
           method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
           interactionId: this.data.interactionId,
         });
-        this.wrapup({
+        await this.wrapup({
           wrapUpReason: defaultWrapupReason.name,
           auxCodeId: defaultWrapupReason.id,
-        }).catch(() => undefined);
+        });
       });
     }
   }
@@ -1012,7 +960,6 @@ export default abstract class Task extends EventEmitter implements ITask {
    * @throws Error
    */
   protected unsupportedMethodError(methodName: string): never {
-    this.assertTaskActive();
     LoggerProxy.error(`Unsupported operation`, {
       module: 'TASK',
       method: methodName,
@@ -1031,7 +978,6 @@ export default abstract class Task extends EventEmitter implements ITask {
    * ```
    */
   public updateTaskData(updatedData: TaskData, shouldOverwrite = false): ITask {
-    if (this.regionallyInvalidated) return this;
     this.data = shouldOverwrite ? updatedData : this.reconcileData(this.data, updatedData);
     if (!shouldOverwrite) {
       this.pruneStaleInteractionMaps(updatedData);
@@ -1088,7 +1034,6 @@ export default abstract class Task extends EventEmitter implements ITask {
    * ```
    */
   public async transfer(transferPayload: TransferPayLoad): Promise<TaskResponse> {
-    this.assertTaskActive();
     LoggerProxy.log(`Starting task transfer for taskId:${this.data.interactionId}`, {
       module: 'Task',
       method: 'transfer',
@@ -1162,7 +1107,6 @@ export default abstract class Task extends EventEmitter implements ITask {
    *  ```
    */
   public async end(): Promise<TaskResponse> {
-    this.assertTaskActive();
     LoggerProxy.log(`Ending task for taskId:${this.data.interactionId}`, {
       module: 'Task',
       method: 'end',
@@ -1216,7 +1160,6 @@ export default abstract class Task extends EventEmitter implements ITask {
    * ```
    */
   public async wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse> {
-    this.assertTaskActive();
     this.cancelAutoWrapupTimer();
     LoggerProxy.log(`Starting task wrapup for taskId:${this.data.interactionId}`, {
       module: 'Task',

@@ -153,11 +153,11 @@ export const normalizeRecoveryFailure = (error: unknown): RecoveryFailure => {
 
 /** Recognizes only the exact region mismatch reasons on a subscribe HTTP 409. */
 export const getSubscriptionMismatchReason = (error: unknown): string | undefined => {
-  if (normalizeRecoveryFailure(error).status !== 409) {
+  const source = asRecord(error);
+  if (!source || normalizeRecoveryFailure(source).status !== 409) {
     return undefined;
   }
 
-  const source = asRecord(error) ?? {};
   const response = asRecord(source.response);
   const body = asRecord(source.body) ?? asRecord(response?.body) ?? asRecord(response?.data);
   const reason = firstNonblankString(
@@ -170,37 +170,22 @@ export const getSubscriptionMismatchReason = (error: unknown): string | undefine
   return SUBSCRIPTION_MISMATCH_REASONS.find((candidate) => candidate === reason);
 };
 
-/** Creates an independent plain lifecycle Error with only safe supplied diagnostics. */
+/** Creates a lifecycle error with a reason usable by applications. */
 export const createRegionRecoveryError = (
-  reason: RegionRecoveryErrorCode,
-  diagnostics?: Readonly<{trackingId?: string; status?: number}>
+  reason: RegionRecoveryErrorCode
 ): AugmentedError & {data: {reason: RegionRecoveryErrorCode}} => {
-  const data: {reason: RegionRecoveryErrorCode; trackingId?: string; status?: number} = {reason};
-  if (typeof diagnostics?.trackingId === 'string' && diagnostics.trackingId.trim()) {
-    data.trackingId = diagnostics.trackingId;
-  }
-  if (typeof diagnostics?.status === 'number' && Number.isFinite(diagnostics.status)) {
-    data.status = diagnostics.status;
-  }
-
-  return Object.assign(new Error(reason), {data});
+  return Object.assign(new Error(reason), {data: {reason}});
 };
 
 /** Observes abandoned work while promptly releasing its local cancellation continuation. */
-export const awaitRecoveryWork = <T>(
-  work: Promise<T>,
-  signal?: AbortSignal,
-  createAbortError: () => Error = () => createRegionRecoveryError('RECOVERY_INTERRUPTED')
-): Promise<T> => {
-  if (!signal) return work;
-
+export const awaitRecoveryWork = <T>(work: Promise<T>, signal: AbortSignal): Promise<T> => {
   return new Promise<T>((resolve, reject) => {
     const onAbort = () => {
       signal.removeEventListener('abort', onAbort);
-      reject(createAbortError());
+      reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
     };
     signal.addEventListener('abort', onAbort, {once: true});
-    Promise.resolve(work).then(
+    work.then(
       (value) => {
         signal.removeEventListener('abort', onAbort);
         resolve(value);
@@ -227,7 +212,6 @@ export const waitForRecoveryDelay = (delay: number, signal: AbortSignal): Promis
     };
     timer = setTimeout(finish, delay);
     signal.addEventListener('abort', finish, {once: true});
-    if (signal.aborted) finish();
   });
 };
 

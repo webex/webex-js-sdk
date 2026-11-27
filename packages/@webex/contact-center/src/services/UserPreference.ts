@@ -1,82 +1,16 @@
-import {HTTP_METHODS, LoginOption, WebexSDK} from '../types';
-import type {AgentLogin} from '../types';
+import {HTTP_METHODS, WebexSDK} from '../types';
 import type {
   UserPreference as UserPreferenceResponse,
   CreateUserPreferenceRequest,
   UpdateUserPreferenceRequest,
   GetUserPreferenceParams,
-  Profile,
 } from './config/types';
 import LoggerProxy from '../logger-proxy';
 import WebexRequest from './core/WebexRequest';
 import MetricsManager from '../metrics/MetricsManager';
-import {AGENT, WCC_API_GATEWAY} from './constants';
+import {WCC_API_GATEWAY} from './constants';
 import {endPointMap} from './config/constants';
-import {isRecord, isValidDialNumber} from './core/Utils';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
-
-const SAVED_STATION_READ_TIMEOUT = 10000;
-
-const normalizeSavedNumber = (value: unknown): string =>
-  typeof value === 'string' ? value.trim().replace(/ /g, '') : '';
-
-/** Reads an opted-in Desktop station for the current profile. @internal */
-export async function readSavedStationLogin(
-  webexRequest: WebexRequest,
-  orgId: string,
-  profile: Profile
-): Promise<AgentLogin | undefined> {
-  const {agentId} = profile;
-  if (!orgId?.trim() || !agentId?.trim()) return undefined;
-
-  try {
-    const response = await webexRequest.request({
-      service: WCC_API_GATEWAY,
-      resource: endPointMap.userPreference(orgId, agentId),
-      method: HTTP_METHODS.GET,
-      headers: {'X-ORGANIZATION-ID': orgId},
-      timeout: SAVED_STATION_READ_TIMEOUT,
-    });
-    const body: unknown = response?.body;
-    if (
-      response?.statusCode !== 200 ||
-      !isRecord(body) ||
-      body.id !== agentId ||
-      (body.organizationId !== undefined && body.organizationId !== orgId) ||
-      (body.userId !== undefined && body.userId !== agentId) ||
-      typeof body.desktopPreference !== 'string'
-    )
-      return undefined;
-
-    const saved: unknown = JSON.parse(body.desktopPreference);
-    if (!isRecord(saved) || saved.dontShowAgain !== true || saved.selectedRoleName !== AGENT)
-      return undefined;
-    const {deviceType: loginOption, teamId} = saved;
-    if (
-      (loginOption !== LoginOption.AGENT_DN && loginOption !== LoginOption.EXTENSION) ||
-      !profile.loginVoiceOptions?.includes(loginOption) ||
-      typeof teamId !== 'string' ||
-      !teamId.trim() ||
-      !profile.teams.some((team) => team.active === true && (team.dbId ?? team.id) === teamId)
-    )
-      return undefined;
-
-    const dialNumber = normalizeSavedNumber(saved.dialNumber);
-    if (
-      ((profile.forceDefaultDn || profile.forceDefaultDnForAgent) &&
-        dialNumber !== normalizeSavedNumber(profile.defaultDn)) ||
-      (loginOption === LoginOption.EXTENSION
-        ? !/^\d+$/.test(dialNumber) || dialNumber !== normalizeSavedNumber(saved.extensionNumber)
-        : !/^\+?\d+$/.test(dialNumber) ||
-          !isValidDialNumber(dialNumber, profile.dialPlan?.dialPlanEntity))
-    )
-      return undefined;
-
-    return {loginOption, teamId, dialNumber};
-  } catch {
-    return undefined;
-  }
-}
 
 /**
  * UserPreference API class for managing Webex Contact Center user preferences.

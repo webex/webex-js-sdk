@@ -5,7 +5,6 @@ import AqmReqs from '../core/aqm-reqs';
 import {HTTP_METHODS, LoginOption} from '../../types';
 import {EMPTY_STRING} from '../../constants';
 import {AGENT, WCC_API_GATEWAY, WEB_RTC_PREFIX} from '../constants';
-import {AGENT_STATE_AVAILABLE} from '../config/constants';
 import {CC_EVENTS} from '../config/types';
 import type {AgentLogin} from '../../types';
 import type {RecoveryFailure} from '../core/types';
@@ -60,40 +59,6 @@ export function getStationRecoveryFailureCategory(
   return 'other';
 }
 
-/** @internal */
-export type AgentStateVersion = {
-  lastStateChangeTimestamp: number;
-  lastIdleCodeChangeTimestamp?: number | null;
-};
-
-/** @internal */
-export function hasAgentStateVersion<
-  T extends {
-    lastStateChangeTimestamp?: unknown;
-    lastIdleCodeChangeTimestamp?: unknown;
-    subStatus?: unknown;
-  }
->(data: T): data is T & AgentStateVersion {
-  return (
-    Number.isFinite(data.lastStateChangeTimestamp) &&
-    (Number.isFinite(data.lastIdleCodeChangeTimestamp) ||
-      (data.subStatus === AGENT_STATE_AVAILABLE && data.lastIdleCodeChangeTimestamp == null))
-  );
-}
-
-/** @internal */
-export function compareAgentStateVersions(
-  current: AgentStateVersion,
-  previous: AgentStateVersion
-): number {
-  const stateDifference = current.lastStateChangeTimestamp - previous.lastStateChangeTimestamp;
-  const currentIdle = current.lastIdleCodeChangeTimestamp;
-  const previousIdle = previous.lastIdleCodeChangeTimestamp;
-  if (stateDifference || currentIdle == null || previousIdle == null) return stateDifference;
-
-  return currentIdle - previousIdle;
-}
-
 /**
  * Agent Service provides methods to manage agent states and operations
  * @param routing - AqmReqs instance for making API requests
@@ -106,7 +71,6 @@ export default function routingAgent(routing: AqmReqs) {
      * @public
      */
     reload: routing.reqEmpty(() => ({
-      kind: 'session',
       host: WCC_API_GATEWAY,
       url: '/v1/agents/reload',
       data: {},
@@ -157,7 +121,6 @@ export default function routingAgent(routing: AqmReqs) {
      * @public
      */
     stationLogin: routing.req((p: {data: Agent.UserStationLogin}) => ({
-      kind: 'session',
       url: '/v1/agents/login',
       host: WCC_API_GATEWAY,
       data: p.data,

@@ -116,30 +116,6 @@ describe('AQM routing agent', () => {
   });
 
   it.each([
-    {operation: 'reload', kind: 'session', data: {}},
-    {
-      operation: 'stationLogin', kind: 'session',
-      data: {
-        teamId: 'login-team', teamName: 'Login Team', siteId: 'login-site',
-        dialNumber: '1001', usesOtherDN: false, auxCodeId: 'login-idle-code',
-      },
-    },
-    {operation: 'logout', kind: undefined, data: {logoutReason: 'User requested logout'}},
-    {
-      operation: 'buddyAgents', kind: undefined,
-      data: {agentProfileId: 'buddy-profile', mediaType: 'telephony', state: 'Available'},
-    },
-    {
-      operation: 'stateChange', kind: undefined,
-      data: {state: 'Idle', auxCodeId: 'state-idle-code', lastStateChangeReason: 'Lunch'},
-    },
-  ])('configures $operation for recovery without changing its body', ({operation, kind, data}) => {
-    const config = operation === 'reload' ? agent.reload() : agent[operation]({data});
-    expect(config.kind).toBe(kind);
-    expect(config.data).toStrictEqual(data);
-  });
-
-  it.each([
     {
       shape: 'fully populated HTTP error',
       failure: {

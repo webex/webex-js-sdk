@@ -168,23 +168,19 @@ usual pending request error. Enable manual state controls when the automatic req
 `autoAvailable: 'waitingForVoice'`, manual state controls can remain available, subject to the normal
 voice readiness check when selecting Available. Task controls can resume on `ready` in either case.
 
-With `allowAutomatedRelogin` enabled, the SDK tries to restore the previous station. Apps can also
-enable `config.cc.allowSavedStationLoginOnRecovery` to let the SDK try one saved DN or extension when it
-needs a new station login and has no usable previous station details. The SDK uses saved choices
-only when the agent opted into Desktop Enhanced Sign-in and the choices match the current profile.
-Existing browser stations can recover automatically. Starting a new browser station still uses the
-app’s sign-in flow for device permissions and any required prompts. Ask the agent for station details
-when no eligible automatic sign-in succeeds.
+With `allowAutomatedRelogin` enabled, the SDK tries to restore the previous station, including an
+existing browser station. The app handles `stationLoginRequired` through its station sign-in flow,
+including any device permissions or station details the agent needs to provide.
 
 A Welcome frame establishes transport. A successful station acknowledgment establishes readiness.
-Active calls and audio can be interrupted by a switch. Retained Tasks have disabled controls and
-reject with `STALE_TASK`. Obtain replacement Tasks through the existing Task events. Fresh
+Active calls and audio can be interrupted by a switch. Obtain replacement Tasks through the
+existing Task events. WebRTC call controls on a retired Task reject with `STALE_TASK`. Fresh
 `FEATURE_ENABLEMENT` enables restored AI summary capabilities. Optional realtime services resume
 independently, after manual login if required for the previous station.
 
-Clear the host display when logout, deregistration or replacement begins and on primary multi-login.
-Logout preserves registration and ordinary reconnect. Backend-confirmed logout clears the accepted
-station. Logout without a usable primary rejects with `RECOVERY_INTERRUPTED`; retry after ordinary
+Clear the recovery display after confirmed station logout, when deregistration or replacement
+begins, and on primary multi-login. Station logout uses the normal request and notification flow.
+Only a confirmed logout clears the accepted station. The SDK stays registered for ordinary socket
 reconnect. Attach essential listeners before registration and remove them at teardown.
 
 ## Multi-region recovery host restart
@@ -217,9 +213,6 @@ entitlement changes. Roll back through SDK release and backend entitlement manag
 ### Release verification
 
 - Verify the deployed desktop-login entitlement and ordinary station login and reconnect.
-- For `REL-AQM-TRACKING-ECHO`, verify that recovery `stateChange`, `stationLogin`, and `reload`
-  responses echo the UUID from `trackingid: webex-js-sdk_<uuid>` in nested `data.trackingId`.
-  Check success, failure, and backend reason codes.
 - For `AC-021`, record the home and serving regions, station outcome, and new-call, RTD, and voice
   results. For browser runs, capture the order and identifiers of the Calling offer and Task hydration.
   Link sanitized captures with deployment versions and timestamps in the release record.

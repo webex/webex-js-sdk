@@ -13,7 +13,6 @@ import {
   LOGGER,
   MobiusSocketDisconnectedEvent,
   LineError,
-  ERROR_TYPE,
 } from '@webex/calling';
 import isEqual from 'lodash/isEqual';
 import {
@@ -94,10 +93,11 @@ export default class WebCallingService extends EventEmitter {
 
   private rejectRegistration?: (error: Error) => void;
 
+  private registrationCompleteHandler?: (line: ILine) => void;
+
   private incomingCallHandler?: (call: ICall) => void;
 
   private registrationGeneration = 0;
-  private registrationAttempt?: {generation: number; cancel: () => void};
 
   private registrationListenerCleanup: Array<() => void> = [];
 
@@ -203,25 +203,6 @@ export default class WebCallingService extends EventEmitter {
     this.emit(VOICE_CONNECTION_EVENTS.STATE_CHANGE, this.getVoiceConnectionState());
   }
 
-  private static runRegistrationCallback(callback: () => void): void {
-    try {
-      callback();
-    } catch {
-      WebCallingService.logRegistrationError('Web calling registration callback failed');
-    }
-  }
-
-  private static logRegistrationError(message: string): void {
-    try {
-      LoggerProxy.error(message, {
-        module: WEB_CALLING_SERVICE_FILE,
-        method: METHODS.REGISTER_WEB_CALLING_LINE,
-      });
-    } catch {
-      // Diagnostics must not interrupt calling ownership or later listeners.
-    }
-  }
-
   private addRegistrationListener(
     emitter: ICallingClient | ILine,
     event: string,
@@ -230,7 +211,7 @@ export default class WebCallingService extends EventEmitter {
     const generation = this.registrationGeneration;
     const listener = (...args: any[]) => {
       if (generation === this.registrationGeneration) {
-        WebCallingService.runRegistrationCallback(() => callback(...args));
+        callback(...args);
       }
     };
 
@@ -241,15 +222,13 @@ export default class WebCallingService extends EventEmitter {
   }
 
   private async cleanupWebCallingRegistration(): Promise<void> {
-    const attempt = this.registrationAttempt;
-    this.registrationAttempt = undefined;
     this.registrationGeneration += 1;
-    attempt?.cancel();
     this.rejectRegistration?.(new Error('WebCallingService registration superseded'));
     this.rejectRegistration = undefined;
     this.registrationListenerCleanup.forEach((cleanup) => cleanup());
     this.registrationListenerCleanup = [];
     this.incomingCallHandler = undefined;
+    this.registrationCompleteHandler = undefined;
 
     const line = this.line;
     this.line = undefined;
@@ -287,9 +266,9 @@ export default class WebCallingService extends EventEmitter {
     this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.RECONNECTED});
   };
 
-  private handleLineUnregistered = (error?: LineError): void => {
+  private handleLineUnregistered = (): void => {
     this.lineReason = 'LINE_UNREGISTERED';
-    this.lineRetryable = error?.type !== ERROR_TYPE.SESSION_SUPERSEDED;
+    this.lineRetryable = true;
     this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.UNREGISTERED});
     LoggerProxy.log(`WxCC-SDK: Desktop unregistered successfully`, {
       module: WEB_CALLING_SERVICE_FILE,
@@ -301,8 +280,8 @@ export default class WebCallingService extends EventEmitter {
     if (error.status !== ACTIVE_REGISTRATION_STATUS) {
       this.lineReason = error.message || 'LINE_ERROR';
       this.lineRetryable = false;
-      this.rejectRegistration?.(error);
       this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.ERROR});
+      this.rejectRegistration?.(error);
     }
   };
 
@@ -351,43 +330,17 @@ export default class WebCallingService extends EventEmitter {
    * Removes event listeners and clears the call-task mapping
    * @private
    */
-  public cleanUpCall(expectedCall?: ICall): void {
-    const call = this.call;
-    if (expectedCall && expectedCall !== call) return;
-    if (!call) return;
-    const callId = call.getCallId();
-    try {
-      call.off(CALL_EVENT_KEYS.REMOTE_MEDIA, this.handleMediaEvent);
-    } finally {
-      try {
-        call.off(CALL_EVENT_KEYS.DISCONNECT, this.handleDisconnectEvent);
-      } finally {
-        const replacement = this.call;
-        if (!replacement || replacement === call || replacement.getCallId() !== callId) {
-          this.callTaskMap.delete(callId);
-        }
-        if (this.call === call) this.call = null;
+  public cleanUpCall(): void {
+    if (this.call) {
+      this.call.off(CALL_EVENT_KEYS.REMOTE_MEDIA, this.handleMediaEvent);
+      this.call.off(CALL_EVENT_KEYS.DISCONNECT, this.handleDisconnectEvent);
+      const callId = this.call.getCallId();
+      const taskId = this.getTaskIdForCall(callId);
+
+      if (taskId) {
+        this.callTaskMap.delete(callId);
       }
-    }
-  }
-
-  /**
-   * Releases the captured current call only when its mapping belongs to the retiring task.
-   * @param taskId - The task whose resources are being released
-   * @param onDisposed - Releases matching consumer references even if listener removal throws
-   * @private
-   */
-  public cleanUpCallForTask(taskId: string, onDisposed: (call: ICall) => void): void {
-    const call = this.call;
-    if (!call) return;
-    const ownerTaskId = this.getTaskIdForCall(call.getCallId());
-    if (ownerTaskId !== taskId) return;
-    if (this.call !== call) return;
-
-    try {
-      this.cleanUpCall(call);
-    } finally {
-      onDisposed(call);
+      this.call = null;
     }
   }
 
@@ -431,6 +384,24 @@ export default class WebCallingService extends EventEmitter {
     }
   }
 
+  /** Keep the existing Calling line during regional recovery and start a missing browser line. */
+  public ensureWebCallingLine(): void {
+    if (
+      !this.browserVoiceRequired ||
+      this.line ||
+      this.voiceConnectionState.lineStatus === VoiceLineStatus.CONNECTING
+    ) {
+      return;
+    }
+
+    this.registerWebCallingLine().catch(() => {
+      LoggerProxy.error('Failed to register browser Calling line during regional recovery', {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: METHODS.REGISTER_WEB_CALLING_LINE,
+      });
+    });
+  }
+
   /**
    * Registers the WebCalling line for receiving calls
    * Sets up event listeners for line events and initializes the calling client
@@ -440,36 +411,6 @@ export default class WebCallingService extends EventEmitter {
    * @throws {Error} When registration times out
    */
   public async registerWebCallingLine(): Promise<void> {
-    let cancel: () => void;
-    const cancelled = new Promise<void>((resolve) => {
-      cancel = resolve;
-    });
-    const work = this.performRegistrationAttempt();
-    const attempt = {generation: this.registrationGeneration, cancel};
-    this.registrationAttempt = attempt;
-    try {
-      await Promise.race([work, cancelled]);
-    } finally {
-      if (this.registrationAttempt === attempt) this.registrationAttempt = undefined;
-    }
-  }
-
-  /** Leave existing lines with Calling. Start a missing line without delaying station recovery. */
-  public async ensureWebCallingLine(signal?: AbortSignal): Promise<void> {
-    if (signal?.aborted || !this.browserVoiceRequired || this.line || this.registrationAttempt)
-      return;
-    try {
-      const activeCalls = this.callingClient?.getActiveCalls();
-      if (Object.values(activeCalls ?? {}).some((calls) => calls.length > 0)) return;
-      this.registerWebCallingLine().catch(() => {
-        WebCallingService.logRegistrationError('Web calling preserve registration failed');
-      });
-    } catch {
-      WebCallingService.logRegistrationError('Unable to ensure web calling line');
-    }
-  }
-
-  private async performRegistrationAttempt(): Promise<void> {
     const registrationGeneration = this.registrationGeneration + 1;
     await this.cleanupWebCallingRegistration();
     if (registrationGeneration !== this.registrationGeneration) {
@@ -480,7 +421,6 @@ export default class WebCallingService extends EventEmitter {
     this.lineRetryable = undefined;
     this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.CONNECTING});
 
-    let registrationFailed = false;
     try {
       const rtmsDomain = await this.getRTMSDomain(); // get the RTMS domain from the u2c catalogue
       if (registrationGeneration !== this.registrationGeneration) {
@@ -499,15 +439,7 @@ export default class WebCallingService extends EventEmitter {
 
       const callingClient = await createClient(this.webex as any, callingClientConfig);
       if (registrationGeneration !== this.registrationGeneration) {
-        const candidate = Object.values(callingClient.getLines())[0];
-        if (
-          candidate &&
-          candidate !== this.line &&
-          callingClient !== this.callingClient &&
-          !Object.values(callingClient.getActiveCalls?.() ?? {}).some((calls) => calls.length > 0)
-        ) {
-          await candidate.deregister();
-        }
+        await Object.values(callingClient.getLines())[0]?.deregister();
 
         return;
       }
@@ -554,59 +486,48 @@ export default class WebCallingService extends EventEmitter {
         }
       );
 
-      const ownedLine = this.line;
       await new Promise<void>((resolve, reject) => {
-        let settled = false;
         let timeout: ReturnType<typeof setTimeout> | undefined;
-        let rejectRegistration: (error: Error) => void;
-        const finish = (): boolean => {
-          if (settled) return false;
-          settled = true;
+        const finish = (): void => {
           if (timeout) {
             clearTimeout(timeout);
           }
-          if (this.rejectRegistration === rejectRegistration) this.rejectRegistration = undefined;
-
-          return true;
-        };
-        rejectRegistration = (error: Error): void => {
-          if (finish()) {
-            registrationFailed = true;
-            // A reentrant observer may replace the line before the rejected work unwinds.
-            if (this.registrationAttempt?.generation === registrationGeneration) {
-              this.registrationAttempt = undefined;
-            }
-            reject(error);
+          this.rejectRegistration = undefined;
+          if (this.registrationCompleteHandler) {
+            this.line.off(LINE_EVENTS.REGISTERED, this.registrationCompleteHandler);
+            this.registrationCompleteHandler = undefined;
           }
         };
-        this.rejectRegistration = rejectRegistration;
+        this.rejectRegistration = (error: Error): void => {
+          finish();
+          reject(error);
+        };
         timeout = setTimeout(() => {
-          if (registrationGeneration !== this.registrationGeneration || ownedLine !== this.line)
-            return;
-          WebCallingService.runRegistrationCallback(() => {
-            this.lineReason = 'REGISTRATION_TIMEOUT';
-            this.lineRetryable = true;
-            rejectRegistration(new Error('WebCallingService Registration timed out'));
-            this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.ERROR});
-          });
+          this.lineReason = 'REGISTRATION_TIMEOUT';
+          this.lineRetryable = true;
+          this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.ERROR});
+          this.rejectRegistration?.(new Error('WebCallingService Registration timed out'));
         }, TIMEOUT_DURATION);
 
-        this.addRegistrationListener(ownedLine, LINE_EVENTS.REGISTERED, (line: ILine) => {
-          if (finish()) resolve();
-          this.handleLineRegistered(line);
-        });
+        this.addRegistrationListener(this.line, LINE_EVENTS.REGISTERED, this.handleLineRegistered);
+        this.registrationCompleteHandler = this.addRegistrationListener(
+          this.line,
+          LINE_EVENTS.REGISTERED,
+          () => {
+            finish();
+            resolve();
+          }
+        );
 
         // ILine declares register() as void, although its implementation is async.
-        Promise.resolve(ownedLine.register()).catch((error: LineError) => {
-          if (registrationGeneration === this.registrationGeneration && ownedLine === this.line) {
-            WebCallingService.runRegistrationCallback(() => this.handleLineError(error));
+        Promise.resolve(this.line.register()).catch((error: LineError) => {
+          if (registrationGeneration === this.registrationGeneration) {
+            this.handleLineError(error);
           }
         });
       });
     } catch (error) {
       if (registrationGeneration !== this.registrationGeneration) {
-        if (registrationFailed) throw error;
-
         return;
       }
       if (this.voiceConnectionState.lineStatus !== VoiceLineStatus.ERROR) {

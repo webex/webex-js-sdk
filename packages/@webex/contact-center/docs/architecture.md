@@ -132,7 +132,7 @@ The collaborators in the composition tree are built once, on the Webex READY eve
 | From | To | Interaction or transport | Purpose | Failure or compatibility behavior |
 | ---- | -- | ------------------------ | ------- | --------------------------------- |
 | Host application | `webex.cc` | In-process method calls and plugin events | Agent, task, data, and diagnostics operations | Promises reject with the errors described in the owning module spec; `register()` uploads logs on failure |
-| `ContactCenter` | Services agent and dialer factories | AqmReqs: HTTP request, then a matched WebSocket notification | Station login, logout, state change, buddy agents, outdial, campaign preview | Settles on a matching notification, HTTP rejection, or the default 20-second timeout. A replaced station-restore attempt can stop waiting. |
+| `ContactCenter` | Services agent and dialer factories | AqmReqs: HTTP request, then a matched WebSocket notification | Station login, logout, state change, buddy agents, outdial, campaign preview | Settles on a matching notification, HTTP rejection, or the default 20-second timeout. |
 | `ContactCenter` data services | Contact Center API gateway | WebexRequest HTTP | Address book, entry points, queues, user preferences, AI assistant | HTTP errors propagate after metrics and logging |
 | ConnectionService | `ContactCenter` | `connectionLost` event | Socket loss and reconnect | Ordinary reconnect attempts `silentRelogin()` when configuration allows, automatic relogin is unsuppressed, and the recovery phase is idle or ready |
 | WebSocketManager (primary and RTD) | ContactCenter, TaskManager, AqmReqs | `message` events | Realtime routing and AQM request completion | Unknown message types are ignored |
@@ -170,7 +170,7 @@ the owning module specification linked in the Owner column.
 | `contact-center-task-events` — `TASK_EVENTS` (`task:*`, including `task:hydrate`, `task:wrapup`, `task:midCallSummaryReceived`, `task:wxapp-mute-state-updated`), `TaskData`, `TaskResponse`, and task payload types | Event, published | [`src/services/task`](../src/services/task/docs/README.md) | Applications holding `ITask` objects | Additive constants; semantic extensions keep existing event names | `src/services/task/types.ts` |
 | `contact-center-task-state-machine` — state machine factory, `TaskState`, `TaskEvent`, guards, actions, UI-control computer | SDK, internal (only `getDefaultUIControls` is re-exported) | [`src/services/task/state-machine`](../src/services/task/state-machine/docs/README.md) | Task and TaskManager | Internal; `TaskUIControls` fields are public and additive | `src/services/task/state-machine/index.ts` |
 | `contact-center-services` — Services composition root and request factories | SDK, internal | [`src/services`](../src/services/docs/README.md) | ContactCenter, TaskManager | Internal | `src/services/index.ts` |
-| `contact-center-core-transport` — AqmReqs, WebexRequest, WebSocketManager, ConnectionService, and error helpers. Owns ordinary AQM event matching and timeout, scoped recovery request correlation, paced single-flight transport admission with Welcome deadlines, and terminal recovery classification. Diagnostics redact request/response credentials and station data. | SDK, internal | [`src/services/core`](../src/services/core/docs/README.md) | Services, ContactCenter, TaskManager | Internal | `src/services/core/aqm-reqs.ts` |
+| `contact-center-core-transport` — AqmReqs, WebexRequest, WebSocketManager, ConnectionService, and error helpers. Owns AQM event matching and timeout, paced single-flight transport admission with Welcome deadlines, and terminal recovery classification. | SDK, internal | [`src/services/core`](../src/services/core/docs/README.md) | Services, ContactCenter, TaskManager | Internal | `src/services/core/aqm-reqs.ts` |
 | `contact-center-metrics` — `METRIC_EVENT_NAMES` and the MetricsManager submission API, including generation-owned regional recovery outcomes. | Event, internal | [`src/metrics`](../src/metrics/docs/README.md) | Every module that tracks events | Internal; names reach the Webex metrics backend | `src/metrics/constants.ts` |
 | `contact-center-page-cache` — PageCache and pagination types and defaults | SDK, internal | [`src/utils`](../src/utils/docs/README.md) | AddressBook, Queue; EntryPoint reads its defaults | Internal | `src/utils/PageCache.ts` |
 | `wxcc-api-gateway` — Contact Center REST API through `webex.request` service `wcc-api-gateway` | HTTP, external | Contact Center backend | Services, Config, data services | Owned by the backend; the package owns no route | Webex Contact Center API gateway (external) |
@@ -302,8 +302,8 @@ Cache eligibility rules are in the [Utils spec](../src/utils/docs/README.md) and
 
 ## Release and versioning
 
-The [regional recovery release checklist](getting-started.md#release-evidence-and-rel-aqm-tracking-echo)
-covers rollout, deployed correlation evidence, and live failover and failback drills.
+The [regional recovery release checklist](getting-started.md#release-verification) covers live
+failover and failback drills.
 
 | Artifact | Publish target | Versioning rule | Deprecation window | Changelog or migration obligation |
 | -------- | -------------- | --------------- | ------------------ | --------------------------------- |
@@ -327,7 +327,6 @@ Host configuration (`config.cc`, defaults in `src/config.ts`) and remote profile
 | Flag/config | Gates | Current default | Owner | Safe to remove when |
 |---|---|---|---|---|
 | `allowAutomatedRelogin` | silent relogin after recovery | `true` (`src/config.ts`) | ContactCenter | replacement recovery contract exists |
-| `allowSavedStationLoginOnRecovery` | opt into one eligible saved Desktop DN or extension sign-in during regional recovery | `false` (`src/config.ts`) | ContactCenter | requires automatic relogin and the agent’s saved sign-in consent |
 | `Profile.webRtcEnabled` and `Profile.loginVoiceOptions` | browser calling path (BROWSER login option) | remote profile | Config/WCC | remote contract removed |
 | `Profile.allowConsultToQueue` and the other Desktop Profile access flags | task consult/transfer destinations and controls | remote profile (`consultToQueue`) | Task/Config | owning behavior removed |
 | `Profile.isWellnessBreakEnabled` | wellness event/action APIs and system-code access | false unless backend AI enablement, reminders, and positive license quantity are all present | Config/ContactCenter | wellness contract removed |

@@ -186,8 +186,6 @@ export interface CCPluginConfig {
   allowMultiLogin: boolean;
   /** Whether to automatically attempt relogin on connection loss */
   allowAutomatedRelogin: boolean;
-  /** Allow one regional recovery sign-in using the agent's opted-in saved Desktop DN or extension. Defaults to false. */
-  allowSavedStationLoginOnRecovery?: boolean;
   /** The type of client making the connection */
   clientType: string;
   /** Whether to enable keep-alive messages */

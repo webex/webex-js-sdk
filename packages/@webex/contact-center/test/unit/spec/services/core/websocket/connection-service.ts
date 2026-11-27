@@ -520,13 +520,14 @@ describe('ConnectionService single-flight scheduler', () => {
     expect(aborted.onScheduled).not.toHaveBeenCalled();
   });
 
-  it('T-004 restoreSocketLossReschedules aborts child work and retries in the same driver', async () => {
+  it('T-004 retries in the same driver after the pending restore settles', async () => {
     const restore = createDeferred<void>(); const after = jest.fn().mockReturnValueOnce(restore.promise).mockResolvedValue(undefined);
     const run = recover({afterWelcome: after}); await tick(100000);
     const signal = after.mock.calls[0][1];
     lose(); await flush(); expect(signal.aborted).toBe(true);
-    expect(run.onScheduled).toHaveBeenLastCalledWith(2, 60000);
+    expect(run.onScheduled).toHaveBeenCalledTimes(1);
     restore.reject(new Error('late restore rejection')); await flush();
+    expect(run.onScheduled).toHaveBeenLastCalledWith(2, 60000);
     await tick(60000); await run.promise; expect(after).toHaveBeenCalledTimes(2);
     expect(manager.initWebSocket).toHaveBeenCalledTimes(2);
   });

@@ -17,17 +17,10 @@ export type RecoveryFailure = {
   id?: string;
 };
 
-/** @internal Options for SDK-driven station recovery and state requests. */
-export type AqmRequestContext = Readonly<{
-  signal?: AbortSignal;
-  correlationId?: string;
-  requireCorrelation?: boolean;
-}>;
-
 export type Pending = {
   check: (msg: Msg) => boolean;
   handle: (msg: Msg) => void;
-  operationId: string;
+  alternateBind?: string;
 };
 
 export type BindType = string | string[] | {[key: string]: BindType};
@@ -39,10 +32,11 @@ interface Bind {
 export type Timeout = number | 'disabled';
 
 export type Req<TRes, TErr> = {
-  kind?: 'session';
   url: string;
   host?: string;
   method?: HTTP_METHODS;
+  /** Suppress request URLs and routing payloads from AQM logs for sensitive operations. */
+  redactSensitiveLogs?: boolean;
   err?:
     | ((errObj: WebexRequestPayload) => Err.Details<'Service.reqs.generic.failure'>)
     | Err.IdsMessage
@@ -66,21 +60,14 @@ export type Req<TRes, TErr> = {
 
 export type Conf<TRes, TErr, TReq> = (p: TReq) => Req<TRes, TErr>;
 export type ConfEmpty<TRes, TErr> = () => Req<TRes, TErr>;
+export type Res<TRes, TReq> = (p: TReq, cbRes?: CbRes<TRes>) => Promise<TRes>;
+export type ResEmpty<TRes> = (cbRes?: CbRes<TRes>) => Promise<TRes>;
 export type CbRes<TRes> = (res: any) => void | TRes;
-export type Res<TRes, TReq> = {
-  /** @internal */
-  (p: TReq, cbRes: CbRes<TRes> | undefined, context: AqmRequestContext | undefined): Promise<TRes>;
-  (p: TReq, cbRes?: CbRes<TRes>): Promise<TRes>;
-};
-export type ResEmpty<TRes> = {
-  /** @internal */
-  (cbRes: CbRes<TRes> | undefined, context: AqmRequestContext | undefined): Promise<TRes>;
-  (cbRes?: CbRes<TRes>): Promise<TRes>;
-};
 
 /** @internal Pending request completed by a correlated RTD response. */
 export type PendingRtdRequest<T> = {
-  detachAbort?: () => void;
+  correlationId: string;
+  rtdEventType: string;
   timeoutId?: ReturnType<typeof setTimeout>;
   resolve: (payload: T) => void;
   reject: (error: Error) => void;
@@ -88,7 +75,6 @@ export type PendingRtdRequest<T> = {
 
 /** @internal Request configuration for an event completed by an RTD response. */
 export type RtdRequestOptions = Readonly<{
-  signal?: AbortSignal;
   correlationId: string;
   rtdEventType: string;
   timeoutMs: number;

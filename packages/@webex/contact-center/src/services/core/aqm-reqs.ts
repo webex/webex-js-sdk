@@ -1,40 +1,23 @@
-import {v4 as uuidv4} from 'uuid';
-import type {Msg} from './GlobalTypes';
+import {Msg} from './GlobalTypes';
 import * as Err from './Err';
-import {HTTP_METHODS} from '../../types';
-import type {WebexRequestPayload} from '../../types';
+import {HTTP_METHODS, WebexRequestPayload} from '../../types';
 import LoggerProxy from '../../logger-proxy';
-import type {CbRes, Conf, ConfEmpty, Pending, Req, Res, ResEmpty, AqmRequestContext} from './types';
+import {CbRes, Conf, ConfEmpty, Pending, Req, Res, ResEmpty} from './types';
 import {TIMEOUT_REQ, METHODS} from './constants';
 import {AQM_REQS_FILE} from '../../constants';
 import WebexRequest from './WebexRequest';
-import type {WebSocketManager} from './websocket/WebSocketManager';
-import {
-  createRegionRecoveryError,
-  isRecord,
-  isRegionRecoveryError,
-  normalizeRecoveryFailure,
-} from './Utils';
+import {WebSocketManager} from './websocket/WebSocketManager';
 
 export default class AqmReqs {
   private pendingRequests: Record<string, Pending> = {};
   private pendingNotifCancelrequest: Record<string, Pending> = {};
-  // Retain recent IDs across registration replacement to recognize late local notifications.
-  private readonly trackingIds = new Map<string, {url: string; session: boolean}>();
   private webexRequest: WebexRequest;
+  private webSocketManager: WebSocketManager;
 
   constructor(webSocketManager: WebSocketManager) {
     this.webexRequest = WebexRequest.getInstance();
-    webSocketManager.on('message', this.onMessage);
-  }
-
-  public isLocalSessionTrackingId(trackingId: string): boolean {
-    return this.trackingIds.get(trackingId)?.session === true;
-  }
-
-  private rememberTrackingId(id: string, url: string, session: boolean): void {
-    this.trackingIds.set(id, {url, session});
-    if (this.trackingIds.size > 128) this.trackingIds.delete(this.trackingIds.keys().next().value);
+    this.webSocketManager = webSocketManager;
+    this.webSocketManager.on('message', this.onMessage.bind(this));
   }
 
   /**
@@ -43,8 +26,7 @@ export default class AqmReqs {
    * @returns A function that makes the API request
    */
   req<TRes, TErr, TReq>(c: Conf<TRes, TErr, TReq>): Res<TRes, TReq> {
-    return (p: TReq, cbRes?: CbRes<TRes>, context?: AqmRequestContext) =>
-      this.makeAPIRequest(c(p), cbRes, context);
+    return (p: TReq, cbRes?: CbRes<TRes>) => this.makeAPIRequest(c(p), cbRes);
   }
 
   /**
@@ -53,53 +35,35 @@ export default class AqmReqs {
    * @returns A function that makes the API request
    */
   reqEmpty<TRes, TErr>(c: ConfEmpty<TRes, TErr>): ResEmpty<TRes> {
-    return (cbRes?: CbRes<TRes>, context?: AqmRequestContext) =>
-      this.makeAPIRequest(c(), cbRes, context);
+    return (cbRes?: CbRes<TRes>) => this.makeAPIRequest(c(), cbRes);
   }
 
   /**
    * Makes an API request
    * @param c - The request configuration
    * @param cbRes - The callback for the response
-   * @param context - The optional recovery request context
    * @returns A promise that resolves with the response or rejects with an error
    */
-  private async makeAPIRequest<TRes, TErr>(
-    c: Req<TRes, TErr>,
-    cbRes?: CbRes<TRes>,
-    context?: AqmRequestContext
-  ): Promise<TRes> {
-    return this.createPromise(c, cbRes, context);
+  private async makeAPIRequest<TRes, TErr>(c: Req<TRes, TErr>, cbRes?: CbRes<TRes>): Promise<TRes> {
+    return this.createPromise(c, cbRes);
   }
 
   /**
    * Creates a promise for an API request
    * @param c - The request configuration
    * @param cbRes - The callback for the response
-   * @param context - The optional recovery request context
    * @returns A promise that resolves with the response or rejects with an error
    */
-  private createPromise<TRes, TErr>(
-    c: Req<TRes, TErr>,
-    cbRes?: CbRes<TRes>,
-    context?: AqmRequestContext
-  ): Promise<TRes> {
+  private createPromise<TRes, TErr>(c: Req<TRes, TErr>, cbRes?: CbRes<TRes>) {
     return new Promise<TRes>((resolve, reject) => {
-      const signal = context?.signal;
-      if (signal?.aborted) {
-        reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-
-        return;
-      }
       const keySuccess = this.bindPrint(c.notifSuccess.bind);
       const keyFail = c.notifFail ? this.bindPrint(c.notifFail.bind) : null;
-      const cancelBind = c.notifCancel?.bind;
-      const keyCancel = cancelBind ? this.bindPrint(cancelBind) : null;
+      const keyCancel = c.notifCancel?.bind ? this.bindPrint(c.notifCancel.bind) : null;
       let k = '';
       if (this.pendingRequests[keySuccess]) {
         k = keySuccess;
       }
-      if (keyFail && keyFail !== keySuccess && this.pendingRequests[keyFail]) {
+      if (keyFail && this.pendingRequests[keyFail]) {
         k += keyFail;
       }
       if (k && c.timeout !== 'disabled') {
@@ -112,183 +76,130 @@ export default class AqmReqs {
 
         return;
       }
-      const operationId = uuidv4();
-      const session = c.kind === 'session';
-      const correlationId = session ? uuidv4() : context?.correlationId;
-      const correlate = (bind: any) =>
-        context?.requireCorrelation && correlationId
-          ? {...bind, data: {...bind.data, trackingId: correlationId}}
-          : bind;
-      const successBind = correlate(c.notifSuccess.bind);
-      const failBind = c.notifFail && correlate(c.notifFail.bind);
-      let timeoutId: ReturnType<typeof setTimeout>;
+
       let isClear = false;
       const clear = () => {
-        isClear = true;
-        clearTimeout(timeoutId);
-        signal?.removeEventListener('abort', onAbort);
-        if (this.pendingRequests[keySuccess]?.operationId === operationId) {
-          delete this.pendingRequests[keySuccess];
-        }
-        if (keyFail && this.pendingRequests[keyFail]?.operationId === operationId) {
+        delete this.pendingRequests[keySuccess];
+        if (keyFail) {
           delete this.pendingRequests[keyFail];
         }
-        if (keyCancel && this.pendingNotifCancelrequest[keyCancel]?.operationId === operationId) {
+        if (keyCancel) {
           delete this.pendingNotifCancelrequest[keyCancel];
         }
+        isClear = true;
       };
-      const onAbort = () => {
-        if (isClear) return;
-        clear();
-        reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-        AqmReqs.diagnose('info', 'Routing operation aborted');
-      };
-      const matches = (bind: any, msg: Msg): boolean => {
-        const id = msg.data?.trackingId;
-        if (id !== correlationId && this.trackingIds.get(id)?.url === c.url) return false;
 
-        return this.bindCheck(bind, msg);
-      };
-      const success = (msg: Msg) => {
-        if (isClear) return;
-        // Legacy binds also own the server-assigned ID of a matched local station outcome.
-        if (session && typeof msg.data?.trackingId === 'string')
-          this.rememberTrackingId(msg.data.trackingId, c.url, true);
-        clear();
-        resolve(msg as unknown as TRes);
-      };
       this.pendingRequests[keySuccess] = {
-        operationId,
-        check: (msg) => matches(successBind, msg),
-        handle: success,
+        check: (msg: Msg) => this.bindCheck(c.notifSuccess.bind, msg),
+        handle: (msg: Msg) => {
+          clear();
+          resolve(msg as any);
+        },
       };
       if (keyCancel) {
+        this.pendingRequests[keySuccess].alternateBind = keyCancel;
         this.pendingNotifCancelrequest[keyCancel] = {
-          operationId,
-          check: (msg) => this.bindCheck(cancelBind, msg),
-          handle: success,
+          check: (msg: Msg) => this.bindCheck(c.notifCancel?.bind, msg),
+          handle: (msg: Msg) => {
+            const alternateBindKey = this.pendingNotifCancelrequest[keyCancel].alternateBind;
+            if (alternateBindKey) {
+              this.pendingRequests[alternateBindKey].handle(msg);
+            }
+          },
+          alternateBind: keySuccess,
         };
       }
 
       if (keyFail) {
         this.pendingRequests[keyFail] = {
-          operationId,
-          check: (msg) => matches(failBind, msg),
-          handle: (msg) => {
-            if (isClear) return;
+          check: (msg: Msg) => this.bindCheck(c.notifFail!.bind, msg),
+          handle: (msg: Msg) => {
             clear();
             const notifFail = c.notifFail!;
-            try {
-              if ('errId' in notifFail) {
-                reject(new Err.Details(notifFail.errId, msg as any));
-              } else {
-                reject(notifFail.err(msg as any));
-              }
-            } catch (error) {
+            if ('errId' in notifFail) {
+              const error = new Err.Details(notifFail.errId, msg as any);
+
+              // The raw routing-failure payload/error is never logged verbatim; only a
+              // redacted, non-sensitive diagnostic is emitted regardless of redactSensitiveLogs.
+              LoggerProxy.log('Routing request failed (sensitive details redacted)', {
+                module: AQM_REQS_FILE,
+                method: METHODS.CREATE_PROMISE,
+              });
               reject(error);
+            } else {
+              reject(notifFail.err(msg as any));
             }
-            AqmReqs.diagnose('log', 'Routing notification failed', msg);
           },
         };
       }
       let response: WebexRequestPayload | null = null;
-      signal?.addEventListener('abort', onAbort, {once: true});
+      this.webexRequest
+        .request({
+          service: c.host ?? '',
+          resource: c.url,
+          // eslint-disable-next-line no-nested-ternary
+          method: c.method ? c.method : c.data ? HTTP_METHODS.POST : HTTP_METHODS.GET,
+
+          body: c.data,
+        })
+        .then((res: any) => {
+          response = res;
+          if (cbRes) {
+            cbRes(res);
+          }
+        })
+        .catch((error: WebexRequestPayload) => {
+          clear();
+          if (error?.headers) {
+            error.headers.Authorization = '*';
+          }
+          if (error?.headers) {
+            error.headers.Authorization = '*';
+          }
+          if (typeof c.err === 'function') {
+            reject(c.err(error));
+          } else if (typeof c.err === 'string') {
+            reject(new Err.Message(c.err));
+          } else {
+            reject(new Err.Message('Service.aqm.reqs.GenericRequestError'));
+          }
+        });
+
       if (c.timeout !== 'disabled') {
-        timeoutId = setTimeout(
+        window.setTimeout(
           () => {
-            if (isClear) return;
+            if (isClear) {
+              return;
+            }
             clear();
-            const {status, reasonCode, trackingId, id} = normalizeRecoveryFailure(response);
-            // Copy selected scalars only; the shared acknowledgement can contain credentials.
-            const safeResponse = response
-              ? {
-                  ...(status !== undefined ? {statusCode: status} : {}),
-                  ...(reasonCode !== undefined ? {reasonCode} : {}),
-                  ...(trackingId ? {trackingId} : {}),
-                  ...(id ? {id} : {}),
+            if (response?.headers) {
+              response.headers.Authorization = '*';
+            }
+            if (c.redactSensitiveLogs) {
+              LoggerProxy.error('Routing request timeout (sensitive details redacted)', {
+                module: AQM_REQS_FILE,
+                method: METHODS.CREATE_PROMISE,
+              });
+            } else {
+              LoggerProxy.error(
+                `Routing request timeout${keySuccess}${JSON.stringify(response)}${c.url}`,
+                {
+                  module: AQM_REQS_FILE,
+                  method: METHODS.CREATE_PROMISE,
                 }
-              : null;
+              );
+            }
             reject(
               new Err.Details('Service.aqm.reqs.Timeout', {
-                key: this.bindPrint(successBind),
-                response: safeResponse,
+                key: keySuccess,
+                response: response!,
               })
             );
-            AqmReqs.diagnose('error', 'Routing request timeout', response);
           },
           c.timeout && c.timeout > 0 ? c.timeout : TIMEOUT_REQ
         );
       }
-      if (correlationId) this.rememberTrackingId(correlationId, c.url, session);
-      const onHttpFailure = (error: WebexRequestPayload) => {
-        if (isClear) return;
-        clear();
-        if (isRegionRecoveryError(error)) {
-          reject(error);
-
-          return;
-        }
-        try {
-          reject(
-            typeof c.err === 'function'
-              ? c.err(error)
-              : new Err.Message(c.err ?? 'Service.aqm.reqs.GenericRequestError')
-          );
-        } catch (translated) {
-          reject(translated);
-        }
-        AqmReqs.diagnose('info', 'Routing HTTP request failed', error);
-      };
-      try {
-        this.webexRequest
-          .request({
-            service: c.host ?? '',
-            resource: c.url,
-            // eslint-disable-next-line no-nested-ternary
-            method: c.method ? c.method : c.data ? HTTP_METHODS.POST : HTTP_METHODS.GET,
-
-            body: c.data,
-            ...(correlationId ? {headers: {trackingid: `webex-js-sdk_${correlationId}`}} : {}),
-          })
-          .then((res) => {
-            if (isClear) return undefined;
-            response = res as unknown as WebexRequestPayload;
-
-            return cbRes?.(res);
-          })
-          .catch(onHttpFailure);
-      } catch (error) {
-        onHttpFailure(error);
-      }
     });
-  }
-
-  /** Diagnostics select scalars only; response/options/headers/body/URL never reach a sink. */
-  private static diagnose(
-    level: 'info' | 'log' | 'error',
-    message: string,
-    error?: unknown,
-    method = METHODS.CREATE_PROMISE
-  ): void {
-    const {status, reasonCode, trackingId, id} = normalizeRecoveryFailure(error);
-    try {
-      LoggerProxy[level](message, {
-        module: AQM_REQS_FILE,
-        method,
-        ...(trackingId ? {trackingId} : {}),
-        ...(status !== undefined || reasonCode !== undefined || id
-          ? {
-              data: {
-                ...(status !== undefined ? {status} : {}),
-                ...(reasonCode !== undefined ? {reasonCode} : {}),
-                ...(id ? {id} : {}),
-              },
-            }
-          : {}),
-      });
-    } catch {
-      /* Logging never owns operation matching or settlement. */
-    }
   }
 
   /**
@@ -385,23 +296,13 @@ export default class AqmReqs {
    * @param msg - The message to handle
    * @returns
    */
-  private readonly onMessage = (msg: string): void => {
-    let event: unknown;
-    try {
-      event = JSON.parse(msg);
-    } catch {
-      AqmReqs.diagnose('info', 'Invalid routing notification');
-
-      return;
-    }
-    if (!isRecord(event) || Array.isArray(event)) return;
+  private readonly onMessage = (msg: any) => {
+    const event = JSON.parse(msg);
     if (event.type === 'Welcome') {
-      AqmReqs.diagnose(
-        'info',
-        'Welcome message from Notifs Websocket',
-        undefined,
-        METHODS.ON_MESSAGE
-      );
+      LoggerProxy.info(`Welcome message from Notifs Websocket`, {
+        module: AQM_REQS_FILE,
+        method: METHODS.ON_MESSAGE,
+      });
 
       return;
     }
@@ -410,39 +311,41 @@ export default class AqmReqs {
       return;
     }
 
+    if (event.type === 'AgentReloginFailed') {
+      LoggerProxy.info('Silently handling the agent relogin fail', {
+        module: AQM_REQS_FILE,
+        method: METHODS.ON_MESSAGE,
+      });
+    }
+
     let isHandled = false;
 
     const kReq = Object.keys(this.pendingRequests);
     for (const thisReq of kReq) {
       const req = this.pendingRequests[thisReq];
-      try {
-        if (req?.check(event as Msg)) {
-          req.handle(event as Msg);
-          isHandled = true;
-          break;
-        }
-      } catch {
-        AqmReqs.diagnose('info', 'Routing notification handler failed');
+      if (req.check(event)) {
+        req.handle(event);
+        isHandled = true;
+        break;
       }
     }
     // pendingNotifCancelrequest stores the secondary bind key, checks for the secondary bind key and handles the event
     const kReqAlt = Object.keys(this.pendingNotifCancelrequest);
     for (const thisReq of kReqAlt) {
       const req = this.pendingNotifCancelrequest[thisReq];
-      try {
-        if (req?.check(event as Msg)) {
-          req.handle(event as Msg);
-          isHandled = true;
-        }
-      } catch {
-        AqmReqs.diagnose('info', 'Routing cancellation handler failed');
+      if (req.check(event)) {
+        req.handle(event);
+        isHandled = true;
       }
     }
 
     // TODO:  add event emitter for unhandled events to replicate event.listen or .on
 
     if (!isHandled) {
-      AqmReqs.diagnose('info', 'Routing notification has no pending handler');
+      LoggerProxy.info(`event=missingEventHandler | [AqmReqs] missing routing message handler`, {
+        module: AQM_REQS_FILE,
+        method: METHODS.ON_MESSAGE,
+      });
     }
   };
 }

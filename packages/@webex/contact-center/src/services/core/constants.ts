@@ -143,7 +143,6 @@ export const METHODS = {
 
   // WebSocketManager methods
   DISPOSE_ATTEMPT: 'disposeAttempt',
-  DELIVER_MESSAGE: 'deliverMessage',
   CLOSE: 'close',
   HANDLE_CONNECTION_LOST: 'handleConnectionLost',
   REGISTER: 'register',
