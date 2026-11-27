@@ -69,61 +69,51 @@
   "toolchain": [
     {
       "name": "node",
-      "version": "22.14",
       "origin": "repo-config",
       "source_file": "../../AGENTS.md"
     },
     {
       "name": "node",
-      "version": "lts/jod",
       "origin": "repo-config",
       "source_file": "../../.nvmrc"
     },
     {
       "name": "node",
-      "version": "18.x",
       "origin": "repo-config",
       "source_file": "../../package.json"
     },
     {
       "name": "yarn",
-      "version": "3.4.1",
       "origin": "repo-config",
       "source_file": "../../package.json"
     },
     {
       "name": "typescript",
-      "version": "4.9.5",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "jest",
-      "version": "27.5.1",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "babel",
-      "version": "^7.22.11",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "eslint",
-      "version": "^8.24.0",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "prettier",
-      "version": "2.5.1",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "typedoc",
-      "version": "0.23.26",
       "origin": "repo-config",
       "source_file": "package.json"
     }
@@ -239,14 +229,14 @@
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "jose@5.8.0 (npm)",
+        "source": "jose (npm)",
         "summary": "createRemoteJWKSet and jwksCache for the key set, jwtVerify for verifyJWSToken (no issuer, audience, subject, or algorithm options), and decodeJwt for the unverified claims read by the renewal tick."
       },
       "node-fetch-http": {
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "node-fetch@3.3.2 (npm)",
+        "source": "node-fetch (npm)",
         "summary": "HTTP client loaded with a dynamic import on each request by src/http-utils/index.ts, with an AbortController timeout of 30 seconds."
       }
     }

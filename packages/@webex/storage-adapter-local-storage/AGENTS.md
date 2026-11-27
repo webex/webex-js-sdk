@@ -88,13 +88,13 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling     | Version     |
-| ---------------- | ----------- | ----------- |
-| Language runtime | Node (build and test tooling only; the module itself targets browsers) | `engines.node >= 18` in `package.json`; repository `.nvmrc` pins `lts/jod`; verified working on `v22.14.0` |
-| Package manager  | Yarn (workspaces) | `3.4.1` |
+| Area             | Tooling     | Version source |
+| ---------------- | ----------- | -------------- |
+| Language runtime | Node (build and test tooling only; the module itself targets browsers) | Consumer floor: `engines.node` in `package.json`. Development version: `.nvmrc` and the workspace root `AGENTS.md`; verified working on the development version |
+| Package manager  | Yarn (workspaces) | `packageManager` in the workspace root `package.json` |
 | Build tool       | `webex-legacy-tools` via `@webex/legacy-tools`, Babel through `@webex/babel-config-legacy` | `workspace:*` |
 | Test framework   | Jest via `@webex/jest-config-legacy` (Node route); Karma + Mocha via `webex-legacy-tools` (browser route) | `workspace:*` |
-| Lint/format      | ESLint `^8.24.0` with `@webex/eslint-config-legacy`; Prettier `^2.7.1` | as declared in `package.json` |
+| Lint/format      | ESLint with `@webex/eslint-config-legacy`; Prettier | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` |
 
 ### Project Map
 

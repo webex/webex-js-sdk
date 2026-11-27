@@ -60,7 +60,6 @@
   "toolchain": [
     {
       "name": "node",
-      "version": ">=18",
       "origin": "repo-config",
       "source_file": "package.json"
     }
@@ -219,7 +218,7 @@
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "request@^2.88.0 (npm)",
+        "source": "request (npm)",
         "summary": "Third-party Node HTTP client used as the Node transport; option names are passed through largely unchanged, which is why the public option shape mirrors it."
       }
     }

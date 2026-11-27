@@ -21,11 +21,16 @@ repository-local commands and paths.
 
 ## Prerequisites
 
-| Tool or access                         | Version or requirement |
-| -------------------------------------- | ---------------------- |
-| [runtime]                              | [version]              |
-| [package manager]                      | [version]              |
-| [container, registry, VPN, or account] | [requirement or N/A]   |
+| Tool or access                         | Version source or requirement |
+| -------------------------------------- | ----------------------------- |
+| [runtime]                              | [manifest field that pins it] |
+| [package manager]                      | [manifest field that pins it] |
+| [container, registry, VPN, or account] | [requirement or N/A]          |
+
+Cite the file and field that pins each version, such as `engines.node` or
+`packageManager` in `package.json`, instead of copying the value. A reader
+resolves the current version from the manifest, and a bump cannot leave this
+page stale.
 
 ## Install
 

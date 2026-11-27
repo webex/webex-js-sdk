@@ -20,10 +20,10 @@ workspace. Run every command below from the workspace root.
 
 ## Prerequisites
 
-| Tool or access                         | Version or requirement |
-| -------------------------------------- | ---------------------- |
-| Node.js                                | `>=18` per `engines` in `package.json`; the workspace's contributor instructions use Node 22.14 through nvm |
-| Yarn                                   | `yarn@3.4.1`, pinned by `packageManager` in the workspace-root `package.json` (the package scripts call `yarn`) |
+| Tool or access                         | Version source or requirement |
+| -------------------------------------- | ----------------------------- |
+| Node.js                                | Consumer floor: `engines.node` in `package.json`. Development version: `.nvmrc` and the workspace root `AGENTS.md`, selected through nvm |
+| Yarn                                   | `packageManager` in the workspace root `package.json` (the package scripts call `yarn`) |
 | Browser                                | Needed to exercise the adapter at all; it has no Node storage driver |
 | Container, registry, VPN, or account   | N/A; dependencies resolve from the public npm registry configured at the workspace root |
 

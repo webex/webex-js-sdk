@@ -247,7 +247,7 @@ Workspace packages are resolved by yarn workspaces. The two dev-only edges to
 
 | Platform | Shared versus platform-specific boundary | Entry or build | Support and compatibility constraints |
 | --- | --- | --- | --- |
-| Node.js | Shared code; some interceptors and tests are Node-only | `dist/index.js` from `yarn workspace @webex/webex-core build:src` | `engines.node >=18` |
+| Node.js | Shared code; some interceptors and tests are Node-only | `dist/index.js` from `yarn workspace @webex/webex-core build:src` | `engines.node` in `package.json` |
 | Browser | Shared code; `localStorage` and browser-only interceptor paths | Same bundle through the `browserify` transform | Caches and logout flows assume browser APIs only where guarded |
 
 ## Release and versioning

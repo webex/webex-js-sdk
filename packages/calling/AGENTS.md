@@ -217,22 +217,22 @@ high-risk or runs at higher autonomy. Output a compliance matrix + severity-sort
 
 ### Tech Stack
 
-| Technology                 | Purpose                                 | Version |
-| -------------------------- | --------------------------------------- | ------- |
-| Node.js                    | Development runtime                     | 22.14 (workspace root `AGENTS.md`; the root `.nvmrc` selects `lts/jod`; this package declares `engines.node` `>=18`) |
-| TypeScript                 | Language (strict mode)                  | 4.9.5   |
-| xstate                     | Call & ROAP state machines              | 4.30.6  |
-| Jest                       | Unit testing (co-located `.test.ts`)    | 29.3.1  |
-| async-mutex                | Serialized registration operations      | 0.4.0   |
-| @webex/internal-media-core | WebRTC media engine                     | 2.32.1  |
-| typed-emitter              | Typed event emitters                    | 2.1.0   |
-| uuid                       | Unique ID generation                    | 8.3.2   |
-| ESLint / Prettier          | Lint (workspace root `.eslintrc.js`) and format | 8.x / 2.5.1 |
-| TypeDoc                    | API docs from `src/api.ts`              | 0.23.26 |
-| Playwright                 | Package journeys under `playwright/suites` | workspace root version |
+| Technology                 | Purpose                                 | Version source |
+| -------------------------- | --------------------------------------- | -------------- |
+| Node.js                    | Development runtime                     | Development version: `.nvmrc` and the workspace root `AGENTS.md`; consumer floor: `engines.node` in `package.json` |
+| TypeScript                 | Language (strict mode)                  | `devDependencies.typescript` in `package.json` |
+| xstate                     | Call & ROAP state machines              | `dependencies.xstate` in `package.json` |
+| Jest                       | Unit testing (co-located `.test.ts`)    | `devDependencies.jest` in `package.json` |
+| async-mutex                | Serialized registration operations      | `dependencies.async-mutex` in `package.json` |
+| @webex/internal-media-core | WebRTC media engine                     | `dependencies.@webex/internal-media-core` in `package.json` |
+| typed-emitter              | Typed event emitters                    | `devDependencies.typed-emitter` in `package.json` |
+| uuid                       | Unique ID generation                    | `dependencies.uuid` in `package.json` |
+| ESLint / Prettier          | Lint (workspace root `.eslintrc.js`) and format | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` |
+| TypeDoc                    | API docs from `src/api.ts`              | `devDependencies.typedoc` in `package.json` |
+| Playwright                 | Package journeys under `playwright/suites` | `devDependencies.@playwright/test` in the workspace root `package.json` |
 
-The toolchain is TypeScript 4.9 (4.9.5), Node.js 22.14 for this repository, Yarn workspaces, and `tsc` for the
-build.
+The toolchain is TypeScript, Node.js, Yarn workspaces, and `tsc` for the build; the versions live in
+`package.json` and the workspace root `.nvmrc`.
 
 ### Project Map
 

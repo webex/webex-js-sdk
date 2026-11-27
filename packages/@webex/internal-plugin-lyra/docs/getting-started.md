@@ -20,10 +20,10 @@ Run every command from the workspace root; package scripts run as `yarn workspac
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| Node.js        | Use 22.14: the workspace root `AGENTS.md` requires it and the workspace `.nvmrc` selects `lts/jod` (Node 22). This package's `engines` accepts `>=18`. The workspace root `package.json` `engines.node` reads `18.x`, which conflicts with the other pins; the build, unit tests, and lint pass on 22.14 |
-| Yarn           | `yarn@3.4.1` (`packageManager` in the workspace root `package.json`) |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| Node.js        | Development version: `.nvmrc` and the workspace root `AGENTS.md`. Consumer floor: `engines.node` in `package.json`. The workspace root `package.json` `engines.node` disagrees with both; the build, unit tests, and lint pass on the development version |
+| Yarn           | `packageManager` in the workspace root `package.json` |
 | Registry or account access | N/A for building, unit tests, and linting |
 
 ## Install

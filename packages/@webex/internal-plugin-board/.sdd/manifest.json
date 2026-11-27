@@ -49,55 +49,46 @@
   "toolchain": [
     {
       "name": "node",
-      "version": ">=16",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "node",
-      "version": "22.14",
       "origin": "repo-config",
       "source_file": "../../../AGENTS.md"
     },
     {
       "name": "node",
-      "version": "lts/jod",
       "origin": "repo-config",
       "source_file": "../../../.nvmrc"
     },
     {
       "name": "node",
-      "version": "18.x",
       "origin": "repo-config",
       "source_file": "../../../package.json"
     },
     {
       "name": "yarn",
-      "version": "3.4.1",
       "origin": "repo-config",
       "source_file": "../../../package.json"
     },
     {
       "name": "babel",
-      "version": "^7.17.10",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "eslint",
-      "version": "^8.24.0",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "prettier",
-      "version": "^2.7.1",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "sinon",
-      "version": "^9.2.4",
       "origin": "repo-config",
       "source_file": "package.json"
     }
@@ -303,21 +294,21 @@
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "ampersand-collection@^2.0.2 (npm)",
+        "source": "ampersand-collection (npm)",
         "summary": "RealtimeChannelCollection extends it with mainIndex channelId and model RealtimeChannel."
       },
       "es6-promise-series": {
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "es6-promise-series@^0.2.2 (npm)",
+        "source": "es6-promise-series (npm)",
         "summary": "Called with an array of functions, it runs them one at a time and resolves the concatenation of their results; the first rejection rejects the series."
       },
       "uuid": {
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "uuid@^3.3.2 (npm)",
+        "source": "uuid (npm)",
         "summary": "v4 generates the id of each publishRequest frame."
       }
     }

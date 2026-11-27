@@ -80,12 +80,12 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling | Version |
-| ---------------- | ------- | ------- |
-| Language runtime | node; JavaScript sources | 22.14 (workspace root `AGENTS.md`; `.nvmrc` `lts/jod`); package `engines` accepts `>=16`; the workspace root `package.json` `engines.node` still reads `18.x`, which conflicts with the other pins |
-| Build tool       | yarn workspaces and `@webex/legacy-tools` over babel | yarn `3.4.1` (root `packageManager`), `@babel/core` `^7.17.10` |
-| Test framework   | jest via `webex-legacy-tools` (`test:unit`); chai, sinon, `@webex/test-helper-mock-webex`, and `@webex/test-helper-mock-web-socket` | sinon `^9.2.4` |
-| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | eslint `^8.24.0`, prettier `^2.7.1` |
+| Area             | Tooling | Version source |
+| ---------------- | ------- | -------------- |
+| Language runtime | node; JavaScript sources | Development version: `.nvmrc` and the workspace root `AGENTS.md`. Consumer floor: `engines.node` in `package.json`. The workspace root `package.json` `engines.node` disagrees with both. |
+| Build tool       | yarn workspaces and `@webex/legacy-tools` over babel | `packageManager` in the workspace root `package.json`, `devDependencies.@babel/core` in `package.json` |
+| Test framework   | jest via `webex-legacy-tools` (`test:unit`); chai, sinon, `@webex/test-helper-mock-webex`, and `@webex/test-helper-mock-web-socket` | `devDependencies.sinon` in `package.json` |
+| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` |
 
 ### Project Map
 

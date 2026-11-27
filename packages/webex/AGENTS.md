@@ -80,9 +80,9 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling | Version |
-| ---------------- | ------- | ------- |
-| Language runtime | node | 22.14 for development (workspace root `AGENTS.md`); `>=18` for consumers (`package.json` engines) |
+| Area             | Tooling | Version source |
+| ---------------- | ------- | -------------- |
+| Language runtime | node | Development version: `.nvmrc` and the workspace root `AGENTS.md`; consumer floor: `engines.node` in `package.json` |
 | Build tool       | `@webex/legacy-tools` over babel | `@babel/core` version in `package.json` `devDependencies` |
 | Test framework   | Jest via `webex-legacy-tools` (`test:unit`); Mocha via `test:integration`; Playwright via `test:browser`; chai and `@webex/test-helper-*` | workspace versions |
 | Lint/format      | eslint with the workspace root configuration, prettier | eslint and prettier versions in `package.json` `devDependencies` |

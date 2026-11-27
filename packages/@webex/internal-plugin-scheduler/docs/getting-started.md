@@ -20,16 +20,16 @@ root.
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| Node.js | 22.14, required for working in this repository by the workspace root `AGENTS.md`; the root `.nvmrc` selects the Node 22 LTS line. The workspace root `package.json` `engines` field still says `18.x`; follow the root `AGENTS.md` |
-| Yarn | The version pinned by the workspace root `packageManager` field, run from the release that the root `.yarnrc.yml` `yarnPath` names, provided through Corepack: enable Corepack for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup steps require. Workspaces are used, so install from the workspace root rather than this directory |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| Node.js | Development version: `.nvmrc` and the workspace root `AGENTS.md`, which requires it for working in this repository. The workspace root `package.json` `engines.node` differs from both; follow the root `AGENTS.md` |
+| Yarn | `packageManager` in the workspace root `package.json`, run from the release that the root `.yarnrc.yml` `yarnPath` names, provided through Corepack: enable Corepack for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup steps require. Workspaces are used, so install from the workspace root rather than this directory |
 | Browsers for `test:browser` | Chrome and Firefox. The script passes no browser list, so the legacy-tools `karma-browsers` option keeps its default of both (sibling package legacy-tools, file src/commands/run-tests/run-tests.constants.ts) and karma starts both headless launchers (file src/utils/karma/browsers/browsers.ts of the same package). That option can name a single browser to limit a run to it |
 | HTTPS for `test:browser` | The root `CONTRIBUTING.md` requires Karma over HTTPS for browser tests that call Webex services, which the integration specs do through the test-users helper: run the root `setup:karma-https` script once and set the `KARMA_HTTPS` environment variable to `true`, as that file describes |
 
-Applications that install the package need Node 18 or later. This package's `package.json` `engines`
-says `>=14`, but its direct dependencies webex-core and internal-plugin-encryption declare `>=18`, so
-the package's own value is out of date. Neither value is the development runtime.
+The consumer floor is this package's `package.json` `engines.node`, but its direct dependencies
+webex-core and internal-plugin-encryption declare a higher floor, so the package's own value is out
+of date. Neither value is the development runtime.
 
 ## Install
 

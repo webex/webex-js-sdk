@@ -20,9 +20,9 @@ workspace, so every command below is run from the workspace root and targets thi
 
 ## Prerequisites
 
-| Tool or access | Version or requirement                                                                                                                                                             |
+| Tool or access | Version source or requirement                                                                                                                                                      |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Node.js        | `package.json` declares the package floor as `>=18`. The surrounding workspace pins a newer Node through its own `.nvmrc` and contributor instructions, so match the workspace when working in-tree |
+| Node.js        | `package.json` declares the package floor in `engines.node`. The surrounding workspace pins a newer Node through its own `.nvmrc` and contributor instructions, so match the workspace when working in-tree |
 | Yarn           | The workspace ships its own Yarn release and resolves it automatically; do not install Yarn separately                                                                              |
 | Registry, VPN, or account access | N/A. The package has no runtime dependencies and resolves nothing from a private registry                                                                          |
 

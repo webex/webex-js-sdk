@@ -89,13 +89,13 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling | Version |
-| ---------------- | ------- | ------- |
-| Language runtime | JavaScript (ES modules with decorators) running in a browser; Node.js only for tooling | Node `>=18` per `package.json` `engines` |
-| Storage library  | `localforage` | `^1.7.3` (the workspace lockfile resolves 1.10.0) |
+| Area             | Tooling | Version source |
+| ---------------- | ------- | -------------- |
+| Language runtime | JavaScript (ES modules with decorators) running in a browser; Node.js only for tooling | `engines.node` in `package.json` |
+| Storage library  | `localforage` | `dependencies.localforage` in `package.json`; the workspace lockfile resolves the range |
 | Build tool       | `webex-legacy-tools` via `@webex/legacy-tools`, with `@webex/babel-config-legacy` | `workspace:*` |
 | Test framework   | Shared conformance suite from `@webex/storage-adapter-spec`; Karma with Mocha via `test:browser`; Jest config via `@webex/jest-config-legacy` | `workspace:*` |
-| Lint/format      | ESLint via `@webex/eslint-config-legacy`; Prettier | ESLint `^8.24.0`; Prettier `^2.7.1` (no local script) |
+| Lint/format      | ESLint via `@webex/eslint-config-legacy`; Prettier | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` (no local script) |
 
 ### Project Map
 

@@ -22,10 +22,10 @@ equivalent.
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| Node.js | 22.14, required for working in this repository by the workspace root `AGENTS.md`; the root `.nvmrc` selects `lts/jod`. This package's `package.json` declares `engines.node` `>=18`. |
-| Yarn | `yarn@3.4.1`, pinned by the workspace root `packageManager` field |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| Node.js | Development version: `.nvmrc` and the workspace root `AGENTS.md`. Consumer floor: `engines.node` in `package.json`. |
+| Yarn | `packageManager` in the workspace root `package.json` |
 
 - Node.js 22.14 for this repository and Yarn workspace tooling.
 - Access required by the parent `webex-js-sdk` repository for workspace dependencies and integration/E2E credentials; never commit credentials.

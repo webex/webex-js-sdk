@@ -40,7 +40,6 @@
   "toolchain": [
     {
       "name": "node",
-      "version": ">=18",
       "origin": "repo-config",
       "source_file": "package.json"
     },
@@ -185,14 +184,14 @@
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "https://www.npmjs.com/package/@webex/internal-media-core/v/2.30.1",
+        "source": "https://www.npmjs.com/package/@webex/internal-media-core",
         "summary": "Upstream local and remote stream base classes and capture factories that this package subclasses and delegates to."
       },
       "web-media-effects-sdk": {
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "https://www.npmjs.com/package/@webex/web-media-effects/v/2.37.0",
+        "source": "https://www.npmjs.com/package/@webex/web-media-effects",
         "summary": "Upstream virtual-background and noise-reduction effects re-exported unchanged through this package's entry point."
       },
       "ts-events-sdk": {

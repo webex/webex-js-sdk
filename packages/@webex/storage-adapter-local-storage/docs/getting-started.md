@@ -20,10 +20,10 @@ root, not the package directory.
 
 ## Prerequisites
 
-| Tool or access                         | Version or requirement |
-| -------------------------------------- | ---------------------- |
-| Node | `package.json` declares `engines.node >= 18`; the repository `.nvmrc` pins `lts/jod` and the root agent instructions specify 22.14. Verified working: `v22.14.0`. |
-| Yarn | `3.4.1`, workspace-managed |
+| Tool or access                         | Version source or requirement |
+| -------------------------------------- | ----------------------------- |
+| Node | Consumer floor: `engines.node` in `package.json`. Development version: `.nvmrc` and the workspace root `AGENTS.md`. Verified working on the development version. |
+| Yarn | `packageManager` in the workspace root `package.json`, workspace-managed |
 | Firefox and Chrome | Required only for `test:browser`; the Karma runner launches both |
 | Registry or VPN access | N/A — all internal dependencies resolve as `workspace:*` |
 

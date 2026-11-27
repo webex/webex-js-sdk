@@ -181,7 +181,7 @@ flowchart LR
 
 | Platform | Shared versus platform-specific boundary | Entry or build | Support and compatibility constraints |
 | -------- | ---------------------------------------- | -------------- | ------------------------------------- |
-| Node | Everything is platform-specific: the Node entry re-exports the Node plugin | `src/index.js` (`devMain`), `dist/index.js` (`main`) | `engines.node` `>=18`; the workspace requires Node 22.14 for development; `webex.authorization` has the Node API (`requestAuthorizationCodeGrant`, `requestAccessTokenFromJwt`, `createJwt`, `logout`) |
+| Node | Everything is platform-specific: the Node entry re-exports the Node plugin | `src/index.js` (`devMain`), `dist/index.js` (`main`) | `engines.node` in `package.json`; the workspace requires the `.nvmrc` version for development; `webex.authorization` has the Node API (`requestAuthorizationCodeGrant`, `requestAccessTokenFromJwt`, `createJwt`, `logout`) |
 | Browser | Everything is platform-specific: the browser entry re-exports the browser plugin | `src/index.browser.js`, `dist/index.browser.js` through the `browser` field | Needs a resolver that applies the `browser` field (webpack, browserify); `webex.authorization` has the browser API (`initiateLogin`, `initiateImplicitGrant`, `initiateAuthorizationCodeGrant`, `requestAccessTokenFromJwt`, `createJwt`, `logout`) |
 
 Shared across both: the export names `default` and `config`, the registered name `authorization`, and

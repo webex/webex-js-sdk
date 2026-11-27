@@ -20,11 +20,11 @@ monorepo, so install and build commands run from the monorepo root.
 
 ## Prerequisites
 
-| Tool or access | Version or requirement                                                            |
-| -------------- | --------------------------------------------------------------------------------- |
-| Node.js        | `package.json` declares `engines.node >=18`; the monorepo `AGENTS.md` instructs contributors to use 22.14 |
-| Yarn           | 3.4.1, pinned by the monorepo root `package.json` `packageManager` field; the package is a member of the `workspaces` declared there |
-| npm registry access | Required to install the exact pinned `@webex/internal-media-core` and `@webex/web-media-effects` releases |
+| Tool or access      | Version source or requirement                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Node.js             | Consumer floor: `engines.node` in `package.json`. Development version: `.nvmrc` and the workspace root `AGENTS.md` |
+| Yarn                | `packageManager` in the workspace root `package.json`; the package is a member of the `workspaces` declared there  |
+| npm registry access | Required to install the exact pinned `@webex/internal-media-core` and `@webex/web-media-effects` releases          |
 
 ## Install
 

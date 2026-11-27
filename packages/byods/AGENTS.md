@@ -78,9 +78,9 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling | Version |
-| ---------------- | ------- | ------- |
-| Language runtime | node | 22.14 for development (workspace root `AGENTS.md`; the root `.nvmrc` selects `lts/jod`; the root `package.json` `engines.node` still declares `18.x`); this package declares no `engines` field |
+| Area             | Tooling | Version source |
+| ---------------- | ------- | -------------- |
+| Language runtime | node | Development version: `.nvmrc` and the workspace root `AGENTS.md`; the workspace root `package.json` `engines.node` differs from it; this package declares no `engines` field |
 | Language         | TypeScript | version in `package.json` `devDependencies` |
 | Build tool       | `@webex/legacy-tools` over Babel, plus `tsc` for declarations | workspace versions |
 | Test framework   | Jest via `webex-legacy-tools` (`test:unit`) | version in `package.json` `devDependencies` |

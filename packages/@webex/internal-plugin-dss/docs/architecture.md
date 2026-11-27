@@ -101,8 +101,8 @@ flowchart LR
 | `@webex/internal-plugin-device` | Internal, undeclared | `src/dss.ts` | `webex.internal.device.orgId` | Not in `package.json`; the host must load it |
 | `@webex/common` | Internal | `src/dss-errors.ts` | `Exception` | `workspace:*` |
 | `@webex/common-timers` | Internal | `src/dss.ts` | `Timer` | `workspace:*` |
-| `uuid` | External | `src/dss.ts` | Request ids | `^3.3.2` in `package.json` |
-| `lodash` | External | `src/dss.ts` | `get`, `range`, `isEqual` | `^4.17.21` |
+| `uuid` | External | `src/dss.ts` | Request ids | Range in `package.json` |
+| `lodash` | External | `src/dss.ts` | `get`, `range`, `isEqual` | Range in `package.json` |
 | Directory Search Service | External service | `src/dss.ts` | Lookups, searches, and result pages | Resolved through the service catalog as `directorySearch` |
 
 No import cycle exists: none of the packages this one imports imports it back.

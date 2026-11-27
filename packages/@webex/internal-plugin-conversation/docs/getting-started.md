@@ -20,10 +20,10 @@ workspace. Commands below were verified against `package.json`.
 
 ## Prerequisites
 
-| Tool or access                         | Version or requirement |
-| -------------------------------------- | ---------------------- |
-| Node.js                                | 22.14 for development (root `AGENTS.md`); `engines.node >=18` for consumers |
-| Yarn                                   | Workspace Yarn declared by the monorepo root (`yarn@3.4.1`) |
+| Tool or access                         | Version source or requirement |
+| -------------------------------------- | ----------------------------- |
+| Node.js                                | Development version: `.nvmrc` and the workspace root `AGENTS.md`. Consumer floor: `engines.node` in `package.json` |
+| Yarn                                   | `packageManager` in the workspace root `package.json` |
 | Webex test users                       | Required only for integration specs |
 
 ## Install

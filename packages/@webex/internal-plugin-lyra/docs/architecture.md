@@ -99,7 +99,7 @@ flowchart LR
 | `@webex/internal-plugin-mercury`, `@webex/internal-plugin-conversation`, `@webex/internal-plugin-feature` | Internal, imported, not called | `src/index.js` | Registration side effect only | `workspace:*` |
 | `@webex/internal-plugin-locus` | Internal, declared, not imported by `src/` | Integration specs only | Registration for live tests | `workspace:*` |
 | `@webex/internal-plugin-device` | Internal, read, not declared | `src/space.js` | `url` | Registered through the encryption plugin's imports |
-| `bowser`, `uuid` | External, declared, not imported by `src/` | `bowser` in the integration specs; `uuid` nowhere | None at runtime | `^2.11.0` and `^3.3.2` in `package.json` |
+| `bowser`, `uuid` | External, declared, not imported by `src/` | `bowser` in the integration specs; `uuid` nowhere | None at runtime | Ranges in `package.json` |
 | Lyra service, proximity service, KMS | External service | `src/lyra.js`, `src/space.js`, `src/device.js` | Spaces and audio; advertisements; authorizations | Resolved through the service catalog and the encryption plugin |
 
 No import cycle exists: none of the plugins this package imports imports it back.

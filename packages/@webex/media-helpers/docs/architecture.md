@@ -106,9 +106,9 @@ flowchart LR
 
 | Dependency                     | Type     | Used by                | Purpose                                                    | Version, failure, or fallback policy |
 | ------------------------------ | -------- | ---------------------- | ----------------------------------------------------------- | ------------------------------------ |
-| `@webex/internal-media-core`   | External | `src/webrtc-core.ts`   | Local and remote stream base classes and capture factories   | Pinned exactly to `2.30.1`; no fallback |
-| `@webex/web-media-effects`     | External | `src/index.ts`         | Virtual background and noise reduction, re-exported unchanged | Pinned exactly to `2.37.0`; no fallback |
-| `@webex/ts-events`             | External | `src/webrtc-core.ts`   | Typed event primitives used to add `muted:byServer`          | Range `^1.1.0`                        |
+| `@webex/internal-media-core`   | External | `src/webrtc-core.ts`   | Local and remote stream base classes and capture factories   | Exact pin in `package.json`; no fallback |
+| `@webex/web-media-effects`     | External | `src/index.ts`         | Virtual background and noise reduction, re-exported unchanged | Exact pin in `package.json`; no fallback |
+| `@webex/ts-events`             | External | `src/webrtc-core.ts`   | Typed event primitives used to add `muted:byServer`          | Range in `package.json`                              |
 
 There are no cycles and no ordering constraints inside the package: `index.ts` depends on
 `webrtc-core.ts` and `constants.ts`, and neither of those depends on the other. The single point of
@@ -208,8 +208,8 @@ first-party clients are directed by the README to the public Webex developer API
 
 | Repository or external system | Relationship | Exchanged contract or artifact                                          | Owner        | Sequencing constraint                                                        |
 | ----------------------------- | ------------ | ------------------------------------------------------------------------ | ------------ | ----------------------------------------------------------------------------- |
-| `@webex/internal-media-core`  | Consumes     | Stream base classes and capture factories, pinned at `2.30.1`            | Webex media  | An upstream release must be adopted here before consumers see new stream behavior |
-| `@webex/web-media-effects`    | Consumes     | `NoiseReductionEffect`, `VirtualBackgroundEffect`, and their option types, pinned at `2.37.0` | Webex media | Re-exported unchanged, so an upstream change reaches consumers as soon as the pin moves |
+| `@webex/internal-media-core`  | Consumes     | Stream base classes and capture factories, pinned in `package.json`            | Webex media  | An upstream release must be adopted here before consumers see new stream behavior |
+| `@webex/web-media-effects`    | Consumes     | `NoiseReductionEffect`, `VirtualBackgroundEffect`, and their option types, pinned in `package.json` | Webex media | Re-exported unchanged, so an upstream change reaches consumers as soon as the pin moves |
 | `@webex/ts-events`            | Consumes     | `AddEvents`, `TypedEvent`, `WithEventsDummyType`                         | Webex        | None                                                                          |
 
 Both media dependencies are pinned to exact versions rather than ranges, so adopting an upstream

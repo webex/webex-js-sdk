@@ -77,13 +77,13 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling                        | Version                                              |
-| ---------------- | ------------------------------ | ---------------------------------------------------- |
-| Language runtime | Node.js                        | `>=18` per `package.json` engines; the monorepo `AGENTS.md` instructs contributors to use 22.14 |
-| Language         | TypeScript                     | Inherited from the monorepo root `tsconfig.json`     |
-| Build tool       | `webex-legacy-tools` plus `tsc` | `@webex/legacy-tools` at `workspace:*`               |
-| Test framework   | Jest via `@webex/jest-config-legacy` | `workspace:*`                                   |
-| Lint/format      | ESLint via `@webex/eslint-config-legacy`; Prettier | `eslint ^8.24.0`, `prettier ^2.7.1`|
+| Area             | Tooling                                            | Version source                                                                                                     |
+| ---------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Language runtime | Node.js                                            | Consumer floor: `engines.node` in `package.json`. Development version: `.nvmrc` and the workspace root `AGENTS.md` |
+| Language         | TypeScript                                         | Inherited from the monorepo root `tsconfig.json`                                                                   |
+| Build tool       | `webex-legacy-tools` plus `tsc`                    | `@webex/legacy-tools` at `workspace:*`                                                                             |
+| Test framework   | Jest via `@webex/jest-config-legacy`               | `workspace:*`                                                                                                      |
+| Lint/format      | ESLint via `@webex/eslint-config-legacy`; Prettier | `devDependencies.eslint` and `devDependencies.prettier` in `package.json`                                          |
 
 ### Project Map
 

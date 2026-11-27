@@ -62,19 +62,16 @@
     },
     {
       "name": "babel",
-      "version": "^7.22.11",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "eslint",
-      "version": "^8.24.0",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "prettier",
-      "version": "^2.7.1",
       "origin": "repo-config",
       "source_file": "package.json"
     }
@@ -188,14 +185,14 @@
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "@babel/polyfill@^7.12.1 (npm)",
+        "source": "@babel/polyfill (npm)",
         "summary": "src/index.js requires it for its global side effect when global._babelPolyfill is falsy."
       },
       "lodash": {
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "lodash@^4.17.21 (npm)",
+        "source": "lodash (npm)",
         "summary": "src/webex-node.js uses lodash/merge in WebexNode.init."
       }
     }

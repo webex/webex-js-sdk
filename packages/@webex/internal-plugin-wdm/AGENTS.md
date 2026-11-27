@@ -74,12 +74,12 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling                                             | Version                                              |
-| ---------------- | --------------------------------------------------- | ---------------------------------------------------- |
-| Language runtime | Node.js, browser                                    | `>=16` (`engines` in `package.json`)                 |
-| Build tool       | `@webex/legacy-tools` (`webex-legacy-tools build`)  | Workspace-pinned                                     |
-| Test framework   | Jest (unit), Mocha through Karma (integration), Chai | Jest and Chai workspace-supplied; see `package.json` |
-| Lint/format      | ESLint, Prettier                                    | `^8.24.0`, `^2.7.1`                                  |
+| Area             | Tooling                                              | Version source                                                            |
+| ---------------- | ---------------------------------------------------- | ------------------------------------------------------------------------- |
+| Language runtime | Node.js, browser                                     | `engines.node` in `package.json`                                          |
+| Build tool       | `@webex/legacy-tools` (`webex-legacy-tools build`)   | Workspace-pinned                                                          |
+| Test framework   | Jest (unit), Mocha through Karma (integration), Chai | Jest and Chai workspace-supplied; see `package.json`                      |
+| Lint/format      | ESLint, Prettier                                     | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` |
 
 ### Project Map
 

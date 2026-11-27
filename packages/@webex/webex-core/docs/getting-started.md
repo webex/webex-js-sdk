@@ -20,10 +20,10 @@ runs from the workspace root.
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
+| Tool or access | Version source or requirement |
 | --- | --- |
-| Node.js | `>=18` per the package `engines`; the repository `.nvmrc` pins `lts/jod`, and the repo AGENTS instructions ask for 22.14 |
-| Yarn | 3.4.1 (root `packageManager`) |
+| Node.js | Consumer floor: `engines.node` in `package.json`. Development version: `.nvmrc` and the workspace root `AGENTS.md` |
+| Yarn | `packageManager` in the workspace root `package.json` |
 | Webex test users and network access | Required only for the integration and browser suites (see Tests) |
 
 ## Install

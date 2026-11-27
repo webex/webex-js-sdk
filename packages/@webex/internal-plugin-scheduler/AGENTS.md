@@ -79,13 +79,13 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling | Version |
-| ---------------- | ------- | ------- |
-| Language runtime | node | 22.14 for development (workspace root `AGENTS.md`); consumer floor: see [`docs/getting-started.md`](docs/getting-started.md) Prerequisites |
-| Package manager  | Yarn through Corepack | The version pinned by the workspace root `packageManager` field, run from the `.yarnrc.yml` `yarnPath` release |
-| Build tool       | `@webex/legacy-tools` over babel | `@babel/core` version in `package.json` `devDependencies` |
-| Test framework   | Jest via `webex-legacy-tools` (`test:unit`); karma (`test:browser`) | workspace versions; `chai` and `sinon` versions in `package.json` `devDependencies` |
-| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | eslint and prettier versions in `package.json` `devDependencies` |
+| Area             | Tooling | Version source |
+| ---------------- | ------- | -------------- |
+| Language runtime | node | Development version: `.nvmrc` and the workspace root `AGENTS.md`; consumer floor: see [`docs/getting-started.md`](docs/getting-started.md) Prerequisites |
+| Package manager  | Yarn through Corepack | `packageManager` in the workspace root `package.json`, run from the `.yarnrc.yml` `yarnPath` release |
+| Build tool       | `@webex/legacy-tools` over babel | `devDependencies.@babel/core` in `package.json` |
+| Test framework   | Jest via `webex-legacy-tools` (`test:unit`); karma (`test:browser`) | workspace versions; `devDependencies.chai` and `devDependencies.sinon` in `package.json` |
+| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` |
 
 ### Project Map
 

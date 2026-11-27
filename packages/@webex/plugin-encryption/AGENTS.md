@@ -83,12 +83,12 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling | Version |
-| ---------------- | ------- | ------- |
-| Language runtime | node; TypeScript sources plus two JavaScript files | 22.14 (workspace root `AGENTS.md`; `.nvmrc` `lts/jod`); package `engines` accepts `>=16`; the workspace root `package.json` `engines.node` reads `18.x` |
-| Build tool       | yarn workspaces, `@webex/legacy-tools` over babel, and `tsc` for declarations | yarn `3.4.1` (root `packageManager`), `@babel/core` `^7.22.11`, typescript `^4.9.5` |
+| Area             | Tooling | Version source |
+| ---------------- | ------- | -------------- |
+| Language runtime | node; TypeScript sources plus two JavaScript files | Development version: `.nvmrc` and the workspace root `AGENTS.md`. Consumer floor: `engines.node` in `package.json`. The workspace root `package.json` `engines.node` differs from both |
+| Build tool       | yarn workspaces, `@webex/legacy-tools` over babel, and `tsc` for declarations | yarn: `packageManager` in the workspace root `package.json`; babel: `devDependencies.@babel/core` in `package.json`; typescript: `devDependencies.typescript` in `package.json` |
 | Test framework   | jest through `webex-legacy-tools`, with `@webex/test-helper-mock-webex` | `@webex/jest-config-legacy` (`workspace:*`) extended by the local `jest.config.js` |
-| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | eslint `^8.24.0`, prettier `^2.7.1` |
+| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` |
 
 ### Project Map
 

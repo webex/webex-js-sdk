@@ -97,8 +97,8 @@ flowchart LR
 | `@webex/internal-plugin-encryption` | Internal | `src/index.js`, `src/transforms.js` (through `webex.internal.encryption`) | Encryption, decryption, KMS keys | Workspace version |
 | `@webex/internal-plugin-conversation` | Internal | `src/index.js` | Import side effect registering internal plugin `conversation` | Workspace version |
 | `@webex/internal-plugin-mercury` | Internal | Not imported by `src/` (only `test/unit/spec/report.js`) | None at runtime | Workspace version |
-| `lodash` | External | `src/index.js` | `has` | `^4.17.21` in `package.json` |
-| `uuid` | External | Not imported by `src/` (only `test/integration/spec/ediscovery.js`) | None at runtime | `^3.3.2` in `package.json` |
+| `lodash` | External | `src/index.js` | `has` | Range in `package.json` |
+| `uuid` | External | Not imported by `src/` (only `test/integration/spec/ediscovery.js`) | None at runtime | Range in `package.json` |
 | eDiscovery service | External service | `src/ediscovery.js` | Report and content API | Service name `ediscovery` from the catalog, or the report URL |
 | KMS | External service | `src/transforms.js` through the encryption plugin | Keys | Retries in `src/retry.js` |
 

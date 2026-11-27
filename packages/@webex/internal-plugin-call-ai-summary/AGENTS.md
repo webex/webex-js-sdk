@@ -96,12 +96,12 @@ what makes `webex.internal.aisummary` available.
 
 ### Tech Stack
 
-| Area             | Tooling     | Version     |
-| ---------------- | ----------- | ----------- |
-| Language runtime | Node.js     | Develop on **22.14** per the root `AGENTS.md` and `.nvmrc`. `package.json` declares `engines.node >=16`, which is the consumer floor, not the development version. |
+| Area             | Tooling     | Version source |
+| ---------------- | ----------- | -------------- |
+| Language runtime | Node.js     | Development version: `.nvmrc` and the workspace root `AGENTS.md`. Consumer floor: `engines.node` in `package.json`, which is not the development version. |
 | Build tool       | `webex-legacy-tools` | workspace |
 | Test framework   | Jest via `@webex/jest-config-legacy` | workspace |
-| Lint/format      | ESLint `^8.24.0`, Prettier `^2.7.1` | see `package.json` |
+| Lint/format      | ESLint, Prettier | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` |
 
 ### Project Map
 

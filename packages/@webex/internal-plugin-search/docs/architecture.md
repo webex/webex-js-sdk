@@ -101,8 +101,8 @@ flowchart LR
 | `@webex/internal-plugin-encryption` | Internal | `src/index.js`, `src/search.js` | Registration side effect; `encryptText` and KMS | `workspace:*` |
 | `@webex/internal-plugin-conversation` | Internal | `src/index.js`, `src/search.js` | Registration side effect; the decrypting transform and `bulkActivitiesFetch` | `workspace:*` |
 | `@webex/internal-plugin-device` | Internal, not imported | `src/search.js` | `userId` and `searchEncryptionKeyUrl` | `workspace:*`; read by property, so the host must register it |
-| `lodash` | External | `src/index.js`, `src/search.js` | `has`, `get` | `^4.17.21` in `package.json` |
-| `uuid` | External | Integration spec only | Bot e-mail addresses in the test | `^3.3.2`; not used by `src/` |
+| `lodash` | External | `src/index.js`, `src/search.js` | `has`, `get` | Range in `package.json` |
+| `uuid` | External | Integration spec only | Bot e-mail addresses in the test | Range in `package.json`; not used by `src/` |
 | Search service | External service | `src/search.js` | Directory lookup and activity search | Resolved through the service catalog as `argonaut` |
 
 No import cycle exists: none of the packages this one imports imports it back.

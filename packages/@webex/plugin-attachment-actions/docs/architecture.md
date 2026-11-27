@@ -96,8 +96,8 @@ flowchart LR
 | `@webex/internal-plugin-conversation` | Internal | `src/index.js` (import only) | Decrypts socket activities | `workspace:*` |
 | `@webex/internal-plugin-mercury` | Internal | `src/index.js` (import), `src/attachmentActions.js` (calls) | Attachment action events | `workspace:*` |
 | `@webex/plugin-people`, `@webex/plugin-logger`, `@webex/plugin-messages` | Internal peer | Reached at run time through `webex.people` and `webex.logger`; messages only in the integration spec | Current user for the envelope; logging; sending test cards | Peer dependencies; not imported by `src/` |
-| `lodash` | External library | `src/attachmentActions.js` | `cloneDeep` | `^4.17.21` |
-| `debug` | External library | `src/attachmentActions.js` | Trace of each created event | `^4.3.4` |
+| `lodash` | External library | `src/attachmentActions.js` | `cloneDeep` | Range in `package.json` |
+| `debug` | External library | `src/attachmentActions.js` | Trace of each created event | Range in `package.json` |
 | Webex REST API attachment actions resource | External service | `src/attachmentActions.js` | Attachment action records | Resolved through the service catalog |
 
 No import cycle exists: none of the internal dependencies imports this package. `@webex/common` reads

@@ -19,9 +19,9 @@ Onboarding for **@webex/internal-plugin-mercury**. Commands run from the webex-j
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| Node.js | `>=18`, declared in `package.json` `engines` |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| Node.js | Consumer floor: `engines.node` in `package.json` |
 | Yarn | Workspaces are used, so install from the workspace root rather than this directory |
 | Browser for `test:browser` | A local browser for the karma runner that `test:browser` starts through `@webex/legacy-tools` |
 | Webex test users | Needed only by the integration specs, which create users through `@webex/test-helper-test-users` |

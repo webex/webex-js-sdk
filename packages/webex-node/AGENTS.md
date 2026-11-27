@@ -76,9 +76,9 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling | Version |
-| ---------------- | ------- | ------- |
-| Language runtime | node | 22.14 for development (workspace root `AGENTS.md`; the root `.nvmrc` selects the Node 22 LTS line; the root `package.json` `engines.node` still declares `18.x`); `>=18` for consumers (`package.json` engines) |
+| Area             | Tooling | Version source |
+| ---------------- | ------- | -------------- |
+| Language runtime | node | Development version: `.nvmrc` and the workspace root `AGENTS.md`; the workspace root `package.json` `engines.node` differs from it; consumer floor: `engines.node` in `package.json` |
 | Build tool       | `@webex/legacy-tools` over babel | `@babel/core` version in `package.json` `devDependencies` |
 | Test framework   | Jest via `webex-legacy-tools` (`test:unit`) | workspace versions |
 | Lint/format      | eslint with the workspace root `.eslintrc.js` (which applies prettier through its prettier plugin) | eslint and prettier versions in `package.json` `devDependencies` |

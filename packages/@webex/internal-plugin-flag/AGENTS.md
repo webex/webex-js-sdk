@@ -80,9 +80,9 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling | Version |
-| ---------------- | ------- | ------- |
-| Language runtime | node | 22.14 for development (workspace root `AGENTS.md`); consumer floor: see [`docs/getting-started.md`](docs/getting-started.md) Prerequisites |
+| Area             | Tooling | Version source |
+| ---------------- | ------- | -------------- |
+| Language runtime | node | Development version: `.nvmrc` and the workspace root `AGENTS.md`; consumer floor: see [`docs/getting-started.md`](docs/getting-started.md) Prerequisites |
 | Package manager  | Yarn through Corepack | Pinned by the workspace root `packageManager` field and run from the `.yarnrc.yml` `yarnPath` release |
 | Build tool       | `@webex/legacy-tools` over babel | `@babel/core` version in `package.json` `devDependencies` |
 | Test framework   | Jest via `webex-legacy-tools` (`test:unit`); Mocha with Chai assertions, run by the karma runner (`test:browser`) | workspace versions; `mocha` version in `package.json` `devDependencies` |

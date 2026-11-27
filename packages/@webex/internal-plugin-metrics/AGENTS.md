@@ -84,14 +84,14 @@ Definition of done:
 
 ### Tech Stack
 
-Document concrete versions so assistants choose compatible APIs.
+Point at the file and field that owns each version rather than copying the value, so an assistant resolves the version that is current at the time it reads this file.
 
-| Area             | Tooling                                                      | Version                        |
+| Area             | Tooling                                                      | Version source                 |
 | ---------------- | ------------------------------------------------------------ | ------------------------------ |
-| Language runtime | Node.js; `engines` in `package.json` sets the consumer floor, and the owner-declared manifest `toolchain` sets the build and test version | `22.14` to build and test; `>=18` floor |
+| Language runtime | Node.js; `engines` in `package.json` sets the consumer floor, and the owner-declared manifest `toolchain` sets the build and test version | Development version: `.nvmrc` and the workspace root `AGENTS.md`. Consumer floor: `engines.node` in `package.json` |
 | Build tool       | `@webex/legacy-tools` plus `tsc`, per `package.json` scripts   | workspace package              |
 | Test framework   | Mocha, selected by `webex-legacy-tools test --runner mocha`    | workspace runner               |
-| Lint/format      | ESLint with `@webex/eslint-config-legacy`, per `.eslintrc.js`  | `eslint ^8.24.0`, `prettier ^2.7.1` |
+| Lint/format      | ESLint with `@webex/eslint-config-legacy`, per `.eslintrc.js`  | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` |
 
 ### Project Map
 

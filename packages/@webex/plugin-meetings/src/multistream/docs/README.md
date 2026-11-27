@@ -87,7 +87,7 @@ Missing test evidence is stated as a gap rather than inferred.
 | `src/multistream/codec/constants.ts` | `AV1_CODEC_PARAMETERS` per resolution and `H264_CODEC_PARAMETERS` (`maxFs` 8192, `maxFps` 3000, `maxMbps` 245760) |
 | `src/meeting/index.ts` | Builds the receive-slot manager, the four media request managers whose callbacks call `webrtcMediaConnection.requestMedia`, and the send-slot manager; resets them before closing the connection |
 | `src/index.ts` | Re-exports `RemoteMedia` from the package entry |
-| `package.json` | Pins `@webex/internal-media-core` 2.32.1, whose `SendSlot.unpublishStream` detaches the published stream's listeners before awaiting the sender change |
+| `package.json` | Pins `@webex/internal-media-core` exactly in `package.json`, whose `SendSlot.unpublishStream` detaches the published stream's listeners before awaiting the sender change |
 | `test/unit/spec/multistream/remoteMediaManager.ts` and six sibling suites | Mirrored unit coverage for every file above |
 | Observation, no stated WHY | `addMemberVideoPane` tests `newPane.id in this.currentLayout.memberVideoPanes` on an array, so a duplicate pane id is not rejected; `removeMemberVideoPane` deletes `memberVideoPanes[paneId]` from that array, which leaves the pane in the current layout until the next `setLayout` (`src/multistream/remoteMediaManager.ts`). `MediaRequestManager.reset()` clears requests without removing their slot listeners (`src/multistream/mediaRequestManager.ts`). None is a requirement until a reason is recorded |
 
@@ -455,7 +455,7 @@ the wire schema.
 
 | Message or frame | Version | Producer or serializer | Consumer or parser | Compatibility and ordering rule |
 | ---------------- | ------- | ---------------------- | ------------------ | ------------------------------- |
-| `StreamRequest(policy, policyInfo, receiveSlots, maxPayloadBitsPerSecond, codecInfos)` | internal-media-core 2.32.1 | `MediaRequestManager.sendRequests` | `webrtcMediaConnection.requestMedia` | One per client request with at least one slot; the full set is sent on every commit |
+| `StreamRequest(policy, policyInfo, receiveSlots, maxPayloadBitsPerSecond, codecInfos)` | internal-media-core, at the exact pin in `package.json` | `MediaRequestManager.sendRequests` | `webrtcMediaConnection.requestMedia` | One per client request with at least one slot; the full set is sent on every commit |
 | `ActiveSpeakerInfo(priority, crossPriorityDuplication, crossPolicyDuplication, preferLiveVideo, namedMediaGroups)` / `ReceiverSelectedInfo(csi)` | — | `MediaRequestManager` from `PolicyInfo` | internal-media-core | `RemoteMediaGroup` sends priority, `false`, `false`, its `preferLiveVideo`, and its named group |
 | `maxPayloadBitsPerSecond` | — | `MediaRequestManager` | internal-media-core | Audio: `RecommendedOpusBitrates.FB_MONO_MUSIC`; video: `getRecommendedMaxBitrateForFrameSize(maxFs)` |
 | H264 codec info `(payloadType, maxFs, maxFps, maxMbps, maxWidth, maxHeight)` | — | `MediaRequestManager` | internal-media-core | `maxFps` defaults to 3000 and `maxMbps` is `maxFs * maxFps / 100`; omitted when the payload type is unknown |

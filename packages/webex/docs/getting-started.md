@@ -20,16 +20,16 @@ webex-js-sdk workspace root.
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| Node.js | 22.14, required for working in this repository by the workspace root `AGENTS.md`; the root `.nvmrc` selects the Node 22 LTS line |
-| Yarn | The version in the workspace root `package.json` `packageManager` field, provided through Corepack: enable Corepack for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup steps require. Workspaces are used, so install from the workspace root rather than this directory |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| Node.js | Development version: `.nvmrc` and the workspace root `AGENTS.md` |
+| Yarn | `packageManager` in the workspace root `package.json`, provided through Corepack: enable Corepack for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup steps require. Workspaces are used, so install from the workspace root rather than this directory |
 | Test-user access for `test:integration` | `WEBEX_CLIENT_ID` and `WEBEX_CLIENT_SECRET` (described in the workspace root `CONTRIBUTING.md` and `ENV.md`), and network access to Webex services |
 | Browser for the karma run | A local browser for the karma runner that `test:browser:broken` starts through `@webex/legacy-tools` |
 
-The `package.json` `engines` value `>=18` is the floor for applications that install the package,
-not the development runtime. The workspace root `package.json` declares `engines.node` `18.x`; that
-field does not set the development runtime either, which is Node.js 22.14 as above.
+The `package.json` `engines.node` value is the floor for applications that install the package,
+not the development runtime. The workspace root `package.json` declares a different `engines.node`;
+that field does not set the development runtime either, which is the version named above.
 
 ## Install
 

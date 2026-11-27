@@ -205,7 +205,7 @@ contracts are owned by the services modules that declare them; this module re-ex
 
 Direct data/configuration and user-preference operations return authenticated REST responses. Enabled agent/task AQM operations, including preview-campaign accept/skip/remove, send authenticated HTTP requests but resolve or reject only after a matching WebSocket notification. Before delegating preview skip/remove, ContactCenter checks the task's campaign-disable flags and throws locally when the corresponding flag is `'true'`. TaskManager converts backend task events into Task instances and typed state-machine events. ContactCenter maps package-facing events through WebexPlugin `trigger` (task and voice events) or WebexPlugin `emit` (WebSocket agent events and wellness events); the private `eventEmitter` it constructs is not used.
 
-Stack: TypeScript 5.4, WebexPlugin, Node EventEmitter, WebSocket/WebRTC integrations, Jest 27, Yarn 3.4.1.
+Stack: TypeScript, WebexPlugin, Node EventEmitter, WebSocket/WebRTC integrations, Jest, Yarn workspaces; the versions live in `package.json` and the workspace root `package.json`.
 
 ### Agent Wellness Break
 

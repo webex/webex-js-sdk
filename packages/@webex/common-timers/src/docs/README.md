@@ -109,7 +109,7 @@ Related context: [repository architecture](../../docs/architecture.md) ·
 | Path                      | Responsibility                                                                                                                   |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `src/index.ts`            | The entire module. Declares `safeSetTimeout`, `safeSetInterval`, and `Timer`; there is no other source file                      |
-| `package.json`            | Declares `main` (`dist/index.js`), `devMain` (`src/index.ts`), the Node `>=18` floor, and the build/test/lint/publish commands    |
+| `package.json`            | Declares `main` (`dist/index.js`), `devMain` (`src/index.ts`), the Node floor in `engines.node`, and the build/test/lint/publish commands    |
 | `process`                 | A one-line browser shim (`{browser: true}`) resolved by the browserify transform when the package is bundled for a browser        |
 | `test/unit/spec/index.ts` | The unit suite; mirrors `src/` one-to-one, as every package in this workspace does                                                |
 

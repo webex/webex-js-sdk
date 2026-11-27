@@ -20,9 +20,9 @@ monorepo. Every command below is run from the monorepo root.
 
 ## Prerequisites
 
-| Tool or access                         | Version or requirement                                                        |
+| Tool or access                         | Version source or requirement                                                 |
 | -------------------------------------- | ----------------------------------------------------------------------------- |
-| Node.js                                | `22.14` for building and testing, as declared by the repository owner in `.sdd/manifest.json` `toolchain`; `>=18` from `engines` in `package.json` is the consumer runtime floor |
+| Node.js                                | Development version for building and testing: `.nvmrc` and the workspace root `AGENTS.md`, as declared by the repository owner in `.sdd/manifest.json` `toolchain`; `engines.node` in `package.json` is the consumer runtime floor |
 | Yarn                                   | The monorepo's Yarn workspaces; dependencies use the `workspace:*` protocol    |
 | Registry or VPN access                 | Public npm only. The package declares no `.npmrc` and no authenticated registry |
 

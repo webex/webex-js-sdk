@@ -381,7 +381,7 @@ classDiagram
 - The integration specs call the test-users helper in `beforeEach`. Missing client credentials make
   the hook throw and fail every case; a later rejection of the user creation is not returned from
   the hook and does not fail the placeholder case.
-- `package.json` `description` is empty, and its `engines` value `>=14` is lower than the effective
+- `package.json` `description` is empty, and its `engines.node` value is lower than the effective
   consumer floor recorded in Getting started Prerequisites.
 - The package-root `process` file is the browser-testing file that the README of the sibling package
   legacy-tools recommends; nothing in `src/` reads it. Do not remove it without running

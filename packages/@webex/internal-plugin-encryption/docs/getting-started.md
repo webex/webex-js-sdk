@@ -22,10 +22,10 @@ workspace. Run every command from the workspace root. The package scripts run th
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| Node.js        | Use 22.14: the workspace root `AGENTS.md` requires it and the workspace `.nvmrc` selects `lts/jod` (Node 22). This package's `engines` accepts `>=18`. The workspace root `package.json` `engines.node` reads `18.x`, which conflicts with the other pins; the build and lint pass on 22.14 |
-| Yarn           | `yarn@3.4.1` (`packageManager` in the workspace root `package.json`) |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| Node.js        | Development version: `.nvmrc` and the workspace root `AGENTS.md`. Consumer floor: `engines.node` in `package.json`. The workspace root `package.json` `engines.node` disagrees with both; the build and lint pass on the development version |
+| Yarn           | `packageManager` in the workspace root `package.json` |
 | Registry or account access | N/A for building, unit tests, and linting. Integration tests need the Webex test-user client secrets that the pull-request workflow writes to `.env` |
 
 ## Install
@@ -35,7 +35,7 @@ yarn
 ```
 
 The workspace `deploy.yml` workflow installs with the same command. Run it again whenever the
-lockfile changes: this package pins `asn1js` 3.0.10 and `pkijs` 3.3.3 and depends on the workspace
+lockfile changes: this package pins `asn1js` and `pkijs` exactly in `package.json` and depends on the workspace
 package `@webex/kms-caroots`, and an older install lacks both (see [Tests](#tests)).
 
 Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see

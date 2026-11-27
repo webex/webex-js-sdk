@@ -148,7 +148,7 @@ The collaborators in the composition tree are built once, on the Webex READY eve
 | `@webex/internal-plugin-mercury` | external / peer | Runtime package dependency: Better Together (wxApp) telephony events | Workspace/declared version; errors propagate through owning module |
 | `@webex/internal-plugin-support` | external / peer | Runtime package dependency for log upload (`uploadLogs`) | Workspace/declared version; upload errors are logged and rethrown by `src/services/core/WebexRequest.ts` |
 | `@webex/plugin-authorization`, `@webex/plugin-logger` | external / peer | Loaded by `src/webex.js` for the standalone constructor (identity, logging) | Workspace/declared version |
-| `xstate` | external | Task state machine runtime | Pinned `5.24.0` in `package.json` |
+| `xstate` | external | Task state machine runtime | Exact pin in `package.json` |
 | `wcc-api-gateway` and the WCC notification WebSocket | external Webex service | Service-catalog identifier resolved through the host Webex SDK, not an npm package dependency; agent, task, config, and realtime contracts, required for runtime operations | Host service-catalog availability; structured error, reconnect, or timeout through the owning module against a remote compatible contract |
 
 - Workspace glob: root `package.json` `workspaces`; this scoped package is public and consumes internal/public sibling packages through `workspace:*` dependencies, so it always builds against the sibling sources in the same checkout; `yarn workspace @webex/contact-center build` first runs `build:src` for `@webex/calling`.
@@ -179,7 +179,7 @@ the owning module specification linked in the Owner column.
 | `webex-internal-mercury` — Mercury event stream | SDK, external | `@webex/internal-plugin-mercury` | Better Together (wxApp) telephony synchronisation | Workspace version | @webex/internal-plugin-mercury workspace package (external) |
 | `webex-internal-metrics` — internal metrics submission | SDK, external | `@webex/internal-plugin-metrics` | MetricsManager | Workspace version | @webex/internal-plugin-metrics workspace package (external) |
 | `webex-internal-support` — log upload | SDK, external | `@webex/internal-plugin-support` | `uploadLogs` | Workspace version | @webex/internal-plugin-support workspace package (external) |
-| `xstate-runtime` — actor and state-machine runtime | SDK, external | `xstate` | Task state machine | Pinned 5.24.0 | xstate npm dependency (external) |
+| `xstate-runtime` — actor and state-machine runtime | SDK, external | `xstate` | Task state machine | Exact pin in `package.json` | xstate npm dependency (external) |
 
 No OpenAPI/AsyncAPI/proto schema was found in scope; exact SDK and event contracts remain in TypeScript declarations and owning module specs.
 

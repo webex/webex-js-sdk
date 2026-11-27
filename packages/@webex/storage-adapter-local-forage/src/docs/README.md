@@ -73,7 +73,7 @@ not used as evidence.
 | -------- | ------------------- |
 | `src/index.js` | Every behavior specified here: bind preconditions, key composition, null disambiguation, clear scope, `oneFlight` wrapping, and logging |
 | `test/unit/spec/storage-adapter-local-forage.js` | The suite runs inside `skipInNode(describe)` against `new StorageAdapterLocalForage('test')` and declares no case of its own |
-| `package.json` | Entry points, runtime dependencies (including `localforage ^1.7.3`), scripts, and the absence of `test:unit` and `test:integration` scripts |
+| `package.json` | Entry points, runtime dependencies (including `localforage`), scripts, and the absence of `test:unit` and `test:integration` scripts |
 | `README.md` | The npm-facing statement of purpose |
 | `.eslintrc.js`, `babel.config.js`, `jest.config.js` | All three inherit shared legacy configuration: the decorator transform, the Node Jest environment, and lint rules that ignore Markdown |
 | Workspace-root Jest configuration (file jest.config.js at the monorepo root) | Lists this package among its Jest projects with `testEnvironment: 'node'`, so a root Jest run also skips the suite |
@@ -92,8 +92,8 @@ code otherwise:
   `src/lib/storage/errors.js` in the same package.
 - `@webex/storage-adapter-spec`: its module spec (sibling package `packages/@webex/storage-adapter-spec`,
   file `src/docs/README.md`). That spec is rated Untracked, so its `src/index.js` is authoritative.
-- `localforage`: no specification exists in this repository. Its behavior was read from version
-  1.10.0, the version the workspace lockfile resolves for `^1.7.3`.
+- `localforage`: no specification exists in this repository. Its behavior was read from the version
+  the workspace lockfile resolves for the `localforage` range in `package.json`.
 
 ## Purpose and boundary
 
@@ -142,7 +142,7 @@ The published contract ids are `local-forage-storage-adapter` (the npm surface) 
 
 | Dependency | Why it is required | Failure behavior |
 | ---------- | ------------------ | ---------------- |
-| `localforage` (npm `^1.7.3`, resolves to 1.10.0) | All persistence: `getItem`, `setItem`, `removeItem`, `keys`, and `clear` on the default instance | Its rejections propagate unchanged (`MOD-013` covers the no-driver case) |
+| `localforage` (npm; range in `package.json`) | All persistence: `getItem`, `setItem`, `removeItem`, `keys`, and `clear` on the default instance | Its rejections propagate unchanged (`MOD-013` covers the no-driver case) |
 | `@webex/common` `oneFlight` | De-duplicates concurrent `get` and `del` calls | See Concurrency and reactive flow |
 | `@webex/webex-core` `NotFoundError` | The rejection type for a missing key (`NotFoundError` extends `StorageError`; webex-core storage spec `MOD-033`) | The storage layer's hydration paths treat `NotFoundError` as "no data" and any other rejection as a real failure (webex-core storage spec `MOD-016`, `MOD-027`) |
 | Injected `options.logger` | Info and debug logging | Required by `bind`; a logger without `debug` makes later calls throw synchronously |
@@ -165,7 +165,7 @@ The published contract ids are `local-forage-storage-adapter` (the npm surface) 
 | `MOD-010` | The constructor takes no parameters and ignores any arguments; every instance reads and writes the same default database | Current behavior. Owner decision 2026-10-06: specify as-is, treat as a known hazard to fix separately, and do not promise it as a contract | `src/index.js` | None executing | Callers pass a base key (`'test'` in the package test, `'web-client-internal'` in the in-repo host) that has no effect | Present |
 | `MOD-011` | `get`, `put`, and `del` log at debug with the composed key (``reading `key` ``, ``writing `key` ``, ``deleting `key` ``); `clear()` logs `clearing localforage` | Gives SDK diagnostics a uniform trace of storage activity | `src/index.js` | None executing | Key names, such as encryption key URIs, appear in debug logs | Present |
 | `MOD-012` | Values pass to `localforage` unchanged: the adapter does no serialization, validation, encryption, or size check | Serialization belongs to the storage layer and the `localforage` driver; owner-confirmed 2026-10-06 that stored data is security-sensitive | `src/index.js` | None executing | — | Present |
-| `MOD-013` | The adapter works only where `localforage` finds a storage driver; with none (Node, or storage disabled) every operation rejects with `localforage`'s `No available storage method found.` error | The module targets browsers only (see Module-specific rules) | `src/index.js` | None executing | The message comes from `localforage` 1.10.0 and has not been exercised here | Weak |
+| `MOD-013` | The adapter works only where `localforage` finds a storage driver; with none (Node, or storage disabled) every operation rejects with `localforage`'s `No available storage method found.` error | The module targets browsers only (see Module-specific rules) | `src/index.js` | None executing | The message comes from `localforage` at the resolved version and has not been exercised here | Weak |
 
 ## Design overview
 
@@ -421,8 +421,8 @@ missing-key versus stored-`null` distinction (`MOD-006`). One invariant has no r
 - **Installing this package also installs the test suite.** `package.json` lists
   `@webex/storage-adapter-spec`, and with it its chai helper, under runtime `dependencies` although
   only the test imports it.
-- **`localforage` is old.** The workspace's unmaintained-dependency catalog flags `^1.7.3` as stale
-  (last npm publish 2021-08-18, high risk).
+- **`localforage` is old.** The workspace's unmaintained-dependency catalog flags the range pinned in
+  `package.json` as stale (last npm publish 2021-08-18, high risk).
 
 <!-- Include if: the module has conventions beyond repository-wide rules. [condition-id: module.module_specific_conventions] -->
 

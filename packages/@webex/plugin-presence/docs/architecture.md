@@ -101,7 +101,7 @@ flowchart LR
 | `@webex/internal-plugin-device` | Internal | `src/index.ts`, `src/presence.ts` | Registration side effect; `userId` | `workspace:*` |
 | `@webex/internal-plugin-mercury` | Internal | `src/presence-worker.ts` | `connect`, `connected`, the subscription update event | `workspace:*`; reached as `webex.internal.mercury`, not imported by `src/` |
 | `@webex/internal-plugin-feature` | Internal, not declared | `src/presence.ts` | `setFeature`, `getFeature` | Provided by the host |
-| `lodash` | External | `src/index.ts`, `src/presence-worker.ts` | `has`, `debounce` | `4.17.21` in `package.json` |
+| `lodash` | External | `src/index.ts`, `src/presence-worker.ts` | `has`, `debounce` | Exact pin in `package.json` |
 | `@webex/test-helper-*` packages | Internal, declared under dependencies | Specs only | Test setup | `workspace:*`; not used by `src/` |
 | Presence service | External service | `src/presence.ts`, `src/presence-batcher.ts` | Compositions, subscriptions, events | Resolved through the service catalog |
 

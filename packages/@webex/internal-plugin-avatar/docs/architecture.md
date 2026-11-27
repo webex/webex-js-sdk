@@ -100,7 +100,7 @@ flowchart LR
 | `@webex/helper-image` | Internal | `src/avatar.js` | `detectFileType`, `processImage` | `workspace:*` |
 | `@webex/common` | Internal | `src/avatar.js`, `src/avatar-url-store.js` | `oneFlight`, `patterns.uuid` | `workspace:*` |
 | `@webex/common-timers` | Internal | `src/avatar-url-store.js` | `safeSetTimeout` | `workspace:*` |
-| `lodash` | External | `src/avatar.js`, `src/avatar-url-batcher.js` | `defaults`, `uniq` | `^4.17.21` |
+| `lodash` | External | `src/avatar.js`, `src/avatar-url-batcher.js` | `defaults`, `uniq` | Range in `package.json` |
 | Avatar service | External service | `src/avatar-url-batcher.js`, `src/avatar.js` | URL lookup and upload sessions | Resolved through the service catalog as `avatar` |
 
 Every dependency `package.json` declares is imported by `src/`. No import cycle exists: none of the

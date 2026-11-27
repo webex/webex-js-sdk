@@ -21,10 +21,10 @@ root, as `yarn workspace @webex/byods <script>`.
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| Node.js | 22.14, required for working in this repository by the workspace root `AGENTS.md`; the root `.nvmrc` selects `lts/jod` and the root `package.json` `engines.node` still declares `18.x`. This package declares no `engines` field. |
-| Yarn | `yarn@3.4.1`, pinned by the workspace root `packageManager` field and provided through Corepack, as the workspace root `CONTRIBUTING.md` describes |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| Node.js | Development version: `.nvmrc` and the workspace root `AGENTS.md`; the workspace root `package.json` `engines.node` differs from it. This package declares no `engines` field. |
+| Yarn | `packageManager` in the workspace root `package.json`, provided through Corepack, as the workspace root `CONTRIBUTING.md` describes |
 | Network | HTTPS to the npm registry for install. The unit tests need no network. |
 | Webex Service App | Client ID, client secret, and organization ID, plus a personal access token or refresh token, only for running against Webex (not for tests) |
 

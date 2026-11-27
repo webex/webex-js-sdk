@@ -219,7 +219,7 @@ through `Promise.all` for snippet collections.
 | Platform | Shared versus platform-specific boundary | Entry or build | Support and compatibility constraints |
 | -------- | ---------------------------------------- | -------------- | ------------------------------------- |
 | Browser | Fully shared; no platform-specific source | `dist/index.js` via `yarn workspace @webex/internal-plugin-call-ai-summary build` | Requires a registered device and Mercury connection for KMS |
-| Node.js | Fully shared; no platform-specific source | `dist/index.js` via `yarn workspace @webex/internal-plugin-call-ai-summary build` | `engines.node >=16` per `package.json` |
+| Node.js | Fully shared; no platform-specific source | `dist/index.js` via `yarn workspace @webex/internal-plugin-call-ai-summary build` | `engines.node` in `package.json` |
 
 ## Release and versioning
 

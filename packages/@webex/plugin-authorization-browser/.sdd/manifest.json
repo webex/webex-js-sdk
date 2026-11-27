@@ -49,49 +49,41 @@
   "toolchain": [
     {
       "name": "node",
-      "version": ">=18",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "node",
-      "version": "22.14",
       "origin": "repo-config",
       "source_file": "../../../AGENTS.md"
     },
     {
       "name": "node",
-      "version": "lts/jod",
       "origin": "repo-config",
       "source_file": "../../../.nvmrc"
     },
     {
       "name": "yarn",
-      "version": "3.4.1",
       "origin": "repo-config",
       "source_file": "../../../package.json"
     },
     {
       "name": "babel",
-      "version": "^7.17.10",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "eslint",
-      "version": "^8.24.0",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "prettier",
-      "version": "^2.7.1",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "sinon",
-      "version": "^9.2.4",
       "origin": "repo-config",
       "source_file": "package.json"
     }
@@ -267,21 +259,21 @@
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "jsonwebtoken@^9.0.2 (npm)",
+        "source": "jsonwebtoken (npm)",
         "summary": "jwt.sign(payload, secret, {expiresIn}) produces the HS256 guest JWT; an undefined expiresIn option is rejected."
       },
       "uuid": {
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "uuid@^3.3.2 (npm)",
+        "source": "uuid (npm)",
         "summary": "uuid.v4 generates the CSRF token; the default export generates the guest subject and default display name."
       },
       "lodash": {
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "lodash@^4.17.21 (npm)",
+        "source": "lodash (npm)",
         "summary": "cloneDeep, isEmpty, and omit for hash parsing and URL cleanup."
       }
     }

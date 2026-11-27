@@ -21,9 +21,9 @@ directory.
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| Node | `>=18`, declared in `package.json`. The enclosing workspace pins a newer line through its own Node version file, so prefer the workspace's pinned version when the two differ. |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| Node | `engines.node` in `package.json`. The enclosing workspace pins a newer line through its own Node version file, so prefer the workspace's pinned version when the two differ. |
 | Yarn | Yarn workspaces are required, because this package's sibling dependencies use the `workspace:*` protocol in `package.json`. The version is pinned by the enclosing workspace. |
 | GraphicsMagick or ImageMagick | Needed only to exercise the Node thumbnail path in `src/process-image.js` at runtime. Not needed to build or to run this package's own tests, because the active unit cases do not reach that path. Its absence is handled: `processImage` logs a warning and resolves undefined. |
 | Chrome and Firefox | Needed only for the browser test runner, which `@webex/legacy-tools` defaults to those two browsers. |

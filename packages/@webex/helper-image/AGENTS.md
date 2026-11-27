@@ -87,14 +87,15 @@ Definition of done:
 
 ### Tech Stack
 
-Document concrete versions so assistants choose compatible APIs.
+Point at the file and field that owns each version rather than copying the value, so an
+assistant resolves the version that is current at the time it reads this file.
 
-| Area             | Tooling                                                     | Version     |
-| ---------------- | ----------------------------------------------------------- | ----------- |
-| Language runtime | Node, plus browser targets built from the same sources       | `>=18`      |
+| Area             | Tooling                                                     | Version source |
+| ---------------- | ----------------------------------------------------------- | -------------- |
+| Language runtime | Node, plus browser targets built from the same sources       | `engines.node` in `package.json` |
 | Build tool       | `@webex/legacy-tools` (`webex-legacy-tools build`) over Babel via `@webex/babel-config-legacy` | workspace   |
-| Test framework   | Mocha with `@webex/test-helper-chai` assertions and Sinon; Karma for the browser runner | `sinon ^9.2.4` |
-| Lint/format      | ESLint with `@webex/eslint-config-legacy`, Prettier          | `eslint ^8.24.0`, `prettier ^2.7.1` |
+| Test framework   | Mocha with `@webex/test-helper-chai` assertions and Sinon; Karma for the browser runner | `devDependencies.sinon` in `package.json` |
+| Lint/format      | ESLint with `@webex/eslint-config-legacy`, Prettier          | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` |
 
 Node's floor is declared in `package.json`. Yarn workspaces resolve the `workspace:*` dependencies,
 and the Yarn version is pinned by the enclosing workspace rather than by this package.

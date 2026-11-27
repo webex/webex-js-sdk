@@ -95,14 +95,15 @@ package holds no test file of its own.
 
 ### Tech Stack
 
-Document concrete versions so assistants choose compatible APIs.
+Point at the file and field that owns each version rather than copying the value, so an assistant
+resolves the version that is current at the time it reads this file.
 
-| Area             | Tooling     | Version     |
-| ---------------- | ----------- | ----------- |
-| Language runtime | Node.js     | `>=18` (declared in `package.json` `engines`) |
+| Area             | Tooling     | Version source |
+| ---------------- | ----------- | -------------- |
+| Language runtime | Node.js     | `engines.node` in `package.json` |
 | Build tool       | `webex-legacy-tools build` via `@webex/legacy-tools`, configured by `babel.config.js` | `workspace:*` |
 | Test framework   | None in this package. The suite is written against Jest globals (`describe`, `it`, `beforeAll`) and asserts through `@webex/test-helper-chai`. | `workspace:*` |
-| Lint/format      | ESLint via `@webex/eslint-config-legacy`, with `prettier` | `eslint ^8.24.0`, `prettier ^2.7.1` |
+| Lint/format      | ESLint via `@webex/eslint-config-legacy`, with `prettier` | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` |
 
 ### Project Map
 

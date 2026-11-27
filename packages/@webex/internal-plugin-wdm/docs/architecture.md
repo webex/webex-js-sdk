@@ -156,7 +156,7 @@ flowchart LR
 | Platform | Shared versus platform-specific boundary                                            | Entry or build                                  | Support and compatibility constraints                                                                 |
 | -------- | ----------------------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | Browser  | Same source; the `process` file exports `{browser: true}` and `package.json` declares browserify transforms | `package.json` script `test:browser`            | Platform behavior of the plugin itself is owned by the device package                                  |
-| Node     | Same source                                                                         | `package.json` `main` (`dist/index.js`) and `test:unit` | `engines.node` is `>=16`                                                                      |
+| Node     | Same source                                                                         | `package.json` `main` (`dist/index.js`) and `test:unit` | `engines.node` in `package.json`                                                                      |
 
 ## Release and versioning
 

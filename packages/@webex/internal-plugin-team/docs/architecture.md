@@ -95,8 +95,8 @@ flowchart LR
 | `@webex/internal-plugin-encryption` | Internal | `src/index.js` | KMS keys and text encryption | `workspace:*` |
 | `@webex/internal-plugin-user` | Internal | `src/index.js`, `src/team.js` | `asUUID`, `recordUUID` | `workspace:*` |
 | `@webex/internal-plugin-device` | Internal, declared, not imported | `src/team.js` | `userId`, `url` | `workspace:*`; registered through the user and encryption plugins |
-| `lodash` | External | `src/index.js`, `src/team.js` | Object helpers | `^4.17.21` in `package.json` |
-| `uuid` | External | `src/team.js` | KMS `requestId` | `^3.3.2` in `package.json` |
+| `lodash` | External | `src/index.js`, `src/team.js` | Object helpers | Range in `package.json` |
+| `uuid` | External | `src/team.js` | KMS `requestId` | Range in `package.json` |
 | Conversation service and KMS | External service | `src/team.js`, `src/index.js` | Team resources; keys and authorizations | Resolved through the service catalog and the encryption plugin |
 
 No import cycle exists: none of the plugins this package imports imports it back.

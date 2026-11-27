@@ -64,7 +64,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Evidence         | What it establishes |
 | ---------------- | ------------------- |
 | `src/index.js` | The public surface: 40 named exports forming the package barrel |
-| `package.json` | Published npm package; `main: dist/index.js`; browser field remaps `in-browser/node.js` to `in-browser/browser.js`; Node `>=16` |
+| `package.json` | Published npm package; `main: dist/index.js`; browser field remaps `in-browser/node.js` to `in-browser/browser.js`; Node floor in `engines.node` |
 | monorepo .github/CODEOWNERS line 8 (outside this SDD root) | Ownership by @webex/web-client and @webex/web-sdk |
 | `test/unit/spec/common.js`, `test/unit/spec/umd-assets.js` | Unit specs covering base64, retry, browser detection, capped debounce, exception, oauth state, one flight, template container, while in flight, and UMD asset URL construction |
 | `src/index.js` | Barrel contains no @webex/* import; a repo-wide grep over src/ confirms the module takes no runtime dependency on another Webex package — the basis of its inclusion rule |

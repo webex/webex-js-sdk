@@ -111,12 +111,12 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling | Version |
-| ---------------- | ------- | ------- |
-| Language runtime | node; TypeScript and JavaScript sources | 22.14 (workspace root `AGENTS.md`; `.nvmrc` `lts/jod`); package `engines` accepts `>=18`; the workspace root `package.json` `engines.node` reads `18.x` |
-| Build tool       | yarn workspaces, `@webex/legacy-tools` over babel, and `tsc` for declarations | yarn `3.4.1` (root `packageManager`), `typescript` `^4.7.4`, `@babel/core` `^7.17.10` |
-| Test framework   | mocha through `webex-legacy-tools test --unit --runner mocha`, sinon, `@webex/test-helper-chai`; karma for the browser tier | sinon `^9.2.4`; mocha `10.0` and karma `^6.4.3` are declared by `@webex/legacy-tools` (`workspace:*`) |
-| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | eslint `^8.24.0`, prettier `^2.7.1` |
+| Area             | Tooling | Version source |
+| ---------------- | ------- | -------------- |
+| Language runtime | node; TypeScript and JavaScript sources | Development version: `.nvmrc` and the workspace root `AGENTS.md`. Consumer floor: `engines.node` in `package.json`. The workspace root `package.json` `engines.node` differs from both |
+| Build tool       | yarn workspaces, `@webex/legacy-tools` over babel, and `tsc` for declarations | `packageManager` in the workspace root `package.json`; `devDependencies.typescript` and `devDependencies.@babel/core` in `package.json` |
+| Test framework   | mocha through `webex-legacy-tools test --unit --runner mocha`, sinon, `@webex/test-helper-chai`; karma for the browser tier | `devDependencies.sinon` in `package.json`; mocha and karma are declared by `@webex/legacy-tools` (`workspace:*`) |
+| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` |
 
 TypeScript and JavaScript, Node.js 22.14 for this repository, Yarn workspaces, and legacy Webex build
 tooling. Mocha, Sinon, and `@webex/test-helper-chai` for unit tests; Karma for browser/integration

@@ -336,16 +336,16 @@ service regardless of backend.
 
 | Dependency | Type | Used by | Purpose | Version, failure, or fallback policy |
 | ---------- | ---- | ------- | ------- | ------------------------------------ |
-| `@webex/internal-media-core` | External | Call | WebRTC media connection and ROAP engine | Exact pin `2.32.1` in `package.json`; Jest transforms it from source |
+| `@webex/internal-media-core` | External | Call | WebRTC media connection and ROAP engine | Exact pin in `package.json`; Jest transforms it from source |
 | `@webex/media-helpers` | Internal (workspace) | Call, package exports | Microphone stream and noise reduction effect | `workspace:*`; re-exported from `src/index.ts` |
 | `@webex/internal-plugin-metrics` | Internal (workspace) | Metrics (through `webex.internal.metrics`), Call, mobius-socket | Metric transport behind `webex.internal.metrics` | `workspace:*`; Jest maps it to `test/mocks/internal-plugin-metrics-stub.js` |
 | `@webex/internal-plugin-device`, `@webex/internal-plugin-feature` | Internal (workspace) | mobius-socket; every module reads the device through SDKConnector | WDM device, entitlements, and feature toggles | `workspace:*` |
 | `@webex/common`, `@webex/common-timers` | Internal (workspace) | mobius-socket | Webex utilities and timers | `workspace:*` |
-| `xstate` | External | Call | Call and media state machines | Exact pin `4.30.6` |
-| `async-mutex` | External | CallingClient, Line, Registration | Shared registration mutex | Exact pin `0.4.0` |
-| `ws` | External | mobius-socket (Node builds) | WebSocket transport; the browser build uses the socket shim | Exact pin `8.17.1` |
-| `backoff`, `lodash`, `uuid`, `buffer`, `platform`, `@types/platform` | External | mobius-socket (`backoff`, `lodash`), Call, Line, and the request path (`uuid`), Call and mobius-socket (`buffer`), shared code (`platform`) | Reconnect backoff, utilities, IDs, binary payloads, platform detection | Exact pins except `lodash` (`^4.17.21`) |
-| `typed-emitter` | External (development) | `src/Events/impl/index.ts` | Compile-time event typing only | Exact pin `2.1.0` under `devDependencies`; no runtime code |
+| `xstate` | External | Call | Call and media state machines | Exact pin in `package.json` |
+| `async-mutex` | External | CallingClient, Line, Registration | Shared registration mutex | Exact pin in `package.json` |
+| `ws` | External | mobius-socket (Node builds) | WebSocket transport; the browser build uses the socket shim | Exact pin in `package.json` |
+| `backoff`, `lodash`, `uuid`, `buffer`, `platform`, `@types/platform` | External | mobius-socket (`backoff`, `lodash`), Call, Line, and the request path (`uuid`), Call and mobius-socket (`buffer`), shared code (`platform`) | Reconnect backoff, utilities, IDs, binary payloads, platform detection | Exact pins except `lodash`, which is a range; see `package.json` |
+| `typed-emitter` | External (development) | `src/Events/impl/index.ts` | Compile-time event typing only | Exact pin in `package.json` devDependencies; no runtime code |
 
 No module imports a sibling package's source; all workspace packages resolve through `workspace:*`.
 Shared code and `CallingClient` import each other: `src/Logger/index.ts` and `src/Metrics/index.ts`
@@ -927,7 +927,7 @@ traffic uses HTTP. On `localhost`, `127.0.0.1`, and `web-sdk.webex.com` the `mob
 | `@webex/common` | Webex request/types integration | workspace version |
 | `@webex/internal-plugin-device` | WDM device/service discovery | workspace version |
 | `@webex/internal-plugin-metrics` | metrics transport | workspace version |
-| `@webex/internal-media-core` | WebRTC media and ROAP | `2.32.1` |
+| `@webex/internal-media-core` | WebRTC media and ROAP | exact pin in `package.json` |
 | `@webex/media-helpers` | media stream/effects | workspace version |
 
 In-package shared code:
