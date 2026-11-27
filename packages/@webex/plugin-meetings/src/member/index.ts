@@ -2,11 +2,19 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 import {MEETINGS, _IN_LOBBY_, _NOT_IN_MEETING_, _IN_MEETING_, _OBSERVE_} from '../constants';
+import {
+  E2eeDeviceVerificationState,
+  E2eeIdentityType,
+  E2eeMemberVerificationState,
+  E2eeValidationResult,
+} from '../e2ee/types';
+import type {E2eeDeviceVerification} from '../e2ee/types';
 import {IExternalRoles, IMediaStatus, Participant, ParticipantUrl} from './types';
 
 import MemberUtil from './util';
 
 export type MemberId = string;
+
 /**
  * @class Member
  */
@@ -52,6 +60,10 @@ export default class Member {
     participantUrl?: ParticipantUrl;
     memberId?: MemberId;
   };
+
+  // Per-device E2EE verification, keyed by device URL, applied by the E2EE roster reconciler.
+  e2eeDeviceVerifications: Map<string, E2eeDeviceVerification>;
+  e2eeVerificationState: E2eeMemberVerificationState;
 
   /**
    * @param {Object} participant - the locus participant
@@ -329,6 +341,8 @@ export default class Member {
       participantUrl: undefined,
       memberId: undefined,
     };
+    this.e2eeDeviceVerifications = new Map();
+    this.e2eeVerificationState = E2eeMemberVerificationState.Unknown;
     /**
      * @instance
      * @type {IMediaStatus}
@@ -502,6 +516,161 @@ export default class Member {
    */
   public setIsSelf(flag: boolean) {
     this.isSelf = flag;
+  }
+
+  /**
+   * Replaces this member's per-device E2EE verifications and recomputes the aggregate state.
+   * Called by the E2EE roster reconciler; a member with no matching MLS roster devices is reset.
+   * @param {E2eeDeviceVerification[]} verifications
+   * @returns {undefined}
+   * @public
+   * @memberof Member
+   */
+  public setE2eeDeviceVerifications(verifications: E2eeDeviceVerification[]) {
+    this.e2eeDeviceVerifications = new Map(
+      verifications.map((verification) => [verification.deviceUrl, verification])
+    );
+    this.recomputeE2eeVerificationState();
+  }
+
+  /**
+   * Upserts the verification for a single device and recomputes the aggregate state.
+   * @param {String} deviceUrl
+   * @param {E2eeDeviceVerification} verification
+   * @returns {boolean} whether the verification actually changed.
+   * @public
+   * @memberof Member
+   */
+  public setE2eeDeviceVerification(
+    deviceUrl: string,
+    verification: E2eeDeviceVerification
+  ): boolean {
+    const previous = this.e2eeDeviceVerifications.get(deviceUrl);
+
+    if (previous && JSON.stringify(previous) === JSON.stringify(verification)) {
+      return false;
+    }
+
+    this.e2eeDeviceVerifications.set(deviceUrl, verification);
+    this.recomputeE2eeVerificationState();
+
+    return true;
+  }
+
+  /**
+   * Removes the verification for a single device and recomputes the aggregate state.
+   * @param {String} deviceUrl
+   * @returns {boolean} whether a verification was actually removed.
+   * @public
+   * @memberof Member
+   */
+  public removeE2eeDeviceVerification(deviceUrl: string): boolean {
+    if (!this.e2eeDeviceVerifications.has(deviceUrl)) {
+      return false;
+    }
+
+    this.e2eeDeviceVerifications.delete(deviceUrl);
+    this.recomputeE2eeVerificationState();
+
+    return true;
+  }
+
+  /**
+   * @param {String} deviceUrl
+   * @returns {E2eeDeviceVerification | undefined} the verification for a single device.
+   * @public
+   * @memberof Member
+   */
+  public getE2eeDeviceVerification(deviceUrl: string): E2eeDeviceVerification | undefined {
+    return this.e2eeDeviceVerifications.get(deviceUrl);
+  }
+
+  /**
+   * @returns {E2eeDeviceVerification[]} all per-device verifications for this member.
+   * @public
+   * @memberof Member
+   */
+  public getE2eeDeviceVerifications(): E2eeDeviceVerification[] {
+    return Array.from(this.e2eeDeviceVerifications.values());
+  }
+
+  /**
+   * Recomputes the aggregate E2EE verification state from the per-device X.509 identity results.
+   * A successful X.509 result is classified by its leaf identity type, matching UCF's per-device
+   * identity display; the resulting device states are then aggregated across this Member's devices.
+   * @returns {undefined}
+   * @private
+   * @memberof Member
+   */
+  private recomputeE2eeVerificationState() {
+    const verifications = this.getE2eeDeviceVerifications();
+
+    if (verifications.length === 0) {
+      this.e2eeVerificationState = E2eeMemberVerificationState.Unknown;
+
+      return;
+    }
+
+    const deviceStates = verifications.map((verification) =>
+      this.getE2eeDeviceVerificationState(verification)
+    );
+    const verifiedCount = deviceStates.filter(
+      (state) => state === E2eeDeviceVerificationState.Verified
+    ).length;
+
+    if (verifiedCount === deviceStates.length) {
+      this.e2eeVerificationState = E2eeMemberVerificationState.Verified;
+    } else if (verifiedCount === 0) {
+      this.e2eeVerificationState = deviceStates.every(
+        (state) => state === E2eeDeviceVerificationState.Unknown
+      )
+        ? E2eeMemberVerificationState.Unknown
+        : E2eeMemberVerificationState.Unverified;
+    } else {
+      this.e2eeVerificationState = E2eeMemberVerificationState.PartiallyVerified;
+    }
+  }
+
+  /**
+   * Derives the identity status for one device using the same X.509 result selection and identity
+   * type rules as UCF. `validationResult` is the aggregate credential result, so it is not enough
+   * to classify MultiCredential identities on its own.
+   * @param {E2eeDeviceVerification} verification
+   * @returns {E2eeDeviceVerificationState}
+   * @private
+   * @memberof Member
+   */
+  private getE2eeDeviceVerificationState(
+    verification: E2eeDeviceVerification
+  ): E2eeDeviceVerificationState {
+    const identityResults = verification.identityResults ?? [];
+
+    if (identityResults.length === 0) {
+      return E2eeDeviceVerificationState.Unknown;
+    }
+
+    const identityResult =
+      identityResults.find((result) => result.result === E2eeValidationResult.Success) ??
+      identityResults[0];
+
+    if (!identityResult) {
+      return E2eeDeviceVerificationState.Unknown;
+    }
+
+    if (identityResult.result !== E2eeValidationResult.Success) {
+      return E2eeDeviceVerificationState.Unverified;
+    }
+
+    switch (identityResult.certificateChain[0]?.identityType) {
+      case E2eeIdentityType.WebexMachineIdentity:
+      case E2eeIdentityType.WebexUserIdentity:
+      case E2eeIdentityType.ExternalVerifiedIdentity:
+        return E2eeDeviceVerificationState.Verified;
+      case E2eeIdentityType.WebexAnonymousIdentity:
+        return E2eeDeviceVerificationState.Unverified;
+      default:
+        return E2eeDeviceVerificationState.Unknown;
+    }
   }
 
   /**

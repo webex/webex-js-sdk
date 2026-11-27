@@ -780,6 +780,7 @@ describe('CALLING: Metric tests', () => {
       const mobiusHost = 'mobius-us-east.webex.com';
       const clientRegion = 'US-EAST';
       const countryCode = 'US';
+      const regionCode = 'US-EAST';
 
       const expectedData = {
         tags: {
@@ -794,6 +795,7 @@ describe('CALLING: Metric tests', () => {
           mobius_host: mobiusHost,
           client_region: clientRegion,
           country_code: countryCode,
+          region_code: regionCode,
           tracking_id: trackingId,
         },
         type: METRIC_TYPE.BEHAVIORAL,
@@ -806,7 +808,46 @@ describe('CALLING: Metric tests', () => {
         mobiusHost,
         clientRegion,
         countryCode,
-        trackingId
+        trackingId,
+        regionCode
+      );
+
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.MOBIUS_DISCOVERY, expectedData);
+    });
+
+    it('submit region info metric with only regionCode reported', () => {
+      const trackingId = 'track-region-456';
+      const mobiusHost = 'mobius-eu-central.webex.com';
+      const regionCode = 'EU-CENTRAL';
+
+      const expectedData = {
+        tags: {
+          action: 'region-info',
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
+          mobius_host: mobiusHost,
+          client_region: undefined,
+          country_code: undefined,
+          region_code: regionCode,
+          tracking_id: trackingId,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitRegionInfoMetric(
+        METRIC_EVENT.MOBIUS_DISCOVERY,
+        'region-info',
+        METRIC_TYPE.BEHAVIORAL,
+        mobiusHost,
+        undefined,
+        undefined,
+        trackingId,
+        regionCode
       );
 
       expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.MOBIUS_DISCOVERY, expectedData);

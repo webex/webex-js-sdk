@@ -294,6 +294,42 @@
             </fieldset>
 
 
+            <fieldset id="callQueueSection">
+              <legend>Call Queue</legend>
+              <p>Use a Webex Calling account assigned to a call queue. Queue actions change the selected account.</p>
+              <p id="queue-connection" role="status">Initialize Calling to connect.</p>
+              <div class="u-mv">
+                <label for="queue-line-owner">Secondary line owner ID (optional)</label>
+                <input id="queue-line-owner" type="text" placeholder="Leave empty for the primary line" disabled>
+                <button id="queue-refresh" type="button" disabled>Load queue settings</button>
+                <button id="queue-sync" type="button" disabled>Request event sync</button>
+              </div>
+              <p id="queue-agent-status">Agent status has not been loaded.</p>
+              <div class="u-mv">
+                <button id="queue-sign-in" type="button" disabled>Sign in</button>
+                <button id="queue-sign-out" type="button" disabled>Sign out</button>
+                <label for="queue-status">Agent status</label>
+                <select id="queue-status" disabled>
+                  <option value="AVAILABLE">Available</option>
+                  <option value="UNAVAILABLE">Unavailable</option>
+                  <option value="WRAP_UP">Wrapping Up</option>
+                </select>
+                <button id="queue-set-status" type="button" disabled>Set status</button>
+              </div>
+              <div id="queue-list" aria-live="polite"></div>
+              <div class="queue-logs">
+                <div class="queue-log">
+                  <h3>SDK responses</h3>
+                  <pre id="queue-responses" aria-live="polite">No requests yet.</pre>
+                </div>
+                <div class="queue-log">
+                  <h3>SDK events</h3>
+                  <p>A successful sync response only means the request was accepted; received events appear below.</p>
+                  <pre id="queue-events" aria-live="polite">No events received.</pre>
+                </div>
+              </div>
+            </fieldset>
+
             <!-- Call history section -->
             <fieldset id="callHistorysection">
               <legend>Call History</legend>

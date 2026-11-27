@@ -9,11 +9,13 @@ import uuid from 'uuid';
 import {merge} from 'lodash';
 import {IP_VERSION} from '@webex/plugin-meetings/src/constants';
 import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
+import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 
 describe('plugin-meetings', () => {
   let meetingsRequest;
   let locusDeltaRequestSpy;
   let webex;
+  let supportsWasmStub;
   const geoHintInfoDefaults = {
     countryCode: 'US',
     regionCode: 'WEST-COAST',
@@ -69,6 +71,8 @@ describe('plugin-meetings', () => {
 
   afterEach(() => {
     anonymizeIpSpy.restore();
+    supportsWasmStub?.restore();
+    supportsWasmStub = undefined;
   });
 
   const checkRequest = (expectedParams) => {
@@ -365,6 +369,37 @@ describe('plugin-meetings', () => {
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
         assert.deepEqual(requestParams.body.deviceCapabilities, undefined);
+      });
+
+      it('adds E2EE_1K_SUPPORTED and sets supportsV2E2EEncryption when enableE2ee is set', async () => {
+        webex.meetings.config.enableE2ee = true;
+
+        await meetingsRequest.joinMeeting({});
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, ['E2EE_1K_SUPPORTED']);
+        assert.equal(requestParams.body.supportsV2E2EEncryption, true);
+      });
+
+      it('does not add E2EE_1K_SUPPORTED and leaves supportsV2E2EEncryption false when enableE2ee is not set', async () => {
+        await meetingsRequest.joinMeeting({});
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, undefined);
+        assert.equal(requestParams.body.supportsV2E2EEncryption, false);
+      });
+
+      it('does not advertise E2EE when WebAssembly is unavailable', async () => {
+        webex.meetings.config.enableE2ee = true;
+        supportsWasmStub = sinon
+          .stub(WebCapabilities, 'supportsWasm')
+          .returns(CapabilityState.NOT_CAPABLE);
+
+        await meetingsRequest.joinMeeting({});
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, undefined);
+        assert.equal(requestParams.body.supportsV2E2EEncryption, false);
       });
 
       it('adds deviceCapabilities and locale to request when they are provided', async () => {

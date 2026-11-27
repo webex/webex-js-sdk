@@ -148,6 +148,71 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.meetingLatencies.size, 0);
     });
 
+    describe('takeLatencyTimestampsForLog', () => {
+      it('returns the full snapshot after an insert or overwrite', () => {
+        assert.isUndefined(cdl.takeLatencyTimestampsForLog());
+
+        cdl.saveTimestamp({key: 'client.alert.displayed', value: 10});
+        cdl.saveTimestamp({key: 'client.locus.join.request', value: 20});
+        assert.deepEqual(cdl.takeLatencyTimestampsForLog(), {
+          'client.alert.displayed': 10,
+          'client.locus.join.request': 20,
+        });
+        assert.isUndefined(cdl.takeLatencyTimestampsForLog());
+
+        cdl.saveTimestamp({key: 'client.alert.displayed', value: 30});
+        assert.deepEqual(cdl.takeLatencyTimestampsForLog(), {
+          'client.alert.displayed': 30,
+          'client.locus.join.request': 20,
+        });
+      });
+
+      it('ignores unchanged values and repeated first-only timestamps', () => {
+        cdl.saveTimestamp({key: 'client.alert.displayed', value: 10});
+        cdl.saveTimestamp({key: 'client.media.rx.start', value: 20});
+        assert.deepEqual(cdl.takeLatencyTimestampsForLog(), {
+          'client.alert.displayed': 10,
+          'client.media.rx.start': 20,
+        });
+
+        cdl.saveTimestamp({key: 'client.alert.displayed', value: 10});
+        cdl.saveTimestamp({key: 'client.media.rx.start', value: 30});
+        assert.isUndefined(cdl.takeLatencyTimestampsForLog());
+      });
+
+      it('returns a snapshot when a local SDP offer deletes the remote timestamp', () => {
+        cdl.saveTimestamp({key: 'client.media-engine.local-sdp-generated', value: 10});
+        cdl.saveTimestamp({key: 'client.media-engine.remote-sdp-received', value: 20});
+        assert.deepEqual(cdl.takeLatencyTimestampsForLog(), {
+          'client.media-engine.local-sdp-generated': 10,
+          'client.media-engine.remote-sdp-received': 20,
+        });
+
+        cdl.saveTimestamp({key: 'client.media-engine.local-sdp-generated', value: 10});
+        assert.deepEqual(cdl.takeLatencyTimestampsForLog(), {
+          'client.media-engine.local-sdp-generated': 10,
+        });
+
+        cdl.saveTimestamp({key: 'client.media-engine.remote-sdp-received', value: 30});
+        assert.deepEqual(cdl.takeLatencyTimestampsForLog(), {
+          'client.media-engine.local-sdp-generated': 10,
+          'client.media-engine.remote-sdp-received': 30,
+        });
+      });
+
+      it('returns an empty snapshot once when a clear removes timestamps', () => {
+        cdl.clearTimestamps();
+        assert.isUndefined(cdl.takeLatencyTimestampsForLog());
+        cdl.saveTimestamp({key: 'client.alert.displayed', value: 10});
+        assert.deepEqual(cdl.takeLatencyTimestampsForLog(), {'client.alert.displayed': 10});
+
+        cdl.clearTimestamps();
+        assert.deepEqual(cdl.takeLatencyTimestampsForLog(), {});
+        cdl.clearTimestamps();
+        assert.isUndefined(cdl.takeLatencyTimestampsForLog());
+      });
+    });
+
     describe('locus sync latencies', () => {
       it('uses pending sync backoff latency when sync starts', () => {
         cdl.saveLatency('internal.client.locus.sync.random.backoff', 10.4, {

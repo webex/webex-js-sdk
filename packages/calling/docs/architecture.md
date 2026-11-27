@@ -403,6 +403,7 @@ its publication state, owner, and source; exact definitions stay in the native d
 | `call-sdk` (published) | SDK | [calling](../src/CallingClient/calling/docs/README.md) | Host applications, Line | Semver | `package.json`, declarations in `src/CallingClient/calling/types.ts` |
 | `call-history-sdk` (published) | SDK | [CallHistory](../src/CallHistory/docs/README.md) | Host applications | Semver | `package.json`, declarations in `src/CallHistory/types.ts` |
 | `call-recording-sdk` (published) | SDK | [CallRecording](../src/CallRecording/docs/README.md) | Host applications | Semver | `package.json`, declarations in `src/CallRecording/types.ts` |
+| `call-queue-sdk` (published) | SDK | [CallQueue](../src/CallQueue/docs/README.md) | Host applications | Semver | `package.json`, declarations in `src/CallQueue/types.ts` |
 | `call-settings-sdk` (published) | SDK | [CallSettings](../src/CallSettings/docs/README.md) | Host applications | Semver | `package.json`, declarations in `src/CallSettings/types.ts` |
 | `contacts-sdk` (published) | SDK | [Contacts](../src/Contacts/docs/README.md) | Host applications | Semver | `package.json`, declarations in `src/Contacts/types.ts` |
 | `voicemail-sdk` (published) | SDK | [Voicemail](../src/Voicemail/docs/README.md) | Host applications | Semver | `package.json`, declarations in `src/Voicemail/types.ts` |
@@ -463,6 +464,7 @@ exports of shared code that no module contract names.
 | export.createmicrophonestream | `@webex/media-helpers` | `createMicrophoneStream` | media-helper factory | Public microphone/media helper surface re-exported by the package. | Semver-controlled | external `@webex/media-helpers` | `src/index.ts` |
 | export.createvoicemailclient | `Voicemail` | `createVoicemailClient` | `createVoicemailClient(webex, logger): IVoicemail` | Voicemail client factory. | Semver-controlled | `src/Voicemail/Voicemail.ts` | `src/index.ts` |
 | export.createcallrecordingclient | `CallRecording` | `createCallRecordingClient` | `createCallRecordingClient(webex, logger): ICallRecording` | Call-recording client factory. | Semver-controlled | `src/CallRecording/CallRecording.ts` | `src/index.ts` |
+| export.createcallqueueclient | `CallQueue` | `createCallQueueClient` | `createCallQueueClient(webex, logger, options): CallQueueClient` | Call-queue agent status client factory; options supplies the public API origin. | Semver-controlled | `src/CallQueue/CallQueue.ts` | `src/index.ts` |
 | export.logger | `Logger` | `Logger` | language-native export | Public package type/value `Logger`. | Semver-controlled | `src/Logger/index.ts` | `src/index.ts` |
 | export.noisereductioneffect | `@webex/media-helpers` | `NoiseReductionEffect` | language-native export | Public microphone/media helper surface re-exported by the package. | Semver-controlled | external `@webex/media-helpers` | `src/index.ts` |
 | export.error-layer | `Errors` | `ERROR_LAYER` | language-native export | Public typed error contract `ERROR_LAYER`. | Semver-controlled | `src/Errors/types.ts` | `src/index.ts` |
@@ -471,6 +473,7 @@ exports of shared code that no module contract names.
 | export.icallhistory | `CallHistory` | `ICallHistory` | language-native export | Public TypeScript interface `ICallHistory`. | Semver-controlled | `src/CallHistory/types.ts` | `src/index.ts` |
 | export.janusresponseevent | `CallHistory` | `JanusResponseEvent` | language-native export | Public event key or payload contract `JanusResponseEvent`. | Semver-controlled | `src/CallHistory/types.ts` | `src/index.ts` |
 | export.icallrecording | `CallRecording` | `ICallRecording` | language-native export | Public TypeScript interface `ICallRecording`. | Semver-controlled | `src/CallRecording/types.ts` | `src/index.ts` |
+| export.icallqueue | `CallQueue` | `ICallQueue` | language-native export | Public TypeScript interface `ICallQueue`. | Semver-controlled | `src/CallQueue/types.ts` | `src/index.ts` |
 | export.recording | `CallRecording` | `Recording` | language-native export | Public call-recording contract `Recording`. | Semver-controlled | `src/CallRecording/types.ts` | `src/index.ts` |
 | export.recordinglistresponse | `CallRecording` | `RecordingListResponse` | language-native export | Public call-recording contract `RecordingListResponse`. | Semver-controlled | `src/CallRecording/types.ts` | `src/index.ts` |
 | export.recordingmetadata | `CallRecording` | `RecordingMetadata` | language-native export | Public call-recording contract `RecordingMetadata`. | Semver-controlled | `src/CallRecording/types.ts` | `src/index.ts` |
@@ -561,7 +564,7 @@ Events published to consumers:
 | events.calling-client | `CallingClient` | `CALLING_CLIENT_EVENT_KEYS` | publish | `src/Events/types.ts` | synchronous EventEmitter callback after module state update | enum values/payload types are semver-sensitive | `src/index.ts` |
 | events.call | `CallingClient/calling` | `CALL_EVENT_KEYS` | publish | `src/Events/types.ts` | synchronous EventEmitter callback; remote ordering follows Mobius/ROAP | enum values/payload types are semver-sensitive | `src/index.ts` |
 | events.line | `CallingClient/line` | `LINE_EVENTS`, `LINE_EVENT_KEYS` | publish | `src/CallingClient/line/types.ts`; `src/Events/types.ts` | synchronous EventEmitter callback after line/registration transition | enum values/payload types are semver-sensitive | `src/index.ts` |
-| events.common | `CallHistory`, `CallRecording`, `Voicemail` | `COMMON_EVENT_KEYS` | publish/consume | `src/Events/types.ts` | remote delivery/order follows Mercury; local forwarding is synchronous | enum values/payload types are semver-sensitive | `src/index.ts` |
+| events.common | `CallHistory`, `CallRecording`, `CallQueue`, `Voicemail` | `COMMON_EVENT_KEYS` | publish/consume | `src/Events/types.ts` | remote delivery/order follows Mercury; local forwarding is synchronous | enum values/payload types are semver-sensitive | `src/index.ts` |
 | events.mobius-disconnect | `mobius-socket` integration | `MOBIUS_SOCKET_DISCONNECT_REASON`, `MobiusSocketDisconnectedEvent` | publish | `src/Events/types.ts` | emitted through CallingClient integration, not a public MobiusSocket class | additive payload evolution only | `src/index.ts` |
 
 Internal package surfaces. These are cross-module implementation contracts. They are not exported from

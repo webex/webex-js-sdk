@@ -17,6 +17,7 @@ export enum COMMON_EVENT_KEYS {
   CALL_RECORDING_CREATED = 'callRecording:created',
   CALL_RECORDING_UPDATED = 'callRecording:updated',
   CALL_RECORDING_DELETED = 'callRecording:deleted',
+  CALL_QUEUE_UPDATED = 'callQueue:updated',
 }
 
 export enum LINE_EVENT_KEYS {

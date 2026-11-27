@@ -39,8 +39,8 @@ package is a library published to npm, so that artifact is omitted in `.sdd/mani
 | -------- | ---- | -------------- | ----- | ------ | ------------- |
 | Package | Architecture | `docs/architecture.md` | @webex/web-sdk | Active | 2026-11-16 |
 | Package | Agent entry | `AGENTS.md` | @webex/web-sdk | Active | 2026-11-16 |
-| 13 modules | Module | listed in the Module registry below | @webex/web-sdk | Active | 2026-11-16 |
-| `calling-client-sdk`, `line-sdk`, `call-sdk`, `call-history-sdk`, `call-recording-sdk`, `call-settings-sdk`, `contacts-sdk`, `voicemail-sdk`, `sdk-connector-sdk` | Contract (published) | `package.json` | @webex/web-sdk | Active | 2026-11-16 |
+| 14 modules | Module | listed in the Module registry below | @webex/web-sdk | Active | 2026-11-16 |
+| `calling-client-sdk`, `line-sdk`, `call-sdk`, `call-history-sdk`, `call-recording-sdk`, `call-queue-sdk`, `call-settings-sdk`, `contacts-sdk`, `voicemail-sdk`, `sdk-connector-sdk` | Contract (published) | `package.json` | @webex/web-sdk | Active | 2026-11-16 |
 | `registration-internal`, `caller-id-internal`, `metrics-internal`, `sdk-connector-internal`, `mobius-socket-internal` | Contract (internal) | each module's `types.ts`, indexed in the architecture | @webex/web-sdk | Active | 2026-11-16 |
 
 No repository-local incident/RCA index was found under `packages/calling/`. Add references here when an authoritative incident source is supplied.
@@ -51,6 +51,7 @@ No repository-local incident/RCA index was found under `packages/calling/`. Add 
 |---|---|---|---|
 | `src/CallHistory/` | createCallHistoryClient(webex, logger) -> ICallHistory | Partial | `src/CallHistory/docs/README.md` |
 | `src/CallRecording/` | createCallRecordingClient(webex, logger) -> ICallRecording | Partial | `src/CallRecording/docs/README.md` |
+| `src/CallQueue/` | createCallQueueClient(webex, logger, options) -> CallQueueClient | Untracked | `src/CallQueue/docs/README.md` |
 | `src/CallSettings/` | createCallSettingsClient(webex, logger) -> ICallSettings | Partial | `src/CallSettings/docs/README.md` |
 | `src/CallingClient/` | async createClient(webex, config?) resolves an ICallingClient | Partial | `src/CallingClient/docs/README.md` |
 | ↳ `src/CallingClient/calling/` | ICall and CallManager call lifecycle operations | Partial | `src/CallingClient/calling/docs/README.md` |

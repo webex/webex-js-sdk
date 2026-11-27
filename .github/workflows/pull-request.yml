@@ -158,6 +158,9 @@ jobs:
         run: ./scripts/setup-karma-https.sh --ci
 
       - name: Test - Browser
+        env:
+          WEBEX_TEST_USERS_ORG_ADMIN_USER: ${{ secrets.WEBEX_TEST_USERS_ORG_ADMIN_USER }}
+          WEBEX_TEST_USERS_ORG_ADMIN_PASSWORD: ${{ secrets.WEBEX_TEST_USERS_ORG_ADMIN_PASSWORD }}
         run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.changed }}' run test:browser
 
 
