@@ -42,6 +42,7 @@ describe('LLMChannel inherited Mercury lifecycle', () => {
 
     // Keep registration, URL preparation, backoff, and event handling real. Only socket I/O is fake.
     socketOpen = sinon.stub(Socket.prototype, 'open').callsFake(function open(socketUrl) {
+      if (!socketUrl) return Promise.reject(new Error('`url` is required'));
       Object.defineProperty(this, 'url', {value: socketUrl, configurable: true});
 
       return Promise.resolve();
@@ -266,6 +267,69 @@ describe('LLMChannel inherited Mercury lifecycle', () => {
       await registerNext();
       assert.notStrictEqual(channel.getSocket(), oldSocket);
       assert.equal(new URL(channel.getSocket().url).pathname, new URL(nextSocketUrl).pathname);
+    });
+
+    it('uses the prepared replacement route if the catalog changes while the old socket closes', async () => {
+      const oldSocket = await connectLLM();
+      let finishClose;
+      webex.internal.feature.getFeature
+        .withArgs('developer', 'web-high-availability')
+        .resolves(true);
+      const convert = sinon.stub().returns(nextSocketUrl);
+      webex.internal.services = {
+        convertUrlToPriorityHostUrl: convert,
+        isValidHost: sinon.stub().returns(false),
+      };
+      webex.internal.device.refresh = sinon.stub().resolves();
+      Socket.prototype.close.callsFake(function close(options = permanentClose) {
+        this.emit('close', options);
+        if (this === oldSocket) {
+          return new Promise((resolve) => {
+            finishClose = resolve;
+          });
+        }
+
+        return Promise.resolve();
+      });
+      const replacement = registerNext();
+      await clock.tickAsync(0);
+      assert.isFunction(finishClose);
+      convert.returns(undefined);
+      finishClose();
+      await replacement;
+
+      assert.isTrue(channel.isConnected());
+      assert.equal(new URL(channel.getSocket().url).pathname, new URL(nextSocketUrl).pathname);
+      assert.calledOnce(convert);
+    });
+
+    it('resolves the current route again after a prepared replacement attempt fails', async () => {
+      const oldSocket = await connectLLM();
+      const retryUrl = 'wss://llm-retry.example.com/registrations/another-meeting';
+      webex.internal.feature.getFeature
+        .withArgs('developer', 'web-high-availability')
+        .resolves(true);
+      const convert = sinon.stub().returns(nextSocketUrl);
+      webex.internal.services = {
+        convertUrlToPriorityHostUrl: convert,
+        isValidHost: sinon.stub().returns(false),
+      };
+      webex.internal.device.refresh = sinon.stub().resolves();
+      Socket.prototype.close.callsFake(function close(options = permanentClose) {
+        if (this === oldSocket) convert.returns(retryUrl);
+        this.emit('close', options);
+
+        return Promise.resolve();
+      });
+      socketOpen.onSecondCall().rejects(new Error('First replacement attempt failed'));
+      const replacement = registerNext();
+      await clock.tickAsync(10);
+      await replacement;
+
+      assert.equal(new URL(socketOpen.secondCall.args[0]).host, new URL(nextSocketUrl).host);
+      assert.equal(new URL(socketOpen.thirdCall.args[0]).host, new URL(retryUrl).host);
+      assert.calledTwice(convert);
+      assert.isTrue(channel.isConnected());
     });
 
     it('ignores replacement route preparation that completes after explicit disconnect', async () => {
@@ -671,6 +735,36 @@ describe('LLMChannel inherited Mercury lifecycle', () => {
       assert.notCalled(online);
     });
 
+    it('awaits closure of a cancelled shutdown candidate without waiting for authorization', async () => {
+      await connectLLM();
+      socketOpen.onSecondCall().returns(new Promise(() => {}));
+      await receiveShutdown();
+      const candidate = socketOpen.secondCall.thisValue;
+      let finishCandidateClose;
+      Socket.prototype.close.callsFake(function close(options = permanentClose) {
+        if (this === candidate) {
+          return new Promise((resolve) => {
+            finishCandidateClose = resolve;
+          });
+        }
+        this.emit('close', options);
+
+        return Promise.resolve();
+      });
+      let disconnected = false;
+      const disconnect = channel.disconnect(permanentClose).then(() => {
+        disconnected = true;
+      });
+      await clock.tickAsync(0);
+
+      assert.isFunction(finishCandidateClose);
+      assert.isFalse(disconnected);
+      assert.deepEqual(candidate.eventNames(), []);
+      finishCandidateClose();
+      await disconnect;
+      assert.isTrue(disconnected);
+    });
+
     ['disconnect', 'network close'].forEach((cause) => {
       it(`discards a late shutdown replacement after ${cause}`, async () => {
         const oldSocket = await connectLLM();
@@ -691,6 +785,12 @@ describe('LLMChannel inherited Mercury lifecycle', () => {
           oldSocket.emit('close', {code: 1006, reason: ''});
           await clock.tickAsync(0);
         }
+        const candidate = socketOpen.secondCall.thisValue;
+        assert.calledOn(Socket.prototype.close, candidate);
+        const forwardMessage = sinon.spy(channel, '_onmessage');
+        candidate.emit('message', {data: {type: 'cancelled-candidate'}});
+        assert.notCalled(forwardMessage);
+        assert.deepEqual(candidate.eventNames(), []);
         const activeSocket = channel.getSocket();
         const activeUrl = channel.resolvedWebSocketUrl;
 

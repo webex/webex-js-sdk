@@ -40,7 +40,9 @@ supersedes the older session-map descriptions below for connection, replacement,
   then emits `event:mercury_shutdown_switchover_complete` with `{url}` if that socket is still active.
   This lets meeting consumers restore subscriptions and datasets and board consumers refresh
   shared socket references. No server-side subscription-loss guarantee is implied.
-- Failed candidates retain the active connection. Disconnect and ordinary reconnect cancel
+- Failed candidates retain the active connection. Aborting a shutdown attempt immediately detaches
+  the candidate socket listeners and closes the candidate without waiting for authorization.
+  Disconnect waits for candidate closure as well as active socket closure. Disconnect and ordinary reconnect cancel
   speculative shutdown work. An old socket's early 4001 close allows a pending candidate to finish.
   Late URL preparation or open completion cannot open or promote a
   superseded attempt. A retained old socket's 4001 close leaves the active connection intact.

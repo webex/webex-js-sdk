@@ -163,16 +163,17 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
           : webSocketUrl;
 
         const connectStart = performance.now();
+        let preparedUrl: string | undefined;
 
         try {
           if (urlsChanged && (this.connected || this.connecting || this.getSocket())) {
             // Mercury can reject a service-returned URL if HA cannot resolve its catalog route.
             // Check that before taking a working registration offline.
-            const resolvedUrl = await this._prepareUrl(connectUrl);
+            preparedUrl = await this._prepareUrl(connectUrl);
             if (this.connectingPromise !== connectionPromise) {
               return;
             }
-            if (!resolvedUrl) {
+            if (!preparedUrl) {
               throw new Error('LLM registration WebSocket URL could not be resolved');
             }
 
@@ -185,7 +186,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
           registrationPrepared = true;
           this.webSocketUrl = webSocketUrl;
           this.binding = binding;
-          await this.connect(connectUrl);
+          await this._connect(connectUrl, false, {preparedUrl});
         } catch (error) {
           // Registration succeeded; connection preparation or connect failed. Attach its time so
           // callers don't misreport a websocket failure as a registration that never completed.
