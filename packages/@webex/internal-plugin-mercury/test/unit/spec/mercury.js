@@ -811,19 +811,16 @@ describe('plugin-mercury', () => {
           return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
             // By this time backoffCall and mercury socket should be defined by the
             // 'connect' call
-            assert.isDefined(
-              mercury.backoffCall,
-              'Mercury backoffCall is not defined'
-            );
+            assert.isDefined(mercury.backoffCall, 'Mercury backoffCall is not defined');
             assert.isDefined(mercury.socket, 'Mercury socket is not defined');
             // Calling disconnect will abort the backoffCall, close the socket, and
             // reject the connect
-            mercury.disconnect();
+            const disconnected = mercury.disconnect();
             assert.notExists(mercury.backoffCall, 'Mercury backoffCall is still defined');
-            // The socket will never be unset (which seems bad)
-            assert.isDefined(mercury.socket, 'Mercury socket is not defined');
 
-            return assert.isRejected(promise).then((error) => {
+            return Promise.all([assert.isRejected(promise), disconnected]).then(() => {
+              assert.isUndefined(mercury.socket, 'Mercury socket is cleared');
+              assert.isFalse(mercury.connecting);
               // connection did not fail, so no last error
               assert.isUndefined(mercury.getLastError());
             });
@@ -1794,6 +1791,7 @@ describe('plugin-mercury', () => {
         });
 
         it('stores the resolved (pre-proxy) URL in resolvedWebSocketUrl', async () => {
+          mercury.socket = mockSocket;
           await mercury._prepareAndOpenSocket(mockSocket, 'ws://original.com', false);
 
           // The stored value is the URL resolved by _prepareUrl, not the raw
