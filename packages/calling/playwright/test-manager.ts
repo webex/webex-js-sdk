@@ -13,8 +13,6 @@ import {
   verifySDKInitialized,
   setServiceIndicator,
   setEnvironmentToInt,
-  setMobiusWebSocket,
-  verifyMobiusWebSocketEnabled,
 } from './utils/setup';
 import {registerLine, verifyLineRegistered, unregisterLine} from './utils/registration';
 import {cleanupActiveCalls, getMediaStreams} from './utils/call';
@@ -150,15 +148,11 @@ export class TestManager {
       if (config.service) {
         await setServiceIndicator(page, config.service);
       }
+      // initializeCallingSDK pins the sample app override and asserts the resulting
+      // transport, so the backend flag can never contradict the mode the test expects.
       const mobiusWss = config.mobiusWss ?? isMobiusWsMode();
-      if (mobiusWss) {
-        await setMobiusWebSocket(page, true);
-      }
-      await initializeCallingSDK(page, getToken(role, this.isInt));
+      await initializeCallingSDK(page, getToken(role, this.isInt), mobiusWss);
       await verifySDKInitialized(page);
-      if (mobiusWss) {
-        await verifyMobiusWebSocketEnabled(page);
-      }
 
       if (config.register) {
         await registerLine(page);
