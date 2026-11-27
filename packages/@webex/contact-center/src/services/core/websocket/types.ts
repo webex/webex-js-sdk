@@ -1,8 +1,16 @@
-/** Callbacks for ordinary connection setup and failure handling. */
-export type ConnectionResetOptions = {
-  getWebSocketUrl: () => Promise<string>;
-  isTerminalFailure: (error: unknown) => boolean;
-  onTerminalFailure: (error: unknown) => void;
+import {SubscribeRequest} from '../../../types';
+import type WebSocketManager from './WebSocketManager';
+
+/**
+ * Options for initializing a connection service.
+ * @typedef ConnectionServiceOptions
+ * @property {WebSocketManager} webSocketManager - The WebSocket manager instance.
+ * @property {SubscribeRequest} subscribeRequest - The subscribe request payload.
+ * @ignore
+ */
+export type ConnectionServiceOptions = {
+  webSocketManager: WebSocketManager;
+  subscribeRequest: SubscribeRequest;
 };
 
 /**
@@ -19,4 +27,14 @@ export type ConnectionLostDetails = {
   isRestoreFailed: boolean;
   isSocketReconnected: boolean;
   isKeepAlive: boolean;
+};
+
+/**
+ * Properties for connection configuration.
+ * @typedef ConnectionProp
+ * @property {number} lostConnectionRecoveryTimeout - Timeout in milliseconds for lost connection recovery.
+ * @ignore
+ */
+export type ConnectionProp = {
+  lostConnectionRecoveryTimeout: number;
 };

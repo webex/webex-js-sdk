@@ -55,9 +55,9 @@ import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, AGENT_EVENTS} from './services/agent/types';
-import {getStationRecoveryFailureCategory} from './services/agent';
 import {
   getErrorDetails,
+  getStationRecoveryFailureCategory,
   isRecord,
   isValidDialNumber,
   sanitizeForObservability,
@@ -69,7 +69,11 @@ import {
   getSubscriptionMismatchReason,
   isRegionRecoveryError,
 } from './services/core/Utils';
-import type {MultiRegionSettings, SystemRegionSwitch} from './services/config/types';
+import type {
+  MultiRegionSettings,
+  SystemRegionSwitch,
+  WelcomeResponse,
+} from './services/config/types';
 import type * as Agent from './services/agent/types';
 import {REFERENCE_SERVING_REGIONS} from './services/core/constants';
 import type {RecoveryFailure} from './services/core/types';
@@ -437,7 +441,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private autoAvailable?: AutoAvailable;
 
   private multiRegionSettings: MultiRegionSettings | null = null;
-  private primaryWebSocketUrl?: string;
   private servingRegion?: string;
 
   private lastPublishedRegionState?: RegionRecoveryState;
@@ -587,8 +590,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     clearTimeout(recovery.timer);
     recovery.detach();
     // Completed recovery has handed its socket back to ordinary monitoring.
-    if (this.recoveryPhase !== 'ready' && this.recoveryPhase !== 'manualLoginRequired')
+    if (this.recoveryPhase !== 'ready' && this.recoveryPhase !== 'manualLoginRequired') {
       recovery.controller.abort();
+      this.services.webSocketManager.close(false, 'regionRecoveryEnded');
+    }
     const {attempt} = recovery;
     if (attempt)
       this.recordRecoveryDiagnostic('admission', 'cancelled', attempt.attempt, attempt.startedAt);
@@ -657,37 +662,29 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.servingRegion = REFERENCE_SERVING_REGIONS.find((region) => labels.includes(region));
   }
 
-  private async getPrimaryWebSocketUrl(): Promise<string> {
-    const signal = this.registrationAbortController.signal;
-    let url: string;
-    try {
-      url = await this.services.subscribe(this.getConnectionConfig(), SUBSCRIBE_API);
-    } catch (error) {
-      if (!getSubscriptionMismatchReason(error) || signal.aborted) throw error;
+  private async connectPrimaryWebsocket(
+    refreshServices = false,
+    signal = this.registrationAbortController.signal
+  ): Promise<WelcomeResponse> {
+    if (refreshServices) {
       this.handleSubscriptionMismatch();
       await this.$webex.internal.services.updateServices({forceRefresh: true});
-      if (signal.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-      url = await this.services.subscribe(this.getConnectionConfig(), SUBSCRIBE_API);
     }
     if (signal.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-    this.primaryWebSocketUrl = url;
+    try {
+      const manager = this.services.webSocketManager;
+      const welcome = await manager.initWebSocket({
+        body: this.getConnectionConfig(),
+        resource: SUBSCRIBE_API,
+      });
+      this.rememberServingRegion(manager.getUrl());
 
-    return url;
-  }
+      return welcome;
+    } catch (error) {
+      if (refreshServices || !getSubscriptionMismatchReason(error) || signal.aborted) throw error;
 
-  private resetOrdinaryConnection(): void {
-    const orgId = this.registrationOrgId;
-    const signal = this.registrationAbortController.signal;
-    this.services.connectionService.reset({
-      getWebSocketUrl: () => this.getPrimaryWebSocketUrl(),
-      isTerminalFailure: (error) => this.isTerminalConnectionFailure(error),
-      onTerminalFailure: (error) => {
-        if (!this.isCurrentRegistration(orgId, signal)) return;
-        const pending = this.pendingRegistration;
-        if (pending?.controller.signal === signal) pending.rejectConnectionWait?.(error as Error);
-        this.handleRecoveryTerminal(error);
-      },
-    });
+      return this.connectPrimaryWebsocket(true, signal);
+    }
   }
 
   /** Registration owns its relogin even when ordinary recovery supplies the primary. */
@@ -806,7 +803,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.servingRegion = undefined;
     this.cancelRegionRecovery();
     this.fenceRecoveryWork('waiting');
-    this.services.connectionService.pause();
+    this.services.connectionService.stop();
     this.pauseRtd();
     if (cancelled) this.publishRegionState(cancelled);
     this.resetRegionState();
@@ -868,12 +865,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.isCurrentRecovery(recovery) && !disconnected && manager.hasUsableSocket();
     manager.on('socketClose', onClose);
     try {
-      const url = await this.getPrimaryWebSocketUrl();
-      if (!this.isCurrentRecovery(recovery)) return;
-      const welcome = await manager.initWebSocket({url, signal: recovery.controller.signal});
+      const welcome = await this.connectPrimaryWebsocket(false, recovery.controller.signal);
       if (!this.isCurrentRecovery(recovery)) return;
       welcomed = true;
-      this.rememberServingRegion(url);
       const slot = recovery.attempt;
       const agentId = isRecord(welcome) ? welcome.agentId : undefined;
       this.recordRecoveryDiagnostic(
@@ -887,7 +881,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (!isConnected()) throw new Error('WebSocket closed');
       this.recordRecoveryDiagnostic('admission', 'succeeded', attempt, recovery.attempt.startedAt);
       recovery.attempt = undefined;
-      this.resetOrdinaryConnection();
+      this.services.connectionService.reset();
       if (publishOutcome) publishOutcome();
     } catch (error) {
       if (!this.isCurrentRecovery(recovery)) return;
@@ -1148,7 +1142,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.updateWellnessSession();
     this.suppressAutomaticRelogin = true;
     this.pauseRtd();
-    if (wasRegional) this.resetOrdinaryConnection();
+    if (wasRegional) this.services.connectionService.reset();
     this.resetRegionState();
     if (this.recoveryPhase !== 'unavailable') this.recoveryPhase = 'idle';
     if (cancelled) this.publishRegionState(cancelled);
@@ -1295,6 +1289,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.services = Services.getInstance({
         webex: this.$webex,
+        connectionConfig: this.getConnectionConfig(),
       });
 
       this.webCallingService = new WebCallingService(this.$webex);
@@ -1519,14 +1514,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const manager = this.services.rtdWebSocketManager;
     const startedAt = Date.now();
     manager.on('message', this.handleRTDWebsocketMessage);
-    const connection = this.services
-      .subscribe(this.getConnectionConfig(), RTD_SUBSCRIBE_API)
-      .then((url) => {
-        if (this.rtdConnection !== connection || signal.aborted)
-          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-
-        return manager.initWebSocket({url, signal});
-      });
+    const connection = manager.initWebSocket({
+      body: this.getConnectionConfig(),
+      resource: RTD_SUBSCRIBE_API,
+    });
     this.rtdConnection = connection;
     connection.then(
       () => {
@@ -1693,6 +1684,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     } catch (error) {
       if (this.registrationAbortController === controller) {
         controller.abort();
+        this.services.connectionService.stop();
+        this.services.webSocketManager.close(false, 'registrationFailed');
+        this.pauseRtd();
         if (this.recovery?.registration === registration)
           this.finishRegionRecovery('recovery-failed');
         this.multiRegionSettings = null;
@@ -1776,6 +1770,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.services.webSocketManager.off('message', this.handleWebsocketMessage);
       this.services.rtdWebSocketManager.off('message', this.handleRTDWebsocketMessage);
       this.services.connectionService.off('connectionLost', this.handleConnectionLost);
+      this.services.connectionService.off('reconnectFailed', this.handleReconnectFailure);
 
       const {publishError: wxAppPublishError} = await this.teardownWxAppLocalState({
         clearInitFlag: true,
@@ -1941,9 +1936,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.assertInitialRegistration(attempt);
       let data: unknown;
       try {
-        const url = await this.getPrimaryWebSocketUrl();
-        data = await this.services.webSocketManager.initWebSocket({url, signal});
-        this.rememberServingRegion(url);
+        data = await this.connectPrimaryWebsocket();
       } catch (error) {
         if (
           this.isCurrentRegistration(orgId, signal) &&
@@ -1971,7 +1964,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       delete profile.multiRegionSettings;
       this.agentConfig = profile;
       this.registrationAgentId = agentId;
-      this.resetOrdinaryConnection();
+      this.services.connectionService.reset();
       this.multiRegionSettings = multiRegionSettings ?? null;
       this.taskManager.registerIncomingCallEvent();
 
@@ -3379,7 +3372,27 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private setupEventListeners() {
     this.services.connectionService.off('connectionLost', this.handleConnectionLost);
     this.services.connectionService.on('connectionLost', this.handleConnectionLost);
+    this.services.connectionService.off('reconnectFailed', this.handleReconnectFailure);
+    this.services.connectionService.on('reconnectFailed', this.handleReconnectFailure);
   }
+
+  private handleReconnectFailure = async (error: unknown): Promise<void> => {
+    if (!this.isTerminalConnectionFailure(error)) return;
+    const orgId = this.registrationOrgId;
+    const signal = this.registrationAbortController.signal;
+    this.services.connectionService.stop();
+    try {
+      if (!getSubscriptionMismatchReason(error)) throw error;
+      const welcome = await this.connectPrimaryWebsocket(true);
+      if (!this.isCurrentRegistration(orgId, signal)) return;
+      this.assertPrimaryIdentity(isRecord(welcome) ? welcome.agentId : undefined);
+      this.services.connectionService.reset(true);
+    } catch (failure) {
+      if (!this.isCurrentRegistration(orgId, signal)) return;
+      this.pendingRegistration?.rejectConnectionWait?.(failure as Error);
+      this.handleRecoveryTerminal(failure);
+    }
+  };
 
   /**
    * Returns the connection configuration
@@ -3411,7 +3424,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         method: METHODS.HANDLE_CONNECTION_LOST,
       });
     } else if (msg.isSocketReconnected) {
-      if (this.primaryWebSocketUrl) this.rememberServingRegion(this.primaryWebSocketUrl);
+      this.rememberServingRegion(this.services.webSocketManager.getUrl());
       // TODO: Emit an event saying connection is re-estabilished
       LoggerProxy.log(
         'event=handleConnectionReconnect | Connection reconnected attempting to request silent relogin',

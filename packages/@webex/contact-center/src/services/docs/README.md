@@ -78,7 +78,7 @@ Related context: [documentation index](../../../docs/index.md) ·
 | `src/services/WebCallingService.ts` | Browser calling over `@webex/calling`, line registration, voice connection state, call-to-task mapping |
 | `src/services/WebexCrossClientService.ts`, `src/services/AnswerCallOnWebexService.ts`, `src/services/WxAppTelephonyMercurySync.ts`, `src/services/wxAppDiagnosticLogging.ts`, `src/services/wxAppTelephonyUtils.ts` | wxApp Better Together: usersub publish, Hydra telephony REST, Mercury mute sync, diagnostics, call-not-found classification |
 | `src/services/core/Utils.ts` | `isAllowedUrlHost` (hostname equals or ends with `.` plus an allowed domain) and `getErrorDetails` used by these services |
-| `test/unit/spec/cc.ts` | READY calls `Services.getInstance` (mocked); no direct test of the `Services` constructor |
+| `test/unit/spec/cc.ts` | READY calls `Services.getInstance` (mocked); real CC wiring tests also exercise the constructor |
 | `test/unit/spec/services/AddressBook.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/UserPreference.ts` | Request shapes, defaults, overrides, cache behavior, metrics, and failures of the data services |
 | `test/unit/spec/services/ApiAiAssistant.ts`, `test/unit/spec/services/WebCallingService.ts` | Wellness, transcript validation, RTD correlation; line registration, RTMS fallback, voice state |
 | `test/unit/spec/services/WebexCrossClientService.ts`, `test/unit/spec/services/AnswerCallOnWebexService.ts`, `test/unit/spec/services/WxAppTelephonyMercurySync.ts`, `test/unit/spec/services/wxAppDiagnosticLogging.ts` | The wxApp Better Together services |
@@ -156,7 +156,7 @@ changes there.
 
 | Contract ID | Surface | Consumer | Compatibility commitment | Source |
 | --- | --- | --- | --- | --- |
-| `contact-center-services` | `Services.getInstance({webex})`, `Services.subscribe(body, resource)`, and its readonly collaborator fields (`agent`, `config`, `contact`, `dialer`, `webSocketManager`, `rtdWebSocketManager`, `connectionService`) | `ContactCenter` only (`@private`, `@ignore`) | Internal; one instance per process | `src/services/index.ts` |
+| `contact-center-services` | `Services.getInstance({webex, connectionConfig})` and its readonly collaborator fields (`agent`, `config`, `contact`, `dialer`, `webSocketManager`, `rtdWebSocketManager`, `connectionService`) | `ContactCenter` only (`@private`, `@ignore`) | Internal; one instance per process | `src/services/index.ts` |
 | `contact-center-services` | WebCallingService, WebexCrossClientService, AnswerCallOnWebexService, WxAppTelephonyMercurySync | `ContactCenter` and the task sub-module | Internal | `src/services/WebCallingService.ts`, `src/services/WebexCrossClientService.ts`, `src/services/AnswerCallOnWebexService.ts`, `src/services/WxAppTelephonyMercurySync.ts` |
 | `contact-center-sdk` | `AddressBook.getEntries(params?)` through `cc.addressBook` | Applications | Semver-public: `AddressBook` is exported by `src/index.ts`; returns `AddressBookEntriesResponse` | `src/services/AddressBook.ts`, `src/index.ts` |
 | `contact-center-sdk` | Existing `Queue.getQueues(ContactServiceQueueSearchParams)` and `EntryPoint.getEntryPoints(EntryPointSearchParams)` with paginated responses, through `cc.queue`, `cc.getQueues()`, and `cc.getEntryPoints()`; they apply consult/transfer telephony eligibility, profile views, and backend name ordering as overridable defaults, and EntryPoint returns the dial-number mapping projection | Applications | The defaults live on the existing methods and signatures; there is no specialized method or replacement signature | `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/types.ts` |
@@ -170,7 +170,7 @@ Compatibility note: do not remove or reinterpret exported symbols/events without
 Use [`constants.ts`](../constants.ts) as the canonical source for service-level naming and routing constants:
 
 - `WCC_API_GATEWAY` — service identifier used by `WebexRequest` calls
-- `SUBSCRIBE_API`, `RTD_SUBSCRIBE_API` — notification and realtime subscription paths passed by `cc.ts` to `Services.subscribe`
+- `SUBSCRIBE_API`, `RTD_SUBSCRIBE_API` — notification and realtime subscription paths used by `ConnectionService` and `cc.ts`
 - `LOGIN_API`, `STATE_CHANGE_API` — API path constants that nothing imports today; the agent factory writes its URLs inline
 - `WEB_RTC_PREFIX` — `webrtc-` prefix that `cc.ts` puts before the agent id to form the browser device id
 - `WEBSOCKET_EVENT_TIMEOUT` — defined as `20000` ms in `src/services/constants.ts` but not used by AqmReqs; active AQM correlation defaults to Core's `TIMEOUT_REQ = 20000`
@@ -195,7 +195,7 @@ Use [`constants.ts`](../constants.ts) as the canonical source for service-level 
 
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 | --- | --- | --- | --- | --- | --- | --- |
-| SERVICES-R-001 | Build the Services singleton with agent/config/contact/dialer, two WebSocket managers, AqmReqs, and ConnectionService after WebexRequest is initialized. `subscribe(body, resource)` sends the authenticated notification or RTD POST with a 20-second timeout, adds the organization header for INT, and returns the response URL. | Collaborators share the host request client and primary message stream. HTTP subscription belongs with service calls. | `src/services/index.ts` | `test/unit/spec/cc.ts` | The real CC wiring graph exercises subscription before URL-only socket connection. | PRESENT |
+| SERVICES-R-001 | Build the Services singleton with agent/config/contact/dialer, two WebSocket managers, AqmReqs, and ConnectionService after WebexRequest is initialized. | Every AQM and transport collaborator depends on one shared authenticated host and primary message stream. | `src/services/index.ts` | `test/unit/spec/cc.ts` | The real CC wiring graph exercises the collaborators; no dedicated repeated-get singleton test exists. | PRESENT |
 | SERVICES-R-002 | Keep direct REST services, including UserPreference, separate from AQM request factories. | Direct data/config/user-preference calls complete from HTTP while AQM operations require correlated WebSocket completion. | `src/services/index.ts`, `src/services/UserPreference.ts` | `test/unit/spec/services/AddressBook.ts`, `test/unit/spec/services/UserPreference.ts` | None. | PRESENT |
 | SERVICES-R-003 | Construct TaskManager, UserPreference, and other non-Services collaborators in ContactCenter's READY callback, not in `register()`. | Registration is a connection boundary; changing construction timing can duplicate listeners or access uninitialized host services. | `src/cc.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/UserPreference.ts` | None. | PRESENT |
 | SERVICES-R-004 | Pass ApiAIAssistant, contact routing, WebCallingService, primary WebSocket, and RTD WebSocket into TaskManager. | Voice, task, transcript, and suggestion behavior depend on the complete collaborator set. | `src/cc.ts` | `test/unit/spec/services/task/TaskManager.ts` | None. | PRESENT |
@@ -220,28 +220,30 @@ Use [`constants.ts`](../constants.ts) as the canonical source for service-level 
 The `Services` class is the central composition root. It uses a singleton pattern:
 
 ```typescript
-const services = Services.getInstance({webex: this.$webex});
+const services = Services.getInstance({
+  webex: this.$webex,
+  connectionConfig: this.getConnectionConfig(),
+});
 ```
 
 What Services creates in its constructor:
 
 | Component | How Created | Purpose |
 | --- | --- | --- |
-| `webSocketManager` | `new WebSocketManager()` | WebSocket transport for real-time messages |
-| `rtdWebSocketManager` | `new WebSocketManager()` | Separate RTD WebSocket for realtime transcription, AI, and wellness events |
+| `webSocketManager` | `new WebSocketManager({webex})` | WebSocket transport for real-time messages |
+| `rtdWebSocketManager` | `new WebSocketManager({webex})` | Separate RTD WebSocket for realtime transcription, AI, and wellness events |
 | `aqmReq` (internal) | `new AqmReqs(webSocketManager)` | Correlates HTTP requests with WebSocket notifications |
 | `config` | `new AgentConfigService()` | REST-based profile aggregation |
 | `agent` | `routingAgent(aqmReq)` | Agent operations factory |
 | `contact` | `routingContact(aqmReq)` | Task/contact operations factory |
 | `dialer` | `aqmDialer(aqmReq)` | Outbound dialing factory |
-| `connectionService` | `new ConnectionService(webSocketManager)` | Monitors ordinary primary socket recovery using URL and error callbacks supplied by ContactCenter |
+| `connectionService` | `new ConnectionService({webSocketManager, subscribeRequest})` | WebSocket lifecycle management |
 
 Understanding the instantiation order is essential — getting it wrong causes runtime errors. Services does not create `WebexRequest`, which is initialized by `cc.ts` before `Services.getInstance()`, nor `MetricsManager`, an independent singleton initialized by `cc.ts`. ContactCenter owns the broader READY-time graph: in its READY callback it creates WebCallingService, the three wxApp services, ApiAIAssistant, MetricsManager, TaskManager (through `TaskManager.getTaskManager`, receiving ApiAIAssistant, contact routing, calling, and both WebSocket managers, and then AnswerCallOnWebexService), EntryPoint, AddressBook, Queue, and UserPreference, in the order of the READY composition diagram. None of these collaborators is created by `register()`; registration attaches runtime listeners and connects the primary socket after READY initialization, and line registration is conditional on a `BROWSER` login with WebRTC enabled.
 
-`Services.subscribe(body, resource)` sends the authenticated primary or RTD subscription POST with
-a 20-second timeout and the organization header required in INT. It returns the response URL.
-ContactCenter owns regional mismatch handling and U2C refresh. WebSocketManager validates and opens
-the supplied URL.
+Each WebSocketManager uses its existing subscribe-and-connect path for primary or RTD transport.
+The subscription has a 20-second HTTP timeout and adds the organization header required in INT.
+ContactCenter owns regional mismatch handling and U2C refresh.
 
 AQM factory shape (`routingAgent`, `routingContact`, `aqmDialer`): agent and task operations use a
 factory pattern where each method is defined as a `routing.req()` call. Each entry returns a

@@ -151,6 +151,31 @@ export const normalizeRecoveryFailure = (error: unknown): RecoveryFailure => {
   };
 };
 
+/** @internal */
+export function getStationRecoveryFailureCategory(
+  failure: RecoveryFailure
+): 'cancelled' | 'auth' | 'transient' | 'fallback' | 'exists' | 'other' {
+  if (failure.reason === 'RECOVERY_INTERRUPTED' || failure.id === 'AbortError') return 'cancelled';
+  if (failure.status === 401 || failure.status === 403) return 'auth';
+  const codes = {1037: 'transient', 1038: 'fallback', 1041: 'fallback', 1035: 'exists'} as const;
+  if (codes[failure.reasonCode]) return codes[failure.reasonCode];
+  if (['AGENT_NOT_FOUND', 'AGENT_DN_NOT_REGISTERED'].includes(failure.reason)) return 'fallback';
+  if (failure.reason === 'AGENT_SESSION_ALREADY_EXISTS') return 'exists';
+  if (failure.reason === 'INTERNAL_ERROR') return 'transient';
+  if (
+    [
+      'Timeout',
+      'TimeoutEvent',
+      'Service.aqm.reqs.Timeout',
+      'Service.aqm.reqs.TimeoutEvent',
+    ].includes(failure.id) ||
+    [429, 502, 503].includes(failure.status)
+  )
+    return 'transient';
+
+  return 'other';
+}
+
 /** Recognizes only the exact region mismatch reasons on a subscribe HTTP 409. */
 export const getSubscriptionMismatchReason = (error: unknown): string | undefined => {
   const source = asRecord(error);

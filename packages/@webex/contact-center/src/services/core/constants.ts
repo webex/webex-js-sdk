@@ -148,6 +148,7 @@ export const METHODS = {
 
   // ConnectionService methods
   SETUP_EVENT_LISTENERS: 'setupEventListeners',
+  DISPATCH_CONNECTION_EVENT: 'dispatchConnectionEvent',
   CS_HANDLE_CONNECTION_LOST: 'handleConnectionLost',
   CLEAR_TIMER_ON_RESTORE_FAILED: 'clearTimerOnRestoreFailed',
   HANDLE_RESTORE_FAILED: 'handleRestoreFailed',

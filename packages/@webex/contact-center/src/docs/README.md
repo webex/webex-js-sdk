@@ -274,7 +274,7 @@ sequenceDiagram
   CC->>CC: validatePluginConfig()
   alt configuration valid
     CC->>CC: WebexRequest.getInstance(webex)
-    CC->>S: Services.getInstance(webex)
+    CC->>S: Services.getInstance({webex, connectionConfig})
     CC->>CC: create WebCallingService + wxApp services + ApiAIAssistant + MetricsManager
     CC->>TM: getTaskManager(aiAssistant, contact, calling, primaryWS, rtdWS)
     CC->>CC: listen to TaskManager task events
@@ -290,7 +290,6 @@ sequenceDiagram
 sequenceDiagram
   participant App
   participant CC as ContactCenter
-  participant Services
   participant WS as Primary WebSocketManager
   participant Cfg as AgentConfigService
   participant Agent as Services.agent
@@ -299,9 +298,8 @@ sequenceDiagram
   CC->>CC: new registration generation; clear idle-code cache
   CC->>Metrics: time register success/failure
   CC->>CC: setupEventListeners(); listen for WS messages
-  CC->>Services: subscribe(body, SUBSCRIBE_API)
-  Services-->>CC: URL
-  CC->>WS: initWebSocket({url})
+  CC->>WS: initWebSocket({body, resource: SUBSCRIBE_API})
+  WS->>WS: Subscribe and connect the returned URL
   WS-->>CC: Welcome data containing agentId
   CC->>Cfg: getAgentConfig(orgId, agentId)
   alt profile fetched
@@ -356,8 +354,8 @@ sequenceDiagram
 
 Ordinary reconnect uses the existing relogin path shown below. For a current entitled region
 switch, ContactCenter pauses RTD and ordinary retry, publishes `recovering`, and starts the region
-timer. Hosts pause new station actions. ContactCenter obtains the replacement URL from
-`Services.subscribe` and passes it to WebSocketManager. Welcome starts station restoration.
+timer. Hosts pause new station actions. ContactCenter calls WebSocketManager to subscribe and
+connect the replacement socket. Welcome starts station restoration.
 Socket-readiness checks end a dropped attempt, and ContactCenter schedules the next regional retry.
 The failed region's Tasks are retired when the switch begins. ContactCenter publishes `ready` or
 `stationLoginRequired` on a usable replacement socket and resumes ordinary ConnectionService

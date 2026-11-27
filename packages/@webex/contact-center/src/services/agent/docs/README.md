@@ -78,16 +78,16 @@ Related context: [documentation index](../../../../docs/index.md) ·
 | `src/cc.ts` | ContactCenter wrappers `stationLogin`, `stationLogout`, `setAgentState`, `getBuddyAgents`, `updateAgentProfile`; `getDeviceId`; `handleWebsocketMessage`; `handleConnectionLost`; `silentRelogin` |
 | `src/services/core/aqm-reqs.ts` | `req` and `reqEmpty`, nested bind matching, the POST-if-data default method, the one-pending-request-per-bind rule, and the timeout rejection |
 | `src/services/core/constants.ts` | `TIMEOUT_REQ` is 20000 ms |
-| `src/services/core/Utils.ts` | `createErrDetailsObject`, `getErrorDetails`, `getStationLoginErrorData`, and `isValidDialNumber` |
+| `src/services/core/Utils.ts` | `createErrDetailsObject`, `getErrorDetails`, `getStationLoginErrorData`, `getStationRecoveryFailureCategory`, and `isValidDialNumber` |
 | `src/services/constants.ts` | `WCC_API_GATEWAY` (`wcc-api-gateway`) and `WEB_RTC_PREFIX` (`webrtc-`) |
 | `src/services/config/constants.ts` | `AGENT_STATE_AVAILABLE` (`Available`) and `AGENT_STATE_AVAILABLE_ID` (`0`) |
 | `src/types.ts` | Public `AgentLogin`, `AgentProfileUpdate`, `BuddyAgents` (with `action`), the response aliases, and `CCPluginConfig.allowAutomatedRelogin` |
 | `src/config.ts` | `allowAutomatedRelogin` defaults to true |
 | `src/index.ts` | Public exports of `routingAgent`, `AGENT_EVENTS`, and the agent types |
 | `src/metrics/constants.ts` | The station, state-change, and buddy-agent metric names |
-| `test/unit/spec/services/agent/index.ts` | Agent-service delegation, recovery failure classification, and station-login HTTP error cases |
+| `test/unit/spec/services/agent/index.ts` | Agent-service delegation and station-login HTTP error cases |
 | `test/unit/spec/cc.ts` | `stationLogin`, `stationLogout`, `setAgentStatus`, `getBuddyAgents`, `silentRelogin`, `cc.getDeviceId`, `handleWebsocketMessage events`, and `updateAgentProfile` suites |
-| `test/unit/spec/services/core/Utils.ts` | `getStationLoginErrorData` message and fieldName cases |
+| `test/unit/spec/services/core/Utils.ts` | `getStationLoginErrorData` message and fieldName cases, and recovery failure classification |
 | `src/cc.ts` | Justifies the extension subsections under Data flow and sequence coverage: one subsection per operation group the wrappers implement (station login, station logout, state change, buddy-agent lookup, recovery reload) plus the WebSocket event mapping and silent-relogin flows |
 
 ## Purpose and boundary
@@ -676,7 +676,7 @@ try {
 
 ## Verification
 
-Use `test/unit/spec/services/agent/index.ts` for the factory and `test/unit/spec/cc.ts` for public validation, metrics, calling, updateAgentProfile, and recovery ownership. Cover success, nested failure, HTTP rejection, and timeout without inventing a `deviceUpdate` factory method. The factory tests assert delegation, recovery failure classification, and station-login HTTP error details. Endpoint, method, bind, and payload values remain outside those factory assertions. Run `yarn workspace @webex/contact-center test:unit` from the workspace root.
+Use `test/unit/spec/services/agent/index.ts` for the factory, `test/unit/spec/services/core/Utils.ts` for recovery failure classification, and `test/unit/spec/cc.ts` for public validation, metrics, calling, updateAgentProfile, and recovery ownership. Cover success, nested failure, HTTP rejection, and timeout without inventing a `deviceUpdate` factory method. The factory tests assert delegation and station-login HTTP error details. Endpoint, method, bind, and payload values remain outside those factory assertions. Run `yarn workspace @webex/contact-center test:unit` from the workspace root.
 
 | Requirement or invariant | Test level | Positive evidence | Negative or boundary evidence | Gap |
 | ------------------------ | ---------- | ----------------- | ----------------------------- | --- |
@@ -689,5 +689,5 @@ Use `test/unit/spec/services/agent/index.ts` for the factory and `test/unit/spec
 | `AGENT-R-007` | Unit | `test/unit/spec/services/core/Utils.ts` isValidDialNumber and getStationLoginErrorData cases | none found | No wrapper-level AGENT_DN rejection case |
 | `AGENT-R-008` | Unit | `test/unit/spec/cc.ts` setAgentStatus Idle and non-browser cases | `test/unit/spec/cc.ts` browser-voice rejection case | None |
 | `AGENT-R-010`, `INV-002` | Unit | `test/unit/spec/cc.ts` stationLogin and handleWebsocketMessage events mapped-payload cases | none found | None |
-| `AGENT-R-011` | Unit | `test/unit/spec/services/agent/index.ts` checks recovery error categories and station-login HTTP details. | `test/unit/spec/cc.ts` covers recovery reload and station login. | Live station recovery remains release verification. |
+| `AGENT-R-011` | Unit | `test/unit/spec/services/agent/index.ts` checks station-login HTTP details; `test/unit/spec/services/core/Utils.ts` checks recovery error categories. | `test/unit/spec/cc.ts` covers recovery reload and station login. | Live station recovery remains release verification. |
 | `INV-001` | None | none found | none found | No test asserts the agent bind values |

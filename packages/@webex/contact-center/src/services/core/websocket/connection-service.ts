@@ -1,7 +1,7 @@
 import {EventEmitter} from 'events';
 import {WebSocketManager} from './WebSocketManager';
 import LoggerProxy from '../../../logger-proxy';
-import type {ConnectionLostDetails, ConnectionResetOptions} from './types';
+import type {ConnectionServiceOptions, ConnectionLostDetails, ConnectionProp} from './types';
 import {
   LOST_CONNECTION_RECOVERY_TIMEOUT,
   WS_DISCONNECT_ALLOWED,
@@ -9,75 +9,43 @@ import {
   METHODS,
 } from '../constants';
 import {CONNECTION_SERVICE_FILE} from '../../../constants';
-import type {RecoveryFailure} from '../types';
-import {isRecord, normalizeRecoveryFailure} from '../Utils';
+import {SubscribeRequest} from '../../../types';
+import {SUBSCRIBE_API} from '../../constants';
+import {isRecord} from '../Utils';
 
 /** Schedules ordinary socket reconnection and monitors connection liveness. */
 export class ConnectionService extends EventEmitter {
-  private mode: 'ordinary' | 'paused' | 'stopped' = 'stopped';
-  private retryTimer?: ReturnType<typeof setTimeout>;
-  private reconnectingTimer?: ReturnType<typeof setTimeout>;
-  private restoreTimer?: ReturnType<typeof setTimeout>;
-  private isConnectionLost = false;
-  private isRestoreFailed = false;
-  private isKeepAlive = false;
-  private lossEpisode?: {startedAt: number; attempt: number};
-  private pending?: {reconnectOnClose: boolean};
-  private onTerminalFailure?: ConnectionResetOptions['onTerminalFailure'];
+  private connectionProp: ConnectionProp = {
+    lostConnectionRecoveryTimeout: LOST_CONNECTION_RECOVERY_TIMEOUT,
+  };
+
+  private wsDisconnectAllowed = WS_DISCONNECT_ALLOWED;
+  private reconnectingTimer: ReturnType<typeof setTimeout>;
+  private restoreTimer: ReturnType<typeof setTimeout>;
+  private isConnectionLost: boolean;
+  private isRestoreFailed: boolean;
+  private isKeepAlive: boolean;
+  private reconnectInterval: ReturnType<typeof setInterval>;
+  private pending?: object;
+  private isStopped = false;
   private webSocketManager: WebSocketManager;
-  private getWebSocketUrl?: ConnectionResetOptions['getWebSocketUrl'];
-  private isTerminalFailure?: ConnectionResetOptions['isTerminalFailure'];
+  private subscribeRequest: SubscribeRequest;
 
-  constructor(webSocketManager: WebSocketManager) {
+  constructor(options: ConnectionServiceOptions) {
     super();
-    this.webSocketManager = webSocketManager;
-  }
+    this.webSocketManager = options.webSocketManager;
+    this.subscribeRequest = options.subscribeRequest;
 
-  public reset(options: ConnectionResetOptions): void {
-    this.stop();
-    this.getWebSocketUrl = options.getWebSocketUrl;
-    this.isTerminalFailure = options.isTerminalFailure;
-    this.onTerminalFailure = options.onTerminalFailure;
-    this.mode = 'ordinary';
-    this.webSocketManager.shouldReconnect = true;
-    this.updateConnectionData();
+    this.isConnectionLost = false;
+    this.isRestoreFailed = false;
+    this.isKeepAlive = false;
+
     this.setupEventListeners();
-    if (this.webSocketManager.hasUsableSocket()) this.monitorOrdinary();
-    else this.onSocketClose();
-  }
-
-  public pause(): void {
-    if (this.mode === 'stopped') return;
-    this.mode = 'paused';
-    this.cancelWork();
-  }
-
-  public stop(): void {
-    this.mode = 'stopped';
-    this.cancelWork();
-    this.getWebSocketUrl = undefined;
-    this.isTerminalFailure = undefined;
-    this.onTerminalFailure = undefined;
-    this.webSocketManager.off('message', this.onPing);
-    this.webSocketManager.off('socketClose', this.onSocketClose);
   }
 
   private setupEventListeners(): void {
     this.webSocketManager.on('message', this.onPing);
     this.webSocketManager.on('socketClose', this.onSocketClose);
-  }
-
-  private cancelWork(): void {
-    clearTimeout(this.retryTimer);
-    clearTimeout(this.reconnectingTimer);
-    clearTimeout(this.restoreTimer);
-    this.retryTimer = undefined;
-    this.reconnectingTimer = undefined;
-    this.restoreTimer = undefined;
-    this.lossEpisode = undefined;
-    const pending = this.pending;
-    this.pending = undefined;
-    if (pending) this.webSocketManager.close(false, 'Recovery cancelled');
   }
 
   private dispatchConnectionEvent(socketReconnected = false): void {
@@ -88,30 +56,22 @@ export class ConnectionService extends EventEmitter {
       isKeepAlive: this.isKeepAlive,
     };
     this.webSocketManager.handleConnectionLost(event);
+    LoggerProxy.info(`Dispatching connection event`, {
+      module: CONNECTION_SERVICE_FILE,
+      method: METHODS.DISPATCH_CONNECTION_EVENT,
+    });
     this.emit('connectionLost', event);
   }
 
-  private updateConnectionData = (): void => {
-    this.isConnectionLost = false;
-    this.isRestoreFailed = false;
-  };
-
-  private monitorOrdinary(): void {
-    clearTimeout(this.reconnectingTimer);
-    clearTimeout(this.restoreTimer);
-    this.reconnectingTimer = setTimeout(this.handleConnectionLost, WS_DISCONNECT_ALLOWED);
-    this.restoreTimer = setTimeout(this.handleRestoreFailed, LOST_CONNECTION_RECOVERY_TIMEOUT);
-  }
-
   private handleConnectionLost = (): void => {
-    if (this.mode !== 'ordinary') return;
+    if (this.isStopped) return;
     this.isConnectionLost = true;
     this.dispatchConnectionEvent();
   };
 
   private handleRestoreFailed = (): void => {
-    if (this.mode !== 'ordinary') return;
-    if (this.lossEpisode || !this.webSocketManager.hasUsableSocket()) {
+    if (this.isStopped) return;
+    if (this.reconnectInterval || !this.webSocketManager.hasUsableSocket()) {
       this.pending = undefined;
       this.stop();
       this.webSocketManager.close(false, 'Restore watchdog expired');
@@ -125,8 +85,54 @@ export class ConnectionService extends EventEmitter {
     this.dispatchConnectionEvent();
   };
 
+  private updateConnectionData = (): void => {
+    this.isRestoreFailed = false;
+    this.isConnectionLost = false;
+  };
+
+  public setConnectionProp(prop: ConnectionProp): void {
+    this.connectionProp = prop;
+  }
+
+  public reset(socketReconnected = false): void {
+    this.stop();
+    this.isStopped = false;
+    this.webSocketManager.shouldReconnect = true;
+    this.updateConnectionData();
+    this.setupEventListeners();
+    if (this.webSocketManager.hasUsableSocket()) {
+      this.monitorOrdinary();
+      if (socketReconnected) this.dispatchConnectionEvent(true);
+    } else this.onSocketClose();
+  }
+
+  public stop(): void {
+    this.isStopped = true;
+    clearInterval(this.reconnectInterval);
+    clearTimeout(this.reconnectingTimer);
+    clearTimeout(this.restoreTimer);
+    this.reconnectInterval = undefined;
+    this.reconnectingTimer = undefined;
+    this.restoreTimer = undefined;
+    const pending = this.pending;
+    this.pending = undefined;
+    this.webSocketManager.off('message', this.onPing);
+    this.webSocketManager.off('socketClose', this.onSocketClose);
+    if (pending) this.webSocketManager.close(false, 'Recovery cancelled');
+  }
+
+  private monitorOrdinary(): void {
+    clearTimeout(this.reconnectingTimer);
+    clearTimeout(this.restoreTimer);
+    this.reconnectingTimer = setTimeout(this.handleConnectionLost, this.wsDisconnectAllowed);
+    this.restoreTimer = setTimeout(
+      this.handleRestoreFailed,
+      this.connectionProp && this.connectionProp.lostConnectionRecoveryTimeout
+    );
+  }
+
   private onPing = (event: unknown): void => {
-    if (this.mode !== 'ordinary' || this.pending) return;
+    if (this.isStopped || this.pending) return;
     let parsedEvent: unknown;
     try {
       parsedEvent = JSON.parse(event as string);
@@ -154,50 +160,25 @@ export class ConnectionService extends EventEmitter {
     }
   };
 
-  private scheduleOrdinary(): void {
-    if (this.mode !== 'ordinary' || this.retryTimer || this.pending || !this.lossEpisode) return;
-    const next =
-      this.lossEpisode.startedAt +
-      (Math.floor((Date.now() - this.lossEpisode.startedAt) / CONNECTIVITY_CHECK_INTERVAL) + 1) *
-        CONNECTIVITY_CHECK_INTERVAL;
-    this.retryTimer = setTimeout(() => {
-      this.retryTimer = undefined;
-      this.handleSocketClose().catch(() => this.scheduleOrdinary());
-    }, Math.max(0, next - Date.now()));
-  }
-
-  private async handleSocketClose(): Promise<void> {
-    const episode = this.lossEpisode;
-    if (this.mode !== 'ordinary' || this.pending || !episode) return;
-    episode.attempt += 1;
-    const attempt = episode.attempt;
-    const diagnose = (
-      outcome: 'retrying' | 'terminal' | 'succeeded',
-      failure: RecoveryFailure = {}
-    ) => {
-      LoggerProxy.info('Ordinary reconnect attempt settled', {
-        module: CONNECTION_SERVICE_FILE,
-        method: METHODS.HANDLE_SOCKET_CLOSE,
-        data: {
-          attempt,
-          elapsedMs: Math.max(0, Date.now() - episode.startedAt),
-          outcome,
-          ...failure,
-        },
-      });
-    };
-    const pending = {reconnectOnClose: false};
+  private handleSocketClose = async (): Promise<void> => {
+    if (this.isStopped || this.pending) return;
+    LoggerProxy.info(`event=socketConnectionRetry | Trying to reconnect to websocket`, {
+      module: CONNECTION_SERVICE_FILE,
+      method: METHODS.HANDLE_SOCKET_CLOSE,
+    });
+    const pending = {};
     this.pending = pending;
     try {
-      if (typeof navigator !== 'undefined' && navigator.onLine === false)
-        throw new Error('Browser offline');
-      const url = await this.getWebSocketUrl();
+      if (!navigator.onLine)
+        throw new Error('event=socketConnectionRetry | browser network not available');
+      await this.webSocketManager.initWebSocket({
+        body: this.subscribeRequest,
+        resource: SUBSCRIBE_API,
+      });
       if (this.pending !== pending) return;
-      await this.webSocketManager.initWebSocket({url});
-      if (this.pending !== pending) return;
-      if (pending.reconnectOnClose) throw new Error('WebSocket closed');
-      diagnose('succeeded');
-      this.lossEpisode = undefined;
+      if (!this.webSocketManager.hasUsableSocket()) throw new Error('WebSocket closed');
+      clearInterval(this.reconnectInterval);
+      this.reconnectInterval = undefined;
       this.pending = undefined;
       this.updateConnectionData();
       this.monitorOrdinary();
@@ -210,39 +191,27 @@ export class ConnectionService extends EventEmitter {
 
         return;
       }
-      const failure = normalizeRecoveryFailure(error);
-      delete failure.reason;
-      const isTerminal = this.isTerminalFailure(error);
-      diagnose(isTerminal ? 'terminal' : 'retrying', failure);
-      if (isTerminal) {
-        const callback = this.onTerminalFailure;
-        this.stop();
-        this.webSocketManager.close(false, 'Terminal admission');
-        callback?.(error);
-      } else this.scheduleOrdinary();
+      this.emit('reconnectFailed', error);
     }
-  }
+  };
 
-  private onSocketClose = (event?: {shouldReconnect?: boolean}): void => {
-    if (this.mode !== 'ordinary') return;
-    const shouldReconnect =
-      event?.shouldReconnect !== false && this.webSocketManager.shouldReconnect;
-    if (!shouldReconnect) {
+  private onSocketClose = (): void => {
+    if (this.isStopped) return;
+    if (!this.webSocketManager.shouldReconnect) {
       this.stop();
 
       return;
     }
-    if (this.pending) {
-      this.pending.reconnectOnClose = true;
-
-      return;
-    }
-    this.lossEpisode = this.lossEpisode ?? {startedAt: Date.now(), attempt: 0};
+    if (this.pending) return;
     clearTimeout(this.reconnectingTimer);
     this.isConnectionLost = true;
     if (!this.restoreTimer)
-      this.restoreTimer = setTimeout(this.handleRestoreFailed, LOST_CONNECTION_RECOVERY_TIMEOUT);
-    this.scheduleOrdinary();
+      this.restoreTimer = setTimeout(
+        this.handleRestoreFailed,
+        this.connectionProp && this.connectionProp.lostConnectionRecoveryTimeout
+      );
+    if (!this.reconnectInterval)
+      this.reconnectInterval = setInterval(this.handleSocketClose, CONNECTIVITY_CHECK_INTERVAL);
     this.dispatchConnectionEvent();
   };
 }

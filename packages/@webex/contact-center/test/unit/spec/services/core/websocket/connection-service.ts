@@ -1,6 +1,8 @@
 import {EventEmitter} from 'events';
 import {ConnectionService} from '../../../../../../src/services/core/websocket/connection-service';
 import type {WebSocketManager} from '../../../../../../src/services/core/websocket/WebSocketManager';
+import type {SubscribeRequest} from '../../../../../../src/types';
+import {SUBSCRIBE_API} from '../../../../../../src/services/constants';
 import {createDeferred} from '../../../../fixtures/aiSummaryTestUtils';
 import LoggerProxy from '../../../../../../src/logger-proxy';
 
@@ -20,7 +22,12 @@ class SocketManagerDouble extends EventEmitter {
   hasUsableSocket = jest.fn(() => this.usable);
 }
 
-const url = 'wss://routing.produs1.cisco.com/notifications';
+const subscribeRequest: SubscribeRequest = {
+  force: true,
+  isKeepAliveEnabled: false,
+  clientType: 'WebexCCSDK',
+  allowMultiLogin: true,
+};
 const flush = async () => {
   for (let turn = 0; turn < 12; turn += 1) await Promise.resolve();
 };
@@ -38,14 +45,12 @@ const lost = {
 describe('ConnectionService', () => {
   let service: ConnectionService;
   let manager: SocketManagerDouble;
-  let getWebSocketUrl: jest.Mock;
-  let isTerminalFailure: jest.Mock;
-  let onTerminalFailure: jest.Mock;
+  let failures: jest.Mock;
   let events: jest.Mock;
   const originalLogger = LoggerProxy.logger;
   const originalNavigator = global.navigator;
 
-  const reset = () => service.reset({getWebSocketUrl, isTerminalFailure, onTerminalFailure});
+  const reset = () => service.reset();
   const lose = () => {
     manager.usable = false;
     manager.emit('socketClose', {shouldReconnect: true});
@@ -56,13 +61,15 @@ describe('ConnectionService', () => {
     LoggerProxy.initialize({log: jest.fn(), info: jest.fn(), error: jest.fn()} as any);
     Object.defineProperty(global, 'navigator', {value: {onLine: true}, configurable: true});
     manager = new SocketManagerDouble();
-    service = new ConnectionService(manager as unknown as WebSocketManager);
-    getWebSocketUrl = jest.fn().mockResolvedValue(url);
-    isTerminalFailure = jest.fn().mockReturnValue(false);
-    onTerminalFailure = jest.fn();
+    service = new ConnectionService({
+      webSocketManager: manager as unknown as WebSocketManager,
+      subscribeRequest,
+    });
+    failures = jest.fn();
     events = jest.fn();
     reset();
     service.on('connectionLost', events);
+    service.on('reconnectFailed', failures);
   });
 
   afterEach(() => {
@@ -84,20 +91,19 @@ describe('ConnectionService', () => {
     await tick(1);
     expect(events).toHaveBeenLastCalledWith(lost);
     expect(manager.handleConnectionLost).toHaveBeenLastCalledWith(lost);
-    expect(getWebSocketUrl).not.toHaveBeenCalled();
     expect(manager.initWebSocket).not.toHaveBeenCalled();
   });
 
-  it('uses the supplied URL callback and waits for Welcome before reporting reconnection', async () => {
+  it('reuses subscribe-and-connect and waits for Welcome before reporting reconnection', async () => {
     const welcome = createDeferred<any>();
     manager.initWebSocket.mockReturnValueOnce(welcome.promise);
     lose();
     expect(events).toHaveBeenLastCalledWith(lost);
     await tick(4999);
-    expect(getWebSocketUrl).not.toHaveBeenCalled();
+    expect(manager.initWebSocket).not.toHaveBeenCalled();
     await tick(1);
-    expect(getWebSocketUrl).toHaveBeenCalledTimes(1);
-    expect(manager.initWebSocket).toHaveBeenCalledWith({url});
+    expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
+    expect(manager.initWebSocket).toHaveBeenCalledWith({body: subscribeRequest, resource: SUBSCRIBE_API});
     expect(events).toHaveBeenCalledTimes(1);
     manager.usable = true;
     welcome.resolve({});
@@ -106,54 +112,50 @@ describe('ConnectionService', () => {
     expect(jest.getTimerCount()).toBe(2);
   });
 
-  it.each(['url', 'socket'])('retries a failed %s operation on the next five-second slot', async (phase) => {
+  it('retries a failed connection on the next five-second slot', async () => {
     const error = {statusCode: 503};
-    if (phase === 'url') getWebSocketUrl.mockRejectedValueOnce(error);
-    else manager.initWebSocket.mockRejectedValueOnce(error);
+    manager.initWebSocket.mockRejectedValueOnce(error);
     lose();
     await tick(5000);
-    expect(isTerminalFailure).toHaveBeenCalledWith(error);
-    expect(onTerminalFailure).not.toHaveBeenCalled();
+    expect(failures).toHaveBeenCalledTimes(1);
+    expect(failures).toHaveBeenCalledWith(error);
     await tick(4999);
-    expect(getWebSocketUrl).toHaveBeenCalledTimes(1);
+    expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
     await tick(1);
-    expect(getWebSocketUrl).toHaveBeenCalledTimes(2);
+    expect(manager.initWebSocket).toHaveBeenCalledTimes(2);
     expect(events).toHaveBeenLastCalledWith({...lost, isConnectionLost: false, isSocketReconnected: true});
   });
 
-  it.each(['url', 'socket'])('keeps one pending %s operation while retry slots elapse', async (phase) => {
+  it('keeps one pending connection while retry slots elapse', async () => {
     const pending = createDeferred<any>();
-    if (phase === 'url') getWebSocketUrl.mockReturnValueOnce(pending.promise);
-    else manager.initWebSocket.mockReturnValueOnce(pending.promise);
+    manager.initWebSocket.mockReturnValueOnce(pending.promise);
     lose();
     await tick(5000);
     await tick(12000);
     manager.emit('message', JSON.stringify({keepalive: 'true'}));
-    expect(getWebSocketUrl).toHaveBeenCalledTimes(1);
-    expect(manager.initWebSocket).toHaveBeenCalledTimes(phase === 'url' ? 0 : 1);
+    expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
     pending.reject(new Error('connection unavailable'));
     await flush();
     await tick(2999);
-    expect(getWebSocketUrl).toHaveBeenCalledTimes(1);
+    expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
     await tick(1);
-    expect(getWebSocketUrl).toHaveBeenCalledTimes(2);
+    expect(manager.initWebSocket).toHaveBeenCalledTimes(2);
   });
 
-  it.each(['pause', 'stop'])('clears scheduled reconnects on %s', async (action) => {
+  it('clears scheduled reconnects and socket listeners on stop', async () => {
     lose();
-    service[action]();
+    service.stop();
     await tick(60000);
-    expect(getWebSocketUrl).not.toHaveBeenCalled();
+    expect(manager.initWebSocket).not.toHaveBeenCalled();
     expect(jest.getTimerCount()).toBe(0);
-    if (action === 'stop') {
-      expect(manager.listenerCount('message')).toBe(0);
-      expect(manager.listenerCount('socketClose')).toBe(0);
-    }
+    expect(manager.listenerCount('message')).toBe(0);
+    expect(manager.listenerCount('socketClose')).toBe(0);
+    expect(service.listenerCount('connectionLost')).toBe(1);
   });
 
-  it.each(['pause', 'stop', 'reset'])('ignores a pending URL after %s', async (action) => {
-    const pending = createDeferred<string>();
-    getWebSocketUrl.mockReturnValueOnce(pending.promise);
+  it.each(['stop', 'reset'])('ignores a pending connection after %s', async (action) => {
+    const pending = createDeferred<any>();
+    manager.initWebSocket.mockReturnValueOnce(pending.promise);
     lose();
     await tick(5000);
     if (action === 'reset') {
@@ -161,35 +163,42 @@ describe('ConnectionService', () => {
       reset();
     } else service[action]();
     expect(manager.close).toHaveBeenCalledTimes(1);
-    pending.resolve('wss://old-route.cisco.com');
+    pending.resolve({});
     await flush();
-    expect(manager.initWebSocket).not.toHaveBeenCalled();
-    expect(onTerminalFailure).not.toHaveBeenCalled();
+    expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
+    expect(events.mock.calls.filter(([event]) => event.isSocketReconnected)).toHaveLength(0);
+    expect(failures).not.toHaveBeenCalled();
   });
 
-  it.each(['url', 'socket'])('forwards a terminal %s failure using the supplied policy', async (phase) => {
+  it('forwards the raw connection failure and lets its caller stop retries', async () => {
     const error = {statusCode: 409, body: {reason: 'consumer-classified-failure'}};
-    isTerminalFailure.mockReturnValue(true);
-    if (phase === 'url') getWebSocketUrl.mockRejectedValueOnce(error);
-    else manager.initWebSocket.mockRejectedValueOnce(error);
+    manager.initWebSocket.mockRejectedValueOnce(error);
+    service.once('reconnectFailed', () => service.stop());
     lose();
     await tick(5000);
-    expect(isTerminalFailure).toHaveBeenCalledWith(error);
-    expect(onTerminalFailure).toHaveBeenCalledTimes(1);
-    expect(onTerminalFailure).toHaveBeenCalledWith(error);
-    expect(manager.close).toHaveBeenCalledWith(false, 'Terminal admission');
+    expect(failures).toHaveBeenCalledTimes(1);
+    expect(failures).toHaveBeenCalledWith(error);
     expect(manager.listenerCount('socketClose')).toBe(0);
     await tick(60000);
-    expect(getWebSocketUrl).toHaveBeenCalledTimes(1);
+    expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
     expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('reports an externally restored socket once before ordinary keepalives resume', () => {
+    service.stop();
+    service.reset(true);
+    expect(events).toHaveBeenLastCalledWith({...lost, isConnectionLost: false, isSocketReconnected: true});
+    manager.emit('message', JSON.stringify({keepalive: 'true'}));
+    expect(events).toHaveBeenLastCalledWith({...lost, isConnectionLost: false, isKeepAlive: true});
+    expect(events.mock.calls.filter(([event]) => event.isSocketReconnected)).toHaveLength(1);
   });
 
   it('stops reconnecting when the socket asks for closure without retry', async () => {
     manager.shouldReconnect = false;
     manager.emit('socketClose', {shouldReconnect: false});
     await tick(60000);
-    expect(getWebSocketUrl).not.toHaveBeenCalled();
-    expect(onTerminalFailure).not.toHaveBeenCalled();
+    expect(manager.initWebSocket).not.toHaveBeenCalled();
+    expect(failures).not.toHaveBeenCalled();
     expect(manager.listenerCount('socketClose')).toBe(0);
   });
 
@@ -197,25 +206,24 @@ describe('ConnectionService', () => {
     Object.defineProperty(global, 'navigator', {value: {onLine: false}, configurable: true});
     lose();
     await tick(5000);
-    expect(getWebSocketUrl).not.toHaveBeenCalled();
+    expect(manager.initWebSocket).not.toHaveBeenCalled();
     Object.defineProperty(global, 'navigator', {value: {onLine: true}, configurable: true});
     await tick(5000);
-    expect(getWebSocketUrl).toHaveBeenCalledTimes(1);
+    expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['url', 'socket'])('closes the reconnect episode after fifty seconds with pending %s', async (phase) => {
+  it('closes a pending reconnect after fifty seconds', async () => {
     const pending = createDeferred<any>();
-    if (phase === 'url') getWebSocketUrl.mockReturnValueOnce(pending.promise);
-    else manager.initWebSocket.mockReturnValueOnce(pending.promise);
+    manager.initWebSocket.mockReturnValueOnce(pending.promise);
     lose();
     await tick(5000);
     await tick(45000);
     expect(manager.close).toHaveBeenCalledWith(false, 'Restore watchdog expired');
     expect(events).toHaveBeenLastCalledWith({...lost, isRestoreFailed: true});
-    pending.resolve(phase === 'url' ? url : {});
+    pending.resolve({});
     await flush();
     await tick(60000);
-    expect(getWebSocketUrl).toHaveBeenCalledTimes(1);
+    expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
     expect(events.mock.calls.filter(([event]) => event.isSocketReconnected)).toHaveLength(0);
     expect(jest.getTimerCount()).toBe(0);
   });
@@ -256,12 +264,12 @@ describe('ConnectionService', () => {
     lose();
     await tick(5000);
     lose();
-    manager.usable = true;
+    expect(jest.getTimerCount()).toBe(2);
     pending.resolve({});
     await flush();
     expect(events.mock.calls.filter(([event]) => event.isSocketReconnected)).toHaveLength(0);
     await tick(5000);
-    expect(getWebSocketUrl).toHaveBeenCalledTimes(2);
+    expect(manager.initWebSocket).toHaveBeenCalledTimes(2);
     expect(events).toHaveBeenLastCalledWith({...lost, isConnectionLost: false, isSocketReconnected: true});
   });
 });

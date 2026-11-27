@@ -4,10 +4,7 @@ import AgentConfigService from './config';
 import AqmReqs from './core/aqm-reqs';
 import {WebSocketManager} from './core/websocket/WebSocketManager';
 import {ConnectionService} from './core/websocket/connection-service';
-import {WebexSDK, SubscribeRequest, HTTP_METHODS} from '../types';
-import {WCC_API_GATEWAY} from './constants';
-import type {SubscribeResponse} from './config/types';
-import {TIMEOUT_REQ} from './core/constants';
+import {WebexSDK, SubscribeRequest} from '../types';
 import aqmDialer from './task/dialer';
 
 /**
@@ -34,45 +31,27 @@ export default class Services {
   public readonly connectionService: ConnectionService;
   /** Singleton instance of the Services class */
   private static instance: Services;
-  private readonly webex: WebexSDK;
 
   /**
    * Creates a new Services instance
    * @param options - Configuration options
    * @param options.webex - WebexSDK instance
+   * @param options.connectionConfig - Subscription configuration for websocket connection
    */
-  constructor(options: {webex: WebexSDK}) {
-    const {webex} = options;
-    this.webex = webex;
-    this.webSocketManager = new WebSocketManager();
+  constructor(options: {webex: WebexSDK; connectionConfig: SubscribeRequest}) {
+    const {webex, connectionConfig} = options;
+    this.webSocketManager = new WebSocketManager({webex});
     // TODO: Implement reconnection logic for this websocket in upcoming PR
-    this.rtdWebSocketManager = new WebSocketManager();
+    this.rtdWebSocketManager = new WebSocketManager({webex});
     const aqmReq = new AqmReqs(this.webSocketManager);
     this.config = new AgentConfigService();
     this.agent = routingAgent(aqmReq);
     this.contact = routingContact(aqmReq);
     this.dialer = aqmDialer(aqmReq);
-    this.connectionService = new ConnectionService(this.webSocketManager);
-  }
-
-  public async subscribe(body: SubscribeRequest, resource: string): Promise<string> {
-    const orgId = this.webex.credentials.getOrgId();
-    const isIntegration = this.webex.internal.services.isIntegrationEnvironment();
-    const response: SubscribeResponse = await this.webex.request({
-      service: WCC_API_GATEWAY,
-      resource,
-      method: HTTP_METHODS.POST,
-      body,
-      headers: isIntegration && orgId ? {'X-ORGANIZATION-ID': orgId} : undefined,
-      timeout: TIMEOUT_REQ,
+    this.connectionService = new ConnectionService({
+      webSocketManager: this.webSocketManager,
+      subscribeRequest: connectionConfig,
     });
-    if (
-      response.statusCode !== undefined &&
-      (response.statusCode < 200 || response.statusCode >= 300)
-    )
-      throw response;
-
-    return response.body?.webSocketUrl;
   }
 
   /**
@@ -80,9 +59,13 @@ export default class Services {
    * Creates a new instance if one doesn't exist
    * @param options - Configuration options
    * @param options.webex - WebexSDK instance
+   * @param options.connectionConfig - Subscription configuration for websocket connection
    * @returns The singleton Services instance
    */
-  public static getInstance(options: {webex: WebexSDK}): Services {
+  public static getInstance(options: {
+    webex: WebexSDK;
+    connectionConfig: SubscribeRequest;
+  }): Services {
     if (!this.instance) {
       this.instance = new Services(options);
     }

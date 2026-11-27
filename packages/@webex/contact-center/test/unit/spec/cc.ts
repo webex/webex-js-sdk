@@ -80,7 +80,6 @@ jest.mock('../../../src/services', () => ({
   __esModule: true,
   default: {
     getInstance: jest.fn(() => ({
-      subscribe: jest.fn().mockResolvedValue('wss://routing.produs1.cisco.com'),
       agent: {
         stationLogin: jest.fn(),
         logout: jest.fn(),
@@ -94,6 +93,7 @@ jest.mock('../../../src/services', () => ({
       },
       webSocketManager: {
         initWebSocket: jest.fn(),
+        getUrl: jest.fn(() => 'wss://routing.produs1.cisco.com'),
         on: jest.fn(),
         off: jest.fn(),
         close: jest.fn(),
@@ -300,6 +300,7 @@ global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
 class EventEmitterDouble extends EventEmitter {
   public isSocketClosed = false;
   public initWebSocket = jest.fn().mockResolvedValue({});
+  public getUrl = jest.fn(() => 'wss://routing.produs1.cisco.com');
   public close = jest.fn(() => {
     this.isSocketClosed = true;
   });
@@ -419,6 +420,7 @@ describe('webex.cc', () => {
 
     mockWebSocketManager = {
       initWebSocket: jest.fn(),
+      getUrl: jest.fn(() => 'wss://routing.produs1.cisco.com'),
       hasUsableSocket: jest.fn(() => true),
       on: jest.fn(),
       off: jest.fn(),
@@ -453,7 +455,6 @@ describe('webex.cc', () => {
 
     // Mock Services instance
     const mockServicesInstance = {
-      subscribe: jest.fn().mockResolvedValue('wss://routing.produs1.cisco.com'),
       agent: {
         stationLogin: jest.fn(),
         logout: jest.fn(),
@@ -715,15 +716,14 @@ describe('webex.cc', () => {
       expect(mercuryConnect).toHaveBeenCalled();
       expect(connectWebsocketSpy).toHaveBeenCalled();
       expect(setupEventListenersSpy).toHaveBeenCalled();
-      expect(webex.cc.services.subscribe).toHaveBeenCalledWith({
-        force: true,
-        isKeepAliveEnabled: false,
-        clientType: 'WebexCCSDK',
-        allowMultiLogin: false,
-      }, SUBSCRIBE_API);
       expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        url: 'wss://routing.produs1.cisco.com',
-        signal: expect.any(AbortSignal),
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: false,
+        },
+        resource: SUBSCRIBE_API,
       });
 
       // SPARK-626777 tracks moving listener cleanup into the future de-register API.
@@ -740,15 +740,14 @@ describe('webex.cc', () => {
         expect.any(Function)
       );
       expect(mockWebSocketManager.on).toHaveBeenCalledWith('message', expect.any(Function));
-      expect(webex.cc.services.subscribe).toHaveBeenCalledWith({
-        force: true,
-        isKeepAliveEnabled: false,
-        clientType: 'WebexCCSDK',
-        allowMultiLogin: false,
-      }, 'v1/realtime/subscribe');
       expect(webex.cc.services.rtdWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        url: 'wss://routing.produs1.cisco.com',
-        signal: expect.any(AbortSignal),
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: false,
+        },
+        resource: 'v1/realtime/subscribe',
       });
       expect(webex.cc.services.rtdWebSocketManager.on).toHaveBeenCalledWith(
         'message',
@@ -808,15 +807,14 @@ describe('webex.cc', () => {
       const result = await webex.cc.register();
 
       expect(connectWebsocketSpy).toHaveBeenCalled();
-      expect(webex.cc.services.subscribe).toHaveBeenCalledWith({
-        force: true,
-        isKeepAliveEnabled: false,
-        clientType: 'WebexCCSDK',
-        allowMultiLogin: true,
-      }, SUBSCRIBE_API);
       expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        url: 'wss://routing.produs1.cisco.com',
-        signal: expect.any(AbortSignal),
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: true,
+        },
+        resource: SUBSCRIBE_API,
       });
       expect(configSpy).toHaveBeenCalled();
       expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
@@ -908,15 +906,14 @@ describe('webex.cc', () => {
       );
       expect(connectWebsocketSpy).toHaveBeenCalled();
       expect(setupEventListenersSpy).toHaveBeenCalled();
-      expect(webex.cc.services.subscribe).toHaveBeenCalledWith({
-        force: true,
-        isKeepAliveEnabled: false,
-        clientType: 'WebexCCSDK',
-        allowMultiLogin: false,
-      }, SUBSCRIBE_API);
       expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        url: 'wss://routing.produs1.cisco.com',
-        signal: expect.any(AbortSignal),
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: false,
+        },
+        resource: SUBSCRIBE_API,
       });
 
       expect(mockTaskManager.on).toHaveBeenCalledWith(
@@ -997,15 +994,14 @@ describe('webex.cc', () => {
 
       expect(connectWebsocketSpy).toHaveBeenCalled();
       expect(setupEventListenersSpy).toHaveBeenCalled();
-      expect(webex.cc.services.subscribe).toHaveBeenCalledWith({
-        force: true,
-        isKeepAliveEnabled: false,
-        clientType: 'WebexCCSDK',
-        allowMultiLogin: false,
-      }, SUBSCRIBE_API);
       expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        url: 'wss://routing.produs1.cisco.com',
-        signal: expect.any(AbortSignal),
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: false,
+        },
+        resource: SUBSCRIBE_API,
       });
 
       expect(configSpy).toHaveBeenCalled();
@@ -1034,15 +1030,14 @@ describe('webex.cc', () => {
 
       await webex.cc.register();
 
-      expect(webex.cc.services.subscribe).toHaveBeenCalledWith({
-        force: true,
-        isKeepAliveEnabled: false,
-        clientType: 'WebexCCSDK',
-        allowMultiLogin: false,
-      }, 'v1/realtime/subscribe');
       expect(webex.cc.services.rtdWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        url: 'wss://routing.produs1.cisco.com',
-        signal: expect.any(AbortSignal),
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: false,
+        },
+        resource: 'v1/realtime/subscribe',
       });
       expect(webex.cc.services.rtdWebSocketManager.on).toHaveBeenCalledWith(
         'message',
@@ -1103,15 +1098,14 @@ describe('webex.cc', () => {
 
         await webex.cc.register();
 
-        expect(webex.cc.services.subscribe).toHaveBeenCalledWith({
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: false,
-        }, 'v1/realtime/subscribe');
         expect(webex.cc.services.rtdWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-          url: 'wss://routing.produs1.cisco.com',
-          signal: expect.any(AbortSignal),
+          body: {
+            force: true,
+            isKeepAliveEnabled: false,
+            clientType: 'WebexCCSDK',
+            allowMultiLogin: false,
+          },
+          resource: 'v1/realtime/subscribe',
         });
       }
     });
@@ -1189,15 +1183,14 @@ describe('webex.cc', () => {
 
         const result = await webex.cc.register();
 
-        expect(webex.cc.services.subscribe).toHaveBeenCalledWith({
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: false,
-        }, SUBSCRIBE_API);
         expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-          url: 'wss://routing.produs1.cisco.com',
-          signal: expect.any(AbortSignal),
+          body: {
+            force: true,
+            isKeepAliveEnabled: false,
+            clientType: 'WebexCCSDK',
+            allowMultiLogin: false,
+          },
+          resource: SUBSCRIBE_API,
         });
         expect(configSpy).toHaveBeenCalledWith('mockOrgId', welcomeAgentId);
         expect(setupEventListenersSpy).toHaveBeenCalled();
@@ -6601,7 +6594,7 @@ describe('regional recovery wiring', () => {
   ])(
     'uses the expected subscription headers in $environment',
     async ({integrationEnvironment, orgId}) => {
-      await withRouting(async ({cc, requests}) => {
+      await withRouting(async ({cc, requests, currentRouting}) => {
         cc.$webex.credentials.getOrgId = () => orgId;
         const body = {
           force: true,
@@ -6610,7 +6603,13 @@ describe('regional recovery wiring', () => {
           allowMultiLogin: false,
         };
 
-        const url = await cc.services.subscribe(body, SUBSCRIBE_API);
+        const registered = cc.services.webSocketManager.initWebSocket({
+          body,
+          resource: SUBSCRIBE_API,
+        });
+        await flush();
+        currentRouting().welcome();
+        await expect(registered).resolves.toEqual({agentId: 'agent'});
 
         expect(requests).toEqual([
           {
@@ -6622,10 +6621,79 @@ describe('regional recovery wiring', () => {
             timeout: 20000,
           },
         ]);
-        expect(url).toBe('wss://routing.produs1.cisco.com/?signature=private');
+        expect(cc.services.webSocketManager.getUrl())
+          .toBe('wss://routing.produs1.cisco.com/?signature=private');
       }, {autoRegister: false, integrationEnvironment});
     }
   );
+
+  it.each([
+    {title: 'an extension station after page refresh', browserVoice: false},
+    {title: 'a disconnected browser station after page refresh', browserVoice: true},
+  ])('automatically restores $title during registration', async ({browserVoice}) => {
+    await withRouting(async ({cc, requests, sockets, currentRouting, updateServices}) => {
+      cc.$config.allowAutomatedRelogin = true;
+      const state = jest.fn();
+      cc.on('region:stateChange', state);
+      const calling = cc.webCallingService;
+      const line = {mobiusDeviceId: 'refreshed-browser-line', deregister: jest.fn()};
+      const registerLine = jest.spyOn(calling, 'registerWebCallingLine').mockImplementation(async () => {
+        calling['line'] = line;
+        calling['handleLineRegistered'](line);
+      });
+      const registration = cc.register();
+      registration.catch(() => undefined);
+      await flush();
+      const primary = currentRouting();
+      expect(primary.url).toBe('wss://routing.produs1.cisco.com/?signature=private');
+      primary.welcome();
+      await flush();
+      expect(requests.filter(({resource}) => resource === '/v1/agents/reload')).toHaveLength(1);
+      expect(requests.filter(({resource}) => resource === 'v1/realtime/subscribe')).toHaveLength(0);
+
+      primary.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS, {
+        agentSessionId: 'restored-session',
+        deviceType: browserVoice ? LoginOption.BROWSER : LoginOption.EXTENSION,
+        dn: browserVoice ? `${WEB_RTC_PREFIX}agent` : '1234',
+        isExtension: !browserVoice,
+        lastStateChangeReason: browserVoice ? 'agent-wss-disconnect' : 'initial',
+      }));
+      await flush();
+      const stateRequests = requests.filter(({resource}) => resource === '/v1/agents/session/state');
+      expect(stateRequests).toHaveLength(browserVoice ? 1 : 0);
+      if (browserVoice) {
+        expect(stateRequests[0].body).toMatchObject({state: 'Available', auxCodeId: '0'});
+        primary.message({
+          ...agentFrame(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, {
+            agentSessionId: 'restored-session', subStatus: 'Available', auxCodeId: '0',
+          }),
+          type: CC_EVENTS.AGENT_STATE_CHANGE,
+        });
+      }
+      await expect(registration).resolves.toMatchObject({
+        agentId: 'agent',
+        agentSessionId: 'restored-session',
+        isAgentLoggedIn: true,
+        currentTeamId: 'team',
+        deviceType: browserVoice ? LoginOption.BROWSER : LoginOption.EXTENSION,
+        dn: browserVoice ? `${WEB_RTC_PREFIX}agent` : '1234',
+        lastStateAuxCodeId: browserVoice ? '0' : 'idle',
+      });
+      await flush();
+      expect(state).toHaveBeenLastCalledWith(
+        expect.objectContaining({status: 'ready', reason: 'initial-login'})
+      );
+      expect(registerLine).toHaveBeenCalledTimes(browserVoice ? 1 : 0);
+      expect(updateServices).not.toHaveBeenCalled();
+      expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(1);
+      expect(requests.filter(({resource}) => resource === '/v1/agents/login')).toHaveLength(0);
+      expect(requests.filter(({resource}) => resource === 'v1/realtime/subscribe')).toHaveLength(1);
+      sockets.find((socket) => socket.url.includes('rtd.')).welcome();
+      await flush();
+      expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
+      expect(cc.services.rtdWebSocketManager.hasUsableSocket()).toBe(true);
+    }, {autoRegister: false, browserVoice, rtdEnabled: true});
+  });
 
   it('uses newly subscribed routing sockets for failover, failback, and ordinary AQM requests', async () => {
     await withRouting(async ({cc, requests, currentRouting, startSwitch, advanceSwitch, login}) => {

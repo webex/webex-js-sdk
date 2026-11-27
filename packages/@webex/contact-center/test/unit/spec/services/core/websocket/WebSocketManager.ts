@@ -2,11 +2,15 @@ import {WebSocketManager} from '../../../../../../src/services/core/websocket/We
 import {
   CLOSE_SOCKET_TIMEOUT,
   KEEPALIVE_WORKER_INTERVAL,
+  TIMEOUT_REQ,
   METHODS,
   WELCOME_TIMEOUT,
 } from '../../../../../../src/services/core/constants';
 import {WEB_SOCKET_MANAGER_FILE} from '../../../../../../src/constants';
 import LoggerProxy from '../../../../../../src/logger-proxy';
+import {SubscribeRequest, WebexSDK} from '../../../../../../src/types';
+import {SUBSCRIBE_API, WCC_API_GATEWAY} from '../../../../../../src/services/constants';
+import {createDeferred} from '../../../../fixtures/aiSummaryTestUtils';
 
 jest.mock('../../../../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -33,10 +37,18 @@ class SocketDouble {
 
 const url = 'wss://routing.produs1.cisco.com/notifications?signature=private-sentinel';
 const otherUrl = 'wss://routing.prodeu2.ciscoccservice.com/notifications';
+const body: SubscribeRequest = {
+  force: true,
+  isKeepAliveEnabled: false,
+  clientType: 'WebexCCSDK',
+  allowMultiLogin: true,
+};
 const flush = async () => { for (let turn = 0; turn < 5; turn += 1) await Promise.resolve(); };
 
-describe('WebSocketManager URL transport', () => {
+describe('WebSocketManager subscription and connection', () => {
   let manager: WebSocketManager;
+  let webex: WebexSDK;
+  let request: jest.Mock;
   let workers: Array<{
     onmessage: ((event: any) => void) | null;
     postMessage: jest.Mock;
@@ -61,7 +73,13 @@ describe('WebSocketManager URL transport', () => {
       return worker;
     }) as any;
     URL.createObjectURL = jest.fn(() => 'blob:socket-' + workers.length);
-    manager = new WebSocketManager();
+    request = jest.fn().mockResolvedValue({body: {webSocketUrl: url}});
+    webex = {
+      request,
+      credentials: {getOrgId: jest.fn(() => 'org')},
+      internal: {services: {isIntegrationEnvironment: jest.fn(() => true)}},
+    } as unknown as WebexSDK;
+    manager = new WebSocketManager({webex});
   });
 
   afterEach(() => {
@@ -76,14 +94,17 @@ describe('WebSocketManager URL transport', () => {
     URL.createObjectURL = createUrl;
   });
 
-  const start = (signal?: AbortSignal, connectionUrl = url) => {
-    const promise = manager.initWebSocket({url: connectionUrl, signal});
+  const initialize = () => manager.initWebSocket({body, resource: SUBSCRIBE_API});
+  const start = async (connectionUrl = url) => {
+    request.mockResolvedValueOnce({body: {webSocketUrl: connectionUrl}});
+    const promise = initialize();
     promise.catch(() => undefined);
+    await flush();
 
     return {promise, socket: SocketDouble.instances.at(-1)!};
   };
-  const admit = async (signal?: AbortSignal, connectionUrl = url) => {
-    const result = start(signal, connectionUrl);
+  const admit = async (connectionUrl = url) => {
+    const result = await start(connectionUrl);
     result.socket.open();
     result.socket.message({type: 'Welcome', data: {agentId: 'agent'}});
     await result.promise;
@@ -102,13 +123,22 @@ describe('WebSocketManager URL transport', () => {
     expect(workers[0].postMessage).toHaveBeenLastCalledWith({type: 'terminate'});
   };
 
-  it('connects the supplied URL and waits for Welcome before admitting messages', async () => {
+  it('subscribes and waits for Welcome before admitting messages', async () => {
     const message = jest.fn();
     manager.on('message', message);
     expect(global.Worker).toHaveBeenCalledTimes(1);
     expect(workers[0].postMessage).not.toHaveBeenCalled();
-    const {promise, socket} = start();
+    const {promise, socket} = await start();
     expect(socket.url).toBe(url);
+    expect(manager.getUrl()).toBe(url);
+    expect(request).toHaveBeenCalledWith({
+      service: WCC_API_GATEWAY,
+      resource: SUBSCRIBE_API,
+      method: 'POST',
+      body,
+      headers: {'X-ORGANIZATION-ID': 'org'},
+      timeout: TIMEOUT_REQ,
+    });
     expect(manager.hasUsableSocket()).toBe(false);
     expect(global.Worker).toHaveBeenCalledTimes(1);
     socket.open();
@@ -134,6 +164,61 @@ describe('WebSocketManager URL transport', () => {
   });
 
   it.each([
+    {integration: false, orgId: 'org'},
+    {integration: true, orgId: undefined},
+  ])('omits the org header for integration=$integration org=$orgId', async ({integration, orgId}) => {
+    (webex.internal.services.isIntegrationEnvironment as jest.Mock).mockReturnValue(integration);
+    (webex.credentials.getOrgId as jest.Mock).mockReturnValue(orgId);
+    await admit();
+    expect(request).toHaveBeenCalledWith({
+      service: WCC_API_GATEWAY,
+      resource: SUBSCRIBE_API,
+      method: 'POST',
+      body,
+      headers: undefined,
+      timeout: TIMEOUT_REQ,
+    });
+  });
+
+  it.each([401, 409, 503])('preserves a subscribe HTTP %s failure for its caller', async (statusCode) => {
+    const failure = {statusCode, headers: {'x-wxcc-region-reason': 'REGION_MISMATCH_NO_OVERRIDE'}};
+    request.mockRejectedValueOnce(failure);
+    await expect(initialize()).rejects.toBe(failure);
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(SocketDouble.instances).toHaveLength(0);
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('preserves an explicit non-2xx subscribe response instead of opening a socket', async () => {
+    const failure = {statusCode: 409, body: {webSocketUrl: url}};
+    request.mockResolvedValueOnce(failure);
+    await expect(initialize()).rejects.toBe(failure);
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(SocketDouble.instances).toHaveLength(0);
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('starts the Welcome deadline after subscription completes', async () => {
+    const subscribed = createDeferred<{body: {webSocketUrl: string}}>();
+    request.mockReturnValueOnce(subscribed.promise);
+    const promise = initialize();
+    promise.catch(() => undefined);
+    await flush();
+    jest.advanceTimersByTime(19000);
+    expect(SocketDouble.instances).toHaveLength(0);
+    expect(jest.getTimerCount()).toBe(0);
+    subscribed.resolve({body: {webSocketUrl: url}});
+    await flush();
+    const socket = SocketDouble.instances.at(-1)!;
+    socket.open();
+    jest.advanceTimersByTime(WELCOME_TIMEOUT - 1);
+    expect(manager.hasUsableSocket()).toBe(false);
+    jest.advanceTimersByTime(1);
+    await expect(promise).rejects.toThrow('Welcome deadline');
+    expectReleased(socket);
+  });
+
+  it.each([
     'ws://routing.produs1.cisco.com/notifications',
     'https://routing.produs1.cisco.com/notifications',
     'wss://cisco.com.attacker.example/notifications',
@@ -141,15 +226,15 @@ describe('WebSocketManager URL transport', () => {
     'not a url',
     '',
   ])('rejects an insecure or untrusted socket URL %s', async (connectionUrl) => {
-    await expect(manager.initWebSocket({url: connectionUrl})).rejects.toThrow('not allow-listed');
+    request.mockResolvedValueOnce({body: {webSocketUrl: connectionUrl}});
+    await expect(initialize()).rejects.toThrow('not allow-listed');
     expect(SocketDouble.instances).toHaveLength(0);
     expect(global.Worker).toHaveBeenCalledTimes(1);
-    expect(workers[0].postMessage).not.toHaveBeenCalled();
     expect(jest.getTimerCount()).toBe(0);
   });
 
   it.each([undefined, [], 'agent'])('rejects malformed Welcome data %# at its deadline', async (data) => {
-    const {promise, socket} = start();
+    const {promise, socket} = await start();
     socket.open();
     socket.message({type: 'Welcome', data});
     jest.advanceTimersByTime(WELCOME_TIMEOUT - 1);
@@ -161,7 +246,7 @@ describe('WebSocketManager URL transport', () => {
   });
 
   it.each([false, true])('bounds Welcome from connect even when native open is delayed (%s)', async (opened) => {
-    const {promise, socket} = start();
+    const {promise, socket} = await start();
     const oldMessage = socket.onmessage!;
     jest.advanceTimersByTime(10000);
     if (opened) socket.open();
@@ -176,7 +261,7 @@ describe('WebSocketManager URL transport', () => {
   });
 
   it.each(['close', 'error'])('settles %s before Welcome and releases callbacks', async (event) => {
-    const {promise, socket} = start();
+    const {promise, socket} = await start();
     socket.open();
     const closed = jest.fn();
     manager.on('socketClose', closed);
@@ -210,12 +295,12 @@ describe('WebSocketManager URL transport', () => {
   });
 
   it('supersedes pending and accepted sockets without admitting stale callbacks', async () => {
-    const first = start();
+    const first = await start();
     const observed = expect(first.promise).rejects.toMatchObject({name: 'AbortError'});
     const oldOpen = first.socket.onopen!;
     const oldMessage = first.socket.onmessage!;
     const oldClose = first.socket.onclose!;
-    const second = await admit(undefined, otherUrl);
+    const second = await admit(otherUrl);
     await observed;
     expect(first.socket.close).toHaveBeenCalledTimes(1);
     oldOpen();
@@ -237,24 +322,30 @@ describe('WebSocketManager URL transport', () => {
     ]);
   });
 
-  it('rejects a pre-aborted signal without disturbing an accepted socket', async () => {
-    const socket = await admit();
-    const parent = new AbortController();
-    parent.abort();
-    await expect(manager.initWebSocket({url: otherUrl, signal: parent.signal})).rejects.toThrow();
-    expect(socket.close).not.toHaveBeenCalled();
-    expect(SocketDouble.instances).toHaveLength(1);
-    expect(manager.hasUsableSocket()).toBe(true);
+  it.each(['close', 'replace'])('does not open a late subscription after %s', async (action) => {
+    const subscribed = createDeferred<{body: {webSocketUrl: string}}>();
+    request.mockReturnValueOnce(subscribed.promise);
+    const promise = initialize();
+    const observed = expect(promise).rejects.toMatchObject({name: 'AbortError'});
+    await flush();
+    expect(SocketDouble.instances).toHaveLength(0);
+    if (action === 'close') manager.close(false);
+    else await admit(otherUrl);
+    await observed;
+    subscribed.resolve({body: {webSocketUrl: url}});
+    await flush();
+    expect(SocketDouble.instances).toHaveLength(action === 'close' ? 0 : 1);
+    expect(manager.hasUsableSocket()).toBe(action === 'replace');
+    expect(jest.getTimerCount()).toBe(0);
+    if (action === 'replace') expect(manager.getUrl()).toBe(otherUrl);
   });
 
-  it.each([false, true])('releases pending or admitted resources on abort (%s)', async (accepted) => {
-    const parent = new AbortController();
-    const {promise, socket} = start(parent.signal);
-    const observed = promise.catch((error) => error);
+  it('rejects a closed connection before Welcome and stops its worker', async () => {
+    const {promise, socket} = await start();
+    const observed = expect(promise).rejects.toMatchObject({name: 'AbortError'});
     socket.open();
-    if (accepted) socket.message({type: 'Welcome', data: {}});
     const oldWorkerMessage = workers[0].onmessage!;
-    parent.abort();
+    manager.close(false);
     await observed;
     oldWorkerMessage({data: {type: 'keepalive'}});
     expect(socket.send).toHaveBeenCalledTimes(1);
@@ -296,10 +387,10 @@ describe('WebSocketManager URL transport', () => {
     manager.once('message', () => {
       expect(socket.close).toHaveBeenCalledTimes(1);
       expect(manager.shouldReconnect).toBe(false);
-      replacement = start(undefined, otherUrl);
+      replacement = start(otherUrl);
     });
     socket.message({type: 'AGENT_MULTI_LOGIN'});
-    const next = replacement!;
+    const next = await replacement!;
     next.socket.open();
     next.socket.message({type: 'Welcome', data: {}});
     await next.promise;
@@ -310,7 +401,7 @@ describe('WebSocketManager URL transport', () => {
   });
 
   it('passes malformed payloads to consumers only after Welcome', async () => {
-    const {promise, socket} = start();
+    const {promise, socket} = await start();
     const received = jest.fn();
     manager.on('message', received);
     socket.message('not JSON');
@@ -327,7 +418,7 @@ describe('WebSocketManager URL transport', () => {
   it('rejects a socket construction failure and clears the Welcome deadline', async () => {
     const failure = new Error('Socket construction failed');
     global.WebSocket = jest.fn(() => { throw failure; }) as any;
-    await expect(manager.initWebSocket({url})).rejects.toBe(failure);
+    await expect(initialize()).rejects.toBe(failure);
     expect(jest.getTimerCount()).toBe(0);
   });
 
