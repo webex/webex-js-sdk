@@ -1,4 +1,6 @@
 const KarmaRunner = require('karma');
+const KarmaBrowser = require('karma/lib/browser');
+const { EventEmitter } = require('events');
 const { Karma } = require('@webex/legacy-tools');
 
 describe('Karma', () => {
@@ -263,7 +265,7 @@ describe('Karma', () => {
 
       it('should start the server', async () => {
         spyOn(console, 'log');
-        await Karma.test({ config });
+        await Karma.test(config);
 
         expect(spies.KarmaRunner.Server.start).toHaveBeenCalledTimes(1);
 
@@ -274,6 +276,52 @@ describe('Karma', () => {
         eventCallback.run_complete();
 
         expect(console.log).toHaveBeenCalledWith('Test run complete');
+      });
+
+      it('should clear a completed browser watchdog rearmed by a late console message', async () => {
+        jasmine.clock().install();
+        let complete;
+
+        try {
+          spyOn(mocks.KarmaRunner, 'ServerConstructor').and.callFake((data, callback) => {
+            complete = callback;
+          });
+          const run = Karma.test({ files: ['file.js'] });
+
+          // Allow parseConfig and server construction to complete without advancing timers.
+          await Promise.resolve();
+          await Promise.resolve();
+          await Promise.resolve();
+
+          const browser = new KarmaBrowser(
+            'synthetic',
+            'Synthetic Browser',
+            { remove: () => {} },
+            new EventEmitter(),
+            {},
+            { setTimeout, clearTimeout },
+            0,
+            480000,
+            true,
+            {},
+          );
+
+          browser.setState('EXECUTING');
+          browser.onComplete({});
+          if (eventCallback.browser_complete) {
+            eventCallback.browser_complete(browser);
+          }
+          // Karma 6.4 rearms its watchdog from onInfo(), even after onComplete().
+          browser.onInfo({ log: 'late synthetic console message', type: 'warn' });
+
+          expect(browser.noActivityTimeoutId).not.toBeNull();
+          complete(0);
+          await run;
+
+          expect(browser.noActivityTimeoutId).toBeNull();
+        } finally {
+          jasmine.clock().uninstall();
+        }
       });
 
       it('should not set up https when it is not enabled', () => Karma.test(config)
