@@ -350,7 +350,7 @@ their module specifications.
 | `meeting:self:phoneAudioUpdate` | `EVENT_TRIGGERS.MEETING_SELF_PHONE_AUDIO_UPDATE` | `src/meeting/index.ts` |
 | `meeting:self:requestedToUnmute` | `EVENT_TRIGGERS.MEETING_SELF_REQUESTED_TO_UNMUTE` | `src/meeting/index.ts` |
 | `meeting:self:rolesChanged` | `EVENT_TRIGGERS.MEETING_SELF_ROLES_CHANGED` | `src/meeting/index.ts` |
-| `meeting:self:unmutedByOthers` | `EVENT_TRIGGERS.MEETING_SELF_UNMUTED_BY_OTHERS` | `src/meeting/index.ts` |
+| `meeting:self:unmutedByOthers` | `EVENT_TRIGGERS.MEETING_SELF_UNMUTED_BY_OTHERS` | `src/meeting/index.ts`; [Locus-call audio mute contract](../src/meeting/docs/README.md#audio-remote-mute-in-locus-calls) |
 | `meeting:self:videoMutedByOthers` | `EVENT_TRIGGERS.MEETING_SELF_VIDEO_MUTED_BY_OTHERS` | `src/meeting/index.ts` |
 | `meeting:self:videoUnmutedByOthers` | `EVENT_TRIGGERS.MEETING_SELF_VIDEO_UNMUTED_BY_OTHERS` | `src/meeting/index.ts` |
 | `meeting:srtpCipher:updated` | `EVENT_TRIGGERS.MEETING_SRTP_CIPHER_UPDATED` | `src/meeting/index.ts` |
@@ -423,7 +423,7 @@ Registration lifecycle events, emitted on `webex.meetings`:
 | `meeting:media:local:start` / `meeting:media:remote:start` | local bytes began sending or remote bytes began arriving |
 | `meeting:ringing` / `meeting:ringingStop` | ringing starts/stops; payload identifies meeting `id` and `type`, and on stop the remote answer/decline state |
 | `meeting:startedSharingLocal` / `meeting:stoppedSharingLocal` | local share lifecycle; no payload |
-| `meeting:startedSharingRemote` / `meeting:stoppedSharingRemote` | remote share lifecycle |
+| `meeting:startedSharingRemote` / `meeting:stoppedSharingRemote` | remote share lifecycle; a former local share is unpublished before remote-start notification, including a split release/grant handoff ([floor cleanup](../src/meeting/docs/README.md#relinquishing-a-screen-share-floor)) |
 | `meeting:self:lobbyWaiting` / `meeting:self:guestAdmitted` | self lobby/admission transition; payload carries the self projection |
 | `meeting:self:mutedByOthers` | self was remotely muted; payload carries the self projection |
 | `meeting:reconnectionStarting` | reconnection began; no payload |

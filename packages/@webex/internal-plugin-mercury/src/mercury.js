@@ -248,12 +248,22 @@ const Mercury = WebexPlugin.extend({
       }
 
       if (this.socket) {
-        this.socket.removeAllListeners('message');
-        this.once('offline', () => {
-          this._emit('disconnected');
-          resolve();
-        });
-        this.socket.close(options);
+        const {socket} = this;
+
+        socket.removeAllListeners('message');
+        resolve(
+          socket.close(options).then(() => {
+            // Unopened and already-closed sockets can finish closing without
+            // emitting close/offline. Only clean up the socket we disconnected.
+            if (this.socket === socket) {
+              socket.removeAllListeners();
+              this.unset('socket');
+              this.connected = false;
+              this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(false);
+            }
+            this._emit('disconnected');
+          })
+        );
 
         return;
       }

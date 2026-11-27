@@ -6,6 +6,8 @@ import {request} from '@webex/http-core';
 
 const BASE_PATH_SECURE = '/users/test_users_s';
 const BASE_PATH = '/users/test_users';
+const TRACKING_ID_PREFIX = `webex-js-sdk_test-users_${uuid.v4()}`;
+let trackingIdSequence = 0;
 
 /**
  * Computes `expires` and `refresh_token_expires` from `expires_in` and
@@ -130,6 +132,7 @@ function requestWithAuth(options) {
  * @property {boolean} [forceCreate] force creates the user, to be used in conjunction with ensureExistsInWebexSites
  * @property {boolean} [ensureExistsInWebexSites] syncs the user in provided webexSites (syncInWebexSites)
  * @property {Array.<string>} [syncInWebexSites] used to define in which sites account should be synced
+ * @property {Array.<string>} [licenseIds] license IDs explicitly assigned during meeting-site provisioning
  * @property {string} [orgAdminAuthorization] bearer token of org admin to use syncInWebexSites
  */
 
@@ -206,21 +209,31 @@ export function createTestUser(options = {}) {
     forceCreate: options.forceCreate || false,
     ensureExistsInWebexSites: options.ensureExistsInWebexSites || false,
     syncInWebexSites: options.syncInWebexSites,
+    licenseIds: options.licenseIds,
     orgAdminAuthorization: options.orgAdminAuthorization,
   };
+
+  trackingIdSequence += 1;
+  const trackingId = `${TRACKING_ID_PREFIX}_${trackingIdSequence}`;
 
   return requestWithAuth({
     method: 'POST',
     uri: `${cigServiceUrl}${BASE_PATH_SECURE}`,
     json: true,
+    headers: {trackingid: trackingId},
     body,
-  }).then((res) => ({
-    password: body.password,
-    emailAddress: res.body.user.email,
-    displayName: res.body.user.name,
-    ...res.body.user,
-    token: fixToken(res.body.token),
-  }));
+  })
+    .then((res) => ({
+      password: body.password,
+      emailAddress: res.body.user.email,
+      displayName: res.body.user.name,
+      ...res.body.user,
+      token: fixToken(res.body.token),
+    }))
+    .catch((error) => {
+      error.message += `\nWEBEX_TRACKING_ID: ${trackingId}`;
+      throw error;
+    });
 }
 
 /**
@@ -362,6 +375,85 @@ export function setPreferredSite(options = {}) {
     json: true,
     body,
   });
+}
+
+/**
+ * Discover the site and licenses used by meeting integration users.
+ * @param {Object} options
+ * @param {string} options.authorization org-admin authorization
+ * @param {string} options.orgId organization to query
+ * @param {string} [options.webexSite] overrides the first available meeting site
+ * @param {Array<string>} [options.licenseIds] overrides discovered license IDs
+ * @param {string} [options.atlasServiceUrl] defaults to ATLAS_SERVICE_URL
+ * @returns {Promise<Object>} webexSite and FTM, FTC, FMS and WXSFREE licenseIds
+ */
+export async function getMeetingTestUserProvisioning(options = {}) {
+  const atlasServiceUrl = options.atlasServiceUrl || process.env.ATLAS_SERVICE_URL;
+
+  if (!atlasServiceUrl || !options.authorization || !options.orgId) {
+    throw new Error('License discovery requires Atlas URL, org-admin authorization and orgId');
+  }
+
+  trackingIdSequence += 1;
+  const response = await request({
+    method: 'GET',
+    uri: `${atlasServiceUrl.replace(/\/$/, '')}/organizations/${encodeURIComponent(
+      options.orgId
+    )}/licenses`,
+    qs: {includeUsage: false, syntheticLicenses: true},
+    json: true,
+    headers: {
+      authorization: options.authorization,
+      trackingid: `${TRACKING_ID_PREFIX}_${trackingIdSequence}`,
+    },
+  });
+
+  if (!Array.isArray(response.body)) {
+    throw new Error('Expected an array from the organization license catalog');
+  }
+
+  const siteLicenses = response.body.filter(
+    (license) =>
+      license?.status === 'ACTIVE' &&
+      license.offerCode === 'WXSFREE' &&
+      typeof license.licenseID === 'string' &&
+      license.licenseID.startsWith('WXSFREE_') &&
+      typeof license.siteUrl === 'string' &&
+      license.siteUrl.length > 0 &&
+      (!options.licenseIds?.length || options.licenseIds.includes(license.licenseID))
+  );
+  const webexSite = options.webexSite || siteLicenses[0]?.siteUrl;
+
+  if (!webexSite || !siteLicenses.some((license) => license.siteUrl === webexSite)) {
+    throw new Error(
+      'Expected one active WXSFREE license for the requested or available meeting site; found 0'
+    );
+  }
+
+  const licenseIds = options.licenseIds?.length
+    ? options.licenseIds
+    : ['FTM', 'FTC', 'FMS', 'WXSFREE'].map((offerCode) => {
+        const matches = response.body.filter(
+          (license) =>
+            license?.status === 'ACTIVE' &&
+            license.offerCode === offerCode &&
+            typeof license.licenseID === 'string' &&
+            license.licenseID.startsWith(`${offerCode}_`) &&
+            (offerCode !== 'WXSFREE' || license.siteUrl === webexSite)
+        );
+
+        if (matches.length !== 1) {
+          throw new Error(
+            `Expected one active ${offerCode} license${
+              offerCode === 'WXSFREE' ? ' for the configured meeting site' : ''
+            }; found ${matches.length}`
+          );
+        }
+
+        return matches[0].licenseID;
+      });
+
+  return {webexSite, licenseIds};
 }
 
 export {

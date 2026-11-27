@@ -31,11 +31,14 @@ const localTracks = {
 };
 
 skipInNode(describe)('plugin-meetings', () => {
-  describe('space-meeting', () => {
+  describe('space-meeting', function () {
+    this.timeout(integrationTestUtils.MEDIA_TEST_TIMEOUT);
     let space = null;
 
-    before(() =>
-      webexTestUsers
+    before(function setupUsers() {
+      this.timeout(180000);
+
+      return webexTestUsers
         .generateTestUsers({
           count: 4,
           whistler: process.env.WHISTLER || process.env.JENKINS,
@@ -53,19 +56,18 @@ skipInNode(describe)('plugin-meetings', () => {
         })
         .then(() =>
           Promise.all([testUtils.syncAndEndMeeting(alice), testUtils.syncAndEndMeeting(bob)])
-        )
-        .catch((error) => {
-          console.log(error);
-        })
-    );
+        );
+    });
 
     it('Alice starts a space meeting', () =>
       alice.webex.internal.conversation
-        .create({participants: [bob, chris]})
+        .create({
+          displayName: 'SDK space meeting integration',
+          participants: [bob, chris],
+        })
         .then((conversation) => {
           assert.lengthOf(conversation.participants.items, 3);
           assert.lengthOf(conversation.activities.items, 1);
-          console.log('CONVERSATION', conversation);
           space = conversation;
         })
         .then(async () => {
@@ -165,27 +167,57 @@ skipInNode(describe)('plugin-meetings', () => {
         .then(() => integrationTestUtils.addMedia(alice, {microphone: localTracks.alice.microphone, camera: localTracks.alice.camera})));
 
     it('Bob has flowing streams on reconnect', () => {
-      const retrieveStats = () => {
-        assert.isAbove(
-          bob.meeting.statsAnalyzer.statsResults['audio-recv-0'].recv.totalPacketsReceived,
-          0,
-          'total packets received greater than 0'
-        );
-      };
+      const waitForReceivedAudio = () =>
+        new Promise((resolve, reject) => {
+          const timeout = 15000;
+          const statsAnalyzer = bob.meeting.statsAnalyzer;
+          let availableStats = [];
+
+          const cleanup = () => {
+            clearTimeout(timeoutId);
+            statsAnalyzer.off('STATS_UPDATE', onStatsUpdate);
+          };
+
+          const onStatsUpdate = ({stats}) => {
+            availableStats = Array.from(stats.keys());
+
+            const hasReceivedAudio = Array.from(stats.values()).some(
+              (stat) =>
+                stat.type === 'inbound-rtp' &&
+                stat.kind === 'audio' &&
+                stat.packetsReceived > 0
+            );
+
+            if (hasReceivedAudio) {
+              cleanup();
+              resolve();
+            }
+          };
+
+          const timeoutId = setTimeout(() => {
+            cleanup();
+            reject(
+              new Error(
+                `No received audio packets after reconnect. Available stats: ${availableStats.join(
+                  ', '
+                )}`
+              )
+            );
+          }, timeout);
+
+          statsAnalyzer.on('STATS_UPDATE', onStatsUpdate);
+        });
 
       return Promise.all([
-        testUtils.delayedPromise(bob.meeting.reconnect()),
-        testUtils.waitForEvents([{scope: bob.meeting, event: 'media:ready'}]),
-        testUtils.delayedTest(retrieveStats, 9000),
-      ]).catch((error) => {
-        // eslint-disable-next-line no-console
-        console.warn('errror', error);
-      });
+        testUtils.waitForEvents([{scope: bob.meeting, event: 'media:ready'}], integrationTestUtils.MEDIA_OPERATION_TIMEOUT),
+        testUtils.withTimeout(bob.meeting.reconnect(), integrationTestUtils.MEDIA_OPERATION_TIMEOUT, 'SDK reconnect() timed out'),
+      ]).then(waitForReceivedAudio);
     });
 
     it('alice adds x user as guest to space meeting', () =>
       Promise.all([
-        testUtils.delayedPromise(guest.webex.meetings.create(alice.meeting.sipUri)),
+        // Preserve the invitation's MTID when joining as a non-space participant.
+        testUtils.delayedPromise(guest.webex.meetings.create(alice.meeting.meetingJoinUrl)),
         testUtils.waitForEvents([
           {scope: guest.webex.meetings, event: 'meeting:added', user: guest},
         ]),
@@ -235,7 +267,7 @@ skipInNode(describe)('plugin-meetings', () => {
         ]),
       ]).then(() => testUtils.waitForStateChange(alice.meeting, 'LEFT')));
 
-    it('bob and chris leave meeting', () =>
+    it('bob, chris and guest leave meeting', () =>
       Promise.all([
         testUtils.delayedPromise(bob.meeting.leave()),
         testUtils.waitForEvents([
@@ -247,8 +279,9 @@ skipInNode(describe)('plugin-meetings', () => {
         ]),
       ])
         .then(() => testUtils.waitForStateChange(bob.meeting, 'LEFT'))
-        .then(() => chris.meeting.leave())
-        .then(() => testUtils.waitUntil(4000)));
+        .then(() => guest.meeting.leave())
+        .then(() => testUtils.waitForStateChange(guest.meeting, 'LEFT'))
+        .then(() => chris.meeting.leave()));
 
     it('alice, bob and chris stop all local tracks', () => {
       if (localTracks.alice.microphone) {
@@ -279,23 +312,25 @@ skipInNode(describe)('plugin-meetings', () => {
       }
     });
 
-    it('check for meeting cleanup', () => {
-      console.log('Alice ', alice.webex.meetings.getAllMeetings());
-      console.log('Bob ', bob.webex.meetings.getAllMeetings());
-      console.log('Chris ', chris.webex.meetings.getAllMeetings());
-      assert.notExists(
-        alice.webex.meetings.getMeetingByType('correlationId', alice.meeting.correlationId),
-        'alice meeting exists'
-      );
-      assert.notExists(
-        bob.webex.meetings.getMeetingByType('correlationId', bob.meeting.correlationId),
-        'bob meeting exists'
-      );
-      assert.notExists(
-        chris.webex.meetings.getMeetingByType('correlationId', chris.meeting.correlationId),
-        'chris meeting exists'
-      );
-    });
+    it('check for meeting cleanup', () => new Promise((resolve, reject) => {
+      const remaining = () => userSet.filter((user) => user.webex.meetings.getMeetingByType(
+        'correlationId', user.meeting.correlationId
+      )).map((user) => user.name);
+      const cleanup = () => {
+        clearInterval(intervalId);
+        clearTimeout(timeoutId);
+      };
+      const intervalId = setInterval(() => {
+        if (remaining().length === 0) {
+          cleanup();
+          resolve();
+        }
+      }, 250);
+      const timeoutId = setTimeout(() => {
+        cleanup();
+        reject(new Error(`Meetings still exist after all participants left: ${remaining().join(', ')}`));
+      }, 15000);
+    }));
   });
 
   jenkinsOnly(describe.skip)('Unclaimed PMR', () => {

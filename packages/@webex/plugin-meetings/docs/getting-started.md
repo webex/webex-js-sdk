@@ -112,6 +112,57 @@ Browser/integration tests live under `test/integration/spec/` and use the packag
 browsers: the transcription cases passed, `space-meeting` failed because no test user was created,
 and the command exited 1.
 
+### HTTPS for browser tests
+
+Meeting browser tests require HTTPS. From the repository root, run
+`yarn setup:karma-https` once to prepare the machine, then add `KARMA_HTTPS=true` to
+the root `.env` file. Alternatively, enable HTTPS for one run:
+
+```sh
+KARMA_HTTPS=true yarn workspace @webex/plugin-meetings test:browser --karma-browsers chrome --targets converged-space-meetings.js
+```
+
+The browser-test command checks this setting before bundling or creating users and prints
+these setup instructions if it is missing or disabled. Unit tests do not require HTTPS.
+
+### Meeting-site test users
+
+For CIG users, enable meeting-site provisioning by providing either
+`WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION`
+(including `Bearer`) or `WEBEX_TEST_USERS_ORG_ADMIN_USER` and
+`WEBEX_TEST_USERS_ORG_ADMIN_PASSWORD`. `IDENTITY_BASE_URL` must address the same environment.
+Keep actual credentials in local or managed test configuration.
+
+Before creating each batch, the helper uses the org-admin authorization and `ATLAS_SERVICE_URL`
+to discover the first active site with a WXSFREE meeting license in catalog order, along with
+the organization's active FTM, FTC and FMS basic licenses. The catalog request includes
+synthetic licenses. Set `WEBEX_SITE` to override the site and/or `WEBEX_TEST_USERS_LICENSE_IDS`
+to override the licenses with a comma-separated list of IDs for the target org/site. When
+only license IDs are supplied, discovery selects their matching site. Missing or ambiguous
+license matches fail setup before user creation.
+
+The helper requests `basicMeeting`, explicitly assigns the configured licenses, synchronizes
+the site, sets the preferred site, and obtains a fresh user token before SDK registration.
+The OAuth client must allow `meeting:preferences_read`. For site-provisioned meeting users,
+the helper adds this scope to `config.scope` (or `WEBEX_SCOPE` when no override is supplied)
+for both creation and the fresh login, without changing the shared environment or caller
+configuration. An existing copy of the scope is not duplicated.
+
+This addition belongs in the meetings helper because generic test users have no meeting-site
+provisioning and can receive tokens without meeting scopes. Core token tests validate the
+granted scopes against the shared defaults and downscope from that set; putting the meeting
+scope in `.env.default` makes those tests expect a scope their users cannot obtain. Keep
+`meeting:preferences_read` out of a shared local `WEBEX_SCOPE` override as well.
+
+The scope authorizes reading meeting preferences and discovering the preferred site; license
+assignment uses the org-admin authorization. CIG's initial user token predates site provisioning
+and may omit meeting scopes, so the helper logs the user in again after provisioning.
+
+Without org-admin credentials/authorization or an explicit site, and for Whistler users,
+the helper retains the default creation flow. An explicit site requires org-admin authorization.
+Provisioning errors fail setup. Space-meeting fixtures must provide `displayName`, because
+App API requires a non-null `title` when the SDK creates an instant space meeting.
+
 When adding tests, follow the existing file's style, use Sinon and `@webex/test-helper-chai`, prefer
 `calledOnceWithExactly`, use fake timers for timer/retry behavior, and parameterize more than three
 similar cases. Use Sinon for mocks/stubs and assertions from `@webex/test-helper-chai`.

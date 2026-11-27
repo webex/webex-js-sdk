@@ -1,4 +1,3 @@
-
 const max = 30000;
 const waitForSpy = (spy, event) => {
   let timer;
@@ -98,66 +97,98 @@ const syncAndEndMeeting = (user) =>
       console.log('ERROR on syncMeeting', e);
     });
 
-//
-const waitForEvents = (scopeEvents, timeout = max) => {
-  let timer;
-  const events = {};
+// Each descriptor must match once; duplicates from one scope cannot satisfy another.
+const waitForEvents = (scopeEvents, timeout = max) =>
+  new Promise((resolve, reject) => {
+    let timer;
+    const result = [];
+    const pending = new Map(scopeEvents.map((obj, index) => [index, obj]));
+    const listeners = [];
+    const cleanup = () => {
+      clearTimeout(timer);
+      listeners.forEach(({scope, event, handler}) => scope.off(event, handler));
+    };
+    const fail = (error) => {
+      cleanup();
+      reject(error);
+    };
+    timer = setTimeout(() => {
+      fail(
+        new Error(
+          `Events not triggered ${JSON.stringify(
+            Array.from(pending.values(), ({event}) => event)
+          )} in ${timeout} ms`
+        )
+      );
+    }, timeout);
 
-  return Promise.race([
-    new Promise((resolve, reject) => {
-      timer = setTimeout(() => {
-        reject(new Error(`Events not triggered ${JSON.stringify(events)} in ${timeout} ms`));
-      }, timeout);
-    }),
-    new Promise((resolve, reject) => {
-      try {
-        const result = [];
-
-        scopeEvents.forEach((obj) => {
-          events[obj.event] = false;
-          const handler = (value) => {
-            result.push(Object.assign(obj, {result: value}));
-            events[obj.event] = true;
-            result[obj.event] = Object.assign(obj, {result: value});
+    try {
+      scopeEvents.forEach((obj, index) => {
+        const handler = (value) => {
+          if (!pending.has(index)) {
+            return;
+          }
+          try {
+            if (obj.match && !obj.match(value)) {
+              return;
+            }
             if (obj.event === 'meeting:added') {
               obj.user.meeting = value.meeting;
               obj.user.meeting.name = obj.user.name;
               obj.user.memberId = value.meeting.locusInfo.parsedLocus.selfId;
             }
             if (obj.event === 'meeting:removed') {
-              console.log(
-                `MEETING:REMOVED ${obj.user.name} ID ${obj.user.meeting.id} correlationID ${obj.user.meeting.correlationId}`
-              );
-              if (obj.user.meeting.id === value.meetingId) {
-                obj.user.meeting = null;
-              } else {
-                console.log('MEETING EXISTING ', obj.user.webex.meetings.getAllMeetings());
-                reject(new Error(`Different Meeting Object ${value}`));
+              if (obj.user.meeting.id !== value.meetingId) {
+                throw new Error('Different Meeting Object');
               }
+              obj.user.meeting = null;
             }
 
-            if (obj.match) {
-              if (obj.match(value)) {
-                clearTimeout(timer);
-                obj.scope.off(obj.event, handler);
+            const entry = Object.assign(obj, {result: value});
 
-                resolve(result);
-              }
-            } else if (result.length === scopeEvents.length) {
+            result.push(entry);
+            result[obj.event] = entry;
+            pending.delete(index);
+            obj.scope.off(obj.event, handler);
+            if (pending.size === 0) {
+              cleanup();
               resolve(result);
-              obj.scope.off(obj.event, handler);
-              clearTimeout(timer);
             }
-          };
+          } catch (error) {
+            fail(error);
+          }
+        };
 
-          obj.scope.on(obj.event, handler);
-        });
-      } catch (e) {
-        console.error('waitForEvents', e);
-        reject(e);
+        obj.scope.on(obj.event, handler);
+        listeners.push({scope: obj.scope, event: obj.event, handler});
+      });
+      if (pending.size === 0) {
+        cleanup();
+        resolve(result);
       }
-    }),
-  ]);
+    } catch (error) {
+      fail(error);
+    }
+  });
+
+// Attach rejection handling immediately and release the deadline on every outcome.
+const withTimeout = async (promise, timeout = max, description = 'Operation timed out') => {
+  let timer;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((resolve, reject) => {
+        timer = setTimeout(() => {
+          const message = typeof description === 'function' ? description() : description;
+
+          reject(new Error(`${message} in ${timeout} ms`));
+        }, timeout);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 };
 
 const delayedPromise = (promise) => {
@@ -192,8 +223,6 @@ const delayedTest = (callback, timeout) =>
       resolve();
     }, timeout);
   });
-
-
 
 const waitUntil = (waitTime) =>
   new Promise((resolve) => {
@@ -235,6 +264,7 @@ export default {
   waitForEvents,
   checkParticipantUpdatedStatus,
   delayedPromise,
+  withTimeout,
   waitUntil,
   delayedTest,
   flushPromises,

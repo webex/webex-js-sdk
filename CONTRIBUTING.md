@@ -271,6 +271,8 @@ Examples:
 
 Then add `KARMA_HTTPS=true` to your `./.env` file (or prefix a single run with it). Karma will be served from `https://localhost.webex.com`. CI always runs browser tests this way. See the [Legacy Tools README](./packages/legacy/tools/README.md#serving-karma-over-https) for details.
 
+**Meetings media deadlines:** the meetings browser fixtures allow 80 seconds for each media setup or reconnect operation. The SDK can wait 35 seconds for SDP before ICE/DTLS setup completes, so a 30-second wrapper can expire before the SDK reports its result. Tests that set up participants sequentially have a 180-second outer budget, set during suite definition. These are deadlines, not fixed waits: successful operations continue immediately. Missing remote media events and SDK errors still fail the test, and the helpers release their timers and listeners on every outcome.
+
 #### Submitting Changes
 
 When submitting changes to this project, all changes must go through the [GitHub Pull Request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests) process. Below are the steps outlining the process:

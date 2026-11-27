@@ -2,7 +2,7 @@ import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import {createMuteState, MuteState} from '@webex/plugin-meetings/src/meeting/muteState';
-import {AUDIO, VIDEO} from '@webex/plugin-meetings/src/constants';
+import {AUDIO, VIDEO, _CALL_, _MEETING_} from '@webex/plugin-meetings/src/constants';
 
 import testUtils from '../../../utils/testUtils';
 
@@ -31,6 +31,7 @@ describe('plugin-meetings', () => {
 
   beforeEach(async () => {
     meeting = {
+      type: _MEETING_,
       mediaProperties: {
         audioStream: createFakeLocalStream('fake audio stream', false, false),
         videoStream: createFakeLocalStream('fake video stream', false, false),
@@ -186,6 +187,68 @@ describe('plugin-meetings', () => {
       assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
       assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, true, undefined);
       assert.isTrue(audio.isMuted());
+    });
+
+    [
+      {
+        name: 'an initially unmuted participant',
+        userMuted: false,
+        systemMuted: false,
+        expectedMuted: false,
+      },
+      {name: 'a self-muted participant', userMuted: true, systemMuted: false, expectedMuted: true},
+      {
+        name: 'a system-muted participant',
+        userMuted: false,
+        systemMuted: true,
+        expectedMuted: true,
+      },
+      {
+        name: 'a participant reporting a local mute update during remote mute',
+        userMuted: false,
+        systemMuted: false,
+        muteDuring: true,
+        expectedMuted: true,
+      },
+    ].forEach(({name, userMuted, systemMuted, muteDuring, expectedMuted}) => {
+      it(`preserves local mute intent when a Locus CALL remotely mutes and unmutes ${name}`, async () => {
+        meeting.type = _CALL_;
+        const stream = meeting.mediaProperties.audioStream;
+        stream.userMuted = userMuted;
+        stream.systemMuted = systemMuted;
+        // Match the real stream: server mute changes its user-muted property and
+        // notifies the meeting, which must not treat it as a local user action.
+        stream.setServerMuted.callsFake((muted) => {
+          stream.userMuted = muted;
+          audio.handleLocalStreamMuteStateChange(meeting);
+        });
+        audio.handleLocalStreamChange(meeting);
+        await testUtils.flushPromises();
+        MeetingUtil.remoteUpdateAudioVideo.resetHistory();
+
+        audio.handleServerRemoteMuteUpdate(meeting, true, true);
+        await testUtils.flushPromises();
+
+        assert.isTrue(audio.isRemotelyMuted());
+        assert.isTrue(stream.muted);
+        assert.equal(audio.state.client.localMute, userMuted || systemMuted);
+        assert.notCalled(MeetingUtil.remoteUpdateAudioVideo);
+        assert.notCalled(meeting.members.muteMember);
+
+        if (muteDuring) {
+          stream.userMuted = true;
+          audio.handleLocalStreamMuteStateChange(meeting);
+          await testUtils.flushPromises();
+        }
+
+        audio.handleServerRemoteMuteUpdate(meeting, false, true);
+        await testUtils.flushPromises();
+
+        assert.isFalse(audio.isRemotelyMuted());
+        assert.equal(audio.state.client.localMute, expectedMuted);
+        assert.equal(audio.isMuted(), expectedMuted);
+        assert.equal(stream.muted, expectedMuted);
+      });
     });
 
     it('does local audio unmute if localAudioUnmuteRequired is received', async () => {

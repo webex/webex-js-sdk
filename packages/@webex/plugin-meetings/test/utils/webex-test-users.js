@@ -1,10 +1,10 @@
 /* eslint-disable no-console */
 
 const WebexCore = require('@webex/webex-core').default;
-const testUser = require('@webex/test-helper-test-users');
 const sinon = require('sinon');
 
 const config = require('./webex-config');
+const createTestUsers = require('./create-test-users');
 
 // Include the plugins which you feel will be used by the webex instance
 require('@webex/internal-plugin-mercury');
@@ -18,50 +18,26 @@ require('@webex/plugin-rooms');
 require('@webex/plugin-meetings');
 
 const generateTestUsers = async (options = {}) => {
-  options.config = options.config || {};
-  options.config.orgId = options.config.orgId || process.env.WEBEX_CONVERGED_ORG_ID;
+  const userSet = await createTestUsers(options);
 
-  return testUser.create(options)
-    .then(async (userSet) => {
-      if (userSet.length !== options.count) {
-        return Promise.reject(new Error('Test users not created'));
-      }
+  // Pause for 5 seconds for CI.
+  await new Promise((done) => setTimeout(done, 5000));
 
-      // Pause for 5 seconds for CI
-      await new Promise((done) => setTimeout(done, 5000));
-
-      const webexRegisterPromises = [];
-      const userWebexMeetings = [];
-
-      userSet.forEach((user) => {
-        // eslint-disable-next-line no-param-reassign
-        user.webex = new WebexCore({
-          config: config.webex,
-          credentials: {
-            authorization: user.token,
-          },
-          meetings: {
-            autoUploadLogs: false,
-          },
-        });
-
-        webexRegisterPromises.push(new Promise((resolve) => {
-          user.webex.on('ready', resolve);
-        }));
-
-        user.webex.internal.support.submitLogs = sinon.stub().returns(Promise.resolve());
-
-        userWebexMeetings.push(user.webex.meetings);
+  await Promise.all(
+    userSet.map(async (user) => {
+      // eslint-disable-next-line no-param-reassign
+      user.webex = new WebexCore({
+        config: config.webex,
+        credentials: {authorization: user.token},
+        meetings: {autoUploadLogs: false},
       });
-
-      // wait for webex to be ready before registering meetings
-      return Promise.all(webexRegisterPromises).then(() => {
-        return Promise.all(userWebexMeetings.map(m => m.register())).then(() => userSet);
-      })
+      user.webex.internal.support.submitLogs = sinon.stub().returns(Promise.resolve());
+      await new Promise((resolve) => user.webex.on('ready', resolve));
+      await user.webex.meetings.register();
     })
-    .catch((error) => {
-      console.error('#generateTestUsers=>ERROR', error);
-    });
+  );
+
+  return userSet;
 };
 
 const reserveCMR = (user) =>

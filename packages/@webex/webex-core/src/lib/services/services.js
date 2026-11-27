@@ -1,6 +1,6 @@
 import sha256 from 'crypto-js/sha256';
 
-import {union, forEach} from 'lodash';
+import {union, forEach, isString} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 
 import METRICS from '../metrics';
@@ -28,6 +28,9 @@ const DEFAULT_CLUSTER_IDENTIFIER =
   process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER || `${DEFAULT_CLUSTER}:${CLUSTER_SERVICE}`;
 const CATALOG_CACHE_KEY_V1 = 'services.v1.u2cHostMap';
 const CATALOG_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+// _updateHostCatalog replaces the catalog object, so a new snapshot gets a new index.
+// Weak keys allow old snapshots and their indexes to be garbage collected together.
+const validHostsByCatalog = new WeakMap();
 
 /* eslint-disable no-underscore-dangle */
 /**
@@ -292,14 +295,37 @@ const Services = WebexPlugin.extend({
   },
 
   /**
-   * Check is valid host from the legacy host catalog.
+   * Check canonical and alternate hosts declared in the legacy host catalog.
    * @param {string} host
    * @returns {Boolean}
    */
   isValidHost(host) {
-    const hostCatalog = this._hostCatalog || {};
+    const hostCatalog = this._hostCatalog;
 
-    return !!hostCatalog[host]?.length;
+    if (!isString(host) || !host || !hostCatalog) {
+      return false;
+    }
+
+    let validHosts = validHostsByCatalog.get(hostCatalog);
+
+    if (!validHosts) {
+      validHosts = new Set();
+
+      forEach(hostCatalog, (entries, logicalHost) => {
+        if (entries?.length) {
+          validHosts.add(logicalHost);
+        }
+        forEach(entries, (entry) => {
+          if (isString(entry?.host) && entry.host) {
+            validHosts.add(entry.host);
+          }
+        });
+      });
+      validHostsByCatalog.set(hostCatalog, validHosts);
+    }
+
+    // Priority controls host selection, not whether a declared host is recognised.
+    return validHosts.has(host);
   },
 
   /**

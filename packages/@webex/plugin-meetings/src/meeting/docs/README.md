@@ -340,6 +340,44 @@ objects, the WebRTC connection, its `ConnectionStateHandler`, the stats analyzer
 multistream, the slot and request managers. The LLM data channel is created on join when
 `enableAutomaticLLM` is on and recreated when the Locus or data-channel URL changes.
 
+### Audio remote mute in Locus calls
+
+For a Locus `CALL`, `MuteState` applies remote audio mute to the stream while preserving the
+participant's local mute intent. A remote mute must not be echoed back as a local mute or
+immediately undone by a client-to-server sync. When another participant clears remote mute,
+the stream is unmuted only if the participant is not independently locally/system muted.
+These legacy calls do not require `LOCAL_UNMUTE_REQUIRED` for the clear; the Meeting emits
+`meeting:self:unmutedByOthers` once it is actually unmuted.
+
+Group meetings retain the breakout-return safeguard: a remote-mute clear alone does not
+unmute the local stream, and the server-driven local-unmute path remains
+`LOCAL_UNMUTE_REQUIRED`. This distinction restores the legacy call behavior without allowing
+a stale breakout update to override local mute.
+
+Verification: `test/unit/spec/meeting/muteState.js` covers call remote mute/unmute, independent
+self/system mute, local-mute updates during remote mute, and the existing breakout regressions.
+`test/integration/spec/journey.js` requires the public unmuted-by-others event after Alice
+unmutes Bob and separately checks that Alice cannot unmute Bob after he mutes himself.
+
+### Relinquishing a screen-share floor
+
+When a remote participant takes the floor, the former local sharer unpublishes its share
+streams before emitting `meeting:startedSharingRemote`. Locus can deliver the handoff as
+separate release and grant updates: `LOCAL_SHARE_ACTIVE` becomes `NO_SHARE` before becoming
+`REMOTE_SHARE_ACTIVE`. The independent `screenShareFloorState` still identifies the former
+granted local share during that intermediate state; checking only the previous `shareStatus`
+would leave its streams publishing after the remote grant.
+
+This cleanup applies to a previously granted local share, as well as a direct handoff from
+`LOCAL_SHARE_ACTIVE`. It must not cancel a newly prepared stream whose local floor request
+is pending or has not started. Both share-video and share-audio streams are passed through
+the existing `unpublishStreams` path.
+
+Verification: the `relinquishing a local content floor` cases in
+`test/unit/spec/meeting/index.js` cover the split release/grant, direct handoff before the
+local grant response, pending/new local streams, and absence of local sending.
+`test/integration/spec/journey.js` checks the real stream-publication and sharing events.
+
 ## Data flow and sequence coverage
 
 Sequence coverage: the call style is in-process async method calls from the application; outbound

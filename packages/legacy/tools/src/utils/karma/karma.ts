@@ -71,7 +71,13 @@ class Karma {
       .then((parsedConfig: any) => new Promise((resolve, reject) => {
         // Resolve on run completion (not after start) so callers can clean up
         // generated files only once Karma has finished browserifying/running.
+        const completedBrowsers = new Set<any>();
         const server = new KarmaRunner.Server(parsedConfig, (code) => {
+          // Karma 6.4 onInfo() can rearm this timer after onComplete() when a
+          // console message arrives during shutdown. Sockets are closed now, so
+          // release completed browsers' watchdogs without changing run results.
+          completedBrowsers.forEach((browser) => browser.clearNoActivityTimeout());
+          completedBrowsers.clear();
           https?.cleanup();
 
           if (code === 0) {
@@ -80,6 +86,8 @@ class Karma {
             reject(code);
           }
         });
+
+        server.on('browser_complete', (browser) => completedBrowsers.add(browser));
 
         if (files && files[0].includes('@webex')) {
           server.on('run_start', async () => {

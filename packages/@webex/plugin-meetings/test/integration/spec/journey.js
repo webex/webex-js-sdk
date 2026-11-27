@@ -18,7 +18,7 @@ const webexTestUsers = require('../../utils/webex-test-users');
 
 const {isBrowser} = BrowserDetection();
 
-let userSet, alice, bob, chris, enumerateSpy, channelUrlA, channelUrlB;
+let userSet, alice, bob, chris, channelUrlA, channelUrlB;
 
 const localStreams = {
   alice: {
@@ -42,6 +42,19 @@ const localStreams = {
       video: undefined,
     }
   },
+};
+
+const assertLocalStreamsAdded = (user, streams) => {
+  assert.strictEqual(
+    user.meeting.mediaProperties.audioStream,
+    streams.microphone,
+    `${user.name}'s meeting must use the supplied microphone stream`
+  );
+  assert.strictEqual(
+    user.meeting.mediaProperties.videoStream,
+    streams.camera,
+    `${user.name}'s meeting must use the supplied camera stream`
+  );
 };
 
 // Updated expectedPublished from a boolean value to an object containing the stream and status properties
@@ -87,14 +100,6 @@ skipInNode(describe)('plugin-meetings', () => {
           throw error;
         })
     );
-
-    before(() => {
-      enumerateSpy = sinon.spy(navigator.mediaDevices, 'enumerateDevices');
-    });
-
-    beforeEach(() => {
-      enumerateSpy.resetHistory();
-    });
 
     describe('Check configuration values', () => {
       it('properly sets the Media Quality Analyzer `metrics` config', () => {
@@ -268,7 +273,7 @@ skipInNode(describe)('plugin-meetings', () => {
                   {scope: chris.meeting, event: 'meeting:stateChange', user: chris},
                 ])
                 .then((response) => {
-                  assert.equal(response[0].result.payload.currentState, 'ACTIVE');
+                  assert.equal(response['meeting:stateChange'].result.payload.currentState, 'ACTIVE');
                 }),
             ]);
           });
@@ -285,6 +290,9 @@ skipInNode(describe)('plugin-meetings', () => {
     });
 
     describe('Successful 1:1 meeting (including Guest)', function () {
+      // Set this before tests inherit their timeout; changing it in a hook is too late.
+      this.timeout(integrationTestUtils.MEDIA_TEST_TIMEOUT);
+
       before(() => {
         // Workaround since getDisplayMedia requires a user gesture to be activated, and this is a integration tests
         // https://bugzilla.mozilla.org/show_bug.cgi?id=1580944
@@ -295,8 +303,6 @@ skipInNode(describe)('plugin-meetings', () => {
             navigator.mediaDevices.getUserMedia
           );
         }
-
-        this.timeout(80000);
       });
 
       it('No previous Call', () => {
@@ -333,24 +339,24 @@ skipInNode(describe)('plugin-meetings', () => {
                   {scope: alice.meeting, event: 'meeting:stateChange', user: alice},
                 ])
                 .then((response) => {
-                  assert.equal(response[0].result.payload.currentState, 'ACTIVE');
+                  assert.equal(response['meeting:stateChange'].result.payload.currentState, 'ACTIVE');
                 }),
             ]);
           })
           .then(() => {
             assert.equal(bob.meeting.partner.state, 'JOINED');
-            // Wait for openH264 to finsish downloading and peerConnection to be stable
-            testUtils.waitUntil(4000);
+            // Wait for openH264 to finish downloading and peerConnection to be stable.
+            return testUtils.waitUntil(4000);
           })
           .then(() =>
             Promise.all([
-              integrationTestUtils.addMedia(alice, {microphone: localStreams.alice.microphone, camera: localStreams.alice.camera}),
               testUtils.waitForEvents([
                 {scope: alice.meeting, event: 'meeting:media:local:start', user: alice},
-              ]),
+              ], integrationTestUtils.MEDIA_OPERATION_TIMEOUT),
+              integrationTestUtils.addMedia(alice, {microphone: localStreams.alice.microphone, camera: localStreams.alice.camera}),
             ])
           )
-          .then(() => assert(enumerateSpy.called)));
+          .then(() => assertLocalStreamsAdded(alice, localStreams.alice)));
 
       it('bob joins the meeting', () => {
         const checkBobIsInMeeting = (event) =>
@@ -378,16 +384,16 @@ skipInNode(describe)('plugin-meetings', () => {
 
       it('bob adds media to the meeting', () =>
         Promise.all([
-          integrationTestUtils.addMedia(bob, {microphone: localStreams.bob.microphone, camera: localStreams.bob.camera}),
           testUtils
             .waitForEvents([
               {scope: bob.meeting, event: 'meeting:media:local:start', user: bob},
               {scope: alice.meeting, event: 'meeting:media:remote:start', user: alice},
-            ])
+            ], integrationTestUtils.MEDIA_OPERATION_TIMEOUT)
             .catch((e) => {
               console.error('Error on remote and local start event', e);
               throw e;
             }),
+          integrationTestUtils.addMedia(bob, {microphone: localStreams.bob.microphone, camera: localStreams.bob.camera}),
         ])
           .then(() => {
             assert.equal(bob.meeting.sipUri, alice.id);
@@ -395,13 +401,13 @@ skipInNode(describe)('plugin-meetings', () => {
             assert.exists(alice.meeting.members.locusUrl);
             assert.equal(alice.meeting.type, 'CALL');
             assert.equal(bob.meeting.type, 'CALL');
-            assert(enumerateSpy.called);
+            assertLocalStreamsAdded(bob, localStreams.bob);
           })
           .then(function bobState() {
-            testUtils.waitForStateChange(bob.meeting, 'JOINED');
+            return testUtils.waitForStateChange(bob.meeting, 'JOINED');
           })
           .then(function aliceState() {
-            testUtils.waitForStateChange(alice.meeting, 'JOINED');
+            return testUtils.waitForStateChange(alice.meeting, 'JOINED');
           })
           .catch((e) => {
             console.error('Error bob joins the meeting ', e);
@@ -553,15 +559,21 @@ skipInNode(describe)('plugin-meetings', () => {
             }),
         ]));
 
-      it('alice unmutes bob', () =>
-        Promise.all([
-          testUtils.delayedPromise(alice.meeting.mute(bob.meeting.members.selfId, false)),
-          testUtils
-            .waitForEvents([{scope: bob.meeting, event: 'meeting:self:unmutedByOthers'}])
-            .then((response) => {
-              console.log('meeting:self:unmutedByOthers event ', response[0].result);
-            }),
-        ]));
+      it('alice unmutes bob', async () => {
+        const bobUnmutedByOthers = testUtils.waitForEvents([{
+          scope: bob.meeting,
+          event: EVENT_TRIGGERS.MEETING_SELF_UNMUTED_BY_OTHERS,
+        }]);
+
+        await Promise.all([
+          bobUnmutedByOthers,
+          alice.meeting.mute(bob.meeting.members.selfId, false),
+        ]);
+
+        assert.isFalse(bob.meeting.audio.isRemotelyMuted());
+        assert.isFalse(bob.meeting.audio.isMuted());
+        assert.isFalse(localStreams.bob.microphone.muted);
+      });
 
       it('bob audio mute, so alice cannot unmute bob', async () => {
         const checkEvent = (event) =>
@@ -580,21 +592,18 @@ skipInNode(describe)('plugin-meetings', () => {
 
         assert.equal(localStreams.bob.microphone.userMuted, true);
 
-        // now alice tries to unmmute bob
-        await testUtils.delayedPromise(alice.meeting.mute(bob.meeting.members.selfId, false))
-          // expect the waitForEvents to timeout
-          .then(() =>
-            testUtils.waitForEvents(
-              [{scope: bob.meeting, event: 'meeting:self:unmutedByOthers'}],
-              2000
-            )
-          )
-          .then(() => {
-            assert.fail('bob received unexpected meeting:self:unmutedByOthers event');
-          })
-          .catch(() => {
-            assert.equal(localStreams.bob.microphone.userMuted, true);
-          });
+        const unmutedByOthers = sinon.spy();
+        bob.meeting.on(EVENT_TRIGGERS.MEETING_SELF_UNMUTED_BY_OTHERS, unmutedByOthers);
+
+        try {
+          await alice.meeting.mute(bob.meeting.members.selfId, false);
+          await testUtils.waitUntil(2000);
+          assert.notCalled(unmutedByOthers);
+          assert.isTrue(localStreams.bob.microphone.userMuted);
+          assert.isTrue(localStreams.bob.microphone.muted);
+        } finally {
+          bob.meeting.off(EVENT_TRIGGERS.MEETING_SELF_UNMUTED_BY_OTHERS, unmutedByOthers);
+        }
       });
 
       it('bob audio unmute ', async () => {
@@ -917,7 +926,7 @@ skipInNode(describe)('plugin-meetings', () => {
                 localStreams.chris.camera = await createCameraStream();
               })
               .then(() => integrationTestUtils.addMedia(chris, {microphone: localStreams.chris.microphone, camera: localStreams.chris.camera}))
-              .then(() => assert(enumerateSpy.called));
+              .then(() => assertLocalStreamsAdded(chris, localStreams.chris));
           })
           .then(() =>
             Promise.all([
@@ -939,18 +948,22 @@ skipInNode(describe)('plugin-meetings', () => {
       it('leave on the meeting object', () => {
         const checkInactive = (result) => result.reason === 'CALL_INACTIVE';
 
-        Promise.all([
-          testUtils.delayedPromise(bob.meeting.leave()),
+        return Promise.all([
           testUtils.waitForEvents([
             {scope: alice.meeting.members, event: 'members:update', user: alice},
+          ]),
+          testUtils.waitForEvents([
             {
               scope: bob.webex.meetings,
               event: 'meeting:removed',
               user: bob,
               match: checkInactive,
             },
+          ]),
+          testUtils.waitForEvents([
             {scope: alice.webex.meetings, event: 'meeting:removed', user: alice},
           ]),
+          testUtils.delayedPromise(bob.meeting.leave()),
         ])
           .then(() => {
             assert.equal(bob.meeting, null);

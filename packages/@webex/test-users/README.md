@@ -45,6 +45,26 @@ The test users library falls back to a few environment variables if they aren't 
 - `IDBROKER_BASE_URL` - The Webex auth endpoint to get a client based access token
 - [DEPRECATED] `WEBEX_TEST_USERS_CONVERSATION_SERVICE_URL` - use `WEBEX_TEST_USERS_CI_GATEWAY_SERVICE_URL` instead
 
+`createTestUser` accepts `licenseIds`, an array of organization-specific license IDs,
+alongside `ensureExistsInWebexSites`, `syncInWebexSites`, and `orgAdminAuthorization`.
+CIG uses these IDs for explicit license assignment during site provisioning. Omitting
+them preserves automatic template assignment. CIG issues the initial user token before
+site synchronization; obtain a fresh token with `loginTestUser` afterward when newly
+assigned meeting licenses are needed for scope eligibility.
+
+User-creation requests include unique tracking IDs with a shared session prefix.
+Creation errors include the sent ID for tracing failures across services.
+
+`getMeetingTestUserProvisioning({authorization, orgId, webexSite, licenseIds, atlasServiceUrl})`
+queries the org's Atlas license catalog, including synthetic licenses, and returns
+`{webexSite, licenseIds}` for the meeting integration fixtures. It selects the first active
+site with a WXSFREE license in catalog order and the active FTM, FTC and FMS basic licenses.
+`webexSite` and `licenseIds` are optional overrides. With only a license override, the selected
+site must match one of those IDs.
+`atlasServiceUrl` defaults to `ATLAS_SERVICE_URL`; `authorization` must be an org-admin bearer
+authorization. Missing or ambiguous licenses reject the lookup. Meeting test setup uses this
+lookup once per batch unless both the site and license IDs are configured explicitly.
+
 ## Implementation
 
 Test User creation follows a different flow than standard users due to the fact that they are created on the fly.

@@ -3609,10 +3609,13 @@ export default class Meeting extends StatelessWebexPlugin {
             };
 
             try {
-              // if a remote participant is stealing the presentation from us
+              // Locus may release our floor before granting it to the remote participant,
+              // so shareStatus can already be NO_SHARE while our granted stream is still sent.
+              // A new local share with a pending floor request must remain untouched.
               if (
                 this.mediaProperties.mediaDirection?.sendShare &&
-                oldShareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE
+                (oldShareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE ||
+                  this.screenShareFloorState === ScreenShareFloorStatus.GRANTED)
               ) {
                 await this.unpublishStreams([
                   this.mediaProperties.shareVideoStream,
