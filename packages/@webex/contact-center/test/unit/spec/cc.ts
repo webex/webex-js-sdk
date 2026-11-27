@@ -6323,6 +6323,7 @@ describe('regional recovery wiring', () => {
   type RoutingOptions = {
     autoRegister?: boolean;
     initialSubscribeFailure?: SubscribeFailure;
+    resolveSubscribeFailure?: boolean;
     multiRegionEnabled?: boolean | null;
     rtdEnabled?: boolean;
     rtdReconnectFailure?: number;
@@ -6334,6 +6335,7 @@ describe('regional recovery wiring', () => {
     {
       autoRegister = true,
       initialSubscribeFailure,
+      resolveSubscribeFailure = false,
       multiRegionEnabled = true,
       rtdEnabled = false,
       rtdReconnectFailure,
@@ -6410,14 +6412,23 @@ describe('regional recovery wiring', () => {
       let routingSubscribes = 0;
       let rtdSubscribes = 0;
       let subscribeFailure = initialSubscribeFailure;
+      let refreshedRoutingHost: string | undefined;
+      const updateServices = jest.fn(async () => {
+        subscribeFailure = undefined;
+        refreshedRoutingHost = 'routing.produs2.cisco.com';
+      });
+      webex.internal.services.updateServices = updateServices;
 
       webex.request = jest.fn(async (request) => {
         requests.push(request);
         const {resource} = request;
         if (resource === SUBSCRIBE_API) {
+          if (subscribeFailure) {
+            if (resolveSubscribeFailure) return subscribeFailure;
+            throw subscribeFailure;
+          }
+          const host = refreshedRoutingHost ?? routingHosts[routingSubscribes];
           routingSubscribes += 1;
-          if (subscribeFailure) throw subscribeFailure;
-          const host = routingHosts[routingSubscribes - 1];
 
           return {statusCode: 200, body: {webSocketUrl: `wss://${host}/?signature=private`}};
         }
@@ -6528,6 +6539,7 @@ describe('regional recovery wiring', () => {
         advanceSwitch,
         connectBackup,
         login,
+        updateServices,
         setSubscribeFailure: (failure?: SubscribeFailure) => {
           subscribeFailure = failure;
         },
@@ -6736,38 +6748,108 @@ describe('regional recovery wiring', () => {
     );
   });
 
-  it('publishes reloadRequired and stops the recovery retry on a recognized subscribe 409', async () => {
+  it('refreshes U2C after a regional subscribe conflict and restores the accepted station', async () => {
     await withRouting(
-      async ({cc, requests, sockets, startSwitch, advanceSwitch, setSubscribeFailure}) => {
+      async ({
+        cc, requests, currentRouting, startSwitch, advanceSwitch, setSubscribeFailure, login,
+        updateServices,
+      }) => {
+        await login();
         const state = jest.fn();
         cc.on('region:stateChange', state);
         setSubscribeFailure(subscribeConflict('REGION_MISMATCH_NO_OVERRIDE'));
         startSwitch('FAILOVER');
         await advanceSwitch();
+
+        expect(updateServices).toHaveBeenCalledTimes(1);
+        expect(updateServices).toHaveBeenCalledWith({forceRefresh: true});
+        const backup = currentRouting();
+        expect(new URL(backup.url).hostname).toBe('routing.produs2.cisco.com');
+        backup.welcome();
+        await flush();
+        backup.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_FAILED, {reasonCode: 1038}));
+        await flush();
+        expect(requests.at(-1)).toMatchObject({
+          resource: '/v1/agents/login',
+          body: {teamId: 'team', deviceType: 'EXTENSION', dialNumber: '1234'},
+        });
+        backup.message({
+          ...agentFrame(CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS),
+          type: CC_EVENTS.AGENT_STATION_LOGIN,
+        });
+        await flush();
+
         expect(state).toHaveBeenLastCalledWith(
           expect.objectContaining({
-            status: 'reloadRequired',
-            reason: 'region-mismatch',
+            status: 'ready',
+            operation: 'FAILOVER',
+            servingRegion: 'produs2',
           })
         );
-        jest.advanceTimersByTime(10 * 60 * 1000);
-        await flush();
-        expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(2);
-        expect(sockets).toHaveLength(1);
+        expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(3);
       }
     );
   });
 
-  it('reports a recognized subscribe 409 during initial registration', async () => {
+  it.each([false, true])(
+    'completes the original registration after refreshing a subscribe conflict (resolved response=%s)',
+    async (resolveSubscribeFailure) => {
+      await withRouting(
+        async ({cc, requests, currentRouting, updateServices}) => {
+          const state = jest.fn();
+          cc.on('region:stateChange', state);
+          const registration = cc.register();
+          await flush();
+          expect(state).toHaveBeenLastCalledWith(
+            expect.objectContaining({status: 'recovering', reason: 'region-mismatch'})
+          );
+          expect(updateServices).toHaveBeenCalledTimes(1);
+          expect(updateServices).toHaveBeenCalledWith({forceRefresh: true});
+          const socket = currentRouting();
+          expect(new URL(socket.url).hostname).toBe('routing.produs2.cisco.com');
+          socket.welcome();
+
+          await expect(registration).resolves.toMatchObject({agentId: 'agent'});
+          expect(state).toHaveBeenLastCalledWith(
+            expect.objectContaining({status: 'stationLoginRequired'})
+          );
+          expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
+          expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(2);
+          expect(requests.filter(({resource}) => resource === '/v1/agents/login')).toHaveLength(0);
+        },
+        {
+          initialSubscribeFailure: subscribeConflict('REGION_MISMATCH_REGION_FAILOVER'),
+          resolveSubscribeFailure,
+        }
+      );
+    }
+  );
+
+  it.each([
+    {title: 'the refreshed subscribe still returns a regional conflict'},
+    {title: 'refreshing U2C fails with expired credentials', refreshStatus: 401},
+  ])('stops initial registration when $title', async ({refreshStatus}) => {
     await withRouting(
-      async ({cc, sockets}) => {
+      async ({cc, requests, sockets, updateServices}) => {
         const state = jest.fn();
         cc.on('region:stateChange', state);
+        if (refreshStatus) updateServices.mockRejectedValueOnce({statusCode: refreshStatus});
+        else updateServices.mockImplementationOnce(async () => undefined);
+
         await expect(cc.register()).rejects.toMatchObject({
-          data: {reason: 'REGION_RELOAD_REQUIRED'},
+          statusCode: refreshStatus ?? 409,
         });
-        expect(state).toHaveBeenCalledTimes(1);
-        expect(state).toHaveBeenCalledWith(expect.objectContaining({status: 'reloadRequired'}));
+        expect(updateServices).toHaveBeenCalledTimes(1);
+        expect(state).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            status: 'unavailable',
+            reason: refreshStatus ? 'authentication-failed' : 'region-mismatch',
+          })
+        );
+        jest.advanceTimersByTime(10 * 60 * 1000);
+        await flush();
+        expect(requests.filter(({resource}) => resource === SUBSCRIBE_API))
+          .toHaveLength(refreshStatus ? 1 : 2);
         expect(sockets).toHaveLength(0);
       },
       {initialSubscribeFailure: subscribeConflict('REGION_MISMATCH_REGION_FAILOVER')}
@@ -6945,14 +7027,17 @@ describe('regional recovery wiring', () => {
   });
 
   it.each([
-    [subscribeConflict('REGION_MISMATCH_ORG_OVERRIDE'), 'reloadRequired', 'region-mismatch'],
+    [subscribeConflict('REGION_MISMATCH_ORG_OVERRIDE'), 'unavailable', 'region-mismatch'],
     [{statusCode: 401}, 'unavailable', 'authentication-failed'],
   ])(
     'ends ordinary reconnect after terminal subscribe failure %j',
     async (failure, status, reason) => {
-      await withRouting(async ({cc, requests, currentRouting, setSubscribeFailure}) => {
+      await withRouting(async ({
+        cc, requests, currentRouting, setSubscribeFailure, updateServices,
+      }) => {
         const state = jest.fn();
         cc.on('region:stateChange', state);
+        updateServices.mockImplementationOnce(async () => undefined);
         setSubscribeFailure(failure);
         currentRouting().lose();
         jest.advanceTimersByTime(5000);
@@ -6961,13 +7046,101 @@ describe('regional recovery wiring', () => {
         expect(state).toHaveBeenLastCalledWith(expect.objectContaining({status, reason}));
         jest.advanceTimersByTime(60000);
         await flush();
-        expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(2);
+        expect(updateServices).toHaveBeenCalledTimes(failure.statusCode === 409 ? 1 : 0);
+        expect(requests.filter(({resource}) => resource === SUBSCRIBE_API))
+          .toHaveLength(failure.statusCode === 409 ? 3 : 2);
       });
     }
   );
 
+  it.each([
+    {title: 'restores the accepted station'},
+    {title: 'reloads a station that already exists', loginFailure: 1035},
+    {title: 'hands an unsuccessful station restore to the app', loginFailure: 9999},
+  ])('refreshes ordinary reconnect routing and $title', async ({loginFailure}) => {
+    await withRouting(async ({
+      cc, requests, currentRouting, setSubscribeFailure, login, updateServices,
+    }) => {
+      await login();
+      const state = jest.fn();
+      cc.on('region:stateChange', state);
+      const invalidateTasks = jest.spyOn(cc.taskManager, 'invalidateRegionalTasks');
+      const start = requests.length;
+      setSubscribeFailure(subscribeConflict('REGION_MISMATCH_ORG_OVERRIDE'));
+      currentRouting().lose();
+      jest.advanceTimersByTime(5000);
+      await flush();
+
+      expect(updateServices).toHaveBeenCalledTimes(1);
+      expect(invalidateTasks).toHaveBeenCalledTimes(1);
+      expect(invalidateTasks.mock.invocationCallOrder[0])
+        .toBeLessThan(updateServices.mock.invocationCallOrder[0]);
+      expect(state).toHaveBeenLastCalledWith(
+        expect.objectContaining({status: 'recovering', reason: 'region-mismatch'})
+      );
+      expect(state.mock.calls.at(-1)[0].servingRegion).toBeUndefined();
+      const replacement = currentRouting();
+      expect(new URL(replacement.url).hostname).toBe('routing.produs2.cisco.com');
+      replacement.welcome();
+      await flush();
+      replacement.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_FAILED, {reasonCode: 1038}));
+      await flush();
+      expect(requests.at(-1)).toMatchObject({
+        resource: '/v1/agents/login',
+        body: {teamId: 'team', deviceType: 'EXTENSION', dialNumber: '1234'},
+      });
+      replacement.message({
+        ...agentFrame(
+          loginFailure ? CC_EVENTS.AGENT_STATION_LOGIN_FAILED : CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
+          loginFailure ? {reasonCode: loginFailure} : {}
+        ),
+        type: CC_EVENTS.AGENT_STATION_LOGIN,
+      });
+      await flush();
+      if (loginFailure === 1035) {
+        expect(requests.at(-1)).toMatchObject({resource: '/v1/agents/reload'});
+        replacement.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS));
+        await flush();
+      }
+
+      expect(state).toHaveBeenLastCalledWith(expect.objectContaining({
+        status: loginFailure === 9999 ? 'stationLoginRequired' : 'ready',
+      }));
+      expect(requests.slice(start).map(({resource}) => resource)).toEqual([
+        SUBSCRIBE_API,
+        SUBSCRIBE_API,
+        '/v1/agents/reload',
+        '/v1/agents/login',
+        ...(loginFailure === 1035 ? ['/v1/agents/reload'] : []),
+      ]);
+    });
+  });
+
+  it('ends regional recovery if refreshing U2C rejects the credentials', async () => {
+    await withRouting(async ({
+      cc, requests, startSwitch, advanceSwitch, setSubscribeFailure, updateServices,
+    }) => {
+      const state = jest.fn();
+      cc.on('region:stateChange', state);
+      updateServices.mockRejectedValueOnce({statusCode: 401});
+      setSubscribeFailure(subscribeConflict('REGION_MISMATCH_NO_OVERRIDE'));
+      startSwitch('FAILOVER');
+      await advanceSwitch();
+
+      expect(updateServices).toHaveBeenCalledTimes(1);
+      expect(state).toHaveBeenLastCalledWith(
+        expect.objectContaining({status: 'unavailable', reason: 'authentication-failed'})
+      );
+      jest.advanceTimersByTime(10 * 60 * 1000);
+      await flush();
+      expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(2);
+    });
+  });
+
   it('uses ordinary reconnect after a subscribe 409 with an unrelated reason', async () => {
-    await withRouting(async ({cc, requests, currentRouting, setSubscribeFailure, login}) => {
+    await withRouting(async ({
+      cc, requests, currentRouting, setSubscribeFailure, login, updateServices,
+    }) => {
       await login();
       const state = jest.fn();
       cc.on('region:stateChange', state);
@@ -6985,7 +7158,7 @@ describe('regional recovery wiring', () => {
       await flush();
       replacement.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS));
       await flush();
-      expect(state).not.toHaveBeenCalledWith(expect.objectContaining({status: 'reloadRequired'}));
+      expect(updateServices).not.toHaveBeenCalled();
       expect(requests.slice(start).map(({resource}) => resource)).toEqual([
         SUBSCRIBE_API,
         SUBSCRIBE_API,
@@ -7007,13 +7180,13 @@ describe('regional recovery wiring', () => {
   it.each([
     {title: 'welcomes the replacement socket'},
     {
-      title: 'recognizes a region mismatch',
+      title: 'refreshes U2C after a region mismatch',
       failure: subscribeConflict('REGION_MISMATCH_NO_OVERRIDE'),
     },
     {title: 'rejects expired credentials', failure: {statusCode: 401}},
   ])('registration uses ordinary reconnect and $title', async ({failure}) => {
     await withRouting(
-      async ({cc, requests, currentRouting, setSubscribeFailure}) => {
+      async ({cc, requests, currentRouting, setSubscribeFailure, updateServices}) => {
         const configService = cc.services.config;
         const getProfile = configService.getAgentConfig.bind(configService);
         const profileAvailable = createDeferred<void>();
@@ -7036,20 +7209,20 @@ describe('regional recovery wiring', () => {
         setSubscribeFailure(failure);
         jest.advanceTimersByTime(5000);
         await flush();
-        if (!failure) {
+        const authFailure = failure?.statusCode === 401;
+        if (!authFailure) {
           currentRouting().welcome();
           await flush();
           currentRouting().message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS));
           await expect(registration).resolves.toMatchObject({isAgentLoggedIn: true});
         } else {
           await expect(registration).rejects.toMatchObject({
-            data:
-              failure.statusCode === 409
-                ? {reason: 'REGION_RELOAD_REQUIRED'}
-                : {kind: 'authentication-failed', status: 401},
+            data: {kind: 'authentication-failed', status: 401},
           });
         }
-        expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(2);
+        expect(updateServices).toHaveBeenCalledTimes(failure?.statusCode === 409 ? 1 : 0);
+        expect(requests.filter(({resource}) => resource === SUBSCRIBE_API))
+          .toHaveLength(failure?.statusCode === 409 ? 3 : 2);
       },
       {autoRegister: false}
     );

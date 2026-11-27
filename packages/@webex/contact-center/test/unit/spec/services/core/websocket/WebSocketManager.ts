@@ -33,13 +33,6 @@ const trustedUrls = [
 ];
 const subscriptionFailures = [
   {
-    name: '409 header mismatch',
-    phase: 'resolve',
-    failure: {statusCode: 409, headers: {'X-WXCC-Region-Reason': 'REGION_MISMATCH_NO_OVERRIDE', trackingid: 'subscribe-tracking-id'}, body: {webSocketUrl: trustedUrls[0]}},
-    classification: {status: 409, trackingId: 'subscribe-tracking-id'},
-    mismatch: 'REGION_MISMATCH_NO_OVERRIDE',
-  },
-  {
     name: '401 authentication failure',
     phase: 'reject',
     failure: {statusCode: 401, body: {webSocketUrl: trustedUrls[0]}},
@@ -87,6 +80,7 @@ describe('WebSocketManager owned admission', () => {
   let request: jest.Mock;
   let integration: jest.Mock;
   let org: jest.Mock;
+  let updateServices: jest.Mock;
   let workers: Array<{postMessage: jest.Mock; terminate: jest.Mock; onmessage: ((event: any) => void) | null}>;
   const originalSocket = global.WebSocket;
   const originalWorker = global.Worker;
@@ -114,7 +108,8 @@ describe('WebSocketManager owned admission', () => {
     request = jest.fn().mockResolvedValue({statusCode: 200, body: {webSocketUrl: 'wss://routing.produs1.cisco.com/?signature=private'}});
     integration = jest.fn(() => true);
     org = jest.fn(() => 'org-id');
-    manager = new WebSocketManager({webex: {request, credentials: {getOrgId: org}, internal: {services: {isIntegrationEnvironment: integration}}} as unknown as WebexSDK});
+    updateServices = jest.fn().mockResolvedValue(undefined);
+    manager = new WebSocketManager({webex: {request, credentials: {getOrgId: org}, internal: {services: {isIntegrationEnvironment: integration, updateServices}}} as unknown as WebexSDK});
   });
 
   afterEach(() => {
@@ -256,6 +251,82 @@ describe('WebSocketManager owned admission', () => {
     expect(URL.createObjectURL).not.toHaveBeenCalled();
     expect(URL.revokeObjectURL).not.toHaveBeenCalled();
     expect(request).toHaveBeenCalledTimes(1);
+    expectInactive();
+  });
+
+  it.each(['resolve', 'reject'])('refreshes U2C and subscribes once through updated service routing after a %s 409', async (phase) => {
+    const mismatch = {statusCode: 409, headers: {'X-WXCC-Region-Reason': 'REGION_MISMATCH_NO_OVERRIDE'}};
+    let gateway = 'https://api.produs1.ciscoccservice.com';
+    const requestedHosts: string[] = [];
+    request.mockImplementation(() => {
+      requestedHosts.push(gateway);
+      if (gateway.includes('produs1')) {
+        return phase === 'resolve' ? Promise.resolve(mismatch) : Promise.reject(mismatch);
+      }
+      return Promise.resolve({statusCode: 200, body: {webSocketUrl: trustedUrls[1]}});
+    });
+    updateServices.mockImplementation(async () => { gateway = 'https://api.prodeu2.ciscoccservice.com'; });
+
+    const socket = await admit();
+
+    expect(updateServices).toHaveBeenCalledTimes(1);
+    expect(updateServices).toHaveBeenCalledWith({forceRefresh: true});
+    expect(requestedHosts).toEqual(['https://api.produs1.ciscoccservice.com', 'https://api.prodeu2.ciscoccservice.com']);
+    expect(socket.url).toBe(trustedUrls[1]);
+    expect(manager.getServingRegion()).toBe('prodeu2');
+  });
+
+  it.each([
+    {resource: RTD_SUBSCRIBE_API, error: {statusCode: 409, body: {reason: 'REGION_MISMATCH_NO_OVERRIDE'}}},
+    {resource: SUBSCRIBE_API, error: {statusCode: 409, body: {reason: 'ANOTHER_CONFLICT'}}},
+    {resource: SUBSCRIBE_API, error: {statusCode: 401}},
+  ])('preserves ordinary failure handling without refreshing U2C for $resource $error', async ({resource, error}) => {
+    request.mockRejectedValueOnce(error);
+
+    await expect(manager.initWebSocket({body, resource})).rejects.toBe(error);
+
+    expect(updateServices).not.toHaveBeenCalled();
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it('propagates a failed U2C refresh without resubscribing', async () => {
+    request.mockRejectedValueOnce({statusCode: 409, body: {reason: 'REGION_MISMATCH_NO_OVERRIDE'}});
+    const error = {statusCode: 403};
+    updateServices.mockRejectedValueOnce(error);
+
+    await expect(manager.initWebSocket({body, resource: SUBSCRIBE_API})).rejects.toBe(error);
+
+    expect(updateServices).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledTimes(1);
+    expectInactive();
+  });
+
+  it('stops after one catalog refresh when subscribe still reports a region mismatch', async () => {
+    const error = {statusCode: 409, body: {reason: 'REGION_MISMATCH_NO_OVERRIDE'}};
+    request.mockRejectedValue(error);
+
+    await expect(manager.initWebSocket({body, resource: SUBSCRIBE_API})).rejects.toBe(error);
+
+    expect(updateServices).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledTimes(2);
+    expectInactive();
+  });
+
+  it.each(['close', 'deadline'])('does not resubscribe after %s during a catalog refresh', async (ending) => {
+    const refresh = createDeferred<void>();
+    request.mockRejectedValueOnce({statusCode: 409, body: {reason: 'REGION_MISMATCH_NO_OVERRIDE'}});
+    updateServices.mockReturnValueOnce(refresh.promise);
+    const {promise} = await start();
+    const rejected = expect(promise).rejects.toThrow(ending === 'close' ? 'RECOVERY_INTERRUPTED' : 'Subscribe deadline');
+
+    if (ending === 'close') manager.close(false);
+    else jest.advanceTimersByTime(TIMEOUT_REQ);
+    await rejected;
+    refresh.resolve();
+    await flush();
+
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(SocketDouble.instances).toHaveLength(0);
     expectInactive();
   });
 

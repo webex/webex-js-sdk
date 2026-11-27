@@ -19,6 +19,7 @@ import {
 import {WEB_SOCKET_MANAGER_FILE} from '../../../constants';
 import {
   createRegionRecoveryError,
+  getSubscriptionMismatchReason,
   isAllowedUrlHost,
   isRecord,
   normalizeRecoveryFailure,
@@ -95,7 +96,7 @@ export class WebSocketManager extends EventEmitter {
       );
       // Retain both continuations after cancellation: late HTTP cannot install a socket.
       const {body: connectionConfig, resource} = options;
-      this.register(connectionConfig, resource).then(
+      this.register(connectionConfig, resource, attempt).then(
         (url) => {
           if (!this.ownsAttempt(attempt)) return;
           clearTimeout(attempt.timer);
@@ -159,21 +160,44 @@ export class WebSocketManager extends EventEmitter {
     }
   }
 
-  private async register(connectionConfig: SubscribeRequest, resource: string): Promise<string> {
+  private async register(
+    connectionConfig: SubscribeRequest,
+    resource: string,
+    attempt: SocketAttempt,
+    refreshCatalog = true
+  ): Promise<string> {
     // X-ORGANIZATION-ID header is only required for INT environments
     const isIntEnv = this.webex.internal?.services?.isIntegrationEnvironment() || false;
     const orgId = this.webex.credentials.getOrgId();
-    const subscribeResponse: SubscribeResponse = await this.webex.request({
-      service: WCC_API_GATEWAY,
-      resource,
-      method: HTTP_METHODS.POST,
-      body: connectionConfig,
-      headers: isIntEnv && orgId ? {'X-ORGANIZATION-ID': orgId} : undefined,
-      timeout: TIMEOUT_REQ,
-    });
-    const failure = normalizeRecoveryFailure(subscribeResponse);
-    if (failure.status !== undefined && (failure.status < 200 || failure.status >= 300)) {
-      throw subscribeResponse;
+    let subscribeResponse: SubscribeResponse;
+    try {
+      subscribeResponse = await this.webex.request({
+        service: WCC_API_GATEWAY,
+        resource,
+        method: HTTP_METHODS.POST,
+        body: connectionConfig,
+        headers: isIntEnv && orgId ? {'X-ORGANIZATION-ID': orgId} : undefined,
+        timeout: TIMEOUT_REQ,
+      });
+      const failure = normalizeRecoveryFailure(subscribeResponse);
+      if (failure.status !== undefined && (failure.status < 200 || failure.status >= 300)) {
+        throw subscribeResponse;
+      }
+    } catch (error) {
+      if (
+        resource !== SUBSCRIBE_API ||
+        !refreshCatalog ||
+        !this.shouldReconnect ||
+        !getSubscriptionMismatchReason(error) ||
+        !this.ownsAttempt(attempt)
+      )
+        throw error;
+
+      this.emit('regionMismatch');
+      await this.webex.internal.services.updateServices({forceRefresh: true});
+      if (!this.ownsAttempt(attempt)) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+
+      return this.register(connectionConfig, resource, attempt, false);
     }
     const webSocketUrl = subscribeResponse.body?.webSocketUrl;
 

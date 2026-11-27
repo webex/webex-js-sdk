@@ -30,7 +30,6 @@ export type RegionRecoveryErrorCode = Enum<typeof REGION_RECOVERY_ERROR_CODES>;
 /**
  * Complete recovery snapshot. Replace the previous snapshot so omitted fields clear.
  * `stationLoginRequired` hands off to the app's sign-in flow after SDK recovery ends.
- * `reloadRequired` asks the app to restart with fresh regional routing.
  * @public
  */
 export type RegionRecoveryState = {
@@ -38,7 +37,7 @@ export type RegionRecoveryState = {
    * `ready` confirms backend station acceptance.
    * Voice readiness, Available state and call continuity are independent.
    */
-  status: 'recovering' | 'ready' | 'reloadRequired' | 'stationLoginRequired' | 'unavailable';
+  status: 'recovering' | 'ready' | 'stationLoginRequired' | 'unavailable';
   /** Cause of the current recovery snapshot. */
   reason:
     | 'initial-login'
@@ -357,6 +356,8 @@ interface IWebexInternal {
     get: (service: string) => string;
     /** Wait for service catalog to be loaded */
     waitForCatalog: (service: string) => Promise<void>;
+    /** Refresh authenticated service routing from U2C. */
+    updateServices: (options: {forceRefresh: boolean}) => Promise<unknown>;
     /** Check if current environment is INT (integration) */
     isIntegrationEnvironment: () => boolean;
     /** Host catalog for service discovery */

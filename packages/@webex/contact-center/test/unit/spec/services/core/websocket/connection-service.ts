@@ -786,7 +786,10 @@ describe('ConnectionService with actual WebSocketManager', () => {
     request = jest.fn().mockResolvedValue({statusCode: 200,
       body: {webSocketUrl: 'wss://routing.produs1.cisco.com'}});
     manager = new WebSocketManager({webex: {request, credentials: {getOrgId: () => 'org'},
-      internal: {services: {isIntegrationEnvironment: () => false}}} as any});
+      internal: {services: {
+        isIntegrationEnvironment: () => false,
+        updateServices: jest.fn().mockResolvedValue(undefined),
+      }}} as any});
     service = new ConnectionService(manager);
     registration = new AbortController(); terminal = jest.fn(); events = jest.fn();
     service.reset({subscribeRequest, signal: registration.signal, onTerminalFailure: terminal});
@@ -1049,7 +1052,7 @@ describe('ConnectionService with actual WebSocketManager', () => {
     }
   );
 
-  it('T-005 drRecognizedMismatchRejectsRegionMismatch at the subscription boundary', async () => {
+  it('stops regional recovery when subscribe still conflicts after refreshing U2C', async () => {
     const failure = {status: 409, reason: 'REGION_MISMATCH_NO_OVERRIDE', trackingId: 'dr-mismatch'};
     request.mockRejectedValue({statusCode: 409,
       headers: {'X-WXCC-Region-Reason': failure.reason, trackingid: failure.trackingId}});
@@ -1066,7 +1069,7 @@ describe('ConnectionService with actual WebSocketManager', () => {
     await tick(1);
     await expect(promise).rejects.toHaveProperty('data', {...failure, kind: 'region-mismatch'});
     await observed;
-    expect(request.mock.calls.map(([options]) => options.resource)).toEqual([SUBSCRIBE_API]);
+    expect(request.mock.calls.map(([options]) => options.resource)).toEqual([SUBSCRIBE_API, SUBSCRIBE_API]);
     expect(onAttemptSettled.mock.calls).toEqual([[1, 'terminal', failure]]);
     expect(close.mock.calls).toEqual([[false, 'Terminal recovery']]);
     expect(init.mock.calls[0][0].signal.aborted).toBe(true);
@@ -1086,7 +1089,7 @@ describe('ConnectionService with actual WebSocketManager', () => {
     expect(afterWelcome).not.toHaveBeenCalled();
     expect(terminal).not.toHaveBeenCalled();
     expect(events).not.toHaveBeenCalled();
-    expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledTimes(2);
     expect(init).toHaveBeenCalledTimes(1);
     expect(onScheduled.mock.calls).toEqual([[1, 100000]]);
     expect(onAttemptSettled.mock.calls).toEqual([[1, 'terminal', failure]]);

@@ -154,8 +154,7 @@ Use `RegionRecoveryState['status']` if your host needs the type of the status fi
 | `recovering` | Show a loading indicator. Disable station login and profile changes, task and call controls, and agent-state controls. Pause background requests for those actions. |
 | `ready` | Hide the loading indicator. Resume task and agent actions for the accepted station, subject to the usual task and voice controls. |
 | `stationLoginRequired` | Hide the loading indicator and enable the app’s existing `stationLogin()` flow with `BROWSER`, `EXTENSION` or `AGENT_DN`. Keep other station actions paused until `ready`. |
-| `reloadRequired` | Follow the [host restart guidance](#multi-region-recovery-host-restart). |
-| `unavailable` | Show the terminal reason and keep station actions paused. Use the app’s sign-in flow for `authentication-failed` or its normal restart or sign-out flow for other reasons. |
+| `unavailable` | Show the terminal reason and keep station actions paused. Use the app’s sign-in flow for `authentication-failed`, or allow a fresh `register()` attempt after recovery stops. |
 
 The SDK handles reconnection and station restoration. Your app pauses its controls and background
 station actions until `ready`. Requests already sent follow their usual completion or timeout path.
@@ -183,19 +182,21 @@ begins, and on primary multi-login. Station logout uses the normal request and n
 Only a confirmed logout clears the accepted station. The SDK stays registered for ordinary socket
 reconnect. Attach essential listeners before registration and remove them at teardown.
 
-## Multi-region recovery host restart
+## Automatic service discovery recovery
 
-A region mismatch emits `reloadRequired`. Initial `register()` can also reject with
-`error.data.reason === REGION_RECOVERY_ERROR_CODES.REGION_RELOAD_REQUIRED`. Route both to the
-same restart handler so they trigger one attempt. The restart should initialize and register
-again so the SDK fetches fresh routing.
+When the primary subscribe request returns a recognized region-mismatch `409`, the SDK calls the
+existing Webex service-discovery API with `updateServices({forceRefresh: true})` and retries subscribe
+once. The refreshed catalog supplies the gateway for the new request, and the subscribe response
+supplies the WebSocket URL. The existing Welcome, session reload and station-login fallback then
+complete recovery. The original `register()` promise stays pending during this retry.
 
-For automatic browser restart, store the attempt before navigation and limit retries per
-signed-in organization and tab. If storage is unavailable, the guard blocks a repeat, or
-navigation fails, show a manual **Reload** action. Clear the host's previous recovery state
-when starting a fresh registration, logging out or deregistering, and detach the listener
-when deregistering. The [Contact Center sample](../../../../docs/samples/contact-center/app.js)
-shows both restart paths and resumes registration using its saved sign-in state.
+Your app keeps displaying recovery until `ready` or an action-required state arrives. A second
+recognized mismatch after discovery refresh ends in `unavailable` with reason `region-mismatch`.
+Authentication failures use `authentication-failed`. An unrelated `409` keeps its ordinary retry
+behavior.
+
+The [Contact Center sample](../../../../docs/samples/contact-center/app.js) displays recovery in a
+loading dialog and enables its existing Register button when recovery stops.
 
 ## Recovery accessibility guidance
 

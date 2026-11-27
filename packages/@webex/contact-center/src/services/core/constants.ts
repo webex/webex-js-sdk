@@ -3,7 +3,6 @@ export const REGION_RECOVERY_ERROR_CODES = {
   RECOVERY_INTERRUPTED: 'RECOVERY_INTERRUPTED',
   RECOVERY_IN_PROGRESS: 'RECOVERY_IN_PROGRESS',
   STALE_TASK: 'STALE_TASK',
-  REGION_RELOAD_REQUIRED: 'REGION_RELOAD_REQUIRED',
 } as const;
 
 /** Subscribe conflicts that require a new Contact Center registration. */

@@ -788,7 +788,7 @@ const resolveSymbol = (checker: ts.TypeChecker, symbol: ts.Symbol | undefined) =
 };
 
 describe('contact-center root public contract', () => {
-  it('exposes the recovery event, its state, and the registration error to typed consumers', () => {
+  it('exposes the recovery event and its state to typed consumers', () => {
     const recovery = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__recovery_consumer.ts');
     const program = createProgram({
       [recovery]: `
@@ -798,11 +798,11 @@ describe('contact-center root public contract', () => {
         declare const cc: ContactCenter & IEventEmitter;
         const registration: Promise<Profile> = cc.register();
         const event: 'region:stateChange' = REGION_RECOVERY_EVENTS.STATE_CHANGE;
-        const reloadRequired: 'REGION_RELOAD_REQUIRED' = REGION_RECOVERY_ERROR_CODES.REGION_RELOAD_REQUIRED;
+        const interrupted: 'RECOVERY_INTERRUPTED' = REGION_RECOVERY_ERROR_CODES.RECOVERY_INTERRUPTED;
 
         cc.on(event, (state: RegionRecoveryState) => {
           const retryAfterMs: number | undefined = state.retryAfterMs;
-          if (state.status === 'reloadRequired') return reloadRequired;
+          if (state.status === 'unavailable') return interrupted;
           return retryAfterMs;
         });
 

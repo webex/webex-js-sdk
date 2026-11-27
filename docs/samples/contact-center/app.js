@@ -2,6 +2,7 @@
 let webex = undefined;
 let sdk;
 let voiceConnectionLogClient;
+let registrationEventClient;
 const voiceConnectionStateElm = document.getElementById('voice-connection-state');
 let agentDeviceType;
 let deviceId;
@@ -171,7 +172,6 @@ const loginAgentElm = document.querySelector('#loginAgent');
 const dialNumber = document.querySelector('#dialNumber');
 const registerStatus = document.querySelector('#ws-connection-status');
 const regionRecoveryStatus = document.querySelector('#region-recovery-status');
-const regionRecoveryReloadBtn = document.querySelector('#region-recovery-reload');
 const regionRecoveryDialog = document.querySelector('#region-recovery-dialog');
 const idleCodesDropdown = document.querySelector('#idleCodesDropdown')
 const setAgentStatusButton = document.querySelector('#setAgentStatus');
@@ -686,7 +686,7 @@ async function uploadLogs() {
   }
 }
 
-function changeAuthType(regionResume) {
+function changeAuthType() {
   sessionStorage.setItem(SAMPLE_AUTH_TYPE_KEY, authTypeElm.value);
   if (webex) {
     window.location.reload();
@@ -698,10 +698,9 @@ function changeAuthType(regionResume) {
       toggleDisplay('credentials', true);
       toggleDisplay('oauth', false);
       tokenElm.value = getSavedSampleCredentials()?.access_token ?? '';
-      if (regionResume) initAccessToken(regionResume.credentials, regionResume.orgId);
       break;
     case 'oauth':
-      initOauth(regionResume);
+      initOauth();
       toggleDisplay('credentials', false);
       toggleDisplay('oauth', true);
       break;
@@ -721,7 +720,7 @@ function toggleDisplay(elementId, status) {
   }
 }
 
-function initOauth(regionResume) {
+function initOauth() {
   let redirectUri = `${window.location.protocol}//${window.location.host}`;
 
   if (window.location.pathname) {
@@ -769,7 +768,6 @@ function initOauth(regionResume) {
   try {
     webex = window.webex = Webex.init({
       config: webexConfig,
-      ...(regionResume && {credentials: regionResume.credentials}),
     });
   } catch {
     setRegionRecoveryDialog(false);
@@ -782,9 +780,7 @@ function initOauth(regionResume) {
     oauthLoginBtn.disabled = false;
     if (webex.canAuthorize) {
       oauthStatusElm.innerText = 'Authenticated';
-      completeSampleSignIn(0, regionResume?.orgId);
-    } else if (regionResume) {
-      setRegionRecoveryDialog(false);
+      completeSampleSignIn();
     }
   });
 }
@@ -3824,14 +3820,14 @@ function initWebex(e) {
   initAccessToken({access_token: tokenElm.value});
 }
 
-function initAccessToken(credentials, resumeOrgId) {
+function initAccessToken(credentials) {
   console.log('Authentication#initWebex()');
 
   tokenElm.disabled = true;
   saveElm.disabled = true;
   authStatusElm.innerText = 'initializing...';
 
-  if (!resumeOrgId) detachRegionRecoveryListener();
+  detachRegionRecoveryListener();
   try {
     webex = window.webex = Webex.init({
       config: generateWebexConfig({}),
@@ -3855,11 +3851,11 @@ function initAccessToken(credentials, resumeOrgId) {
     }
 
     authStatusElm.textContent = 'Saved access token!';
-    completeSampleSignIn(Date.now() + 12 * 60 * 60 * 1000, resumeOrgId);
+    completeSampleSignIn(Date.now() + 12 * 60 * 60 * 1000);
   });
 }
 
-function completeSampleSignIn(fallbackExpiry = 0, resumeOrgId) {
+function completeSampleSignIn(fallbackExpiry = 0) {
   const {access_token: accessToken, expires} = webex.credentials.supertoken ?? {};
   attachVoiceConnectionStateLogging();
   registerStatus.textContent = 'Not Subscribed';
@@ -3870,17 +3866,6 @@ function completeSampleSignIn(fallbackExpiry = 0, resumeOrgId) {
     sessionStorage.setItem('date', String(expires ?? fallbackExpiry));
     sessionStorage.setItem(SAMPLE_TOKEN_ENVIRONMENT_KEY, sampleEnvironment);
     initializeEngageWidget(accessToken);
-  }
-
-  if (resumeOrgId) {
-    let authenticatedOrg;
-    try {
-      authenticatedOrg = webex.credentials.getOrgId()?.trim();
-    } catch {
-      // Leave the restored session available for manual registration.
-    }
-    if (authenticatedOrg === resumeOrgId) register(true);
-    else setRegionRecoveryDialog(false);
   }
 }
 
@@ -4812,13 +4797,8 @@ const regionRecoveryMessages = {
   recovering: 'Reconnecting to Contact Center. Please wait.',
   ready: 'Station connected.',
   stationLoginRequired: 'Use Agent Station Login/Logout to sign in to your station again.',
-  reloadRequired: 'The active region changed. Reload the sample to reconnect.',
-  unavailable: 'Recovery unavailable. Reload the sample, then authenticate and register again.',
+  unavailable: 'Recovery stopped. Register again, or sign in again if authentication failed.',
 };
-
-const REGION_RESTART_WINDOW_MS = 120000;
-const REGION_RESUME_KEY = 'cc-sample-region-resume';
-let regionRestartTimer;
 
 function setRegionRecoveryDialog(open) {
   if (open && !regionRecoveryDialog.open) regionRecoveryDialog.showModal();
@@ -4830,91 +4810,15 @@ function stationActionsPaused() {
   return Boolean(status && status !== 'ready');
 }
 
-function cancelRegionRestart() {
-  if (regionRestartTimer === undefined) return;
-  clearTimeout(regionRestartTimer);
-  regionRestartTimer = undefined;
-  try {
-    sessionStorage.removeItem(REGION_RESUME_KEY);
-  } catch {
-    // Resume metadata expires even if storage becomes unavailable.
-  }
-}
-
-function takeRegionRecoveryResume() {
-  try {
-    const saved = sessionStorage.getItem(REGION_RESUME_KEY);
-    if (!saved) return undefined;
-    sessionStorage.removeItem(REGION_RESUME_KEY);
-    const resume = JSON.parse(saved);
-    const elapsed = Date.now() - resume.requestedAt;
-    if (resume.environment !== sampleEnvironment || resume.authType !== authTypeElm.value ||
-      typeof resume.orgId !== 'string' || !resume.orgId || window.location.hash ||
-      !Number.isFinite(resume.requestedAt) || elapsed < 0 || elapsed >= REGION_RESTART_WINDOW_MS) {
-      return undefined;
-    }
-
-    const credentials = getSavedSampleCredentials();
-    return credentials && {orgId: resume.orgId, credentials};
-  } catch {
-    return undefined;
-  }
-}
-
-function restartSampleForRegion(automatic = true) {
-  if (regionRestartTimer !== undefined) return true;
-  try {
-    const saved = getSavedSampleCredentials();
-    const orgId = webex.credentials.getOrgId()?.trim();
-    if (!orgId || !saved || saved.access_token !== webex.credentials.supertoken?.access_token) {
-      return false;
-    }
-
-    const now = Date.now();
-    const guardKey = `cc-sample-region-reload:${sampleEnvironment}:${orgId}`;
-    const last = Number(sessionStorage.getItem(guardKey));
-    if (automatic && last && now - last < REGION_RESTART_WINDOW_MS) return false;
-
-    sessionStorage.setItem(guardKey, String(now));
-    sessionStorage.setItem(REGION_RESUME_KEY, JSON.stringify({
-      orgId,
-      environment: sampleEnvironment,
-      authType: authTypeElm.value,
-      requestedAt: now,
-    }));
-  } catch {
-    return false;
-  }
-
-  const showManualRestart = () => {
-    cancelRegionRestart();
-    setRegionRecoveryDialog(false);
-    regionRecoveryReloadBtn.hidden = false;
-  };
-
-  setRegionRecoveryDialog(true);
-  regionRecoveryReloadBtn.hidden = true;
-  regionRestartTimer = setTimeout(showManualRestart, 15000);
-  try {
-    window.location.reload();
-  } catch {
-    showManualRestart();
-  }
-  return true;
-}
-
-function showRegionRecoveryState(state, keepDialogOpen = false) {
+function showRegionRecoveryState(state) {
   const status = state?.status;
-  const mismatchAlreadyShown = regionRecoveryStatus.dataset.status === 'reloadRequired';
-  if (status !== 'reloadRequired') cancelRegionRestart();
   regionRecoveryStatus.dataset.status = status ?? '';
   regionRecoveryStatus.textContent = regionRecoveryMessages[status] ?? '';
   const stateActionsPaused = stationActionsPaused() || state?.autoAvailable === 'requesting';
   idleCodesDropdown.disabled = stateActionsPaused;
   setAgentStateButton.disabled = stateActionsPaused;
-  const restarting = regionRestartTimer !== undefined;
-  regionRecoveryReloadBtn.hidden = restarting || !['reloadRequired', 'unavailable'].includes(status);
-  setRegionRecoveryDialog(restarting || status === 'recovering' || keepDialogOpen === true);
+  setRegionRecoveryDialog(status === 'recovering');
+  if (status === 'unavailable') registerBtn.disabled = false;
   if (!state) return;
 
   if (status === 'ready') {
@@ -4935,7 +4839,6 @@ function showRegionRecoveryState(state, keepDialogOpen = false) {
     updateAgentProfileElm.classList.add('hidden');
     updateUnregisterButtonState();
   }
-  if (status === 'reloadRequired' && !mismatchAlreadyShown) restartSampleForRegion();
 }
 
 function detachRegionRecoveryListener() {
@@ -4944,18 +4847,13 @@ function detachRegionRecoveryListener() {
 }
 
 regionRecoveryDialog.addEventListener('cancel', (event) => event.preventDefault());
-regionRecoveryReloadBtn.addEventListener('click', () => {
-  if (regionRecoveryStatus.dataset.status === 'reloadRequired' && restartSampleForRegion(false)) return;
-  window.location.reload();
-});
-
-function register(resumingRegion = false) {
+function register() {
     registerBtn.disabled = true;
     attachWellnessSdkListeners();
     const cc = webex.cc;
     cc.off('region:stateChange', showRegionRecoveryState);
     cc.on('region:stateChange', showRegionRecoveryState);
-    showRegionRecoveryState(undefined, resumingRegion);
+    showRegionRecoveryState();
     cc.register().then((agentProfile) => {
         registerStatus.innerHTML = 'Subscribed';
         // Update button states upon successful registration
@@ -4996,14 +4894,14 @@ function register(resumingRegion = false) {
           updateTeamDropdownElm.value      = teamsDropdown.value;  // sync initial selection
         }
         // Keep both dropdowns in sync
-        teamsDropdown.addEventListener('change', () => {
+        teamsDropdown.onchange = () => {
           if (updateTeamDropdownElm) {
             updateTeamDropdownElm.value = teamsDropdown.value;
           }
-        });
-        updateTeamDropdownElm.addEventListener('change', () => {
+        };
+        updateTeamDropdownElm.onchange = () => {
           teamsDropdown.value = updateTeamDropdownElm.value;
-        });
+        };
         const loginVoiceOptions = agentProfile.loginVoiceOptions;
         populateLoginOptions(
           loginVoiceOptions.filter((o) => agentProfile.webRtcEnabled || o !== 'BROWSER')
@@ -5018,6 +4916,7 @@ function register(resumingRegion = false) {
           updateUnregisterButtonState();
         }
 
+        idleCodesDropdown.innerHTML = '';
         const idleCodesList = getSelectableIdleCodes(agentProfile.idleCodes);
         setAgentStatusButton.disabled = idleCodesDropdown.disabled || idleCodesList.length === 0;
         idleCodesList.forEach((idleCodes) => {
@@ -5032,6 +4931,8 @@ function register(resumingRegion = false) {
             idleCodesDropdown.add(option);
         });
         entryPointId = agentProfile.outDialEp;
+        if (registrationEventClient !== cc) {
+        registrationEventClient = cc;
         webex.cc.on('task:incoming', (task) => {
           console.log('Incoming task received: ', task);
           updateTaskList();
@@ -5118,17 +5019,12 @@ function register(resumingRegion = false) {
       startStateTimer(data.lastStateChangeTimestamp, data.lastIdleCodeChangeTimestamp);
     });
 
+        }
         updateTaskList();
-        if (resumingRegion && !regionRecoveryStatus.dataset.status) setRegionRecoveryDialog(false);
     }).catch((error) => {
         cc.off('region:stateChange', showRegionRecoveryState);
-        const reloadRequired = error?.data?.reason === 'REGION_RELOAD_REQUIRED';
-        registerBtn.disabled = reloadRequired;
-        if (reloadRequired) {
-          showRegionRecoveryState({status: 'reloadRequired'});
-        } else if (resumingRegion && !regionRecoveryStatus.dataset.status) {
-          showRegionRecoveryState({status: 'unavailable'});
-        }
+        registerBtn.disabled = false;
+        showRegionRecoveryState({status: 'unavailable'});
         detachWellnessSdkListeners();
         resetWellnessSession({clearEnablement: true});
         console.error('Event subscription failed', error);
@@ -6331,6 +6227,4 @@ async function deleteUserPreference() {
 }
 
 authTypeElm.value = sessionStorage.getItem(SAMPLE_AUTH_TYPE_KEY) === 'oauth' ? 'oauth' : 'accessToken';
-const regionRecoveryResume = takeRegionRecoveryResume();
-if (regionRecoveryResume) setRegionRecoveryDialog(true);
-changeAuthType(regionRecoveryResume);
+changeAuthType();
