@@ -259,6 +259,82 @@ app.post(`/refresh`, bodyParser.json(), (req, res, next) => {
   );
 });
 
+// Controlled substitutions exercise real browser asset requests without requiring an affected network.
+app.get('/assets/kms-diagnostics/:scenario/:assetName', (req, res, next) => {
+  const {scenario, assetName} = req.params;
+
+  res.set('Cache-Control', 'no-store');
+  res.set('Access-Control-Expose-Headers', 'server,via,x-cache,x-amz-cf-id,x-amz-cf-pop');
+  if (scenario === 'hidden-headers') res.removeHeader('Access-Control-Expose-Headers');
+  if (scenario === 'cors-denied') {
+    res.removeHeader('Access-Control-Allow-Origin');
+    res.status(403).type('html').send('<html><body>Access denied</body></html>');
+
+    return;
+  }
+  if (scenario === 'network') {
+    req.socket.destroy();
+
+    return;
+  }
+  if (scenario === 'cdn403') {
+    res.set({
+      server: 'CloudFront',
+      'x-cache': 'Error from cloudfront',
+      'x-amz-cf-id': 'fixture-cdn-request',
+      'x-amz-cf-pop': 'IAD55-P1',
+    });
+    res.status(403).type('html').send('<html><body>Access denied</body></html>');
+
+    return;
+  }
+  if (scenario === 'generic403' || (scenario === 'extension-block' && assetName.endsWith('.p7b'))) {
+    res.status(403).type('html').send('<html><body>Access denied</body></html>');
+
+    return;
+  }
+  if (['html', 'html-binary', 'hidden-headers'].includes(scenario)) {
+    res.set({
+      server: 'fixture-gateway',
+      via: '1.1 proxy.private.corp',
+      'set-cookie': 'fixture-private-cookie',
+      'x-amz-cf-id': 'fixture-hidden-request',
+    });
+    res
+      .type(scenario === 'html-binary' ? 'application/octet-stream' : 'html')
+      .send(
+        '<html><head><title>Private title</title></head><body><p id="synthetic-secret-token">Zscaler: request blocked for private@example.invalid</p></body></html>'
+      );
+
+    return;
+  }
+  if (scenario === 'generic-html' || scenario === 'app-shell') {
+    res
+      .type('html')
+      .send(
+        scenario === 'app-shell'
+          ? '<html><body><div id="root"></div></body></html>'
+          : '<html><body>Temporary page</body></html>'
+      );
+
+    return;
+  }
+  if (['valid', 'extension-block', 'tampered'].includes(scenario)) {
+    fs.readFile(path.resolve(__dirname, '..', 'static', 'ios_union.p7b'), (error, contents) => {
+      if (error) {
+        next(error);
+
+        return;
+      }
+      if (scenario === 'tampered') contents[2000] = (contents[2000] + 1) % 256;
+      res.type('application/pkcs7-mime').send(contents);
+    });
+
+    return;
+  }
+  res.sendStatus(404);
+});
+
 app.use(express.static(path.resolve(__dirname, '..', `static`)));
 
 // Serve each plugin's runtime assets under /assets/<plugin-name>/, matching the
