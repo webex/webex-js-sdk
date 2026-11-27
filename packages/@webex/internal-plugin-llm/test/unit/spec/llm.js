@@ -42,9 +42,10 @@ describe('plugin-llm', () => {
           webSocketUrl: 'wss://example.com/socket',
         },
       });
-      llmChannel.connect = sinon.stub().callsFake(() => {
+      llmChannel._connect = sinon.stub().callsFake(() => {
         llmChannel.connected = true;
       });
+      sinon.stub(llmChannel, '_prepareUrl').callsFake((url) => Promise.resolve(url));
     });
 
     afterEach(() => sinon.restore());
@@ -66,9 +67,9 @@ describe('plugin-llm', () => {
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl, 'abc123');
 
         sinon.assert.calledOnce(buildSpy);
-        sinon.assert.calledOnce(llmChannel.connect);
+        sinon.assert.calledOnce(llmChannel._connect);
 
-        const calledUrl = llmChannel.connect.getCall(0).args[0];
+        const calledUrl = llmChannel._connect.getCall(0).args[0];
         assert.include(calledUrl, 'subscriptionAwareSubchannels=');
       });
 
@@ -80,9 +81,9 @@ describe('plugin-llm', () => {
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
 
         sinon.assert.notCalled(buildSpy);
-        sinon.assert.calledOnce(llmChannel.connect);
+        sinon.assert.calledOnce(llmChannel._connect);
 
-        const calledUrl = llmChannel.connect.getCall(0).args[0];
+        const calledUrl = llmChannel._connect.getCall(0).args[0];
         assert.equal(calledUrl, 'wss://example.com/socket');
       });
 
@@ -94,9 +95,9 @@ describe('plugin-llm', () => {
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl, undefined);
 
         sinon.assert.calledOnce(buildSpy);
-        sinon.assert.calledOnce(llmChannel.connect);
+        sinon.assert.calledOnce(llmChannel._connect);
 
-        const calledUrl = llmChannel.connect.getCall(0).args[0];
+        const calledUrl = llmChannel._connect.getCall(0).args[0];
         assert.include(calledUrl, 'subscriptionAwareSubchannels=');
 
         buildSpy.restore();
@@ -112,10 +113,10 @@ describe('plugin-llm', () => {
 
       it('avoids reconnect if already connected to same URLs', async () => {
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
-        sinon.assert.calledOnce(llmChannel.connect);
+        sinon.assert.calledOnce(llmChannel._connect);
 
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
-        sinon.assert.calledOnce(llmChannel.connect);
+        sinon.assert.calledOnce(llmChannel._connect);
       });
 
       it('propagates error when registration request fails', async () => {
@@ -129,7 +130,7 @@ describe('plugin-llm', () => {
           assert.equal(e.message, 'Network failure');
         }
 
-        sinon.assert.notCalled(llmChannel.connect);
+        sinon.assert.notCalled(llmChannel._connect);
       });
 
       it('returns timing data on successful connection', async () => {
@@ -146,7 +147,7 @@ describe('plugin-llm', () => {
             },
           };
         });
-        llmChannel.connect = sinon.stub().callsFake(async () => {
+        llmChannel._connect = sinon.stub().callsFake(async () => {
           clock.tick(23);
           llmChannel.connected = true;
         });
@@ -177,7 +178,7 @@ describe('plugin-llm', () => {
         });
 
         const connectError = new Error('websocket connect failed');
-        llmChannel.connect = sinon.stub().rejects(connectError);
+        llmChannel._connect = sinon.stub().rejects(connectError);
 
         let caughtError;
         try {
@@ -196,7 +197,7 @@ describe('plugin-llm', () => {
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
 
         // After completion, a new call should create a fresh promise (not deduplicated)
-        llmChannel.connect.resetHistory();
+        llmChannel._connect.resetHistory();
         llmChannel.request.resetHistory();
 
         // Simulate different URLs to force new connection
@@ -207,7 +208,7 @@ describe('plugin-llm', () => {
       });
 
       it('clears connectingPromise after failed connection', async () => {
-        llmChannel.connect = sinon.stub().rejects(new Error('connect failed'));
+        llmChannel._connect = sinon.stub().rejects(new Error('connect failed'));
 
         try {
           await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
@@ -216,7 +217,7 @@ describe('plugin-llm', () => {
         }
 
         // Reset and try again - should not deduplicate since promise was cleared
-        llmChannel.connect = sinon.stub().callsFake(() => {
+        llmChannel._connect = sinon.stub().callsFake(() => {
           llmChannel.connected = true;
         });
         llmChannel.request.resetHistory();
@@ -532,11 +533,10 @@ describe('plugin-llm', () => {
         // Start connection
         const connectPromise = llmChannel.registerAndConnect(locusUrl, datachannelUrl);
 
-        // Wait for register() to complete and state to be set
+        // Wait for register() to complete; binding is staged until URL preparation finishes.
         await new Promise((resolve) => setImmediate(resolve));
 
-        // Binding should be set after register() completes
-        assert.equal(llmChannel.getBinding(), 'binding');
+        assert.isUndefined(llmChannel.getBinding());
 
         // Disconnect while isDataChannelTokenEnabled() is pending
         await llmChannel.disconnect({code: 1000, reason: 'test'});
@@ -550,7 +550,7 @@ describe('plugin-llm', () => {
         await connectPromise;
 
         // connect() should NOT have been called - identity check after await should have aborted
-        sinon.assert.notCalled(llmChannel.connect);
+        sinon.assert.notCalled(llmChannel._connect);
       });
     });
 

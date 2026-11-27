@@ -1028,12 +1028,12 @@ describe('webex-core', () => {
       beforeEach(() => {
         serviceHostmap = serviceHostmapV2;
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
+        catalog.updateServiceGroups('postauth', formattedHM.services, formattedHM.timestamp);
 
         services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
         services.webex.credentials = {
           getOrgId: sinon.stub().returns('')
         };
-        catalog.status = {};
       });
 
       it('switches properly when id exists', async () => {
@@ -1052,6 +1052,37 @@ describe('webex-core', () => {
         });
 
         assert.equal(services._activeServices.conversation, 'urn:TEAM:me-central-1_d:conversation');
+      });
+
+      [
+        {names: ['whiteboardWebappUrl'], remove: false, refresh: true},
+        {names: ['whiteboardWebappUrl', 'board'], remove: false, refresh: false},
+        {names: ['board'], remove: true, refresh: true},
+      ].forEach(({names, remove, refresh}) => {
+        it(`validates the current named destination for ${names.join(', ')}${
+          remove ? ' after removal' : ''
+        }`, async () => {
+          const clusterId = 'urn:TEAM:remote:board';
+          services.updateCatalog('postauth', {
+            services: names.map((serviceName) => ({
+              id: clusterId,
+              serviceName,
+              serviceUrls: [{baseUrl: `https://board.example.com/${serviceName}`, priority: 1}],
+            })),
+          });
+          if (remove) catalog.updateServiceGroups('postauth', []);
+          const previous = {...services._activeServices};
+
+          await services.switchActiveClusterIds({board: clusterId});
+
+          if (refresh) {
+            assert.calledOnceWithExactly(services.initServiceCatalogs, true);
+            assert.deepEqual(services._activeServices, previous);
+          } else {
+            assert.notCalled(services.initServiceCatalogs);
+            assert.equal(services._activeServices.board, clusterId);
+          }
+        });
       });
 
       it('makes request to fetch when id does not exist', async () => {
@@ -1294,7 +1325,7 @@ describe('webex-core', () => {
 
       it('has hostCatalog updated', () => {
         services._services = [
-          {id: 'urn:TEAM:us-east-2_a:conversation'},
+          {id: 'urn:TEAM:us-east-2_a:conversation', serviceName: 'conversation'},
           {id: 'test-left-over-services'},
         ];
         services._formatReceivedHostmap(serviceHostmap);

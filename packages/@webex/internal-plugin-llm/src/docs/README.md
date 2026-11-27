@@ -23,6 +23,40 @@ repeating broader facts. No service specification exists because this package is
 Related context: [documentation index](../../docs/index.md) ·
 [package agent instructions](../../AGENTS.md)
 
+## Channel lifecycle (2026-11-20)
+
+This section specifies the current factory-created `LLMChannel` in `src/llm.ts` and supersedes
+older session-map descriptions below for registration, connection state, and teardown.
+`webex.internal.llm.createChannel()` returns an independently owned channel; Mercury owns its
+transport lifecycle.
+
+- `isConnecting()` covers HTTP registration and inherited Mercury reconnect progress while the
+  channel retains a registration. `Meeting.updateLLMConnection` can preserve a recovering channel
+  with unchanged URLs. Completion, terminal failure, and explicit disconnect clear progress.
+- Repeated registration for connected, identical locus/data-channel URLs reuses the socket.
+  Changed URLs require a new registration and a new socket before success. Pending URLs remain
+  visible for interceptor lookup; the previous binding/socket remain active until the new response
+  and URL preparation succeed. A registration/preparation failure restores the previous URL pair.
+- Once prepared, a changed registration uses Mercury's transport-only teardown with an explicit
+  permanent close reason, checks operation identity, then publishes the new binding and opens its
+  socket. It preserves the factory registry entry, token, refresh handler, and registration promise.
+  Missing response socket URLs and HA catalog-route misses reject before closing an active socket. Route preflight uses Mercury `_prepareUrl`; failure retains the previous socket, binding, lookup URLs, and factory entry, and reports the completed registration timing. Disconnect invalidates a pending route preflight before it can tear down or reopen transport.
+- A changed registration carries the prepared URL into Mercury's first open attempt. Catalog changes
+  during old-socket closure cannot invalidate that first route through a second local lookup.
+  Subsequent retry attempts resolve the registration URL again to use current routing. This preserves
+  local preflight validation; a later server or network rejection still follows normal retry policy.
+- Explicit `disconnect()` invalidates pending registration first, clears channel metadata and
+  refresh state, and releases ownership via `disconnected`. Stale registration responses, delayed
+  preparation, and old socket completions cannot replace newer channel work.
+- Transient reconnect and graceful shutdown replacement preserve the LLM service registration and
+  `subscriptionAwareSubchannels` query. Each successful replacement emits `online` after promotion,
+  so meeting listeners can restore subscriptions and sync LLM datasets. These tests establish the
+  client callback behavior, not whether a server lost subscriptions.
+- LLM lifecycle changes never write the primary Mercury call-diagnostics connection flag.
+
+Evidence: `src/llm.ts`, `src/llm-plugin.ts`, `test/unit/spec/llm.js`,
+`test/unit/spec/mercury-lifecycle.js`, and Mercury `src/mercury.js`.
+
 ## Metadata
 
 | Field             | Value |

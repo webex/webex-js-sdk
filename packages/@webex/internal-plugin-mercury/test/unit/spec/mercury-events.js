@@ -298,7 +298,7 @@ describe('plugin-mercury', () => {
 
               let expectedReconnectUrl;
 
-              sinon.spy(mercury, 'connect');
+              sinon.spy(mercury, '_connect');
 
               const offlineSpy = sinon.spy();
               const permanentSpy = sinon.spy();
@@ -316,8 +316,7 @@ describe('plugin-mercury', () => {
 
               return promise
                 .then(() => {
-                  // Make sure mercury.connect has a call count of zero
-                  mercury.connect.resetHistory();
+                  mercury._connect.resetHistory();
 
                   // Reconnection re-derives from the resolved URL
                   // captured in _prepareAndOpenSocket, not the socket's actual
@@ -352,15 +351,14 @@ describe('plugin-mercury', () => {
                   }
                   assert.isFalse(mercury.connected, 'Mercury is not connected');
                   if (action === 'reconnect') {
-                    assert.called(mercury.connect);
-                    assert.calledWith(mercury.connect, expectedReconnectUrl);
+                    assert.calledOnceWithExactly(mercury._connect, expectedReconnectUrl, true);
                     assert.isTrue(mercury.connecting, 'Mercury is connecting');
 
                     // Block until reconnect completes so logs don't overlap
                     return mercury.connect();
                   }
 
-                  assert.notCalled(mercury.connect);
+                  assert.notCalled(mercury._connect);
                   assert.isFalse(mercury.connecting, 'Mercury is not connecting');
 
                   return Promise.resolve();

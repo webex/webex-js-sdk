@@ -291,6 +291,7 @@ describe('plugin-board', () => {
           assert.calledWith(webex.internal.services.getClusterId, conversation.aclUrl);
           assert.calledWith(webex.internal.services.getServiceFromClusterId, {
             clusterId: 'urn:TEAM:us-east-2_a:board',
+            serviceName: 'board',
           });
           assert.calledWith(
             webex.request,
@@ -653,6 +654,7 @@ describe('plugin-board', () => {
         assert.calledWith(webex.internal.services.getClusterId, conversation.aclUrl);
         assert.calledWith(webex.internal.services.getServiceFromClusterId, {
           clusterId: 'urn:TEAM:us-east-2_a:board',
+          serviceName: 'board',
         });
         assert.calledWith(
           webex.request,

@@ -4,7 +4,7 @@
 
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
-import {ServicesV2} from '@webex/webex-core';
+import {ServicesV2, ServiceDetail} from '@webex/webex-core';
 import {formattedServiceHostmapV2} from '../../../fixtures/host-catalog-v2';
 
 describe('webex-core', () => {
@@ -17,6 +17,109 @@ describe('webex-core', () => {
       webex = new MockWebex();
       services = new ServicesV2(undefined, {parent: webex});
       catalog = services._getCatalog();
+    });
+
+    describe('service identity during catalog loading and refresh', () => {
+      const clusterId = 'urn:TEAM:remote:board';
+      const boardUrl = 'https://board-remote.example.com/board/api/v1';
+      const webappUrl = 'https://whiteboard-remote.example.com/webapp';
+      const names = ['whiteboardWebappUrl', 'board'];
+      const urls = {whiteboardWebappUrl: webappUrl, board: boardUrl};
+      const entry = (serviceName, url = urls[serviceName]) => ({
+        id: clusterId,
+        serviceName,
+        serviceUrls: [{baseUrl: url, priority: 1}],
+      });
+      const load = (entries, group = 'postauth') =>
+        services.updateCatalog(group, {
+          activeServices: {whiteboardWebappUrl: clusterId, board: clusterId},
+          services: entries,
+        });
+
+      [names, [...names].reverse()].forEach((order) => {
+        it(`keeps both named services when loading ${order.join(' then ')}`, () => {
+          load(order.map((name) => entry(name)));
+
+          assert.lengthOf(catalog.serviceGroups.postauth, 2);
+          names.forEach((name) => {
+            assert.deepEqual(services.getServiceFromClusterId({clusterId, serviceName: name}), {
+              name,
+              url: urls[name],
+            });
+            assert.equal(services.get(name), urls[name]);
+            assert.isTrue(services.isValidHost(new URL(urls[name]).host));
+          });
+        });
+
+        it(`refreshes each named service without mixing names and URLs after ${order.join(
+          ' then '
+        )}`, () => {
+          load(order.map((name) => entry(name)));
+          const oldBoard = catalog.serviceGroups.postauth.find(
+            (detail) => detail.serviceName === 'board'
+          );
+          const refreshedBoardUrl = 'https://board-new.example.com/board/api/v1';
+
+          load(
+            [...order]
+              .reverse()
+              .map((name) => entry(name, name === 'board' ? refreshedBoardUrl : webappUrl))
+          );
+
+          assert.lengthOf(catalog.serviceGroups.postauth, 2);
+          assert.strictEqual(
+            catalog.serviceGroups.postauth.find((detail) => detail.serviceName === 'board'),
+            oldBoard
+          );
+          assert.equal(services.get('board'), refreshedBoardUrl);
+          assert.equal(services.get('whiteboardWebappUrl'), webappUrl);
+        });
+      });
+
+      names.forEach((retainedName) => {
+        it(`replaces the group snapshot when only ${retainedName} is supplied`, () => {
+          load(names.map((name) => entry(name)));
+          load([entry(retainedName)]);
+
+          assert.lengthOf(catalog.serviceGroups.postauth, 1);
+          assert.equal(catalog.serviceGroups.postauth[0].serviceName, retainedName);
+          const removedName = names.find((name) => name !== retainedName);
+          assert.isUndefined(
+            services.getServiceFromClusterId({clusterId, serviceName: removedName})
+          );
+        });
+      });
+
+      it('clears an explicitly empty group snapshot without altering another group', () => {
+        load(names.map((name) => entry(name)));
+        load([entry('board')], 'preauth');
+        load([]);
+
+        assert.lengthOf(catalog.serviceGroups.postauth, 0);
+        assert.lengthOf(catalog.serviceGroups.preauth, 1);
+      });
+
+      it('retains the current entries when no services list is supplied', () => {
+        load(names.map((name) => entry(name)));
+        catalog.updateServiceGroups('postauth', undefined);
+
+        assert.lengthOf(catalog.serviceGroups.postauth, 2);
+        assert.equal(services.get('board'), boardUrl);
+        assert.equal(services.get('whiteboardWebappUrl'), webappUrl);
+      });
+
+      it('deduplicates and unloads by both name and cluster ID', () => {
+        const details = names.map(
+          (name) => new ServiceDetail(services._formatHostMapEntry(entry(name)))
+        );
+
+        catalog._loadServiceDetails('postauth', details);
+        catalog._loadServiceDetails('postauth', details);
+        assert.lengthOf(catalog.serviceGroups.postauth, 2);
+        catalog._unloadServiceDetails('postauth', [details[1]]);
+
+        assert.deepEqual(catalog.serviceGroups.postauth, [details[0]]);
+      });
     });
 
     describe('#namespace', () => {

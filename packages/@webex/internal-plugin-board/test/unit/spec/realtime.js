@@ -30,6 +30,24 @@ describe('plugin-board', () => {
       defaultEncryptionKeyUrl: fakeURL,
     };
 
+    it('refreshes shared socket references while preserving dedicated board sockets', () => {
+      const realtime = webex.internal.board.realtime;
+      const dedicatedSocket = mockRealtimeChannel.socket;
+      const shared = new RealtimeChannel({channelId: 'shared-board'});
+      const replacementSocket = {send: sinon.stub()};
+
+      shared.isSharingMercury = true;
+      realtime.realtimeChannels.add.callThrough();
+      realtime.realtimeChannels.get.callThrough();
+      realtime.realtimeChannels.add(shared);
+      webex.internal.mercury.socket = replacementSocket;
+      webex.internal.mercury.on('online', realtime.refreshMercurySocketReference, realtime);
+      webex.internal.mercury._emit('online');
+
+      assert.strictEqual(shared.socket, replacementSocket);
+      assert.strictEqual(mockRealtimeChannel.socket, dedicatedSocket);
+    });
+
     beforeEach(() => {
       webex = new MockWebex({
         children: {

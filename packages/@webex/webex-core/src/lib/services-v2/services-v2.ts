@@ -1,6 +1,6 @@
 import sha256 from 'crypto-js/sha256';
 
-import {toNumber, union, unionBy} from 'lodash';
+import {toNumber, union, unionWith} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 
 import METRICS from '../metrics';
@@ -166,7 +166,7 @@ const Services = WebexPlugin.extend({
 
     const clusterId = this._activeServices[name];
 
-    const urlById = catalog.get(clusterId, serviceGroup);
+    const urlById = catalog.get(clusterId, serviceGroup, name);
     const urlByName = catalog.get(name, serviceGroup);
 
     // if both are undefined, then we cannot find the service
@@ -298,7 +298,12 @@ const Services = WebexPlugin.extend({
    * @returns {void}
    */
   _updateServices(services: Array<Service>): void {
-    this._services = unionBy(services, this._services, 'id');
+    this._services = unionWith(
+      services,
+      this._services,
+      (service, existing) =>
+        service.id === existing.id && service.serviceName === existing.serviceName
+    );
   },
 
   /**
@@ -559,16 +564,14 @@ const Services = WebexPlugin.extend({
   switchActiveClusterIds(newActiveClusters: ActiveServices): Promise<void> {
     this.logger.info('services: switching active cluster ids');
 
-    const newActiveClusterIds = Object.values(newActiveClusters);
+    const catalog = this._getCatalog();
+    const missingServices = Object.entries(newActiveClusters).some(
+      ([serviceName, clusterId]) => !catalog.findServiceFromClusterId({clusterId, serviceName})
+    );
 
-    const missingClusterIds = newActiveClusterIds.some((clusterId) => {
-      // if the clusterId does not exist in the catalog, fetch the catalog
-      return !this._services.find((service) => service.id === clusterId);
-    });
-
-    if (missingClusterIds) {
+    if (missingServices) {
       this.logger.warn(
-        'services: some cluster ids do not exist in the catalog, fetching the catalog'
+        'services: some service name and cluster ID pairs do not exist in the catalog, fetching the catalog'
       );
 
       // fetch the catalog
@@ -989,6 +992,7 @@ const Services = WebexPlugin.extend({
    * return an object containing both the name and url of a found service.
    * @param {object} params
    * @param {string} params.clusterId - clusterId of found service
+   * @param {string} [params.serviceName] - require this service name when cluster ids are shared
    * @param {ServiceGroup} [params.serviceGroup] - specify service group
    * @returns {object} service
    * @returns {string} service.name
@@ -996,6 +1000,7 @@ const Services = WebexPlugin.extend({
    */
   getServiceFromClusterId(params: {
     clusterId: string;
+    serviceName?: string;
     serviceGroup?: ServiceGroup;
   }): {name: string; url: string} | undefined {
     const catalog = this._getCatalog();

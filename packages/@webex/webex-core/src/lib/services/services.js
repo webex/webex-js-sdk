@@ -1030,6 +1030,7 @@ const Services = WebexPlugin.extend({
    * return an object containing both the name and url of a found service.
    * @param {object} params
    * @param {string} params.clusterId - clusterId of found service
+   * @param {string} [params.serviceName] - require this service name when cluster ids are shared
    * @param {boolean} [params.priorityHost] - returns priority host url if true
    * @param {string} [params.serviceGroup] - specify service group
    * @returns {object} service

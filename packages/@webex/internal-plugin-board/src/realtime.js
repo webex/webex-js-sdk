@@ -222,7 +222,9 @@ const RealtimeService = WebexPlugin.extend({
 
   refreshMercurySocketReference() {
     this.realtimeChannels.forEach((realtimeChannel) => {
-      realtimeChannel.socket = this.webex.internal.mercury.socket;
+      if (realtimeChannel.isSharingMercury) {
+        realtimeChannel.socket = this.webex.internal.mercury.socket;
+      }
     });
   },
 
