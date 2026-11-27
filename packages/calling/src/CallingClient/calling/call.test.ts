@@ -794,6 +794,52 @@ describe('Call Tests', () => {
       expect(warnMessage.length).toBeLessThan(longUrl.length + longErrorText.length);
       expect(warnMessage).toContain('701');
     });
+
+    it('sanitizes and bounds the ICE error port field', () => {
+      const warnSpy = jest.spyOn(log, 'warn');
+      const {iceCandidateErrorHandler} = setupCallAndGetIceHandler();
+
+      // The port originates from the network-controlled ICE error event and must be
+      // passed through sanitizeLogValue (control characters stripped, length bounded),
+      // consistent with the other untrusted ICE error fields.
+      iceCandidateErrorHandler({
+        errorCode: 701,
+        errorText: 'STUN host lookup failed',
+        url: 'stun:example.org:3478',
+        port: '34\n78\x00' + '9'.repeat(200),
+      });
+
+      const warnMessage = warnSpy.mock.calls.find((args) =>
+        String(args[0]).includes('ICE candidate')
+      )?.[0] as string;
+      expect(warnMessage).toBeDefined();
+      // Control characters stripped before JSON encoding.
+      expect(warnMessage).not.toMatch(/\n|\r/);
+      expect(warnMessage).not.toMatch(/\\n|\\r/);
+      // Sanitized port is present and length-bounded to the sanitizeLogValue maximum (100).
+      expect(warnMessage).toMatch(/"port":"3478/);
+      const portValue = JSON.parse(
+        warnMessage.replace('ICE candidate error occurred: ', '')
+      ).port as string;
+      expect(portValue.length).toBeLessThanOrEqual(100);
+    });
+
+    it('emits a null port when the ICE error event omits it', () => {
+      const warnSpy = jest.spyOn(log, 'warn');
+      const {iceCandidateErrorHandler} = setupCallAndGetIceHandler();
+
+      iceCandidateErrorHandler({
+        errorCode: 701,
+        errorText: 'STUN host lookup failed',
+        url: 'stun:example.org:3478',
+      });
+
+      const warnMessage = warnSpy.mock.calls.find((args) =>
+        String(args[0]).includes('ICE candidate')
+      )?.[0] as string;
+      expect(warnMessage).toBeDefined();
+      expect(warnMessage).toContain('"port":null');
+    });
   });
 
   it('handles ROAP failure listener and submits media error metric', () => {

@@ -363,7 +363,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       address: event.address != null ? sanitizeLogValue(String(event.address)) : null,
       errorCode: event.errorCode,
       errorText: sanitizeLogValue(event.errorText),
-      port: event.port ?? null,
+      port: event.port != null ? sanitizeLogValue(String(event.port)) : null,
       url: sanitizeLogValue(event.url),
     };
 
