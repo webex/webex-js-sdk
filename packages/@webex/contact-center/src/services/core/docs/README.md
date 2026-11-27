@@ -504,12 +504,14 @@ actions using `region:stateChange`.
   calls `pause()` or `stop()` on lifecycle changes. Both clear retry timers and close a pending attempt
   through `WebSocketManager.close()`. `stop()` also removes the driver's listeners.
   ContactCenter explicitly closes the current socket when the registration ends.
-- `recoverRegion(options)` runs one attempt at a time. It passes accepted Welcome and a socket-ready
-  predicate to `afterWelcome`. When station recovery finishes on a usable socket, it resumes ordinary
-  monitoring and publishes the station outcome.
-- A `RegionRecoveryInvocation` retains the retry count and result across attempts. The driver keeps
-  one pending-attempt reference, while `WebSocketManager` owns the socket and its cleanup.
-- A terminal error stops recovery and closes the socket before notifying ContactCenter.
+- `recoverRegion(options)` schedules recovery and returns immediately. It passes accepted Welcome
+  and a socket-ready predicate to the asynchronous `afterWelcome` callback. When station recovery
+  finishes on a usable socket, it resumes ordinary monitoring and publishes the station outcome.
+- The retry timer retains the callbacks and attempt number. `onAttemptSettled` reports success,
+  retry or terminal failure. The driver keeps one pending-attempt reference, while
+  `WebSocketManager` owns the socket and its cleanup.
+- A terminal error stops recovery and closes the socket before calling the registration's existing
+  `onTerminalFailure` callback.
 
 ## Use cases and flows
 
@@ -560,9 +562,10 @@ The ordinary driver uses one in-flight attempt and schedules the next five-secon
 retryable failure. Its retry callback observes an offline or failed connection and schedules safely.
 A keepalive resets ordinary liveness timers and emits only in ordinary mode with no pending admission.
 Slots are anchored to the loss time: a pending attempt skips elapsed slots, and a retryable failure
-waits for the next future slot without overlap or catch-up. A region switch pauses this driver and starts a
-regional invocation controlled by ContactCenter, with its own timer and pending attempt. Reset restores ordinary
-reconnection eligibility. Stop clears work and listeners.
+waits for the next future slot without overlap or catch-up. A region switch pauses this driver and
+starts regional retry scheduling with callbacks supplied by ContactCenter. The timer carries the
+attempt number between retries. Reset restores ordinary reconnection eligibility. Stop clears work
+and listeners.
 
 | Constant                           | Value     | Purpose                                      |
 | ---------------------------------- | --------- | -------------------------------------------- |
@@ -583,12 +586,12 @@ stateDiagram-v2
   [*] --> Ordinary
   Ordinary --> Ordinary: loss, scheduled fresh subscribe, or accepted keepalive
   Ordinary --> Paused: prepare region recovery
-  Paused --> Region: recoverRegion owns current invocation
+  Paused --> Region: recoverRegion schedules regional retry
   Region --> Region: retryable admission or transport loss
   Region --> Ordinary: afterWelcome completes on a usable socket
   Region --> Paused: ContactCenter calls pause
   Ordinary --> Stopped: reconnect episode watchdog, terminal admission or close without reconnect
-  Region --> Stopped: terminal invocation failure or registration ends
+  Region --> Stopped: terminal failure or registration ends
   Stopped --> Ordinary: reset with current registration
 ```
 
@@ -835,7 +838,7 @@ Unit tests mirror module paths under `test/unit/spec/services/core`. Preserve po
 | `CORE-R-009` | None | None found | None found | No case for `Service.aqm.reqs.Pending` |
 | `CORE-R-015` | Unit (partial) | `test/unit/spec/services/core/Utils.ts` getErrorDetails and getStationLoginErrorData cases | `test/unit/spec/services/core/Utils.ts` silent-relogin AGENT_NOT_FOUND case | `generateTaskErrorObject` has no unit case |
 | `CORE-R-016` | Unit | `test/unit/spec/services/core/websocket/WebSocketManager.ts` T-003 | Separate deadlines, early close and late attempt suppression | None |
-| `CORE-R-017` | Unit | `test/unit/spec/services/core/websocket/connection-service.ts` T-004 | Mismatch and authentication stop in T-005 and T-012; T-004 “terminalSettlementCommittedBeforeHook” crosses auth/mismatch/post-Welcome failure with recoverRegion/pause/stop/reset reentry, failure mutation and hook exceptions, preserving terminal rejection and replacement registration ownership | None |
+| `CORE-R-017` | Unit | `test/unit/spec/services/core/websocket/connection-service.ts` T-004 | Mismatch, authentication and post-Welcome failure stop recovery and report through the terminal callback. Success and retry outcomes use `onAttemptSettled`. | None |
 | `CORE-R-018` | Unit | `test/unit/spec/cc.ts` regional station recovery cases | Existing AQM matching and timeout | Live station recovery remains release verification |
 | `CORE-R-019`, `INV-003` | Unit | `test/unit/spec/services/core/websocket/connection-service.ts` ordinary ping/reconnect cases | T-012 malformed ping is ignored safely crosses malformed JSON, null, boolean, number, string and array with normal/throwing logging; asserts exact fixed diagnostics, unchanged timers/events, no secrets and next retry at five seconds | No browser execution required |
 

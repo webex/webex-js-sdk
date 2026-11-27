@@ -4,7 +4,6 @@ import type {WelcomeResponse} from '../../config/types';
 
 /** Terminal transport outcomes retained for module declarations; absent from the root barrel. */
 export type ConnectionRecoveryFailureKind =
-  | 'cancelled'
   | 'authentication-failed'
   | 'region-mismatch'
   | 'after-welcome-failed';
@@ -25,20 +24,13 @@ export type RegionRecoveryOptions = {
   onScheduled: (attempt: number, retryAfterMs: number) => void;
   onAttemptSettled?: (
     attempt: number,
-    outcome: 'retrying' | 'terminal',
+    outcome: 'succeeded' | 'retrying' | 'terminal',
     failure?: RecoveryFailure
   ) => void;
   afterWelcome: (
     welcome: WelcomeResponse,
     isConnected: () => boolean
   ) => Promise<void | (() => void)>;
-};
-
-/** @internal A regional recovery owns its promise and retry count across socket attempts. */
-export type RegionRecoveryInvocation = RegionRecoveryOptions & {
-  attempt: number;
-  resolve: () => void;
-  reject: (error: ConnectionRecoveryError) => void;
 };
 
 /**

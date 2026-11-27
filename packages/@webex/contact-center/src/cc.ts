@@ -717,7 +717,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private handleRecoveryTerminal(error: unknown): void {
     const failure = normalizeRecoveryFailure(error);
     const kind = isRecord(error) && isRecord(error.data) ? error.data.kind : undefined;
-    if (kind === 'cancelled' || failure.reason === 'RECOVERY_INTERRUPTED') {
+    if (failure.reason === 'RECOVERY_INTERRUPTED') {
       this.cancelRegionRecovery();
 
       return;
@@ -827,60 +827,46 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.services.webSocketManager.close(false, 'regionRecovery');
     this.taskManager.invalidateRegionalTasks();
     if (!this.isCurrentRecovery(recovery)) return;
-    this.services.connectionService
-      .recoverRegion({
-        onScheduled: (attempt, retryAfterMs) => {
-          if (!this.isCurrentRecovery(recovery)) return;
-          const attemptStartedAt = Date.now();
-          recovery.attempt = {
-            attempt,
-            startedAt: attemptStartedAt,
-            welcomeStartedAt: attemptStartedAt + retryAfterMs,
-          };
-          this.recordRecoveryDiagnostic('scheduled-wait', 'waiting', attempt, attemptStartedAt);
-          if (!this.isCurrentRecovery(recovery)) return;
-          this.recoveryPhase = 'waiting';
-          this.publishRegionState(
-            this.buildRegionState('recovering', 'region-switch', retryAfterMs)
-          );
-        },
-        onAttemptSettled: (attempt, outcome, failure) => {
-          const slot = recovery.attempt;
-          if (!this.isCurrentRecovery(recovery) || slot?.attempt !== attempt) return;
-          recovery.attempt = undefined;
-          this.recordRecoveryDiagnostic('admission', outcome, attempt, slot.startedAt, failure);
-        },
-        afterWelcome: async (welcome, isConnected) => {
-          if (!this.isCurrentRecovery(recovery))
-            throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-          const slot = recovery.attempt;
-          const attempt = slot?.attempt;
-          const agentId = isRecord(welcome) ? welcome.agentId : undefined;
-          const valid = agentId === recovery.agentId;
-          this.recordRecoveryDiagnostic(
-            'welcome',
-            valid ? 'succeeded' : 'failed',
-            attempt,
-            slot?.welcomeStartedAt ?? slot?.startedAt
-          );
-          if (!this.isCurrentRecovery(recovery) || !isConnected())
-            throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-          this.assertPrimaryIdentity(agentId);
+    this.services.connectionService.recoverRegion({
+      onScheduled: (attempt, retryAfterMs) => {
+        if (!this.isCurrentRecovery(recovery)) return;
+        const attemptStartedAt = Date.now();
+        recovery.attempt = {
+          attempt,
+          startedAt: attemptStartedAt,
+          welcomeStartedAt: attemptStartedAt + retryAfterMs,
+        };
+        this.recordRecoveryDiagnostic('scheduled-wait', 'waiting', attempt, attemptStartedAt);
+        if (!this.isCurrentRecovery(recovery)) return;
+        this.recoveryPhase = 'waiting';
+        this.publishRegionState(this.buildRegionState('recovering', 'region-switch', retryAfterMs));
+      },
+      onAttemptSettled: (attempt, outcome, failure) => {
+        const slot = recovery.attempt;
+        if (!this.isCurrentRecovery(recovery) || slot?.attempt !== attempt) return;
+        recovery.attempt = undefined;
+        this.recordRecoveryDiagnostic('admission', outcome, attempt, slot.startedAt, failure);
+      },
+      afterWelcome: async (welcome, isConnected) => {
+        if (!this.isCurrentRecovery(recovery))
+          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+        const slot = recovery.attempt;
+        const attempt = slot?.attempt;
+        const agentId = isRecord(welcome) ? welcome.agentId : undefined;
+        const valid = agentId === recovery.agentId;
+        this.recordRecoveryDiagnostic(
+          'welcome',
+          valid ? 'succeeded' : 'failed',
+          attempt,
+          slot?.welcomeStartedAt ?? slot?.startedAt
+        );
+        if (!this.isCurrentRecovery(recovery) || !isConnected())
+          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+        this.assertPrimaryIdentity(agentId);
 
-          return this.restoreRegionSession(recovery, isConnected);
-        },
-      })
-      .then(
-        () => {
-          const slot = recovery.attempt;
-          if (!this.isCurrentRecovery(recovery) || !slot) return;
-          recovery.attempt = undefined;
-          this.recordRecoveryDiagnostic('admission', 'succeeded', slot.attempt, slot.startedAt);
-        },
-        (error) => {
-          if (this.isCurrentRecovery(recovery)) this.handleRecoveryTerminal(error);
-        }
-      );
+        return this.restoreRegionSession(recovery, isConnected);
+      },
+    });
   }
 
   private assertPrimaryIdentity(agentId: unknown): void {

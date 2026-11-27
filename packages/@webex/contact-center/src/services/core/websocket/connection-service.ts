@@ -5,7 +5,6 @@ import type {
   ConnectionLostDetails,
   ConnectionResetOptions,
   RegionRecoveryOptions,
-  RegionRecoveryInvocation,
   ConnectionRecoveryError,
   ConnectionRecoveryFailureKind,
 } from './types';
@@ -56,7 +55,6 @@ export class ConnectionService extends EventEmitter {
   private isKeepAlive = false;
   private lossEpisode?: {startedAt: number; attempt: number};
   private pending?: {reconnectOnClose: boolean};
-  private invocation?: RegionRecoveryInvocation;
   private onTerminalFailure?: ConnectionResetOptions['onTerminalFailure'];
   private readonly webSocketManager: WebSocketManager;
   private subscribeRequest: SubscribeRequest;
@@ -92,23 +90,11 @@ export class ConnectionService extends EventEmitter {
     this.webSocketManager.off('socketClose', this.onSocketClose);
   }
 
-  public recoverRegion(options: RegionRecoveryOptions): Promise<void> {
-    if (this.mode === 'stopped') {
-      return Promise.reject(terminalError('cancelled'));
-    }
+  public recoverRegion(options: RegionRecoveryOptions): void {
+    if (this.mode === 'stopped') return;
     this.pause();
     this.mode = 'region';
-
-    return new Promise((resolve, reject) => {
-      const invocation: RegionRecoveryInvocation = {
-        ...options,
-        attempt: 0,
-        resolve,
-        reject,
-      };
-      this.invocation = invocation;
-      this.scheduleRegion(invocation);
-    });
+    this.scheduleRegion(options, 1);
   }
 
   private setupEventListeners(): void {
@@ -128,12 +114,9 @@ export class ConnectionService extends EventEmitter {
 
   private cancelWork(): void {
     this.clearTimers();
-    const invocation = this.invocation;
-    this.invocation = undefined;
     const pending = this.pending;
     this.pending = undefined;
     if (pending) this.webSocketManager.close(false, 'Recovery cancelled');
-    invocation?.reject(terminalError('cancelled'));
   }
 
   private subscribePrimary(): Promise<WelcomeResponse> {
@@ -143,29 +126,23 @@ export class ConnectionService extends EventEmitter {
     });
   }
 
-  private scheduleRegion(invocation: RegionRecoveryInvocation): void {
-    if (this.invocation !== invocation) return;
-    invocation.attempt += 1;
-    const attempt = invocation.attempt;
+  private scheduleRegion(options: RegionRecoveryOptions, attempt: number): void {
+    if (this.mode !== 'region' || this.retryTimer) return;
     const base = REGION_RETRY_DELAYS[Math.min(attempt, REGION_RETRY_DELAYS.length) - 1];
     const wait = base * (1 + 0.5 * Math.random());
-    try {
-      invocation.onScheduled(attempt, wait);
-    } catch {
-      /* The scheduler owns pacing independently of observers. */
-    }
-    if (this.invocation !== invocation) return;
     this.retryTimer = setTimeout(() => {
       this.retryTimer = undefined;
-      this.runRegionAttempt(invocation).catch(() => {
-        if (this.invocation === invocation)
-          this.failRegion(invocation, terminalError('after-welcome-failed'));
-      });
+      this.runRegionAttempt(options, attempt);
     }, wait);
+    try {
+      options.onScheduled(attempt, wait);
+    } catch {
+      /* A diagnostic callback cannot prevent the scheduled reconnect. */
+    }
   }
 
-  private async runRegionAttempt(invocation: RegionRecoveryInvocation): Promise<void> {
-    if (this.invocation !== invocation) return;
+  private async runRegionAttempt(options: RegionRecoveryOptions, attempt: number): Promise<void> {
+    if (this.mode !== 'region' || this.pending) return;
     const pending = {reconnectOnClose: false};
     this.pending = pending;
     const isConnected = () =>
@@ -175,63 +152,54 @@ export class ConnectionService extends EventEmitter {
     let welcomed = false;
     try {
       const welcome = await this.subscribePrimary();
-      if (this.invocation !== invocation || this.pending !== pending) return;
+      if (this.pending !== pending) return;
       if (!isConnected()) throw new Error('WebSocket closed');
       welcomed = true;
-      const publishOutcome = await invocation.afterWelcome(welcome, isConnected);
-      if (this.invocation !== invocation || this.pending !== pending) return;
+      const publishOutcome = await options.afterWelcome(welcome, isConnected);
+      if (this.pending !== pending) return;
       if (!isConnected()) throw new Error('WebSocket closed');
-      this.invocation = undefined;
       this.mode = 'ordinary';
       this.updateConnectionData();
       this.monitorOrdinary();
-      invocation.resolve();
+      try {
+        options.onAttemptSettled?.(attempt, 'succeeded');
+      } catch {
+        /* Recovery progress is independent of diagnostics. */
+      }
       try {
         if (publishOutcome) publishOutcome();
       } finally {
         if (this.pending === pending) this.pending = undefined;
       }
     } catch (error) {
-      if (this.invocation !== invocation || this.pending !== pending) return;
+      if (this.pending !== pending) return;
       const mismatch = welcomed ? undefined : getSubscriptionMismatchReason(error);
       const failure = safeFailure(error, mismatch);
-      const auth = failure.status === 401 || failure.status === 403;
-      const {reconnectOnClose} = pending;
       let kind: ConnectionRecoveryFailureKind | undefined;
-      if (auth) kind = 'authentication-failed';
+      if (failure.status === 401 || failure.status === 403) kind = 'authentication-failed';
       else if (mismatch) kind = 'region-mismatch';
-      else if (welcomed && !reconnectOnClose) kind = 'after-welcome-failed';
+      else if (welcomed && !pending.reconnectOnClose) kind = 'after-welcome-failed';
+      this.pending = undefined;
       if (kind) {
-        this.failRegion(invocation, terminalError(kind, failure));
+        const callback = this.onTerminalFailure;
+        this.stop();
+        this.webSocketManager.close(false, 'Terminal recovery');
+        try {
+          options.onAttemptSettled?.(attempt, 'terminal', failure);
+        } catch {
+          /* Recovery failure is independent of diagnostics. */
+        }
+        callback?.(terminalError(kind, failure));
 
         return;
       }
-      this.pending = undefined;
       try {
-        invocation.onAttemptSettled?.(invocation.attempt, 'retrying', failure);
+        options.onAttemptSettled?.(attempt, 'retrying', failure);
       } catch {
-        /* Best-effort diagnostic seam. */
+        /* Recovery progress is independent of diagnostics. */
       }
-      this.scheduleRegion(invocation);
+      this.scheduleRegion(options, attempt + 1);
     }
-  }
-
-  private failRegion(invocation: RegionRecoveryInvocation, error: ConnectionRecoveryError): void {
-    if (this.invocation !== invocation) return;
-    const {kind, ...failure} = error.data;
-    // Commit old-owner cleanup before observers can cancel or replace the registration.
-    this.invocation = undefined;
-    this.pending = undefined;
-    this.stop();
-    this.webSocketManager.close(false, 'Terminal recovery');
-    if (kind !== 'cancelled') {
-      try {
-        invocation.onAttemptSettled?.(invocation.attempt, 'terminal', failure);
-      } catch {
-        /* The captured terminal error settles independently of observers. */
-      }
-    }
-    invocation.reject(error);
   }
 
   private dispatchConnectionEvent(socketReconnected = false): void {
