@@ -10,7 +10,7 @@ import {createCameraStream, createDisplayStream, createMicrophoneStream, LocalTr
 
 import testUtils from '../../utils/testUtils';
 import integrationTestUtils from '../../utils/integrationTestUtils';
-import {EVENT_TRIGGERS, LOCUSINFO} from '../../../dist/constants';
+import {EVENT_TRIGGERS} from '../../../dist/constants';
 
 require('dotenv').config();
 
@@ -558,33 +558,19 @@ skipInNode(describe)('plugin-meetings', () => {
             }),
         ]));
 
-      it('alice clears bob remote mute and bob unmutes locally', async () => {
-        const remoteMuteCleared = testUtils.waitForEvents([{
-          scope: bob.meeting.locusInfo,
-          event: LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          match: ({muted}) => muted === false,
+      it('alice unmutes bob', async () => {
+        const bobUnmutedByOthers = testUtils.waitForEvents([{
+          scope: bob.meeting,
+          event: EVENT_TRIGGERS.MEETING_SELF_UNMUTED_BY_OTHERS,
         }]);
 
         await Promise.all([
-          remoteMuteCleared,
+          bobUnmutedByOthers,
           alice.meeting.mute(bob.meeting.members.selfId, false),
         ]);
 
         assert.isFalse(bob.meeting.audio.isRemotelyMuted());
-        assert.isTrue(bob.meeting.audio.isMuted());
-        assert.isTrue(localStreams.bob.microphone.userMuted);
-
-        const bobUnmuted = testUtils.waitForEvents([{
-          scope: alice.meeting.members,
-          event: 'members:update',
-          match: (event) => event.delta.updated.some(
-            (member) => member.id === bob.meeting.members.selfId && member.isAudioMuted === false
-          ),
-        }]);
-
-        localStreams.bob.microphone.setUserMuted(false);
-        await bobUnmuted;
-
+        assert.isFalse(bob.meeting.audio.isMuted());
         assert.isFalse(localStreams.bob.microphone.muted);
       });
 

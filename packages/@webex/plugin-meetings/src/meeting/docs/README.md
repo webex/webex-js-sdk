@@ -340,6 +340,25 @@ objects, the WebRTC connection, its `ConnectionStateHandler`, the stats analyzer
 multistream, the slot and request managers. The LLM data channel is created on join when
 `enableAutomaticLLM` is on and recreated when the Locus or data-channel URL changes.
 
+### Audio remote mute in Locus calls
+
+For a Locus `CALL`, `MuteState` applies remote audio mute to the stream while preserving the
+participant's local mute intent. A remote mute must not be echoed back as a local mute or
+immediately undone by a client-to-server sync. When another participant clears remote mute,
+the stream is unmuted only if the participant is not independently locally/system muted.
+These legacy calls do not require `LOCAL_UNMUTE_REQUIRED` for the clear; the Meeting emits
+`meeting:self:unmutedByOthers` once it is actually unmuted.
+
+Group meetings retain the breakout-return safeguard: a remote-mute clear alone does not
+unmute the local stream, and the server-driven local-unmute path remains
+`LOCAL_UNMUTE_REQUIRED`. This distinction restores the legacy call behavior without allowing
+a stale breakout update to override local mute.
+
+Verification: `test/unit/spec/meeting/muteState.js` covers call remote mute/unmute, independent
+self/system mute, local-mute updates during remote mute, and the existing breakout regressions.
+`test/integration/spec/journey.js` requires the public unmuted-by-others event after Alice
+unmutes Bob and separately checks that Alice cannot unmute Bob after he mutes himself.
+
 ## Data flow and sequence coverage
 
 Sequence coverage: the call style is in-process async method calls from the application; outbound

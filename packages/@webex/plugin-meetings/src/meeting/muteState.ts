@@ -2,7 +2,7 @@ import {ServerMuteReason} from '@webex/media-helpers';
 import LoggerProxy from '../common/logs/logger-proxy';
 import ParameterError from '../common/errors/parameter';
 import MeetingUtil from './util';
-import {AUDIO, VIDEO} from '../constants';
+import {AUDIO, VIDEO, _CALL_} from '../constants';
 
 // eslint-disable-next-line import/prefer-default-export
 export const createMuteState = (type, meeting, enabled: boolean) => {
@@ -375,6 +375,15 @@ export class MuteState {
     }
     if (muted !== undefined) {
       this.state.server.remoteMute = muted;
+      // Legacy Locus calls clear remote mute without LOCAL_UNMUTE_REQUIRED.
+      // Preserve local intent so clearing that remote mute restores audio only
+      // when the participant has not independently muted themselves/their device.
+      if (this.type === AUDIO && meeting.type === _CALL_) {
+        this.muteLocalStream(meeting, muted || this.state.client.localMute, 'remotelyMuted');
+
+        return;
+      }
+
       // BO->Main may replay a stale remoteMute=false from the locus cache.
       // Only enforce the mute on muted=true (also locking client.localMute so a later stale
       // false can't flip isMuted()), and never touch the stream on muted=false — the
