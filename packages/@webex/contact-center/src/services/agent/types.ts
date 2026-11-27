@@ -290,14 +290,11 @@ export type StateChange = {
   /** ID of the agent whose state is being changed */
   agentId?: string;
   /**
-   * V2: Specific channel types to change state for.
-   * When provided with V2 active, a per-channel state change is used.
-   * Pass a `ChannelType[]` (e.g. `['chat', 'email']`); when omitted or
-   * empty, all selectable channels with capacity are targeted.
-   * A bare `ChannelType` string is accepted for convenience and normalized
-   * to a single-element array internally, but the canonical form is an array.
+   * V2 only: channel types to change state for (e.g. `['chat', 'email']`).
+   * When omitted or empty, all selectable channels with capacity are targeted.
+   * Ignored in V1 sessions.
    */
-  channelType?: ChannelType | ChannelType[];
+  channelType?: ChannelType[];
 };
 
 /**
@@ -443,15 +440,6 @@ export enum AGENT_EVENTS {
   /** Emitted when an agent successfully re-authenticates */
   AGENT_RELOGIN_SUCCESS = 'agent:reloginSuccess',
 
-  /** Emitted when the automated relogin (refresh or reconnect) finds no active session on the server */
-  AGENT_RELOGIN_SESSION_NOT_FOUND = 'agent:reloginSessionNotFound',
-
-  /** Emitted when the contact center WebSocket connection is lost */
-  AGENT_CONNECTION_LOST = 'agent:connectionLost',
-
-  /** Emitted when the contact center WebSocket reconnects, before the automated relogin runs */
-  AGENT_CONNECTION_RECONNECTED = 'agent:connectionReconnected',
-
   /** Emitted when agent state change is successful */
   AGENT_STATE_CHANGE_SUCCESS = 'agent:stateChangeSuccess',
 
@@ -548,9 +536,7 @@ export type AgentChannelStateChanged = Msg<{
   eventTime?: number;
   connectedChannels: ChannelType[];
   isAgentLogin: boolean;
-  /** Backend request correlation ID shared across all channel notifications
-   *  from the same setAgentState() call. Used as the batch key for
-   *  collapsing per-channel notifications into one unified event. */
+  /** Request correlation ID shared by the per-channel notifications of one state change request */
   trackingId?: string;
 }>;
 
@@ -591,20 +577,3 @@ export type AgentChannelReloginSuccess = Msg<{
   roles: string[];
   eventTime?: number;
 }>;
-
-/**
- * Map of channel type to its capacity (number of channel IDs)
- * @public
- */
-export type ChannelsMap = Record<string, string[]>;
-
-/**
- * Session version control status for diagnostics/observability
- * @public
- */
-export type AgentStateControlStatus = {
-  /** Profile-derived V2 eligibility (manageChannelAvailability) */
-  declared: boolean | undefined;
-  /** Whether V2 granular agent state is active for this session */
-  active: boolean | undefined;
-};

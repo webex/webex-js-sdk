@@ -57,71 +57,6 @@ export interface AgentStateChangeEvent extends BridgedV1StateChange {
 }
 
 /**
- * Enriched failure payload emitted on `agent:stateChangeFailed`.
- * V1 sessions emit the base fields; V2 sessions add channelType.
- */
-export interface AgentStateChangeFailedEvent {
-  type: string;
-  reason?: string;
-  reasonCode?: number;
-  isClientInitiated?: boolean;
-  eventTime?: number;
-  /** V2 enrichment: which channel failed. Undefined in V1 sessions. */
-  channelType?: ChannelType;
-}
-
-/**
- * Relogin payload emitted on `agent:reloginSuccess`.
- * Both V1 and V2 sessions carry the full V1-normalized metadata
- * (deviceType, dn, teamId, siteId, roles, mmProfile, etc.).
- * V2 sessions additionally include the per-channel state snapshot.
- */
-export interface AgentReloginSuccessEvent {
-  type: string;
-  agentId: string;
-  agentSessionId: string;
-  orgId: string;
-  status: string;
-  subStatus: string;
-  auxCodeId: string;
-  lastStateChangeTimestamp: number;
-  lastIdleCodeChangeTimestamp: number;
-  /** Device type used for this session (e.g. 'BROWSER', 'AGENT_DN', 'EXTENSION'). */
-  deviceType?: string;
-  /** Directory number for the agent's station. */
-  dn?: string;
-  /** Team the agent belongs to. */
-  teamId?: string;
-  /** Site where the agent is located. */
-  siteId?: string;
-  /** Roles assigned to the agent. */
-  roles?: string[];
-  /** Device identifier. */
-  deviceId?: string | null;
-  /** Whether login is via extension. */
-  isExtension?: boolean;
-  /** Channel capacity counts (from channelsMap lengths). */
-  mmProfile?: Record<string, number | undefined>;
-  /** Outer WebSocket notification trackingId. */
-  notifsTrackingId?: string;
-  /** Full snapshot of ALL channel states after relogin (V2 sessions only). */
-  channelStates?: Record<ChannelType, AgentChannelTypeStates>;
-}
-
-/**
- * Enriched reconnect payload emitted on `agent:connectionReconnected`.
- * V2 sessions with deferred BROWSER telephony recovery add deferral fields.
- */
-export interface AgentReconnectedEvent {
-  /** Channels whose recovery was deferred (e.g. ['telephony']). */
-  deferredChannels?: ChannelType[];
-  /** 'deferred' when telephony recovery is pending. */
-  recoveryStatus?: 'deferred' | 'recovered';
-  /** Timeout in ms before automatic recovery attempt. */
-  deferralTimeoutMs?: number;
-}
-
-/**
  * Optional attribution context forwarded from the V2 event into the V1 bridge.
  */
 export interface BridgeAttributionContext {
@@ -240,15 +175,12 @@ export interface V2EnrichmentContext {
 }
 
 /**
- * Builds an enriched V1+V2 state-change payload for the unified `agent:stateChange` event.
- * Computes V1 base fields via bridgeStateChangeSuccess, then attaches V2 enrichment.
+ * Builds the `agent:stateChange` payload for a V2 session: V1 base fields from
+ * the aggregate bridge plus the V2 per-channel enrichment.
  *
- * When the aggregate is bridgeable (Available/Idle), the V1 base fields come from the
- * projected aggregate. When the aggregate is NOT bridgeable (e.g. a channel is Engaged,
- * Reserved, or WrapUp during task handling), the scalar subStatus falls back to Idle.
- * The enrichment still carries the actual per-channel state so V2 clients can update.
- *
- * Always returns a payload — never drops V2 channel state changes.
+ * When the aggregate is not bridgeable (e.g. a channel is Engaged, Reserved or
+ * WrapUp), the V1 base falls back to `subStatus: 'Idle'` with scalar fields from
+ * the changed channel; V2 clients read `channelDetail`/`channelStates` instead.
  */
 export function buildAgentStateChangeEvent(
   channelStates: Record<string, AgentChannelTypeStates>,
@@ -258,26 +190,14 @@ export function buildAgentStateChangeEvent(
   attribution: BridgeAttributionContext | undefined,
   enrichment: V2EnrichmentContext
 ): AgentStateChangeEvent {
-  const base = bridgeStateChangeSuccess(channelStates, agentId, agentSessionId, orgId, attribution);
-
-  if (base) {
-    return {
-      ...base,
-      changedChannelType: enrichment.changedChannelType,
-      changedChannels: enrichment.changedChannels,
-      channelDetail: enrichment.channelDetail,
-      channelStates: enrichment.channelStates,
-      requestTrackingId: enrichment.requestTrackingId,
-      isClientInitiated: enrichment.isClientInitiated,
-    };
-  }
-
-  // Non-bridgeable aggregate (Engaged, Reserved, WrapUp) — the V1 projection
-  // cannot produce a valid Available/Idle. Preserve the scalar Idle fallback;
-  // V2 clients read channelDetail.agentState for the actual per-channel state.
   const detail = enrichment.channelDetail;
-
-  return {
+  const base: BridgedV1StateChange = bridgeStateChangeSuccess(
+    channelStates,
+    agentId,
+    agentSessionId,
+    orgId,
+    attribution
+  ) ?? {
     type: CC_AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS,
     agentId,
     agentSessionId,
@@ -291,11 +211,7 @@ export function buildAgentStateChangeEvent(
     changedBy: attribution?.changedBy ?? null,
     changedById: attribution?.changedById ?? null,
     changedByName: attribution?.changedByName ?? null,
-    changedChannelType: enrichment.changedChannelType,
-    changedChannels: enrichment.changedChannels,
-    channelDetail: enrichment.channelDetail,
-    channelStates: enrichment.channelStates,
-    requestTrackingId: enrichment.requestTrackingId,
-    isClientInitiated: enrichment.isClientInitiated,
   };
+
+  return {...base, ...enrichment};
 }

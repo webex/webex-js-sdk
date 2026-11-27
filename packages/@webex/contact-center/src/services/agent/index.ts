@@ -13,57 +13,6 @@ import {CC_EVENTS} from '../config/types';
  * @ignore
  */
 export default function routingAgent(routing: AqmReqs) {
-  // Shared configs for V1/V2 pairs that differ only in URL path and error IDs.
-  const logoutConfig = (url: string, errId: Err.IdsDetails) =>
-    routing.req((p: {data: Agent.Logout}) => ({
-      url,
-      host: WCC_API_GATEWAY,
-      data: p.data,
-      err,
-      notifSuccess: {
-        bind: {
-          type: CC_EVENTS.AGENT_LOGOUT,
-          data: {type: CC_EVENTS.AGENT_LOGOUT_SUCCESS},
-        },
-        msg: {} as Agent.LogoutSuccess,
-      },
-      notifFail: {
-        bind: {
-          type: CC_EVENTS.AGENT_LOGOUT,
-          data: {type: CC_EVENTS.AGENT_LOGOUT_FAILED},
-        },
-        errId,
-      },
-    }));
-
-  const stationLoginConfig = (url: string, errId: Err.IdsDetails, errLabel: Err.IdsDetails) =>
-    routing.req((p: {data: Agent.UserStationLogin}) => ({
-      url,
-      host: WCC_API_GATEWAY,
-      data: p.data,
-      err: /* istanbul ignore next */ (e: any) => {
-        return new Err.Details(errLabel, {
-          status: e.response?.status ?? 0,
-          type: e.response?.data?.errorType,
-          trackingId: e.response?.headers?.trackingid?.split('_')[1],
-        });
-      },
-      notifSuccess: {
-        bind: {
-          type: CC_EVENTS.AGENT_STATION_LOGIN,
-          data: {type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS},
-        },
-        msg: {} as Agent.StationLoginSuccess,
-      },
-      notifFail: {
-        bind: {
-          type: CC_EVENTS.AGENT_STATION_LOGIN,
-          data: {type: CC_EVENTS.AGENT_STATION_LOGIN_FAILED},
-        },
-        errId,
-      },
-    }));
-
   return {
     /**
      * Reloads the agent session
@@ -89,16 +38,62 @@ export default function routingAgent(routing: AqmReqs) {
         errId: 'Service.aqm.agent.reload',
       },
     })),
-
-    /** @public */
-    logout: logoutConfig('/v1/agents/logout', 'Service.aqm.agent.logout'),
-
-    /** @public */
-    stationLogin: stationLoginConfig(
-      '/v1/agents/login',
-      'Service.aqm.agent.stationLoginFailed',
-      'Service.aqm.agent.stationLogin'
-    ),
+    /**
+     * Logs out the agent
+     * @param p.data - Logout parameters
+     * @public
+     */
+    logout: routing.req((p: {data: Agent.Logout}) => ({
+      url: '/v1/agents/logout',
+      host: WCC_API_GATEWAY,
+      data: p.data,
+      err,
+      notifSuccess: {
+        bind: {
+          type: CC_EVENTS.AGENT_LOGOUT,
+          data: {type: CC_EVENTS.AGENT_LOGOUT_SUCCESS},
+        },
+        msg: {} as Agent.LogoutSuccess,
+      },
+      notifFail: {
+        bind: {
+          type: CC_EVENTS.AGENT_LOGOUT,
+          data: {type: CC_EVENTS.AGENT_LOGOUT_FAILED},
+        },
+        errId: 'Service.aqm.agent.logout',
+      },
+    })),
+    /**
+     * Logs in the agent to a station
+     * @param p.data - Station login parameters
+     * @public
+     */
+    stationLogin: routing.req((p: {data: Agent.UserStationLogin}) => ({
+      url: '/v1/agents/login',
+      host: WCC_API_GATEWAY,
+      data: p.data,
+      err: /* istanbul ignore next */ (e: any) => {
+        return new Err.Details('Service.aqm.agent.stationLogin', {
+          status: e.response?.status ?? 0,
+          type: e.response?.data?.errorType,
+          trackingId: e.response?.headers?.trackingid?.split('_')[1],
+        });
+      },
+      notifSuccess: {
+        bind: {
+          type: CC_EVENTS.AGENT_STATION_LOGIN,
+          data: {type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS},
+        },
+        msg: {} as Agent.StationLoginSuccess,
+      },
+      notifFail: {
+        bind: {
+          type: CC_EVENTS.AGENT_STATION_LOGIN,
+          data: {type: CC_EVENTS.AGENT_STATION_LOGIN_FAILED},
+        },
+        errId: 'Service.aqm.agent.stationLoginFailed',
+      },
+    })),
     /**
      * Changes the agent's state
      * @param p.data - State change parameters
@@ -151,11 +146,9 @@ export default function routingAgent(routing: AqmReqs) {
         errId: 'Service.aqm.agent.BuddyAgentsRetrieveFailed',
       },
     })),
-
-    // ─── V2 Granular Agent State Control Operations ─────────────────────
-
     /**
-     * V2 reload for granular sessions
+     * V2 reload. Resolves with either a V1 relogin or a V2 channel relogin,
+     * depending on the version the server session was created with.
      * @public
      */
     reloadV2: routing.reqEmpty(() => ({
@@ -178,34 +171,47 @@ export default function routingAgent(routing: AqmReqs) {
         errId: 'Service.aqm.agent.reload',
       },
     })),
-
-    /** @public */
-    stationLoginV2: stationLoginConfig(
-      '/v2/agents/login',
-      'Service.aqm.agent.stationLoginV2Failed',
-      'Service.aqm.agent.stationLoginV2'
-    ),
-
     /**
-     * V2 per-channel state change.
+     * V2 station login for granular agent state sessions
+     * @param p.data - Station login parameters
+     * @public
+     */
+    stationLoginV2: routing.req((p: {data: Agent.UserStationLogin}) => ({
+      url: '/v2/agents/login',
+      host: WCC_API_GATEWAY,
+      data: p.data,
+      err: /* istanbul ignore next */ (e: any) => {
+        return new Err.Details('Service.aqm.agent.stationLogin', {
+          status: e.response?.status ?? 0,
+          type: e.response?.data?.errorType,
+          trackingId: e.response?.headers?.trackingid?.split('_')[1],
+        });
+      },
+      notifSuccess: {
+        bind: {
+          type: CC_EVENTS.AGENT_STATION_LOGIN,
+          data: {type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS},
+        },
+        msg: {} as Agent.StationLoginSuccess,
+      },
+      notifFail: {
+        bind: {
+          type: CC_EVENTS.AGENT_STATION_LOGIN,
+          data: {type: CC_EVENTS.AGENT_STATION_LOGIN_FAILED},
+        },
+        errId: 'Service.aqm.agent.stationLoginFailed',
+      },
+    })),
+    /**
+     * V2 per-channel state change. Resolves on the first matching channel
+     * confirmation; per-channel results are delivered via `AgentChannelStateChanged`.
      *
-     * Uses a `__typeMap` conditional bind in `notifSuccess` to match the
-     * WebSocket confirmation correctly for Idle requests. `__typeMap` tells
-     * `aqm-reqs.bindCheck` to route by the value of a discriminator field
-     * (`typeField`) instead of doing a flat equality check. When the
-     * discriminator value matches a condition key, bindCheck applies the
-     * sub-conditions for that key. This handles the case where an Idle
-     * request's confirmation may arrive as `agentState: 'Available'` with
-     * `pendingIdle: true` (queued Idle while still handling a task), rather
-     * than as a direct `agentState: 'Idle'`.
-     *
-     * For non-Idle requests, plain array filters are used instead:
-     * `agentState: [targetState, 'Engaged', ...]` accepts any of those
-     * states, and `pendingIdle: [false]` uses the array path in bindCheck
-     * to correctly match boolean false (the primitive path would treat
-     * false as absent/missing).
-     *
-     * @param p.data - V2 state change parameters with channelType array
+     * An Idle request may be confirmed as a queued Idle (`pendingIdle: true`)
+     * while the channel is busy, so the Idle bind uses `__typeMap` on
+     * `agentState`. Non-Idle binds use array filters; `pendingIdle: [false]`
+     * is an array so `bindCheck` matches boolean false.
+     * @param p.data - V2 state change parameters
+     * @param p.agentSessionId - Current agent session ID used to correlate the confirmation
      * @public
      */
     stateChangeV2: routing.req(
@@ -225,12 +231,6 @@ export default function routingAgent(routing: AqmReqs) {
             data: {
               type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
               channelType: p.data.channelType,
-              // Idle bind: __typeMap on agentState accepts immediate Idle + queued (pendingIdle: true).
-              //   auxCodeId prevents cross-resolution between different idle codes.
-              // Non-Idle bind: array filters reject completed Idle and queued-Idle-pending
-              //   notifications from a prior request. pendingIdle: [false] uses the array
-              //   path in bindCheck (line ~247), which correctly handles boolean false —
-              //   the primitive path (!msgValue) would treat false as absent.
               agentChannelStateDetail:
                 p.data.state === 'Idle'
                   ? {
@@ -259,9 +259,9 @@ export default function routingAgent(routing: AqmReqs) {
                       ],
                       pendingIdle: [false],
                     },
-              isClientInitiated: true, // Skip supervisor/system pushes
-              ...(p.data.agentId ? {agentId: p.data.agentId} : {}), // Match this agent only
-              ...(p.agentSessionId ? {agentSessionId: p.agentSessionId} : {}), // Match this session only
+              isClientInitiated: true,
+              ...(p.data.agentId ? {agentId: p.data.agentId} : {}),
+              ...(p.agentSessionId ? {agentSessionId: p.agentSessionId} : {}),
             },
           },
           msg: {} as Agent.AgentChannelStateChanged,
@@ -276,20 +276,37 @@ export default function routingAgent(routing: AqmReqs) {
             data: {
               type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED,
               channelType: p.data.channelType,
-              // Correlate: only match client-initiated failures to prevent a
-              // supervisor-visible failure for another agent (same channelType)
-              // from settling this request.  Failures that omit the field won't
-              // match, falling through to the AQM timeout — safer than falsely
-              // settling with another agent's error.
               isClientInitiated: true,
             },
           },
-          errId: 'Service.aqm.agent.stateChangeV2',
+          errId: 'Service.aqm.agent.stateChange',
         },
       })
     ),
-
-    /** @public */
-    logoutV2: logoutConfig('/v2/agents/logout', 'Service.aqm.agent.logoutV2'),
+    /**
+     * V2 logout for granular agent state sessions
+     * @param p.data - Logout parameters
+     * @public
+     */
+    logoutV2: routing.req((p: {data: Agent.Logout}) => ({
+      url: '/v2/agents/logout',
+      host: WCC_API_GATEWAY,
+      data: p.data,
+      err,
+      notifSuccess: {
+        bind: {
+          type: CC_EVENTS.AGENT_LOGOUT,
+          data: {type: CC_EVENTS.AGENT_LOGOUT_SUCCESS},
+        },
+        msg: {} as Agent.LogoutSuccess,
+      },
+      notifFail: {
+        bind: {
+          type: CC_EVENTS.AGENT_LOGOUT,
+          data: {type: CC_EVENTS.AGENT_LOGOUT_FAILED},
+        },
+        errId: 'Service.aqm.agent.logout',
+      },
+    })),
   };
 }

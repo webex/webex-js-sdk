@@ -381,7 +381,6 @@ const NON_SELECTABLE_STATE_NAMES = [
 const legacyAgentStateElm = document.getElementById('v1-agent-state');
 const granularAgentStateElm = document.getElementById('v2-agent-state');
 const granularStateContainerElm = document.getElementById('granular-agent-state-container');
-const versionMismatchBannerElm = document.getElementById('agent-state-version-mismatch');
 const agentSessionStatusElm = document.getElementById('agent-session-status');
 const granularRonaAlertsElm = document.getElementById('granular-rona-alerts');
 
@@ -389,8 +388,8 @@ const granularRonaAlertsElm = document.getElementById('granular-rona-alerts');
 let isGranularAgentStateActive = false;
 let granularIdleCodes = [];
 let granularAllIdleCodes = [];
+const granularAgentState = {channelStates: {}, mmProfile: {}};
 let channelStateListenersClient;
-let isTelephonyRecoveryDeferred = false;
 let isGranularStateErrorShown = false;
 let isSettingAgentState = false;
 let granularTimerInterval = null;
@@ -4346,7 +4345,7 @@ async function initializeWellnessProfile(agentProfile) {
   wellnessCodeStatusElm.textContent = 'Loading…';
   try {
     wellnessState.idleCode = await webex.cc.getWellbeingBreakIdleCode();
-    const channelStates = webex.cc.getChannelStates?.() || {};
+    const channelStates = granularAgentState.channelStates;
     if (Object.keys(channelStates).length > 0) {
       wellnessState.legacyStateKnown = true;
       wellnessState.legacyAuxCodeId = GRANULAR_CHANNEL_ORDER.some(
@@ -4494,11 +4493,10 @@ async function requestWellnessBreak() {
 
 async function setWellnessAgentState(state, options = {}) {
   const auxCodeId = state === 'Idle' ? options.auxCodeId || wellnessState.idleCode?.id || '0' : '0';
-  const isV2 = webex.cc.getAgentStateControl?.().active === true;
-  const channelTypes = isV2
+  const channelTypes = isGranularAgentStateActive
     ? options.channelType || getSelectableChannelTypes().filter((channelType) =>
       state !== 'Available' ||
-      webex.cc.getChannelStates()[channelType]?.auxCodeId === wellnessState.idleCode?.id
+      granularAgentState.channelStates[channelType]?.auxCodeId === wellnessState.idleCode?.id
     )
     : undefined;
   if (channelTypes?.length === 0) {
@@ -4509,6 +4507,7 @@ async function setWellnessAgentState(state, options = {}) {
   let requestTrackingId;
   let checkConfirmation;
   const onStateChange = (event) => {
+    if (event?.channelStates) granularAgentState.channelStates = event.channelStates;
     const changedChannels = event?.changedChannels ||
       (event?.changedChannelType ? [event.changedChannelType] : []);
     changedChannels.forEach((channelType) => {
@@ -4556,7 +4555,7 @@ async function setWellnessAgentState(state, options = {}) {
           if (
             channelTypes.every((channelType) => observedRequests.get(channelType) === requestTrackingId) &&
             getUnconfirmedChannelTypes(
-              webex.cc.getChannelStates(), channelTypes, state, auxCodeId
+              granularAgentState.channelStates, channelTypes, state, auxCodeId
             ).length === 0
           ) finish();
         };
@@ -4675,9 +4674,7 @@ async function enterWellnessBreak(sendAccepted) {
   renderWellnessState();
   let targetChannels;
   try {
-    targetChannels = webex.cc.getAgentStateControl?.().active === true
-      ? getSelectableChannelTypes()
-      : undefined;
+    targetChannels = isGranularAgentStateActive ? getSelectableChannelTypes() : undefined;
     await setWellnessAgentState('Idle', {channelType: targetChannels});
   } catch (error) {
     if (wellnessState.operationGeneration !== operationGeneration) return;
@@ -4988,6 +4985,7 @@ wellnessRestoreBtn.addEventListener('click', restoreWellnessState);
 renderWellnessState();
 
 function register() {
+    registerChannelStateEventListeners();
     attachWellnessSdkListeners();
     webex.cc.register().then((agentProfile) => {
         registerStatus.innerHTML = 'Subscribed';
@@ -5002,9 +5000,12 @@ function register() {
         const listTeams = agentProfile.teams;
         agentId = agentProfile.agentId;
         agentName = agentProfile.agentName;
+        if (agentProfile.isAgentLoggedIn) handleGranularStateLogin(agentProfile);
+        else handleGranularStateLogout();
         if (agentProfile.isAgentLoggedIn && agentProfile.agentSessionId && !wellnessState.agentSessionId) {
           captureWellnessSession({
             agentSessionId: agentProfile.agentSessionId,
+            ...(agentProfile.channelStates ? {channelStates: agentProfile.channelStates} : {}),
             ...(typeof agentProfile.lastStateAuxCodeId === 'string'
               ? {auxCodeId: agentProfile.lastStateAuxCodeId}
               : {}),
@@ -5070,12 +5071,7 @@ function register() {
         granularAllIdleCodes = idleCodesList;
         storeGranularIdleCodes(idleCodesList);
         entryPointId = agentProfile.outDialEp;
-        registerChannelStateEventListeners();
-        // register() awaits silentRelogin, so the reload events fired before
-        // these listeners existed; hydrate the UI from the reconciled session state.
-        if (agentProfile.isAgentLoggedIn) {
-          handleGranularStateLogin();
-        }
+        if (isGranularAgentStateActive) updateGranularUI();
         webex.cc.on('task:incoming', (task) => {
           console.log('Incoming task received: ', task);
           updateTaskList();
@@ -5122,7 +5118,6 @@ function register() {
 
     webex.cc.on('agent:reloginSuccess', (data) => {
       console.log('Agent re-login successful', data);
-      handleGranularStateLogin();
       loginAgentElm.disabled = true;
       logoutAgentElm.classList.remove('hidden');
       updateAgentProfileElm.classList.remove('hidden');
@@ -5161,7 +5156,6 @@ function register() {
       const idx    = [...idleCodesDropdown.options].findIndex(o => o.value === auxId);
       idleCodesDropdown.selectedIndex = idx >= 0 ? idx : 0;
       startStateTimer(data.lastStateChangeTimestamp, data.lastIdleCodeChangeTimestamp);
-      handleGranularStateLogin();
     });
 
         updateTaskList();
@@ -5283,6 +5277,7 @@ function doAgentLogin() {
   .then((response) => {
     console.log('Agent Logged in successfully', response);
     console.log('[Contact Center] Voice state after station login:', webex.cc.getVoiceConnectionState());
+    handleGranularStateLogin(response);
     captureWellnessSession(response);
     loginAgentElm.disabled = true;
     logoutAgentElm.classList.remove('hidden');
@@ -5295,7 +5290,6 @@ function doAgentLogin() {
     const index = [...idleCodesDropdown.options].findIndex(option => option.value === auxCodeId);
     idleCodesDropdown.selectedIndex = index !== -1 ? index : 0;
     startStateTimer(lastStateChangeTimestamp, lastIdleCodeChangeTimestamp);
-    handleGranularStateLogin();
 
   }).catch((error) => {
     console.log('Agent Login failed', error);
@@ -6411,18 +6405,16 @@ function switchAgentStateUI(isV2) {
  * Returns the ordered list of selectable channels (those with capacity > 0).
  */
 function getSelectableChannelTypes() {
-  const channelStatesMap = webex.cc.getChannelStates() || {};
-  return GRANULAR_CHANNEL_ORDER.filter((ch) => {
-    const state = channelStatesMap[ch];
-    return state && (state.totalChannelCount ?? 0) > 0;
-  });
+  return GRANULAR_CHANNEL_ORDER.filter(
+    (channelType) => granularAgentState.mmProfile[channelType] > 0
+  );
 }
 
 /**
  * Builds the channel state info array used to render all widget views.
  */
 function buildChannelStates() {
-  const channelStatesMap = webex.cc.getChannelStates() || {};
+  const channelStatesMap = granularAgentState.channelStates;
   const now = Date.now();
   return getSelectableChannelTypes()
     .filter((channelType) => Boolean(channelStatesMap[channelType]?.agentState))
@@ -6514,7 +6506,7 @@ function filterGranularIdleCodes(codes, searchText) {
  * Returns only channels not already in the target state (widget's getChannelsToChange).
  */
 function getGranularChannelsToChange(channelTypes, targetState, auxCodeId) {
-  const channelStatesMap = webex.cc.getChannelStates() || {};
+  const channelStatesMap = granularAgentState.channelStates;
   return channelTypes.filter((ch) => {
     const state = channelStatesMap[ch];
     if (!state) return true;
@@ -6529,7 +6521,7 @@ function getGranularChannelsToChange(channelTypes, targetState, auxCodeId) {
  * Finds the last-used idle code across all channels, matching widget behavior.
  */
 function findLastUsedIdleCode() {
-  const channelStatesMap = webex.cc.getChannelStates() || {};
+  const channelStatesMap = granularAgentState.channelStates;
   const selectable = getSelectableIdleCodes(granularIdleCodes);
   const lastIdle = Object.values(channelStatesMap)
     .filter((s) => s && s.agentState === GRANULAR_AGENT_STATE_IDLE && s.auxCodeId)
@@ -7168,18 +7160,18 @@ function storeGranularIdleCodes(idleCodesList) {
 }
 
 /**
- * Called after stationLogin resolves. Detects V2 session and initializes the
- * granular state widget.
+ * Applies login/relogin snapshots and initializes the granular state widget.
  */
-function handleGranularStateLogin() {
-  const control = webex.cc.getAgentStateControl?.() || {};
-  const isV2 = control.active === true;
-  const mismatch =
-    control.declared !== undefined &&
-    control.active !== undefined &&
-    control.declared !== control.active;
+function handleGranularStateLogin(data) {
+  if (data?.channelStates) granularAgentState.channelStates = data.channelStates;
+  if (data?.mmProfile) granularAgentState.mmProfile = data.mmProfile;
+  // Only V2 (granular) sessions carry channelStates on login/relogin payloads.
+  const isV2 = Boolean(data?.channelStates && Object.keys(data.channelStates).length > 0);
+  if (!isV2) {
+    granularAgentState.channelStates = {};
+    granularAgentState.mmProfile = {};
+  }
   switchAgentStateUI(isV2);
-  setVersionMismatchBanner(mismatch);
   if (isV2) {
     renderGranularAgentState();
     startGranularTimer();
@@ -7187,23 +7179,12 @@ function handleGranularStateLogin() {
 }
 
 /**
- * The server-persisted session version wins over the profile flag; the agent
- * must sign out and sign back in to pick up the new flag.
- */
-function setVersionMismatchBanner(visible) {
-  if (versionMismatchBannerElm) versionMismatchBannerElm.style.display = visible ? '' : 'none';
-}
-
-/**
  * Called on logout/deregister. Tears down the widget and restores V1 UI.
  */
 function handleGranularStateLogout() {
+  granularAgentState.channelStates = {};
+  granularAgentState.mmProfile = {};
   clearGranularStateError();
-  if (isTelephonyRecoveryDeferred) {
-    isTelephonyRecoveryDeferred = false;
-    setAgentSessionStatus('');
-  }
-  setVersionMismatchBanner(false);
   stopGranularTimer();
   granularPanelView = null;
   resetGranularManageDraft();
@@ -7225,17 +7206,15 @@ function handleGranularStateLogout() {
 function registerChannelStateEventListeners() {
   const cc = webex?.cc;
   if (!cc || channelStateListenersClient === cc) return;
+  handleGranularStateLogout();
   channelStateListenersClient = cc;
 
   // Unified agent:stateChange — works for V1 (base fields) and V2 (enriched with per-channel data)
   webex.cc.on('agent:stateChange', (data) => {
     console.log('agent:stateChange (unified)', data);
     if (data?.channelStates) {
+      granularAgentState.channelStates = data.channelStates;
       // V2 enrichment available — update per-channel UI
-      if (isTelephonyRecoveryDeferred && data.changedChannels?.includes('telephony')) {
-        isTelephonyRecoveryDeferred = false;
-        setAgentSessionStatus('');
-      }
       if (isGranularAgentStateActive) {
         handleGranularRonaEvent(data);
         updateGranularUI();
@@ -7255,43 +7234,22 @@ function registerChannelStateEventListeners() {
 
   // Unified agent:reloginSuccess — V2 enriched with channelStates
   webex.cc.on('agent:reloginSuccess', (data) => {
+    handleGranularStateLogin(data);
     setAgentSessionStatus('');
   });
 
   // Covers remote logouts (supervisor, inactivity, another client). The SDK
   // clears V2 session state before emitting when the logout is for this session.
-  webex.cc.on('agent:logoutSuccess', () => {
-    if (webex.cc.getAgentStateControl?.()?.active !== true) {
+  webex.cc.on('agent:logoutSuccess', (data) => {
+    if (shouldResetForSessionEvent(data?.agentSessionId, wellnessState.agentSessionId)) {
       handleGranularStateLogout();
     }
   });
 
-  // The automated relogin after a refresh or reconnect found no server session.
-  // It also fires when the agent was registered but never logged in.
-  webex.cc.on('agent:reloginSessionNotFound', () => {
-    const wasLoggedIn = !logoutAgentElm.classList.contains('hidden');
-    handleGranularStateLogout();
-    showStationLoginAfterSessionLoss();
-    setAgentSessionStatus(wasLoggedIn ? 'Your session ended on the server. Log in again.' : '', 'warning');
+  webex.cc.on('agent:stationLoginSuccess', (data) => {
+    handleGranularStateLogin(data);
+    setAgentSessionStatus('');
   });
-
-  webex.cc.on('agent:connectionLost', () => {
-    setAgentSessionStatus('Connection lost. Reconnecting…', 'warning');
-  });
-
-  // Unified agent:connectionReconnected — V2 enriched with deferredChannels
-  webex.cc.on('agent:connectionReconnected', (data) => {
-    setAgentSessionStatus('Reconnected. Restoring your session…', 'info');
-    if (data?.deferredChannels?.length > 0) {
-      isTelephonyRecoveryDeferred = true;
-      setAgentSessionStatus(
-        'Voice is reconnecting. Telephony will retry Available automatically in about a minute.',
-        'info'
-      );
-    }
-  });
-
-  webex.cc.on('agent:stationLoginSuccess', () => setAgentSessionStatus(''));
 }
 
 /**
@@ -7320,20 +7278,6 @@ function setAgentSessionStatus(message, level = 'info') {
   agentSessionStatusElm.textContent = message;
   agentSessionStatusElm.className = `alert alert-${level} my-3`;
   agentSessionStatusElm.style.display = message ? '' : 'none';
-}
-
-function showStationLoginAfterSessionLoss() {
-  resetWellnessSession();
-  if (stateTimer) {
-    clearInterval(stateTimer);
-    stateTimer = null;
-  }
-  timerElm.innerHTML = '00:00:00';
-  loginAgentElm.disabled = false;
-  logoutAgentElm.classList.add('hidden');
-  updateAgentProfileElm.classList.add('hidden');
-  updateFieldsContainer.classList.add('hidden');
-  updateUnregisterButtonState();
 }
 
 // Close the granular panel (discarding a manage draft) on any press outside it.

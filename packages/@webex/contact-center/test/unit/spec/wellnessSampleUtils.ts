@@ -302,20 +302,141 @@ describe('Contact Center wellness sample utilities', () => {
       ).toBeUndefined();
     });
   });
+  describe('granular sample snapshots', () => {
+    function setup() {
+      const snapshot = {channelStates: {}, mmProfile: {}};
+      const webex = {cc: new EventEmitter()};
+      const render = jest.fn();
+      const switchUI = jest.fn();
+      const handleLogin = loadSampleFunction(
+        'function handleGranularStateLogin(', '\n/**\n * Called on logout/deregister.',
+        {
+          granularAgentState: snapshot, switchAgentStateUI: switchUI,
+          renderGranularAgentState: render,
+          startGranularTimer: jest.fn(),
+        }
+      );
+      const handleLogout = loadSampleFunction(
+        'function handleGranularStateLogout(', '\n/**\n * Registers SDK event listeners',
+        {
+          granularAgentState: snapshot, clearGranularStateError: jest.fn(),
+          stopGranularTimer: jest.fn(),
+          granularPanelView: null, resetGranularManageDraft: jest.fn(),
+          granularHoverVisible: false, isSettingAgentState: false,
+          isGranularAgentStateActive: false, granularStateContainerElm: {innerHTML: ''},
+          granularRonaAlerts: {}, renderGranularRonaAlerts: jest.fn(), switchAgentStateUI: switchUI,
+        }
+      );
+      const registerListeners = loadSampleFunction(
+        'function registerChannelStateEventListeners(', '\n/**\n * Shows a V2 state-change failure',
+        {
+          webex, channelStateListenersClient: undefined, granularAgentState: snapshot,
+          handleGranularStateLogout: handleLogout, handleGranularStateLogin: handleLogin,
+          isGranularAgentStateActive: true,
+          handleGranularRonaEvent: jest.fn(), updateGranularUI: render,
+          setAgentSessionStatus: jest.fn(), showGranularStateError: jest.fn(),
+          shouldResetForSessionEvent, wellnessState: {agentSessionId: 'session'},
+        }
+      );
+
+      return {snapshot, webex, handleLogin, handleLogout, registerListeners, render, switchUI};
+    }
+
+    it('captures initial relogin before register resolves and wellness handles it', () => {
+      const {snapshot, webex, registerListeners} = setup();
+      const payload = {
+        channelStates: {chat: {agentState: 'Idle', auxCodeId: 'wellness'}},
+        mmProfile: {chat: 2},
+      };
+      const captureWellness = jest.fn(() => {
+        expect(snapshot.channelStates).toEqual(payload.channelStates);
+        expect(snapshot.mmProfile).toEqual(payload.mmProfile);
+      });
+      const register = loadSampleFunction(
+        'function register() {', '\nfunction resetDeregisteredSampleState()',
+        {
+          webex, registerChannelStateEventListeners: registerListeners,
+          attachWellnessSdkListeners: () => webex.cc.on('agent:reloginSuccess', captureWellness),
+        }
+      );
+      webex.cc.register = jest.fn(() => {
+        webex.cc.emit('agent:reloginSuccess', payload);
+        return new Promise(() => {});
+      });
+      register();
+      expect(captureWellness).toHaveBeenCalledWith(payload);
+    });
+
+    it('replaces full event snapshots instead of merging and preserves omitted optional fields', () => {
+      const {snapshot, webex, registerListeners, handleLogin} = setup();
+      registerListeners();
+      handleLogin({channelStates: {telephony: {agentState: 'Available'}}, mmProfile: {telephony: 1}});
+      const next = {chat: {agentState: 'Idle', auxCodeId: 'lunch'}};
+      webex.cc.emit('agent:stateChange', {channelStates: next, changedChannels: ['chat']});
+      handleLogin({agentSessionId: 'session', channelStates: next});
+      expect(snapshot.channelStates).toEqual(next);
+      expect(snapshot.mmProfile).toEqual({telephony: 1});
+    });
+
+    it('uses configured mmProfile counts when choosing channels', () => {
+      const selectable = loadSampleFunction(
+        'function getSelectableChannelTypes(', '\n/**\n * Builds the channel state info',
+        {
+          GRANULAR_CHANNEL_ORDER: ['telephony', 'chat', 'email', 'social'],
+          granularAgentState: {
+            mmProfile: {telephony: 1, chat: 0},
+            channelStates: {telephony: {totalChannelCount: 0}, chat: {totalChannelCount: 5}},
+          },
+        }
+      );
+      expect(selectable()).toEqual(['telephony']);
+    });
+
+    it('clears snapshots on agent:logoutSuccess for the current session only', () => {
+      const {snapshot, webex, registerListeners, handleLogin} = setup();
+      registerListeners();
+      const payload = {channelStates: {chat: {agentState: 'Available'}}, mmProfile: {chat: 2}};
+      handleLogin(payload);
+      webex.cc.emit('agent:logoutSuccess', {agentSessionId: 'other-session'});
+      expect(snapshot).toEqual(payload);
+      webex.cc.emit('agent:logoutSuccess', {agentSessionId: 'session'});
+      expect(snapshot).toEqual({channelStates: {}, mmProfile: {}});
+    });
+
+    it('clears snapshots for teardown, SDK replacement and V1 login', () => {
+      const {snapshot, webex, registerListeners, handleLogin, handleLogout, switchUI} = setup();
+      registerListeners();
+      const payload = {channelStates: {chat: {agentState: 'Available'}}, mmProfile: {chat: 2}};
+      handleLogin(payload);
+      expect(snapshot).toEqual(payload);
+      handleLogout();
+      expect(snapshot).toEqual({channelStates: {}, mmProfile: {}});
+      handleLogin(payload);
+      webex.cc = new EventEmitter();
+      registerListeners();
+      expect(snapshot).toEqual({channelStates: {}, mmProfile: {}});
+      snapshot.channelStates = payload.channelStates;
+      snapshot.mmProfile = payload.mmProfile;
+      handleLogin({auxCodeId: '0'});
+      expect(snapshot).toEqual({channelStates: {}, mmProfile: {}});
+      expect(switchUI).toHaveBeenLastCalledWith(false);
+    });
+  });
+
   describe('granular wellness state changes', () => {
     beforeEach(() => jest.useFakeTimers());
     afterEach(() => jest.useRealTimers());
 
     function setup(channelStates, active = true) {
       const cc = new EventEmitter();
-      cc.getChannelStates = () => channelStates;
-      cc.getAgentStateControl = () => ({active});
       cc.setAgentState = jest.fn().mockResolvedValue({data: {trackingId: 'request'}});
       const setState = loadSampleFunction(
         'async function setWellnessAgentState(',
         '\nfunction captureWellnessBreakContext(',
         {
           webex: {cc},
+          isGranularAgentStateActive: active,
+          granularAgentState: {channelStates, mmProfile: {}},
           agentId: 'agent',
           wellnessState: {idleCode: {id: 'wellness'}},
           getSelectableChannelTypes: () => Object.keys(channelStates),
@@ -390,6 +511,35 @@ describe('Contact Center wellness sample utilities', () => {
       await expect(setState('Idle')).resolves.toEqual({data: {trackingId: 'request'}});
       expect(cc.listenerCount('agent:stateChange')).toBe(0);
       expect(jest.getTimerCount()).toBe(0);
+    });
+
+    it('waits beyond the first ACK for a delayed batched snapshot', async () => {
+      const states = {
+        telephony: {agentState: 'Idle', auxCodeId: 'wellness'},
+        chat: {agentState: 'Available', auxCodeId: '0'},
+      };
+      const {cc, setState} = setup(states);
+      const pending = setState('Idle');
+      const completed = jest.fn();
+      pending.then(completed);
+      await cc.setAgentState.mock.results[0].value;
+      await Promise.resolve();
+      cc.emit('agent:stateChange', {
+        channelStates: states, changedChannels: ['telephony'], requestTrackingId: 'request',
+      });
+      setTimeout(() => cc.emit('agent:stateChange', {
+        channelStates: {
+          telephony: {agentState: 'Idle', auxCodeId: 'wellness'},
+          chat: {agentState: 'Idle', auxCodeId: 'wellness'},
+        },
+        changedChannels: ['chat'], requestTrackingId: 'request',
+      }), 50);
+      jest.advanceTimersByTime(49);
+      await Promise.resolve();
+      expect(completed).not.toHaveBeenCalled();
+      jest.advanceTimersByTime(1);
+      await expect(pending).resolves.toEqual({data: {trackingId: 'request'}});
+      expect(cc.listenerCount('agent:stateChange')).toBe(0);
     });
 
     it('rejects a matching channel failure and removes its listeners', async () => {
@@ -526,7 +676,7 @@ describe('Contact Center wellness sample utilities', () => {
           getSelectableChannelTypes: () => targets,
           setWellnessAgentState: jest.fn().mockRejectedValue(new Error('Chat failed')),
           restoreWellnessState: cleanup,
-          webex: {cc: {getAgentStateControl: () => ({active: true})}},
+          isGranularAgentStateActive: true,
         }
       );
       await enter(false);
@@ -610,11 +760,11 @@ describe('Contact Center wellness sample utilities', () => {
           getSelectableIdleCodes, wellnessCodeStatusElm: {},
           GRANULAR_CHANNEL_ORDER: ['telephony', 'chat', 'email', 'social'],
           recoverWellnessBreakIfNeeded: recover,
+          granularAgentState: {channelStates: states, mmProfile: {}},
           webex: {cc: {
             getWellbeingBreakIdleCode: jest.fn()
               .mockRejectedValueOnce(new Error('lookup failed'))
               .mockResolvedValueOnce({id: 'wellness'}),
-            getChannelStates: () => states,
           }},
         }
       );

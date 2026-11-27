@@ -15,11 +15,7 @@ export type AgentErrorIds =
   | {'Service.aqm.agent.reload': Failure}
   | {'Service.aqm.agent.logout': Failure}
   | {'Service.reqs.generic.failure': {trackingId: string}}
-  | {'Service.aqm.agent.BuddyAgentsRetrieveFailed': Failure}
-  | {'Service.aqm.agent.stationLoginV2': ErrDetails}
-  | {'Service.aqm.agent.stationLoginV2Failed': Failure}
-  | {'Service.aqm.agent.stateChangeV2': Failure}
-  | {'Service.aqm.agent.logoutV2': Failure};
+  | {'Service.aqm.agent.BuddyAgentsRetrieveFailed': Failure};
 
 export type vteamType = 'inboundqueue' | 'inboundentrypoint' | string;
 

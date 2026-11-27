@@ -213,19 +213,10 @@ export type {
   ChannelType,
   /** V2: Per-channel state detail */
   AgentChannelTypeStates,
-  /** V2: Per-channel state change request input */
-  ChannelStateChangeRequest,
-  /** V2: Agent state control status for diagnostics */
-  AgentStateControlStatus,
 } from './services/agent/types';
 
-/** Agent event payload types (V1 base + optional V2 per-channel enrichment) */
-export type {
-  AgentStateChangeEvent,
-  AgentStateChangeFailedEvent,
-  AgentReloginSuccessEvent,
-  AgentReconnectedEvent,
-} from './services/agent/utils';
+/** `agent:stateChange` payload (V1 base fields + optional V2 per-channel enrichment) */
+export type {AgentStateChangeEvent} from './services/agent/utils';
 
 /** Config related types */
 export type {

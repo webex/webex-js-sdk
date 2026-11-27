@@ -47,13 +47,6 @@ describe('AQM routing agent', () => {
     expect(reqSpy).toHaveBeenCalled();
   });
 
-  it('reload binds only V1 AgentReloginSuccess', () => {
-    const req = (agent.reload as unknown as () => any)();
-    expect(req.url).toBe('/v1/agents/reload');
-    expect(req.notifSuccess.bind.type).toBe('AgentReloginSuccess');
-    expect(req.notifSuccess.bind.data.type).toBe('AgentReloginSuccess');
-  });
-
   it('reloadV2', async () => {
     const req = (agent.reloadV2 as unknown as () => {url: string; data: object})();
     expect(req.url).toBe('/v2/agents/reload');
@@ -79,9 +72,9 @@ describe('AQM routing agent', () => {
     const req = (agent.stationLoginV2 as unknown as (p: {data: object}) => any)({data});
     expect(req.url).toBe('/v2/agents/login');
     expect(req.data).toBe(data);
-    expect(req.notifFail.errId).toBe('Service.aqm.agent.stationLoginV2Failed');
+    expect(req.notifFail.errId).toBe('Service.aqm.agent.stationLoginFailed');
     expect(req.err({response: {status: 500, headers: {trackingid: 'x_t-1'}}}).id).toBe(
-      'Service.aqm.agent.stationLoginV2'
+      'Service.aqm.agent.stationLogin'
     );
   });
 
@@ -93,7 +86,7 @@ describe('AQM routing agent', () => {
     expect(req.data).toBe(data);
     expect(req.notifSuccess.bind.data.type).toBe('AgentChannelStateChanged');
     expect(req.notifFail.bind.data.type).toBe('AgentChannelStateChangeFailed');
-    expect(req.notifFail.errId).toBe('Service.aqm.agent.stateChangeV2');
+    expect(req.notifFail.errId).toBe('Service.aqm.agent.stateChange');
   });
 
   it('uses canonical envelope types for both V2 state-change binds', () => {
@@ -282,7 +275,7 @@ describe('AQM routing agent', () => {
     const req = (agent.logoutV2 as unknown as (p: {data: object}) => any)({data});
     expect(req.url).toBe('/v2/agents/logout');
     expect(req.method).toBeUndefined();
-    expect(req.notifFail.errId).toBe('Service.aqm.agent.logoutV2');
+    expect(req.notifFail.errId).toBe('Service.aqm.agent.logout');
   });
 
   it('stationLogin', async () => {
@@ -292,36 +285,11 @@ describe('AQM routing agent', () => {
     expect(reqSpy).toHaveBeenCalled();
   });
 
-  it('stationLogin uses correct URL and bind shapes', () => {
-    const data = {teamId: 'team-1'} as any;
-    const req = (agent.stationLogin as unknown as (p: {data: object}) => any)({data});
-    expect(req.url).toBe('/v1/agents/login');
-    expect(req.data).toBe(data);
-    expect(req.notifSuccess.bind.type).toBe('StationLogin');
-    expect(req.notifSuccess.bind.data.type).toBe('AgentStationLoginSuccess');
-    expect(req.notifFail.bind.type).toBe('StationLogin');
-    expect(req.notifFail.bind.data.type).toBe('AgentStationLoginFailed');
-    expect(req.notifFail.errId).toBe('Service.aqm.agent.stationLoginFailed');
-  });
-
   it('stateChange', async () => {
     const reqSpy = jest.spyOn(fakeAqm, 'req');
     const req = await agent.stateChange({data: {} as any});
     expect(req).toBeDefined();
     expect(reqSpy).toHaveBeenCalled();
-  });
-
-  it('stateChange uses correct URL, method, and bind shapes', () => {
-    const data = {state: 'Available', auxCodeId: '0'} as any;
-    const req = (agent.stateChange as unknown as (p: {data: object}) => any)({data});
-    expect(req.url).toBe('/v1/agents/session/state');
-    expect(req.method).toBe('PUT');
-    expect(req.data).toBe(data);
-    expect(req.notifSuccess.bind.type).toBe('AgentStateChange');
-    expect(req.notifSuccess.bind.data.type).toBe('AgentStateChangeSuccess');
-    expect(req.notifFail.bind.type).toBe('AgentStateChange');
-    expect(req.notifFail.bind.data.type).toBe('AgentStateChangeFailed');
-    expect(req.notifFail.errId).toBe('Service.aqm.agent.stateChange');
   });
 
   it('buddyAgents', async () => {
@@ -331,15 +299,4 @@ describe('AQM routing agent', () => {
     expect(reqSpy).toHaveBeenCalled();
   });
 
-  it('buddyAgents uses correct URL, method, and bind shapes', () => {
-    const data = {agentProfileId: 'prof-1', mediaType: 'telephony'} as any;
-    const req = (agent.buddyAgents as unknown as (p: {data: object}) => any)({data});
-    expect(req.url).toBe('/v1/agents/buddyList');
-    expect(req.method).toBe('POST');
-    expect(req.notifSuccess.bind.type).toBe('BuddyAgents');
-    expect(req.notifSuccess.bind.data.type).toBe('BuddyAgents');
-    expect(req.notifFail.bind.type).toBe('BuddyAgents');
-    expect(req.notifFail.bind.data.type).toBe('BuddyAgentsRetrieveFailed');
-    expect(req.notifFail.errId).toBe('Service.aqm.agent.BuddyAgentsRetrieveFailed');
-  });
 });

@@ -14,18 +14,6 @@ export default class AqmReqs {
   private webexRequest: WebexRequest;
   private webSocketManager: WebSocketManager;
 
-  /**
-   * Request correlation IDs whose originating request has already settled
-   * (success or failure).  V2 per-channel notifications share
-   * `data.trackingId` as the common request ID while each envelope
-   * carries a distinct outer `trackingId`.  This map keys on the inner
-   * `data.trackingId` (falling back to the envelope `trackingId` for V1)
-   * so a lagged notification from either outcome direction cannot settle
-   * a newer request that reuses the same bind key.
-   * Each entry auto-expires after TIMEOUT_REQ.
-   */
-  private resolvedTrackingIds = new Map<string, ReturnType<typeof setTimeout>>();
-
   constructor(webSocketManager: WebSocketManager) {
     this.webexRequest = WebexRequest.getInstance();
     this.webSocketManager = webSocketManager;
@@ -104,19 +92,6 @@ export default class AqmReqs {
       this.pendingRequests[keySuccess] = {
         check: (msg: Msg) => this.bindCheck(c.notifSuccess.bind, msg),
         handle: (msg: Msg) => {
-          // Record the request correlation ID so stale notifications from
-          // the same backend request (e.g. a lagged channel failure after
-          // the first channel success) cannot settle a newer pending bind
-          // that reuses the same failure key.  V2 per-channel notifications
-          // carry the shared request ID in data.trackingId; V1 uses the
-          // envelope trackingId.
-          const resolvedTid = msg.data?.trackingId || msg.trackingId;
-          if (resolvedTid) {
-            this.resolvedTrackingIds.set(
-              resolvedTid,
-              setTimeout(() => this.resolvedTrackingIds.delete(resolvedTid), TIMEOUT_REQ)
-            );
-          }
           clear();
           resolve(msg as any);
         },
@@ -139,16 +114,6 @@ export default class AqmReqs {
         this.pendingRequests[keyFail] = {
           check: (msg: Msg) => this.bindCheck(c.notifFail!.bind, msg),
           handle: (msg: Msg) => {
-            // Retire the request correlation ID on failure too, so a
-            // lagged success from this same backend request cannot
-            // resolve a newer retry that reuses the same success key.
-            const failedTid = msg.data?.trackingId || msg.trackingId;
-            if (failedTid) {
-              this.resolvedTrackingIds.set(
-                failedTid,
-                setTimeout(() => this.resolvedTrackingIds.delete(failedTid), TIMEOUT_REQ)
-              );
-            }
             clear();
             const notifFail = c.notifFail!;
             if ('errId' in notifFail) {
@@ -359,18 +324,6 @@ export default class AqmReqs {
     for (const thisReq of kReq) {
       const req = this.pendingRequests[thisReq];
       if (req.check(event)) {
-        // Absorb stale notifications whose originating request already
-        // resolved.  Without this, a lagged per-channel failure from a
-        // multi-channel V2 request whose promise resolved on the first
-        // channel's success could match a newer request's failure bind
-        // (identical bind key) and incorrectly reject it.
-        // Use data.trackingId (shared V2 request ID) with envelope
-        // fallback, matching the key recorded on the success path.
-        const eventTid = event.data?.trackingId || event.trackingId;
-        if (eventTid && this.resolvedTrackingIds.has(eventTid)) {
-          isHandled = true;
-          break;
-        }
         req.handle(event);
         isHandled = true;
         break;
