@@ -2568,4 +2568,80 @@ describe('Registration Tests', () => {
       expect(setSocketEnabledSpy).toHaveBeenCalledWith(true);
     });
   });
+
+  describe('reconnectOnFailure', () => {
+    const RETRY_COUNT_THRESHOLD = 5;
+
+    const beforeEachSetupForKeepalive = async () => {
+      postRegistrationSpy.mockResolvedValueOnce(successPayload);
+      jest.useFakeTimers();
+      await reg.triggerRegistration();
+      expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
+      expect(reg.webWorker).toBeDefined();
+    };
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.clearAllMocks();
+      jest.useRealTimers();
+      reg.clearKeepaliveTimer();
+      reg.reconnectPending = false;
+    });
+
+    it('keepalive-failure reconnect runs under the mutex', async () => {
+      await beforeEachSetupForKeepalive();
+      lineEmitter.mockClear();
+
+      const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
+      const mutexSpy = jest.spyOn(reg.mutex, 'runExclusive');
+
+      const failureEvent = {
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: {statusCode: 503},
+          keepAliveRetryCount: RETRY_COUNT_THRESHOLD,
+        },
+      };
+
+      reg.webWorker.onmessage(failureEvent);
+      await flushPromises();
+
+      expect(reconnectSpy).toHaveBeenCalledWith(RECONNECT_ON_FAILURE_UTIL);
+      expect(mutexSpy).toHaveBeenCalled();
+
+      const mutexCallArgs = mutexSpy.mock.calls;
+      let reconnectCalledInsideMutex = false;
+      for (const [fn] of mutexCallArgs) {
+        reconnectSpy.mockClear();
+        await fn();
+        if (reconnectSpy.mock.calls.length > 0) {
+          reconnectCalledInsideMutex = true;
+        }
+      }
+      expect(reconnectCalledInsideMutex).toBe(true);
+    });
+
+    it('reconnect still defers with active calls', async () => {
+      await beforeEachSetupForKeepalive();
+      lineEmitter.mockClear();
+
+      jest.spyOn(reg.callManager, 'getActiveCalls').mockReturnValue({
+        'call-1': {} as ICall,
+      });
+
+      const failureEvent = {
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: {statusCode: 503},
+          keepAliveRetryCount: RETRY_COUNT_THRESHOLD,
+        },
+      };
+
+      reg.webWorker.onmessage(failureEvent);
+      await flushPromises();
+
+      expect(reg.reconnectPending).toBe(true);
+      expect(reg.isReconnectPending()).toBe(true);
+    });
+  });
 });
