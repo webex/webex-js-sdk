@@ -32,7 +32,8 @@ skipInNode(describe)('plugin-meetings', () => {
 
   // `addMedia()` fails on FF, this needs to be debuged and fixed in a later change
   if (!isBrowser('firefox')) {
-    describe('converged-space-meeting', () => {
+    describe('converged-space-meeting', function () {
+      this.timeout(integrationTestUtils.MEDIA_TEST_TIMEOUT);
       let shouldSkip = false;
       let users, alice, bob, chris;
       let meeting = null;
@@ -170,15 +171,13 @@ skipInNode(describe)('plugin-meetings', () => {
           {scope: alice.meeting, event: 'media:negotiated'},
           {scope: bob.meeting, event: 'media:negotiated'},
           {scope: chris.meeting, event: 'media:negotiated'},
-        ]);
+        ], integrationTestUtils.MEDIA_OPERATION_TIMEOUT);
 
         const addMediaAlice = integrationTestUtils.addMedia(alice, {multistream: true, microphone: localTracks.alice.microphone, camera: localTracks.alice.camera});
         const addMediaBob = integrationTestUtils.addMedia(bob, {multistream: true, microphone: localTracks.bob.microphone, camera: localTracks.bob.camera});
         const addMediaChris = integrationTestUtils.addMedia(chris, {multistream: true, microphone: localTracks.chris.microphone, camera: localTracks.chris.camera});
 
-        await addMediaAlice;
-        await addMediaBob;
-        await addMediaChris;
+        await Promise.all([mediaReadyListener, addMediaAlice, addMediaBob, addMediaChris]);
 
         assert.isTrue(alice.meeting.mediaProperties.mediaDirection.sendAudio);
         assert.isTrue(alice.meeting.mediaProperties.mediaDirection.sendVideo);

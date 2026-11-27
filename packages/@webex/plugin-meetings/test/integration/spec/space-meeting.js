@@ -31,7 +31,8 @@ const localTracks = {
 };
 
 skipInNode(describe)('plugin-meetings', () => {
-  describe('space-meeting', () => {
+  describe('space-meeting', function () {
+    this.timeout(integrationTestUtils.MEDIA_TEST_TIMEOUT);
     let space = null;
 
     before(function setupUsers() {
@@ -208,8 +209,8 @@ skipInNode(describe)('plugin-meetings', () => {
         });
 
       return Promise.all([
-        testUtils.delayedPromise(bob.meeting.reconnect()),
-        testUtils.waitForEvents([{scope: bob.meeting, event: 'media:ready'}]),
+        testUtils.waitForEvents([{scope: bob.meeting, event: 'media:ready'}], integrationTestUtils.MEDIA_OPERATION_TIMEOUT),
+        testUtils.withTimeout(bob.meeting.reconnect(), integrationTestUtils.MEDIA_OPERATION_TIMEOUT, 'SDK reconnect() timed out'),
       ]).then(waitForReceivedAudio);
     });
 

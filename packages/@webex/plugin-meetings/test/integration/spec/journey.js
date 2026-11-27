@@ -290,6 +290,9 @@ skipInNode(describe)('plugin-meetings', () => {
     });
 
     describe('Successful 1:1 meeting (including Guest)', function () {
+      // Set this before tests inherit their timeout; changing it in a hook is too late.
+      this.timeout(integrationTestUtils.MEDIA_TEST_TIMEOUT);
+
       before(() => {
         // Workaround since getDisplayMedia requires a user gesture to be activated, and this is a integration tests
         // https://bugzilla.mozilla.org/show_bug.cgi?id=1580944
@@ -300,8 +303,6 @@ skipInNode(describe)('plugin-meetings', () => {
             navigator.mediaDevices.getUserMedia
           );
         }
-
-        this.timeout(80000);
       });
 
       it('No previous Call', () => {
@@ -344,15 +345,15 @@ skipInNode(describe)('plugin-meetings', () => {
           })
           .then(() => {
             assert.equal(bob.meeting.partner.state, 'JOINED');
-            // Wait for openH264 to finsish downloading and peerConnection to be stable
-            testUtils.waitUntil(4000);
+            // Wait for openH264 to finish downloading and peerConnection to be stable.
+            return testUtils.waitUntil(4000);
           })
           .then(() =>
             Promise.all([
-              integrationTestUtils.addMedia(alice, {microphone: localStreams.alice.microphone, camera: localStreams.alice.camera}),
               testUtils.waitForEvents([
                 {scope: alice.meeting, event: 'meeting:media:local:start', user: alice},
-              ]),
+              ], integrationTestUtils.MEDIA_OPERATION_TIMEOUT),
+              integrationTestUtils.addMedia(alice, {microphone: localStreams.alice.microphone, camera: localStreams.alice.camera}),
             ])
           )
           .then(() => assertLocalStreamsAdded(alice, localStreams.alice)));
@@ -383,16 +384,16 @@ skipInNode(describe)('plugin-meetings', () => {
 
       it('bob adds media to the meeting', () =>
         Promise.all([
-          integrationTestUtils.addMedia(bob, {microphone: localStreams.bob.microphone, camera: localStreams.bob.camera}),
           testUtils
             .waitForEvents([
               {scope: bob.meeting, event: 'meeting:media:local:start', user: bob},
               {scope: alice.meeting, event: 'meeting:media:remote:start', user: alice},
-            ])
+            ], integrationTestUtils.MEDIA_OPERATION_TIMEOUT)
             .catch((e) => {
               console.error('Error on remote and local start event', e);
               throw e;
             }),
+          integrationTestUtils.addMedia(bob, {microphone: localStreams.bob.microphone, camera: localStreams.bob.camera}),
         ])
           .then(() => {
             assert.equal(bob.meeting.sipUri, alice.id);
@@ -403,10 +404,10 @@ skipInNode(describe)('plugin-meetings', () => {
             assertLocalStreamsAdded(bob, localStreams.bob);
           })
           .then(function bobState() {
-            testUtils.waitForStateChange(bob.meeting, 'JOINED');
+            return testUtils.waitForStateChange(bob.meeting, 'JOINED');
           })
           .then(function aliceState() {
-            testUtils.waitForStateChange(alice.meeting, 'JOINED');
+            return testUtils.waitForStateChange(alice.meeting, 'JOINED');
           })
           .catch((e) => {
             console.error('Error bob joins the meeting ', e);
