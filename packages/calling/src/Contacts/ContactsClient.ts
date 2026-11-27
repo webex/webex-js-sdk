@@ -54,6 +54,8 @@ export class ContactsClient implements IContacts {
 
   private encryptionKeyUrl: string;
 
+  private encryptionKeyUrlPromise: Promise<string> | undefined;
+
   private webex: WebexSDK;
 
   private groups: ContactGroup[] | undefined;
@@ -488,6 +490,10 @@ export class ContactsClient implements IContacts {
     // istanbul ignore else
     if (this.groups === undefined) {
       await this.getContacts();
+      // Re-check: a concurrent caller may have created the key while getContacts was in flight.
+      if (this.encryptionKeyUrl) {
+        return this.encryptionKeyUrl;
+      }
     }
     // istanbul ignore else
     if (this.groups && this.groups.length) {
@@ -495,25 +501,49 @@ export class ContactsClient implements IContacts {
       return this.groups[0].encryptionKeyUrl;
     }
 
-    this.encryptionKeyUrl = await this.createNewEncryptionKeyUrl();
-    log.log(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
-      file: CONTACTS_CLIENT,
-      method: this.fetchEncryptionKeyUrl.name,
-    });
-    const response: ContactResponse = await this.createContactGroup(
-      DEFAULT_GROUP_NAME,
-      this.encryptionKeyUrl
-    );
+    // Single-flight guard: concurrent callers await the same in-flight promise
+    // so that only one KMS key and one default group are ever created.
+    if (!this.encryptionKeyUrlPromise) {
+      this.encryptionKeyUrlPromise = (async () => {
+        try {
+          const newEncryptionKeyUrl = await this.createNewEncryptionKeyUrl();
+          log.log(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
+            file: CONTACTS_CLIENT,
+            method: this.fetchEncryptionKeyUrl.name,
+          });
+          const response: ContactResponse = await this.createContactGroup(
+            DEFAULT_GROUP_NAME,
+            newEncryptionKeyUrl
+          );
 
-    if (response.data.group?.groupId) {
-      this.defaultGroupId = response.data.group?.groupId;
-      log.log(`Successfully created default group with ID: ${this.defaultGroupId}`, {
-        file: CONTACTS_CLIENT,
-        method: this.fetchEncryptionKeyUrl.name,
-      });
+          if (response.data.group?.groupId) {
+            this.defaultGroupId = response.data.group?.groupId;
+            log.log(`Successfully created default group with ID: ${this.defaultGroupId}`, {
+              file: CONTACTS_CLIENT,
+              method: this.fetchEncryptionKeyUrl.name,
+            });
+          }
+
+          // Publish the cache only once both the key and the default group
+          // exist, so callers arriving mid-flight keep awaiting the promise
+          // below instead of racing ahead of the group creation.
+          this.encryptionKeyUrl = newEncryptionKeyUrl;
+
+          // Clear the in-flight promise now that the resolved value is cached
+          // on encryptionKeyUrl, so a future reset of encryptionKeyUrl can't
+          // cause this method to return a stale resolved promise.
+          this.encryptionKeyUrlPromise = undefined;
+
+          return this.encryptionKeyUrl;
+        } catch (e) {
+          // Clear the in-flight promise on failure so subsequent callers can retry
+          this.encryptionKeyUrlPromise = undefined;
+          throw e;
+        }
+      })();
     }
 
-    return this.encryptionKeyUrl;
+    return this.encryptionKeyUrlPromise;
   }
 
   /**
@@ -558,6 +588,15 @@ export class ContactsClient implements IContacts {
       method: this.fetchDefaultGroup.name,
     });
 
+    // fetchEncryptionKeyUrl creates the default group as part of its key-creation
+    // flow. Awaiting its in-flight promise lets us reuse the group it creates
+    // instead of issuing a duplicate POST that would receive a 400 error.
+    if (this.encryptionKeyUrlPromise) {
+      await this.encryptionKeyUrlPromise;
+
+      return this.defaultGroupId || '';
+    }
+
     const response: ContactResponse = await this.createContactGroup(DEFAULT_GROUP_NAME);
 
     const {group} = response.data;
@@ -570,6 +609,12 @@ export class ContactsClient implements IContacts {
       });
 
       return groupId;
+    }
+
+    // createContactGroup may return a duplicate-name 400 when fetchEncryptionKeyUrl
+    // already created the group as part of its key-creation flow; reuse that ID.
+    if (this.defaultGroupId) {
+      return this.defaultGroupId;
     }
 
     return '';
