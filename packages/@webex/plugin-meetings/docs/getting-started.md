@@ -143,11 +143,20 @@ license matches fail setup before user creation.
 
 The helper requests `basicMeeting`, explicitly assigns the configured licenses, synchronizes
 the site, sets the preferred site, and obtains a fresh user token before SDK registration.
-The OAuth client must allow `meeting:preferences_read`, which is included in the shared
-`WEBEX_SCOPE` in `.env.default`. If you override `WEBEX_SCOPE` or provide `config.scope`,
-include that scope for meeting tests. The helper uses the configured scopes for both user
-creation and the fresh login. CIG's initial token predates site provisioning and may omit
-meeting scopes.
+The OAuth client must allow `meeting:preferences_read`. For site-provisioned meeting users,
+the helper adds this scope to `config.scope` (or `WEBEX_SCOPE` when no override is supplied)
+for both creation and the fresh login, without changing the shared environment or caller
+configuration. An existing copy of the scope is not duplicated.
+
+This addition belongs in the meetings helper because generic test users have no meeting-site
+provisioning and can receive tokens without meeting scopes. Core token tests validate the
+granted scopes against the shared defaults and downscope from that set; putting the meeting
+scope in `.env.default` makes those tests expect a scope their users cannot obtain. Keep
+`meeting:preferences_read` out of a shared local `WEBEX_SCOPE` override as well.
+
+The scope authorizes reading meeting preferences and discovering the preferred site; license
+assignment uses the org-admin authorization. CIG's initial user token predates site provisioning
+and may omit meeting scopes, so the helper logs the user in again after provisioning.
 
 Without org-admin credentials/authorization or an explicit site, and for Whistler users,
 the helper retains the default creation flow. An explicit site requires org-admin authorization.

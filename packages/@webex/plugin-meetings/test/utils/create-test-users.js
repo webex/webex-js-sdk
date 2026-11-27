@@ -60,10 +60,19 @@ const createTestUsers = async (options = {}) => {
       }));
     }
 
+    // Generic core-test users have no meeting site, so their tokens can omit this
+    // scope. Adding it to shared WEBEX_SCOPE breaks token validation/downscoping.
+    // Request it only for these site-provisioned users to read meeting preferences;
+    // license assignment itself uses the org-admin authorization above.
+    const scopes = new Set(
+      (config.scope || process.env.WEBEX_SCOPE || '').split(/\s+/).filter(Boolean)
+    );
+    scopes.add('meeting:preferences_read');
+
     Object.assign(config, {
       clientId,
       clientSecret,
-      scope: config.scope || process.env.WEBEX_SCOPE,
+      scope: [...scopes].join(' '),
       entitlements: [
         'spark',
         'squaredCallInitiation',

@@ -37,7 +37,7 @@ describe('meeting test-user provisioning', () => {
       WEBEX_CONVERGED_ORG_ID: 'test-org',
       WEBEX_CLIENT_ID: 'test-client',
       WEBEX_CLIENT_SECRET: 'test-secret',
-      WEBEX_SCOPE: 'spark:kms meeting:preferences_read',
+      WEBEX_SCOPE: 'spark:kms',
       IDENTITY_BASE_URL: 'https://identity.example.test',
       ATLAS_SERVICE_URL: 'https://atlas.example.test/admin/api/v1',
     });
@@ -146,6 +146,7 @@ describe('meeting test-user provisioning', () => {
     assert.notCalled(discoverLicenses);
     assert.strictEqual(users[0], user);
     assert.strictEqual(users[0].token, freshToken);
+    assert.equal(process.env.WEBEX_SCOPE, 'spark:kms');
   });
 
   it('obtains org-admin authorization before creating users when credentials are configured', async () => {
@@ -185,7 +186,7 @@ describe('meeting test-user provisioning', () => {
     assert.strictEqual(user.token, freshToken);
   });
 
-  it('honors explicit configuration without adding scopes', async () => {
+  it('honors explicit configuration and adds the required meeting scope only to the user', async () => {
     configureSite();
     const options = {
       count: 1,
@@ -207,11 +208,52 @@ describe('meeting test-user provisioning', () => {
     assert.deepEqual(config.licenseIds, ['custom-license']);
     assert.deepEqual(config.syncInWebexSites, ['custom.webex.com']);
     assert.equal(config.orgAdminAuthorization, 'Bearer custom-admin');
-    assert.equal(config.scope, 'spark:kms');
-    assert.equal(login.firstCall.args[0].scopes, 'spark:kms');
+    assert.equal(config.scope, 'spark:kms meeting:preferences_read');
+    assert.equal(login.firstCall.args[0].scopes, 'spark:kms meeting:preferences_read');
     assert.equal(login.firstCall.args[0].clientId, 'custom-client');
     assert.equal(login.firstCall.args[0].orgId, 'custom-org');
     assert.notProperty(options.config, 'forceCreate');
+    assert.equal(options.config.scope, 'spark:kms');
+    assert.equal(process.env.WEBEX_SCOPE, 'spark:kms');
+  });
+
+  [
+    {
+      name: 'an environment scope that already includes meeting preferences',
+      environmentScope: 'spark:kms meeting:preferences_read',
+      expected: 'spark:kms meeting:preferences_read',
+    },
+    {
+      name: 'an explicit scope instead of the environment scope',
+      environmentScope: 'spark:kms',
+      scope: 'spark:people_read',
+      expected: 'spark:people_read meeting:preferences_read',
+    },
+    {
+      name: 'whitespace and duplicate meeting scopes',
+      environmentScope: 'spark:kms',
+      scope: '  meeting:preferences_read\tspark:people_read\nmeeting:preferences_read  ',
+      expected: 'meeting:preferences_read spark:people_read',
+    },
+    {
+      name: 'no configured scope',
+      environmentScope: undefined,
+      expected: 'meeting:preferences_read',
+    },
+  ].forEach(({name, environmentScope, scope, expected}) => {
+    it(`requests meeting preferences with ${name} without changing shared configuration`, async () => {
+      configureSite();
+      if (environmentScope === undefined) Reflect.deleteProperty(process.env, 'WEBEX_SCOPE');
+      else process.env.WEBEX_SCOPE = environmentScope;
+      const options = {count: 1, config: {scope}};
+
+      await createTestUsers(options);
+
+      assert.equal(create.firstCall.args[0].config.scope, expected);
+      assert.equal(login.firstCall.args[0].scopes, expected);
+      assert.deepEqual(options.config, {scope});
+      assert.equal(process.env.WEBEX_SCOPE, environmentScope);
+    });
   });
 
   [undefined, 'https://environment-cig.example.test'].forEach((environmentUrl) => {
