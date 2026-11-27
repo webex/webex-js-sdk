@@ -1,11 +1,9 @@
 import MetricsManager from '../../../../../src/metrics/MetricsManager';
 import routingAgent, {
-  buildStationLoginPayload,
   getStationRecoveryFailureCategory,
 } from '../../../../../src/services/agent';
 import AqmReqs from '../../../../../src/services/core/aqm-reqs';
 import {Details} from '../../../../../src/services/core/Err';
-import {LoginOption} from '../../../../../src/types';
 
 jest.mock('../../../../../src/services/core/Utils', () => ({
   createErrDetailsObject: jest.fn(),
@@ -16,26 +14,6 @@ jest.mock('../../../../../src/services/core/Utils', () => ({
 jest.mock('../../../../../src/services/core/aqm-reqs');
 
 describe('station login', () => {
-  it.each([
-    [LoginOption.EXTENSION, '12345', '12345', '12345', true],
-    [LoginOption.AGENT_DN, '12345', '12345', '12345', false],
-    [LoginOption.BROWSER, undefined, 'webrtc-agentId', 'webrtc-agentId', false],
-    ['OTHER_OPTION' as LoginOption, '', 'webrtc-agentId', '', false],
-  ])('builds the payload for %s', (loginOption, dialNumber, deviceId, expectedDialNumber, isExtension) => {
-    expect(buildStationLoginPayload({loginOption, dialNumber, teamId: 'team1'}, 'agentId')).toStrictEqual({
-      dialNumber: expectedDialNumber,
-      teamId: 'team1',
-      deviceType: loginOption,
-      isExtension,
-      deviceId,
-      roles: ['agent'],
-      teamName: '',
-      siteId: '',
-      usesOtherDN: false,
-      auxCodeId: '',
-    });
-  });
-
   it.each([
     [{reasonCode: 9999, status: 429}, 'transient'],
     [{reasonCode: 9999, status: 502}, 'transient'],

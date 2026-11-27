@@ -6657,7 +6657,7 @@ describe('regional recovery wiring', () => {
     });
   });
 
-  it.each(['succeeded', 'failed', 'cancelled'])(
+  it.each(['succeeded', 'failed', 'cancelled', 'socket-closed'])(
     'retains the browser line while automatic Available is %s',
     async (outcome) => {
       await withRouting(
@@ -6688,6 +6688,17 @@ describe('regional recovery wiring', () => {
             requests.filter(({resource}) => resource === '/v1/agents/session/state');
           expect(stateRequests()).toHaveLength(0);
 
+          if (outcome === 'socket-closed') {
+            backup.lose();
+            calling['handleLineRegistered'](line);
+            await flush();
+            expect(stateRequests()).toHaveLength(0);
+            expect(state).toHaveBeenLastCalledWith(
+              expect.objectContaining({autoAvailable: 'cancelled'})
+            );
+
+            return;
+          }
           const manual = outcome === 'cancelled';
           const stateChange = manual
             ? cc.setAgentState({state: 'Idle', auxCodeId: 'idle'})

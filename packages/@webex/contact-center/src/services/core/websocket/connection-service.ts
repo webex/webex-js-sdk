@@ -2,7 +2,6 @@ import {EventEmitter} from 'events';
 import type {WebSocketManager} from './WebSocketManager';
 import LoggerProxy from '../../../logger-proxy';
 import type {
-  ConnectionFlight,
   ConnectionLostDetails,
   ConnectionResetOptions,
   RegionRecoveryOptions,
@@ -56,15 +55,11 @@ export class ConnectionService extends EventEmitter {
   private isRestoreFailed = false;
   private isKeepAlive = false;
   private lossEpisode?: {startedAt: number; attempt: number};
-  private flight?: ConnectionFlight;
-  private socketOwner?: ConnectionFlight;
+  private pending?: {reconnectOnClose: boolean};
   private invocation?: RegionRecoveryInvocation;
-  private registrationSignal?: AbortSignal;
   private onTerminalFailure?: ConnectionResetOptions['onTerminalFailure'];
   private readonly webSocketManager: WebSocketManager;
   private subscribeRequest: SubscribeRequest;
-  private readonly onRegistrationAbort = () => this.stop();
-  private readonly onRegionAbort = () => this.pause();
 
   constructor(webSocketManager: WebSocketManager) {
     super();
@@ -72,23 +67,12 @@ export class ConnectionService extends EventEmitter {
   }
 
   public reset(options: ConnectionResetOptions): void {
-    const retained =
-      !this.flight && this.webSocketManager.hasUsableSocket() ? this.socketOwner : undefined;
-    if (retained) this.socketOwner = undefined;
     this.stop();
-    if (options.signal.aborted) {
-      this.disposeFlight(retained);
-
-      return;
-    }
     this.subscribeRequest = options.subscribeRequest;
-    this.registrationSignal = options.signal;
     this.onTerminalFailure = options.onTerminalFailure;
-    this.socketOwner = retained;
     this.mode = 'ordinary';
     this.webSocketManager.shouldReconnect = true;
     this.updateConnectionData();
-    options.signal.addEventListener('abort', this.onRegistrationAbort, {once: true});
     this.setupEventListeners();
     if (this.webSocketManager.hasUsableSocket()) this.monitorOrdinary();
     else this.onSocketClose();
@@ -97,21 +81,19 @@ export class ConnectionService extends EventEmitter {
   public pause(): void {
     if (this.mode === 'stopped') return;
     this.mode = 'paused';
-    this.cancelWork(true);
+    this.cancelWork();
   }
 
   public stop(): void {
     this.mode = 'stopped';
     this.cancelWork();
-    this.registrationSignal?.removeEventListener('abort', this.onRegistrationAbort);
-    this.registrationSignal = undefined;
     this.onTerminalFailure = undefined;
     this.webSocketManager.off('message', this.onPing);
     this.webSocketManager.off('socketClose', this.onSocketClose);
   }
 
   public recoverRegion(options: RegionRecoveryOptions): Promise<void> {
-    if (this.mode === 'stopped' || options.signal.aborted || this.registrationSignal?.aborted) {
+    if (this.mode === 'stopped') {
       return Promise.reject(terminalError('cancelled'));
     }
     this.pause();
@@ -125,7 +107,6 @@ export class ConnectionService extends EventEmitter {
         reject,
       };
       this.invocation = invocation;
-      options.signal.addEventListener('abort', this.onRegionAbort, {once: true});
       this.scheduleRegion(invocation);
     });
   }
@@ -145,63 +126,25 @@ export class ConnectionService extends EventEmitter {
     this.lossEpisode = undefined;
   }
 
-  private disposeFlight(flight?: ConnectionFlight): void {
-    if (!flight) return;
-    if (this.flight === flight) this.flight = undefined;
-    if (this.socketOwner === flight) this.socketOwner = undefined;
-    flight.controller.abort();
-  }
-
-  private cancelWork(preserveSocket = false): void {
+  private cancelWork(): void {
     this.clearTimers();
-    const invocation = this.detachInvocation();
-    this.disposeFlight(this.flight);
-    if (!preserveSocket) this.disposeFlight(this.socketOwner);
+    const invocation = this.invocation;
+    this.invocation = undefined;
+    const pending = this.pending;
+    this.pending = undefined;
+    if (pending) this.webSocketManager.close(false, 'Recovery cancelled');
     invocation?.reject(terminalError('cancelled'));
   }
 
-  private detachInvocation(): RegionRecoveryInvocation | undefined {
-    const invocation = this.invocation;
-    this.invocation = undefined;
-    invocation?.signal.removeEventListener('abort', this.onRegionAbort);
-
-    return invocation;
-  }
-
-  private createFlight(): ConnectionFlight {
-    this.disposeFlight(this.socketOwner);
-    const flight: ConnectionFlight = {controller: new AbortController()};
-    this.flight = flight;
-
-    return flight;
-  }
-
-  private adoptFlight(flight: ConnectionFlight): void {
-    this.flight = undefined;
-    this.socketOwner = flight;
-    this.updateConnectionData();
-    this.monitorOrdinary();
-  }
-
-  private subscribePrimary(signal: AbortSignal): Promise<WelcomeResponse> {
-    return this.webSocketManager
-      .initWebSocket({body: this.subscribeRequest, resource: SUBSCRIBE_API, signal})
-      .catch((error: unknown) => {
-        // A forced close can reject admission and abort the flight in the same turn.
-        throw signal.aborted ? terminalError('cancelled') : error;
-      });
-  }
-
-  private ownsInvocation(invocation: RegionRecoveryInvocation): boolean {
-    return (
-      this.invocation === invocation &&
-      !invocation.signal.aborted &&
-      !this.registrationSignal?.aborted
-    );
+  private subscribePrimary(): Promise<WelcomeResponse> {
+    return this.webSocketManager.initWebSocket({
+      body: this.subscribeRequest,
+      resource: SUBSCRIBE_API,
+    });
   }
 
   private scheduleRegion(invocation: RegionRecoveryInvocation): void {
-    if (!this.ownsInvocation(invocation)) return;
+    if (this.invocation !== invocation) return;
     invocation.attempt += 1;
     const attempt = invocation.attempt;
     const base = REGION_RETRY_DELAYS[Math.min(attempt, REGION_RETRY_DELAYS.length) - 1];
@@ -211,68 +154,59 @@ export class ConnectionService extends EventEmitter {
     } catch {
       /* The scheduler owns pacing independently of observers. */
     }
-    if (!this.ownsInvocation(invocation)) return;
+    if (this.invocation !== invocation) return;
     this.retryTimer = setTimeout(() => {
       this.retryTimer = undefined;
       this.runRegionAttempt(invocation).catch(() => {
-        if (this.ownsInvocation(invocation))
+        if (this.invocation === invocation)
           this.failRegion(invocation, terminalError('after-welcome-failed'));
       });
     }, wait);
   }
 
   private async runRegionAttempt(invocation: RegionRecoveryInvocation): Promise<void> {
-    if (!this.ownsInvocation(invocation)) return;
-    let canAttempt: boolean;
-    try {
-      canAttempt = invocation.canAttempt?.() ?? true;
-    } catch {
-      canAttempt = false;
-    }
-    // Identity detection may synchronously stop or replace the scheduler's owner.
-    if (!this.ownsInvocation(invocation)) return;
-    if (!canAttempt) {
-      this.failRegion(invocation, terminalError('cancelled'));
-
-      return;
-    }
-    const flight = this.createFlight();
-    const {signal} = flight.controller;
+    if (this.invocation !== invocation) return;
+    const pending = {reconnectOnClose: false};
+    this.pending = pending;
+    const isConnected = () =>
+      this.pending === pending &&
+      !pending.reconnectOnClose &&
+      this.webSocketManager.hasUsableSocket();
     let welcomed = false;
     try {
-      const welcome = await this.subscribePrimary(signal);
-      if (!this.ownsInvocation(invocation) || this.flight !== flight) return;
-      if (signal.aborted) throw terminalError('cancelled');
+      const welcome = await this.subscribePrimary();
+      if (this.invocation !== invocation || this.pending !== pending) return;
+      if (!isConnected()) throw new Error('WebSocket closed');
       welcomed = true;
-      const publishOutcome = await invocation.afterWelcome(welcome, signal);
-      if (!this.ownsInvocation(invocation) || this.flight !== flight) return;
-      if (signal.aborted) throw terminalError('cancelled');
-      this.detachInvocation();
+      const publishOutcome = await invocation.afterWelcome(welcome, isConnected);
+      if (this.invocation !== invocation || this.pending !== pending) return;
+      if (!isConnected()) throw new Error('WebSocket closed');
+      this.invocation = undefined;
       this.mode = 'ordinary';
-      this.adoptFlight(flight);
+      this.updateConnectionData();
+      this.monitorOrdinary();
       invocation.resolve();
-      if (publishOutcome) publishOutcome();
+      try {
+        if (publishOutcome) publishOutcome();
+      } finally {
+        if (this.pending === pending) this.pending = undefined;
+      }
     } catch (error) {
-      if (!this.ownsInvocation(invocation) || this.flight !== flight) return;
+      if (this.invocation !== invocation || this.pending !== pending) return;
       const mismatch = welcomed ? undefined : getSubscriptionMismatchReason(error);
       const failure = safeFailure(error, mismatch);
       const auth = failure.status === 401 || failure.status === 403;
-      const {reconnectOnClose} = flight;
-      const cancelled = signal.aborted && !reconnectOnClose;
+      const {reconnectOnClose} = pending;
       let kind: ConnectionRecoveryFailureKind | undefined;
-      if (cancelled) kind = 'cancelled';
-      else if (auth) kind = 'authentication-failed';
+      if (auth) kind = 'authentication-failed';
       else if (mismatch) kind = 'region-mismatch';
-      else if (welcomed && reconnectOnClose === undefined) kind = 'after-welcome-failed';
+      else if (welcomed && !reconnectOnClose) kind = 'after-welcome-failed';
       if (kind) {
-        this.failRegion(
-          invocation,
-          terminalError(kind, kind === 'cancelled' ? undefined : failure)
-        );
+        this.failRegion(invocation, terminalError(kind, failure));
 
         return;
       }
-      this.disposeFlight(flight);
+      this.pending = undefined;
       try {
         invocation.onAttemptSettled?.(invocation.attempt, 'retrying', failure);
       } catch {
@@ -286,7 +220,8 @@ export class ConnectionService extends EventEmitter {
     if (this.invocation !== invocation) return;
     const {kind, ...failure} = error.data;
     // Commit old-owner cleanup before observers can cancel or replace the registration.
-    this.detachInvocation();
+    this.invocation = undefined;
+    this.pending = undefined;
     this.stop();
     this.webSocketManager.close(false, 'Terminal recovery');
     if (kind !== 'cancelled') {
@@ -339,6 +274,7 @@ export class ConnectionService extends EventEmitter {
   private handleRestoreFailed = (): void => {
     if (this.mode !== 'ordinary') return;
     if (this.lossEpisode || !this.webSocketManager.hasUsableSocket()) {
+      this.pending = undefined;
       this.stop();
       this.webSocketManager.close(false, 'Restore watchdog expired');
     } else {
@@ -352,7 +288,7 @@ export class ConnectionService extends EventEmitter {
   };
 
   private onPing = (event: unknown): void => {
-    if (this.mode !== 'ordinary' || this.flight) return;
+    if (this.mode !== 'ordinary' || this.pending) return;
     let parsedEvent: unknown;
     try {
       parsedEvent = JSON.parse(event as string);
@@ -379,7 +315,7 @@ export class ConnectionService extends EventEmitter {
   };
 
   private scheduleOrdinary(): void {
-    if (this.mode !== 'ordinary' || this.retryTimer || this.flight || !this.lossEpisode) return;
+    if (this.mode !== 'ordinary' || this.retryTimer || this.pending || !this.lossEpisode) return;
     const next =
       this.lossEpisode.startedAt +
       (Math.floor((Date.now() - this.lossEpisode.startedAt) / CONNECTIVITY_CHECK_INTERVAL) + 1) *
@@ -392,7 +328,7 @@ export class ConnectionService extends EventEmitter {
 
   private async handleSocketClose(): Promise<void> {
     const episode = this.lossEpisode;
-    if (this.mode !== 'ordinary' || this.flight || !episode) return;
+    if (this.mode !== 'ordinary' || this.pending || !episode) return;
     episode.attempt += 1;
     const attempt = episode.attempt;
     const diagnose = (
@@ -411,22 +347,25 @@ export class ConnectionService extends EventEmitter {
         }
       );
     };
-    const flight = this.createFlight();
+    const pending = {reconnectOnClose: false};
+    this.pending = pending;
     try {
       if (typeof navigator !== 'undefined' && navigator.onLine === false)
         throw new Error('Browser offline');
-      await this.subscribePrimary(flight.controller.signal);
-      if (this.mode !== 'ordinary' || this.flight !== flight) return;
-      if (flight.controller.signal.aborted) throw terminalError('cancelled');
+      await this.subscribePrimary();
+      if (this.mode !== 'ordinary' || this.pending !== pending) return;
+      if (pending.reconnectOnClose) throw new Error('WebSocket closed');
       diagnose('succeeded');
-      if (this.mode !== 'ordinary' || this.flight !== flight || this.lossEpisode !== episode)
+      if (this.mode !== 'ordinary' || this.pending !== pending || this.lossEpisode !== episode)
         return;
       this.lossEpisode = undefined;
-      this.adoptFlight(flight);
+      this.pending = undefined;
+      this.updateConnectionData();
+      this.monitorOrdinary();
       this.dispatchConnectionEvent(true);
     } catch (error) {
-      if (this.mode !== 'ordinary' || this.flight !== flight) return;
-      this.disposeFlight(flight);
+      if (this.mode !== 'ordinary' || this.pending !== pending) return;
+      this.pending = undefined;
       if (!this.webSocketManager.shouldReconnect) {
         this.stop();
 
@@ -482,15 +421,12 @@ export class ConnectionService extends EventEmitter {
 
       return;
     }
-    const flight = this.flight;
-    if (flight) {
-      flight.reconnectOnClose = true;
-      flight.controller.abort();
+    if (this.pending) {
+      this.pending.reconnectOnClose = true;
 
       return;
     }
     if (this.mode !== 'ordinary') return;
-    // Aborting the adopted socket and emitting loss can synchronously reset the scheduler.
     const episode = this.lossEpisode ?? {startedAt: Date.now(), attempt: 0};
     this.lossEpisode = episode;
     clearTimeout(this.reconnectingTimer);
@@ -498,7 +434,6 @@ export class ConnectionService extends EventEmitter {
     if (!this.restoreTimer)
       this.restoreTimer = setTimeout(this.handleRestoreFailed, LOST_CONNECTION_RECOVERY_TIMEOUT);
     this.scheduleOrdinary();
-    this.disposeFlight(this.socketOwner);
     if (this.lossEpisode === episode) this.dispatchConnectionEvent();
   };
 }

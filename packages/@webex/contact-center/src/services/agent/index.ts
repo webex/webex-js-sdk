@@ -2,37 +2,10 @@ import * as Err from '../core/Err';
 import {createErrDetailsObject as err, normalizeRecoveryFailure} from '../core/Utils';
 import * as Agent from './types';
 import AqmReqs from '../core/aqm-reqs';
-import {HTTP_METHODS, LoginOption} from '../../types';
-import {EMPTY_STRING} from '../../constants';
-import {AGENT, WCC_API_GATEWAY, WEB_RTC_PREFIX} from '../constants';
+import {HTTP_METHODS} from '../../types';
+import {WCC_API_GATEWAY} from '../constants';
 import {CC_EVENTS} from '../config/types';
-import type {AgentLogin} from '../../types';
 import type {RecoveryFailure} from '../core/types';
-
-/** @internal */
-export function buildStationLoginPayload(
-  data: AgentLogin,
-  agentId: string
-): Agent.UserStationLogin {
-  const {loginOption, dialNumber, teamId} = data;
-  const deviceId =
-    loginOption === LoginOption.EXTENSION || loginOption === LoginOption.AGENT_DN
-      ? dialNumber
-      : WEB_RTC_PREFIX + agentId;
-
-  return {
-    dialNumber: loginOption === LoginOption.BROWSER ? deviceId : dialNumber,
-    teamId,
-    deviceType: loginOption,
-    isExtension: loginOption === LoginOption.EXTENSION,
-    deviceId,
-    roles: [AGENT],
-    teamName: EMPTY_STRING,
-    siteId: EMPTY_STRING,
-    usesOtherDN: false,
-    auxCodeId: EMPTY_STRING,
-  };
-}
 
 /** @internal */
 export function getStationRecoveryFailureCategory(

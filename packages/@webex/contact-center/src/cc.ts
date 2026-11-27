@@ -50,12 +50,12 @@ import {
   REGION_RECOVERY_ERROR_CODES,
 } from './constants';
 import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
-import {RTD_SUBSCRIBE_API, SUBSCRIBE_API, WEB_RTC_PREFIX} from './services/constants';
+import {AGENT, RTD_SUBSCRIBE_API, SUBSCRIBE_API, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, AGENT_EVENTS} from './services/agent/types';
-import {buildStationLoginPayload, getStationRecoveryFailureCategory} from './services/agent';
+import {getStationRecoveryFailureCategory} from './services/agent';
 import {
   getErrorDetails,
   isRecord,
@@ -668,7 +668,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const signal = this.registrationAbortController.signal;
     this.services.connectionService.reset({
       subscribeRequest: this.getConnectionConfig(),
-      signal,
       onTerminalFailure: (error) => {
         if (!this.isCurrentRegistration(orgId, signal)) return;
         const pending = this.pendingRegistration;
@@ -830,17 +829,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (!this.isCurrentRecovery(recovery)) return;
     this.services.connectionService
       .recoverRegion({
-        signal: controller.signal,
-        canAttempt: () => {
-          if (!this.isCurrentRecovery(recovery)) return false;
-          if (recovery.attempt) recovery.attempt.welcomeStartedAt = Date.now();
-
-          return true;
-        },
         onScheduled: (attempt, retryAfterMs) => {
           if (!this.isCurrentRecovery(recovery)) return;
           const attemptStartedAt = Date.now();
-          recovery.attempt = {attempt, startedAt: attemptStartedAt};
+          recovery.attempt = {
+            attempt,
+            startedAt: attemptStartedAt,
+            welcomeStartedAt: attemptStartedAt + retryAfterMs,
+          };
           this.recordRecoveryDiagnostic('scheduled-wait', 'waiting', attempt, attemptStartedAt);
           if (!this.isCurrentRecovery(recovery)) return;
           this.recoveryPhase = 'waiting';
@@ -854,7 +850,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           recovery.attempt = undefined;
           this.recordRecoveryDiagnostic('admission', outcome, attempt, slot.startedAt, failure);
         },
-        afterWelcome: async (welcome, attemptSignal) => {
+        afterWelcome: async (welcome, isConnected) => {
           if (!this.isCurrentRecovery(recovery))
             throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
           const slot = recovery.attempt;
@@ -867,11 +863,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             attempt,
             slot?.welcomeStartedAt ?? slot?.startedAt
           );
-          if (!this.isCurrentRecovery(recovery) || attemptSignal.aborted)
+          if (!this.isCurrentRecovery(recovery) || !isConnected())
             throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
           this.assertPrimaryIdentity(agentId);
 
-          return this.restoreRegionSession(recovery, attemptSignal);
+          return this.restoreRegionSession(recovery, isConnected);
         },
       })
       .then(
@@ -953,16 +949,38 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
         return;
       }
-      payload = buildStationLoginPayload(
-        {teamId: data.teamId, loginOption: mode as LoginOption, dialNumber},
-        this.agentConfig.agentId
-      );
+      payload = this.buildStationLoginPayload({
+        teamId: data.teamId,
+        loginOption: mode as LoginOption,
+        dialNumber,
+      });
     }
     this.agentConfig.currentTeamId = payload.teamId;
     this.acceptedStation = payload;
     this.agentConfig.deviceType = payload.deviceType as LoginOption;
     this.agentConfig.dn = payload.dialNumber;
     this.agentConfig.defaultDn = payload.dialNumber;
+  }
+
+  private buildStationLoginPayload(data: AgentLogin): Agent.UserStationLogin {
+    const {loginOption, dialNumber, teamId} = data;
+    const deviceId =
+      loginOption === LoginOption.EXTENSION || loginOption === LoginOption.AGENT_DN
+        ? dialNumber
+        : WEB_RTC_PREFIX + this.agentConfig.agentId;
+
+    return {
+      dialNumber: loginOption === LoginOption.BROWSER ? deviceId : dialNumber,
+      teamId,
+      deviceType: loginOption,
+      isExtension: loginOption === LoginOption.EXTENSION,
+      deviceId,
+      roles: [AGENT],
+      teamName: EMPTY_STRING,
+      siteId: EMPTY_STRING,
+      usesOtherDN: false,
+      auxCodeId: EMPTY_STRING,
+    };
   }
 
   private async applyRestoredStationEffects(): Promise<void> {
@@ -974,15 +992,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private async restoreRegionSession(
     recovery: RegionRecovery,
-    signal: AbortSignal
+    isConnected: () => boolean
   ): Promise<void | (() => void)> {
+    const {signal} = recovery.controller;
     const manual =
       (reason: RegionRecoveryState['reason'], resumeRtd = false) =>
       () => {
-        if (!this.isCurrentRecovery(recovery) || signal.aborted) return;
+        if (!this.isCurrentRecovery(recovery) || !isConnected()) return;
         this.recoveryPhase = 'manualLoginRequired';
         this.publishRegionState(this.buildRegionState('stationLoginRequired', reason));
-        if (resumeRtd && this.isCurrentRecovery(recovery) && !signal.aborted)
+        if (resumeRtd && this.isCurrentRecovery(recovery) && isConnected())
           this.resumeRtd(this.registrationAbortController.signal);
       };
     if (!this.priorStationActive) return manual('region-switch', true);
@@ -991,10 +1010,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     const payload = this.acceptedStation;
     this.recoveryPhase = 'restoringSession';
-    while (this.isCurrentRecovery(recovery) && !signal.aborted) {
+    while (this.isCurrentRecovery(recovery) && isConnected()) {
       // eslint-disable-next-line no-await-in-loop -- Generation-owned retries are serial.
       await waitForRecoveryDelay(recovery.retryNotBefore - Date.now(), signal);
-      if (signal.aborted || !this.isCurrentRecovery(recovery))
+      if (!isConnected() || !this.isCurrentRecovery(recovery))
         throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
       if (recovery.stage === 'reload' && recovery.reloads > STATION_RELOAD_RETRY_DELAYS_MS.length)
         recovery.stage = 'fallback';
@@ -1017,7 +1036,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           // eslint-disable-next-line no-await-in-loop -- Bounded reload budget survives sockets.
           response = await this.services.agent.reload();
         }
-        if (!this.isCurrentRecovery(recovery) || signal.aborted)
+        if (!this.isCurrentRecovery(recovery) || !isConnected())
           throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
         if (stage === 'fallback')
           this.rememberAcceptedStation({
@@ -1032,15 +1051,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           });
         applying = true;
         this.recordRecoveryDiagnostic(diagnosticStage, 'succeeded', attempt, startedAt);
-        if (!this.isCurrentRecovery(recovery) || signal.aborted)
+        if (!this.isCurrentRecovery(recovery) || !isConnected())
           throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
         // eslint-disable-next-line no-await-in-loop -- Apply only this accepted session.
         await this.applyRestoredStationEffects();
-        if (!this.isCurrentRecovery(recovery) || signal.aborted)
+        if (!this.isCurrentRecovery(recovery) || !isConnected())
           throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
 
         return () => {
-          if (!this.isCurrentRecovery(recovery) || signal.aborted) return;
+          if (!this.isCurrentRecovery(recovery) || !isConnected()) return;
           this.recoveryPhase = 'ready';
           if (
             response.data.type === CC_EVENTS.AGENT_RELOGIN_SUCCESS &&
@@ -1052,7 +1071,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
               : 'requesting';
           }
           this.publishRegionState(this.buildRegionState('ready', 'region-switch'));
-          if (this.isCurrentRecovery(recovery) && !signal.aborted) {
+          if (this.isCurrentRecovery(recovery) && isConnected()) {
             this.resumeRtd(this.registrationAbortController.signal);
             this.requestAutoAvailable();
           }
@@ -1060,7 +1079,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       } catch (error) {
         const retryDelay = STATION_RELOAD_RETRY_DELAYS_MS[recovery.reloads - 1];
         const current = this.isCurrentRecovery(recovery);
-        if (!current || signal.aborted) {
+        if (!current || !isConnected()) {
           if (current && stage === 'reload' && retryDelay !== undefined)
             recovery.retryNotBefore = Math.max(recovery.retryNotBefore, Date.now() + retryDelay);
           throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
@@ -2152,7 +2171,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       }
 
-      const payload = buildStationLoginPayload(data, this.agentConfig.agentId);
+      const payload = this.buildStationLoginPayload(data);
       const resp = await this.services.agent.stationLogin({data: payload});
       if (generation !== this.recoveryGeneration)
         throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
@@ -3404,6 +3423,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   private handleConnectionLost = async (msg: ConnectionLostDetails): Promise<void> => {
     if (msg.isConnectionLost) {
+      const cancelled = this.cancelAutoAvailable();
+      if (cancelled) this.publishRegionState(cancelled);
       // TODO: Emit an event saying connection is lost
       this.recordBestEffort(() =>
         LoggerProxy.log('event=handleConnectionLost | Connection lost', {

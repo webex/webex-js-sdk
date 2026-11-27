@@ -71,7 +71,7 @@ Related context: [documentation index](../../../../docs/index.md) ·
 | `src/services/core/aqm-reqs.ts` | `AqmReqs`: `req`, `reqEmpty`, bind keys, pending maps, duplicate rejection, HTTP failure masking, timeout, and redaction |
 | `src/services/core/types.ts` | `Req`, `Conf`, `ConfEmpty`, `Res`, `ResEmpty`, `CbRes`, `Pending`, `Timeout`, and the RTD request types |
 | `src/services/core/websocket/WebSocketManager.ts` | Subscribe registration, the `wss` allow-list check, socket handlers, keepalive worker wiring, welcome resolution, multi-login close, and `message`/`socketClose` events |
-| `src/services/core/websocket/connection-service.ts` | Liveness timers, single-flight retry slots, restore failure, and the `connectionLost` event; the member subsections under Class and component relationships are justified by this file and `src/services/core/websocket/WebSocketManager.ts` |
+| `src/services/core/websocket/connection-service.ts` | Liveness timers, one pending attempt and retry slots, restore failure, and the `connectionLost` event; the member subsections under Class and component relationships are justified by this file and `src/services/core/websocket/WebSocketManager.ts` |
 | `src/services/core/websocket/keepalive.worker.js` | The worker script, its `start`/`terminate` inputs, and its `keepalive`/`closeSocket` outputs |
 | `src/services/core/websocket/types.ts` | `ConnectionResetOptions`, `ConnectionLostDetails`, `RegionRecoveryOptions` |
 | `src/services/core/constants.ts` | Timer values, `ALLOWED_ROUTING_NOTIFS_DOMAINS`, participant constants, and method-name constants |
@@ -160,7 +160,7 @@ contract `contact-center-core-transport` (internal SDK contract, canonical sourc
 |---|---|---|
 | `message` | string (JSON) | WebSocket message received |
 | `socketClose` | `{shouldReconnect: boolean}` | Reports explicit or admitted socket closure. False disables retries. |
-| `connectionLost` | `ConnectionLostDetails` | Emitted by `ConnectionService` on ordinary lost, recovered, reconnected, and restore-failed transitions. A keepalive echo sets `isKeepAlive: true` and emits only in ordinary mode with no admission flight in progress. |
+| `connectionLost` | `ConnectionLostDetails` | Emitted by `ConnectionService` on ordinary lost, recovered, reconnected, and restore-failed transitions. A keepalive echo sets `isKeepAlive: true` and emits only in ordinary mode with no pending admission in progress. |
 
 Generic message wrapper used throughout the SDK. All WebSocket messages and AQM responses conform to this shape:
 `Msg<T>` in [GlobalTypes.ts](../GlobalTypes.ts) carries `type`, `orgId`, `trackingId`, and a `data` payload of type `T`, so a typed event such as a login success is declared as `Msg<{agentId, status, ...}>` and arrives as `{type, orgId, trackingId, data: {agentId, status, ...}}`.
@@ -189,7 +189,7 @@ Do not remove or reinterpret exported symbols/events without a documented consum
 | CORE-R-001 | WebexRequest delegates service, resource, method, body, headers, and timeout to the authenticated host request API and returns or rejects with the host result unchanged. | All Contact Center REST clients share host-owned authentication and service routing without duplicating credential logic. | `src/services/core/WebexRequest.ts` | `test/unit/spec/services/core/WebexRequest.ts` | `WebexRequest.request` preserves the host result. AQM diagnostics use selected scalar fields. | PRESENT |
 | CORE-R-002 | `initWebSocket({body, resource, signal?}): Promise<WelcomeResponse>` resolves on an accepted current Welcome. Application notifications, including `SYSTEM_REGION_SWITCH`, are delivered after Welcome. `AGENT_MULTI_LOGIN` can close the attempt before Welcome. | A socket must finish admission before delivering station, state, task, or region-switch messages. | `src/services/core/websocket/WebSocketManager.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts`, `test/unit/spec/cc.ts` | Rejected subscribe, supersession, socket close before Welcome, and abort dispose owned admission. | PRESENT |
 | CORE-R-003 | AqmReqs must be constructed with the primary WebSocket manager and settle generated request promises from `notifSuccess`/`notifFail` binds or `TIMEOUT_REQ`. | HTTP acknowledgement alone does not represent backend operation completion. | `src/services/core/aqm-reqs.ts` | `test/unit/spec/services/core/aqm-reqs.ts` | None. | PRESENT |
-| CORE-R-004 | ConnectionService publishes current transport state and owns single-flight attempts. ContactCenter owns station and relogin policy. | Separating transport detection from agent recovery prevents Core from mutating package-level session state. | `src/services/core/websocket/connection-service.ts` | `test/unit/spec/services/core/websocket/connection-service.ts` | None. | PRESENT |
+| CORE-R-004 | ConnectionService publishes current transport state and runs one pending attempt at a time. ContactCenter owns station and relogin policy. | Separating transport detection from agent recovery prevents Core from mutating package-level session state. | `src/services/core/websocket/connection-service.ts` | `test/unit/spec/services/core/websocket/connection-service.ts` | None. | PRESENT |
 | CORE-R-005 | The keepalive worker must use `KEEPALIVE_WORKER_INTERVAL` as its interval and `CLOSE_SOCKET_TIMEOUT` as its close-socket timeout, and AQM requests default to `TIMEOUT_REQ` unless disabled/overridden (values in the timer table under Concurrency and reactive flow). | Accurate timing is required for predictable recovery and request failure behavior. | `src/services/core/constants.ts`, `src/services/core/websocket/WebSocketManager.ts` | `test/unit/spec/services/core/aqm-reqs.ts` | No unit case asserts the worker `start` message values; the AQM default is asserted by the default-timeout case. | WEAK |
 | CORE-R-007 | AQM routing-failure logging never emits the raw routing message payload or error verbatim; the failure-bind path logs only a fixed redacted diagnostic regardless of `redactSensitiveLogs`. When an AQM request additionally sets `redactSensitiveLogs`, timeout logs must also omit the request URL, bind key, and response while preserving settlement and cleanup behavior. | Dynamic request paths and routing messages can contain participant identifiers or phone numbers that must not enter diagnostic logs. | `src/services/core/aqm-reqs.ts`, `src/services/core/types.ts` | `test/unit/spec/services/core/aqm-reqs.ts` | The timeout flag is internal and opt-in; ordinary AQM logging remains backward compatible while routing-failure logging is unconditionally redacted. | PRESENT |
 | CORE-R-008 | `WebSocketManager` opens a socket only for a subscribe/register `webSocketUrl` that parses as a `wss` URL whose host equals, or is a subdomain of, an entry in `ALLOWED_ROUTING_NOTIFS_DOMAINS`; a malformed, non-`wss`, or non-allow-listed URL is rejected with an error and no socket is opened. | A server-controlled subscribe response could otherwise direct the realtime connection to an untrusted or non-secure endpoint. | `src/services/core/websocket/WebSocketManager.ts`, `src/services/core/constants.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | The allow-list is a fixed domain set; subdomain matching is exact suffix matching on the parsed hostname. | PRESENT |
@@ -203,7 +203,7 @@ Do not remove or reinterpret exported symbols/events without a documented consum
 | CORE-R-016 | An admission attempt owns its authenticated subscribe request, one automatic U2C refresh and subscribe retry for a recognized primary region mismatch, the returned URL, socket, Welcome deadline and keepalive resources. Retain the secure hostname check. Bound subscribe at 20 seconds and Welcome at 30 seconds. Supersession, timeout, close-before-Welcome, or abort disposes that attempt and fences late completions. | A stale URL, unresolved Welcome, or late callback cannot claim the current transport. | `src/services/core/websocket/WebSocketManager.ts`, `src/services/core/constants.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | T-003, T-005. Only an open, current socket with accepted Welcome is usable. | PRESENT |
 | CORE-R-017 | Ordinary reconnect uses five-second slots under a 50-second watchdog. An expired reconnect episode disposes its candidate. An admitted quiet socket can still receive a late keepalive. Region recovery uses one in-flight attempt, with base delays of 100/60/30/15 seconds plus fresh jitter up to 50 percent and repeated 15-second slots. A recognized primary subscribe mismatch refreshes U2C through `updateServices({forceRefresh: true})` and retries subscribe once. A second mismatch or terminal authentication stops the relevant recovery. The region driver never uses the ordinary watchdog. | Each retry policy needs its own timing and terminal behavior while preventing overlapping admission. | `src/services/core/websocket/connection-service.ts`, `src/services/core/websocket/WebSocketManager.ts`, `src/services/core/Utils.ts` | `test/unit/spec/services/core/websocket/connection-service.ts`, `test/unit/spec/services/core/websocket/WebSocketManager.ts`, `test/unit/spec/cc.ts` | T-004, T-005, T-012. Socket success is separate from session acceptance. | PRESENT |
 | CORE-R-018 | Regional station requests use the same AQM notification bindings, duplicate-request handling, and timeout as ordinary station requests. | The region switch changes the notification connection. | `src/services/core/aqm-reqs.ts`, `src/cc.ts` | `test/unit/spec/services/core/aqm-reqs.ts`, `test/unit/spec/cc.ts` | Live station recovery remains release verification. | PRESENT |
-| CORE-R-019 | In ordinary mode without an admission flight, `ConnectionService.onPing` guards JSON parsing and object validation. Malformed JSON and non-object/array payloads produce fixed `LoggerProxy.error` diagnostics and return without throwing or changing liveness state/timers; valid objects retain keepalive and recovery handling. Diagnostic sink exceptions are contained. | One malformed server frame or failing logger must not disrupt the liveness loop, and the frame must not enter logs. | `src/services/core/websocket/connection-service.ts` (onPing, diagnose) | `test/unit/spec/services/core/websocket/connection-service.ts` T-012 malformed-ping matrix and ordinary recovery cases | Non-ordinary modes and an active admission flight return before parsing or logging. | PRESENT |
+| CORE-R-019 | In ordinary mode without a pending admission, `ConnectionService.onPing` guards JSON parsing and object validation. Malformed JSON and non-object/array payloads produce fixed `LoggerProxy.error` diagnostics and return without throwing or changing liveness state/timers; valid objects retain keepalive and recovery handling. Diagnostic sink exceptions are contained. | One malformed server frame or failing logger must not disrupt the liveness loop, and the frame must not enter logs. | `src/services/core/websocket/connection-service.ts` (onPing, diagnose) | `test/unit/spec/services/core/websocket/connection-service.ts` T-012 malformed-ping matrix and ordinary recovery cases | Non-ordinary modes and an active pending admission return before parsing or logging. | PRESENT |
 
 ## Design overview
 
@@ -452,19 +452,19 @@ sequenceDiagram
     CS-->>CC: Ordinary transport status or restore failure
   else Eligible regional switch
     CC->>CS: recoverRegion(options)
-    CS->>CS: Single flight with region-specific pacing
+    CS->>CS: One pending attempt with region-specific pacing
     CS->>WS: Fresh subscribe and Welcome
     CS-->>CC: Run current post-Welcome session restore
     CC-->>CS: Outcome publisher for this generation
-    CS->>CS: Adopt socket and resume ordinary monitoring
-    CS-->>CC: Publish station outcome on the adopted socket
+    CS->>CS: Confirm socket is ready and resume ordinary monitoring
+    CS-->>CC: Publish station outcome on the connected socket
   end
 ```
 
-Ordinary liveness owns the 8-second loss detection and 50-second restore watchdog. Registration owns
-the lifetime of the ordinary driver. Region recovery pauses ordinary work, owns its own retry timer
-and current attempt, and hands the accepted Welcome back to ContactCenter for session policy. An
-aborted or superseded operation cannot install a socket or publish the newer generation's state.
+Ordinary liveness owns the 8-second loss detection and 50-second restore watchdog. ContactCenter starts
+and stops the ordinary driver with its registration lifecycle. Region recovery pauses ordinary work,
+owns its retry timer and current attempt, and hands the accepted Welcome back to ContactCenter for
+session policy. WebSocketManager closes pending admission when ContactCenter ends that recovery.
 
 ## Class and component relationships
 
@@ -499,16 +499,17 @@ actions using `region:stateChange`.
 
 ### ConnectionService members
 
-- `reset(options)` binds ordinary recovery to the current registration. It monitors an admitted
-  socket or schedules an ordinary reconnect if the socket is down. `pause()` cancels timers and the
-  driver's pending attempt while retaining an adopted socket. `stop()` also disposes that socket
-  and removes the listeners. Initial admission follows the registration's own signal.
-- `recoverRegion(options)` runs one attempt at a time. It passes accepted Welcome to `afterWelcome`,
-  then adopts the current socket and resumes ordinary monitoring before publishing its outcome.
-- A `RegionRecoveryInvocation` owns the retry count and result across attempts. Each
-  `ConnectionFlight` owns its cancellation signal, which stays with the socket after adoption.
-- A terminal error stops and cleans up the failed invocation before notifying observers. The
-  captured rejection belongs to that invocation even if an observer starts another registration.
+- ContactCenter calls `reset(options)` to start ordinary monitoring with the subscription settings.
+  The driver monitors a connected socket or schedules a reconnect if the socket is down. ContactCenter
+  calls `pause()` or `stop()` on lifecycle changes. Both clear retry timers and close a pending attempt
+  through `WebSocketManager.close()`. `stop()` also removes the driver's listeners.
+  ContactCenter explicitly closes the current socket when the registration ends.
+- `recoverRegion(options)` runs one attempt at a time. It passes accepted Welcome and a socket-ready
+  predicate to `afterWelcome`. When station recovery finishes on a usable socket, it resumes ordinary
+  monitoring and publishes the station outcome.
+- A `RegionRecoveryInvocation` retains the retry count and result across attempts. The driver keeps
+  one pending-attempt reference, while `WebSocketManager` owns the socket and its cleanup.
+- A terminal error stops recovery and closes the socket before notifying ContactCenter.
 
 ## Use cases and flows
 
@@ -527,7 +528,7 @@ actions using `region:stateChange`.
 | -------- | ---------------------- | ------------- | ---------------------------- |
 | Notification subscribe (`UC-2`) | HTTPS POST `v1/notification/subscribe` (or `v1/realtime/subscribe`) through `webex.request`, then the WebSocket | Response must carry a `wss` `webSocketUrl` on `cisco.com` or `ciscoccservice.com` | Subscribe and Welcome are bounded independently; the owning driver controls retry for the primary socket |
 | AQM operations (`UC-3`) | HTTPS through `WebexRequest`, result on the primary socket; binds are installed before the HTTP call | Bind fields must match the event `type` and nested `data` values | `TIMEOUT_REQ` or a per-request `timeout`. `'disabled'` removes the timeout. AQM leaves retries to the caller. |
-| Keepalive (`UC-4`) | `{"keepalive":"true"}` text frame every `KEEPALIVE_WORKER_INTERVAL`; the backend echo resets liveness timers and emits only in ordinary mode without an admission flight | Frame shape fixed in `WebSocketManager.ts` | Lost-connection, forced-close, and retry-slot timers from the timer table under Concurrency and reactive flow |
+| Keepalive (`UC-4`) | `{"keepalive":"true"}` text frame every `KEEPALIVE_WORKER_INTERVAL`; the backend echo resets liveness timers and emits only in ordinary mode without an pending admission | Frame shape fixed in `WebSocketManager.ts` | Lost-connection, forced-close, and retry-slot timers from the timer table under Concurrency and reactive flow |
 | Support log upload (`UC-6`) | `webex.internal.support.submitLogs(meta, undefined, {type: 'diff'})` | `feedbackId` from `crypto.randomUUID()` | No retry |
 
 ## Client state model
@@ -539,7 +540,7 @@ bindings and operation settlement. ConnectionService owns transport scheduling a
 | -------------- | ----- | ------------- | ------------------- | ----------------------------- |
 | Current `attempt`, accepted socket and `servingRegion` | `WebSocketManager` | No attempt, no serving region | Subscribe, Welcome, error, close or supersession | Superseding attempt or explicit close releases timer, socket and worker |
 | Pending success, failure, and cancel bindings | `AqmReqs` | Empty | Dispatch, notification, host rejection, or timeout | Clear pending bindings on settlement |
-| `mode`, `retryTimer`, `flight`, `socketOwner` and ordinary liveness timers | `ConnectionService` | Stopped until registration binds ordinary recovery | Registration reset, socket loss, pause, region recovery or stop | Reset or stop invalidates outstanding work and prevents obsolete callbacks from changing state |
+| `mode`, `retryTimer`, `pending` and ordinary liveness timers | `ConnectionService` | Stopped until registration binds ordinary recovery | Registration reset, socket loss, pause, region recovery or stop | Reset or stop invalidates outstanding work and prevents obsolete callbacks from changing state |
 | `WebexRequest.instance` | `WebexRequest` class | Unset until the first `getInstance({webex})` | First call with `webex` | Process lifetime |
 
 ## Business rules and invariants
@@ -557,10 +558,10 @@ ContactCenter owns station retry policy.
 
 The ordinary driver uses one in-flight attempt and schedules the next five-second slot after a
 retryable failure. Its retry callback observes an offline or failed connection and schedules safely.
-A keepalive resets ordinary liveness timers and emits only in ordinary mode with no admission flight.
+A keepalive resets ordinary liveness timers and emits only in ordinary mode with no pending admission.
 Slots are anchored to the loss time: a pending attempt skips elapsed slots, and a retryable failure
 waits for the next future slot without overlap or catch-up. A region switch pauses this driver and starts a
-registration-owned regional invocation, with its own timer and flight. Reset restores ordinary
+regional invocation controlled by ContactCenter, with its own timer and pending attempt. Reset restores ordinary
 reconnection eligibility. Stop clears work and listeners.
 
 | Constant                           | Value     | Purpose                                      |
@@ -584,8 +585,8 @@ stateDiagram-v2
   Ordinary --> Paused: prepare region recovery
   Paused --> Region: recoverRegion owns current invocation
   Region --> Region: retryable admission or transport loss
-  Region --> Ordinary: current afterWelcome completes and socket is adopted
-  Region --> Paused: invocation signal pauses recovery
+  Region --> Ordinary: afterWelcome completes on a usable socket
+  Region --> Paused: ContactCenter calls pause
   Ordinary --> Stopped: reconnect episode watchdog, terminal admission or close without reconnect
   Region --> Stopped: terminal invocation failure or registration ends
   Stopped --> Ordinary: reset with current registration
@@ -758,7 +759,7 @@ const errDetails = createErrDetailsObject(webexRequestPayload);
   undefined.
 - The profile's `lostConnectionRecoveryTimeout` is not passed to the transport. Ordinary recovery
   uses the 50-second `LOST_CONNECTION_RECOVERY_TIMEOUT`.
-- In ordinary mode with no admission flight, `ConnectionService` can emit `connectionLost` for a keepalive with `isKeepAlive` true. Listeners must check the state flags.
+- In ordinary mode with no pending admission, `ConnectionService` can emit `connectionLost` for a keepalive with `isKeepAlive` true. Listeners must check the state flags.
 - The ordinary driver observes offline and retryable admission failures and keeps the next slot bounded by the watchdog.
 - Once the ordinary watchdog disables reconnect on an admitted socket, a late worker close request
   leaves that socket available for a late keepalive.

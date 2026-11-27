@@ -35,7 +35,6 @@ const expectNoLoggedSecrets = (sinks: Array<jest.Mock | jest.SpyInstance>) => {
 describe('ConnectionService single-flight scheduler', () => {
   let service: ConnectionService;
   let manager: ManagerDouble;
-  let registration: AbortController;
   let terminal: jest.Mock;
   let events: jest.Mock;
   let logger: Record<string, jest.Mock>;
@@ -51,9 +50,9 @@ describe('ConnectionService single-flight scheduler', () => {
     Object.defineProperty(global, 'navigator', {value: {onLine: true}, configurable: true});
     manager = new ManagerDouble();
     service = new ConnectionService(manager as unknown as WebSocketManager);
-    registration = new AbortController(); terminal = jest.fn(); events = jest.fn();
+    terminal = jest.fn(); events = jest.fn();
     manager.usable = true;
-    service.reset({subscribeRequest, signal: registration.signal, onTerminalFailure: terminal});
+    service.reset({subscribeRequest, onTerminalFailure: terminal});
     service.on('connectionLost', events);
   });
   afterEach(() => {
@@ -62,11 +61,10 @@ describe('ConnectionService single-flight scheduler', () => {
     LoggerProxy.logger = oldLogger;
   });
   const recover = (overrides: Record<string, any> = {}) => {
-    const parent = new AbortController();
     const onScheduled = jest.fn(), afterWelcome = jest.fn().mockResolvedValue(undefined), onAttemptSettled = jest.fn();
-    const promise = service.recoverRegion({signal: parent.signal, onScheduled, afterWelcome, onAttemptSettled, ...overrides});
+    const promise = service.recoverRegion({onScheduled, afterWelcome, onAttemptSettled, ...overrides});
     promise.catch(() => undefined);
-    return {promise, parent, onScheduled, afterWelcome, onAttemptSettled};
+    return {promise, onScheduled, afterWelcome, onAttemptSettled};
   };
   const lose = () => { manager.usable = false; manager.emit('socketClose', {shouldReconnect: true}); };
   const expectNoSecrets = () => expectNoLoggedSecrets([
@@ -125,8 +123,8 @@ describe('ConnectionService single-flight scheduler', () => {
     const beforeRegistration = recover();
     await expect(beforeRegistration.promise).rejects.toMatchObject({data: {kind: 'cancelled'}});
     expect(beforeRegistration.onScheduled).not.toHaveBeenCalled();
-    service.reset({subscribeRequest, signal: registration.signal, onTerminalFailure: terminal});
-    service.reset({subscribeRequest, signal: registration.signal, onTerminalFailure: terminal});
+    service.reset({subscribeRequest, onTerminalFailure: terminal});
+    service.reset({subscribeRequest, onTerminalFailure: terminal});
     expect(manager.listenerCount('message')).toBe(1); expect(manager.listenerCount('socketClose')).toBe(1);
     await tick(60000); expect(manager.initWebSocket).not.toHaveBeenCalled();
     service.stop(); expect(manager.listenerCount('message')).toBe(0); expect(manager.listenerCount('socketClose')).toBe(0);
@@ -137,7 +135,7 @@ describe('ConnectionService single-flight scheduler', () => {
     async (source) => {
       const reset = jest.fn(() => {
         manager.usable = true;
-        service.reset({subscribeRequest, signal: registration.signal, onTerminalFailure: terminal});
+        service.reset({subscribeRequest, onTerminalFailure: terminal});
       });
       service.once('connectionLost', reset);
 
@@ -216,7 +214,7 @@ describe('ConnectionService single-flight scheduler', () => {
     const stale = createDeferred<any>(), current = createDeferred<any>();
     manager.initWebSocket.mockReturnValueOnce(stale.promise).mockReturnValueOnce(current.promise);
     lose(); await tick(5000);
-    service.reset({subscribeRequest, signal: registration.signal, onTerminalFailure: terminal});
+    service.reset({subscribeRequest, onTerminalFailure: terminal});
     await tick(5000);
     if (completion === 'resolve') stale.resolve({payload: 'STALE_SECRET'});
     else stale.reject(new Error('STALE_SECRET'));
@@ -229,12 +227,11 @@ describe('ConnectionService single-flight scheduler', () => {
     expectNoSecrets();
   });
 
-  it.each(['pause', 'stop', 'abort'])('T-012 ordinary cancellation stays silent on %s', async action => {
+  it.each(['pause', 'stop'])('T-012 ordinary cancellation stays silent on %s', async action => {
     const pending = createDeferred<any>(); manager.initWebSocket.mockReturnValueOnce(pending.promise);
     lose(); await tick(5000);
     if (action === 'pause') service.pause();
     else if (action === 'stop') service.stop();
-    else registration.abort();
     pending.reject(new Error('LATE_SECRET')); await flush(); await tick(100000);
     expect(ordinaryRecords()).toEqual([]);
     expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
@@ -315,22 +312,24 @@ describe('ConnectionService single-flight scheduler', () => {
   it('T-004 pauseCancelsAndRequiresExplicitResume', async () => {
     const admission = createDeferred<any>(); manager.initWebSocket.mockReturnValue(admission.promise);
     const run = recover(); await tick(100000);
-    const signal = manager.initWebSocket.mock.calls[0][0].signal;
-    service.pause(); expect(signal.aborted).toBe(true);
+    service.pause(); expect(manager.close).toHaveBeenCalledWith(false, 'Recovery cancelled');
     await expect(run.promise).rejects.toMatchObject({data: {kind: 'cancelled'}});
     manager.emit('socketClose', {shouldReconnect: true}); manager.emit('message', JSON.stringify({keepalive: 'true'}));
     await tick(600000); expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
     expect(events).not.toHaveBeenCalled();
     admission.reject(new Error('late rejection')); await flush();
     expect(jest.getTimerCount()).toBe(0);
-    manager.initWebSocket.mockResolvedValue({}); const next = recover(); await tick(100000); await next.promise;
+    manager.initWebSocket.mockImplementation(async () => {
+      manager.shouldReconnect = true; manager.usable = true; return {};
+    });
+    const next = recover(); await tick(100000); await next.promise;
   });
 
   it('T-004 sameRegistrationResetRestoresOrdinaryRecovery', async () => {
     const run = recover(); service.pause(); await expect(run.promise).rejects.toMatchObject({data: {kind: 'cancelled'}});
     manager.shouldReconnect = false;
     manager.usable = false;
-    service.reset({subscribeRequest, signal: registration.signal, onTerminalFailure: terminal});
+    service.reset({subscribeRequest, onTerminalFailure: terminal});
     await tick(4999); expect(manager.initWebSocket).not.toHaveBeenCalled();
     await tick(1); expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
     expect(manager.listenerCount('message')).toBe(1); expect(manager.listenerCount('socketClose')).toBe(1);
@@ -339,11 +338,10 @@ describe('ConnectionService single-flight scheduler', () => {
 
   it('reset and pause retain a usable idle socket without cancellation or a retry', async () => {
     const run = recover(); await tick(100000); await run.promise;
-    const signal = manager.initWebSocket.mock.calls[0][0].signal;
     manager.usable = true;
-    service.pause(); expect(signal.aborted).toBe(false);
-    service.reset({subscribeRequest, signal: registration.signal, onTerminalFailure: terminal});
-    expect(signal.aborted).toBe(false); expect(manager.close).not.toHaveBeenCalled();
+    service.pause();
+    service.reset({subscribeRequest, onTerminalFailure: terminal});
+    expect(manager.close).not.toHaveBeenCalled();
     expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
   });
 
@@ -395,9 +393,8 @@ describe('ConnectionService single-flight scheduler', () => {
       expect(run.afterWelcome).not.toHaveBeenCalled();
       expect(run.onAttemptSettled).not.toHaveBeenCalled();
 
-      const signal = manager.initWebSocket.mock.calls[0][0].signal;
-      service.pause();
-      expect(signal.aborted).toBe(true);
+        service.pause();
+      expect(manager.close).toHaveBeenCalledWith(false, 'Recovery cancelled');
       await expect(run.promise).rejects.toMatchObject({data: {kind: 'cancelled'}});
       admission.resolve({}); await flush();
       expect(run.afterWelcome).not.toHaveBeenCalled();
@@ -405,84 +402,6 @@ describe('ConnectionService single-flight scheduler', () => {
       expect(jest.getTimerCount()).toBe(0);
     }
   );
-
-  it.each([0, 4])('checks live ownership after regional wait %s before admission', async (waitIndex) => {
-    const delays = [100000, 60000, 30000, 15000, 15000];
-    const canAttempt = jest.fn(() => true);
-    const parent = new AbortController();
-    const add = jest.spyOn(parent.signal, 'addEventListener');
-    const remove = jest.spyOn(parent.signal, 'removeEventListener');
-    manager.initWebSocket.mockRejectedValue({statusCode: 503});
-    const run = recover({signal: parent.signal, canAttempt});
-    for (const delay of delays.slice(0, waitIndex)) await tick(delay);
-    await tick(delays[waitIndex] - 1);
-    expect(canAttempt).toHaveBeenCalledTimes(waitIndex);
-    canAttempt.mockReturnValue(false);
-    await tick(1);
-    expect(canAttempt).toHaveBeenCalledTimes(waitIndex + 1);
-    await expect(run.promise).rejects.toMatchObject({data: {kind: 'cancelled'}});
-    expect(manager.initWebSocket).toHaveBeenCalledTimes(waitIndex);
-    expect(run.afterWelcome).not.toHaveBeenCalled();
-    expect(run.onAttemptSettled).toHaveBeenCalledTimes(waitIndex);
-    expect(remove).toHaveBeenCalledWith('abort', add.mock.calls[0][1]);
-    expect(manager.listenerCount('message')).toBe(0);
-    expect(manager.listenerCount('socketClose')).toBe(0);
-    expect(jest.getTimerCount()).toBe(0);
-    manager.emit('socketClose', {shouldReconnect: true});
-    await tick(600000);
-    expect(manager.initWebSocket).toHaveBeenCalledTimes(waitIndex);
-    expect(run.onScheduled).toHaveBeenCalledTimes(waitIndex + 1);
-    expect(terminal).not.toHaveBeenCalled();
-  });
-
-  it.each([['pause', true], ['stop', false], ['abort', false], ['reset', true], ['replace', true]])
-    ('rechecks scheduler ownership after a reentrant predicate %s returning %s', async (action, allowed) => {
-      const parent = new AbortController();
-      let next: ReturnType<typeof recover>;
-      const canAttempt = jest.fn(() => {
-        if (action === 'pause') service.pause();
-        if (action === 'stop') service.stop();
-        if (action === 'abort') parent.abort();
-        if (action === 'reset') {
-          manager.usable = false;
-          service.reset({subscribeRequest, signal: registration.signal, onTerminalFailure: terminal});
-        }
-        if (action === 'replace') next = recover();
-        return allowed;
-      });
-      const run = recover({signal: parent.signal, canAttempt});
-      await tick(100000);
-      expect(canAttempt).toHaveBeenCalledTimes(1);
-      await expect(run.promise).rejects.toMatchObject({data: {kind: 'cancelled'}});
-      expect(manager.initWebSocket).not.toHaveBeenCalled();
-      expect(manager.close).not.toHaveBeenCalled();
-      expect(run.afterWelcome).not.toHaveBeenCalled();
-      expect(run.onAttemptSettled).not.toHaveBeenCalled();
-      parent.abort();
-      if (action === 'replace' || action === 'reset') {
-        const delay = action === 'replace' ? 100000 : 5000;
-        await tick(delay - 1); expect(manager.initWebSocket).not.toHaveBeenCalled();
-        await tick(1);
-        if (next) await expect(next.promise).resolves.toBeUndefined();
-        expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
-        expect(manager.initWebSocket.mock.calls[0][0].signal.aborted).toBe(false);
-        expect(manager.listenerCount('message')).toBe(1);
-        expect(manager.listenerCount('socketClose')).toBe(1);
-      } else {
-        await tick(600000);
-        expect(manager.initWebSocket).not.toHaveBeenCalled();
-        expect(jest.getTimerCount()).toBe(0);
-      }
-    });
-
-  it('cancels admission when the live ownership predicate throws', async () => {
-    const run = recover({canAttempt: () => {throw new Error('identity unavailable');}});
-    await tick(100000);
-    expect(manager.initWebSocket).not.toHaveBeenCalled();
-    await expect(run.promise).rejects.toMatchObject({data: {kind: 'cancelled'}});
-    expect(run.onAttemptSettled).not.toHaveBeenCalled();
-    expect(jest.getTimerCount()).toBe(0);
-  });
 
   it.each([401, 403])('T-012 stops regional admission after an authentication failure (%s)', async (status) => {
     manager.initWebSocket.mockRejectedValue({statusCode: status, body: {reason: 'AUTH_TEXT', reasonCode: 9999}, headers: {trackingid: 'auth-id'}});
@@ -509,22 +428,19 @@ describe('ConnectionService single-flight scheduler', () => {
     expect(jest.getTimerCount()).toBe(0);
   });
 
-  it('T-004 recoverRegionResolveRejectContract and explicit stopped/aborted admission', async () => {
+  it('regional recovery rejects when the scheduler is stopped', async () => {
     const run = recover(); await tick(100000); await expect(run.promise).resolves.toBeUndefined();
     expect(run.onAttemptSettled).not.toHaveBeenCalled();
     service.stop(); const stopped = recover(); await expect(stopped.promise).rejects.toMatchObject({data: {kind: 'cancelled'}});
     expect(stopped.onScheduled).not.toHaveBeenCalled();
-    service.reset({subscribeRequest, signal: registration.signal, onTerminalFailure: terminal});
-    const parent = new AbortController(); parent.abort(); const aborted = recover({signal: parent.signal});
-    await expect(aborted.promise).rejects.toMatchObject({data: {kind: 'cancelled'}});
-    expect(aborted.onScheduled).not.toHaveBeenCalled();
   });
 
   it('T-004 retries in the same driver after the pending restore settles', async () => {
     const restore = createDeferred<void>(); const after = jest.fn().mockReturnValueOnce(restore.promise).mockResolvedValue(undefined);
     const run = recover({afterWelcome: after}); await tick(100000);
-    const signal = after.mock.calls[0][1];
-    lose(); await flush(); expect(signal.aborted).toBe(true);
+    const isConnected = after.mock.calls[0][1];
+    expect(isConnected()).toBe(true);
+    lose(); await flush(); expect(isConnected()).toBe(false);
     expect(run.onScheduled).toHaveBeenCalledTimes(1);
     restore.reject(new Error('late restore rejection')); await flush();
     expect(run.onScheduled).toHaveBeenLastCalledWith(2, 60000);
@@ -548,16 +464,14 @@ describe('ConnectionService single-flight scheduler', () => {
       await tick(4999); expect(manager.initWebSocket).toHaveBeenCalledTimes(attempt - 1);
       await tick(1); expect(manager.initWebSocket).toHaveBeenCalledTimes(attempt);
     }
-    const signal = manager.initWebSocket.mock.calls[8][0].signal;
     const records = Array.from({length: 8}, (_, index) =>
       attemptRecord(index + 1, (index + 1) * 5000, 'retrying', {status: 503}));
     await tick(4999);
-    expect(signal.aborted).toBe(false);
     expect(ordinaryRecords()).toEqual(records);
     expect(manager.close).not.toHaveBeenCalled();
     expect(events.mock.calls.filter(([event]) => event.isRestoreFailed)).toHaveLength(0);
     await tick(1);
-    expect(signal.aborted).toBe(true);
+    expect(manager.hasUsableSocket()).toBe(false);
     expect(manager.close.mock.calls).toEqual([[false, 'Restore watchdog expired']]);
     expect(events.mock.calls.filter(([event]) => event.isRestoreFailed)).toHaveLength(1);
     pending.resolve({}); await flush(); await tick(600000);
@@ -622,106 +536,6 @@ describe('ConnectionService single-flight scheduler', () => {
     }
   });
 
-  it.each([
-    {name: 'auth401', error: {statusCode: 401}, kind: 'authentication-failed', failure: {status: 401},
-      action: 'recoverRegion', throwing: false},
-    {name: 'auth403', error: {statusCode: 403}, kind: 'authentication-failed', failure: {status: 403},
-      action: 'pause', throwing: true},
-    {name: 'auth401', error: {statusCode: 401}, kind: 'authentication-failed', failure: {status: 401},
-      action: 'stop', throwing: false},
-    {name: 'mismatch', error: {statusCode: 409, body: {reason: 'REGION_MISMATCH_NO_OVERRIDE'}},
-      kind: 'region-mismatch', failure: {status: 409, reason: 'REGION_MISMATCH_NO_OVERRIDE'},
-      action: 'reset', throwing: false},
-    {name: 'afterWelcome', error: new Error('policy failed'), kind: 'after-welcome-failed', failure: {},
-      action: 'resetRegion', throwing: true},
-  ])
-    ('T-004 terminalSettlementCommittedBeforeHook $name $action throwing=$throwing',
-      async ({name, error, kind, failure, action, throwing}) => {
-        const parent = new AbortController(), nextRegistration = new AbortController();
-        const add = jest.spyOn(parent.signal, 'addEventListener');
-        const remove = jest.spyOn(parent.signal, 'removeEventListener');
-        const nextRequest = {...subscribeRequest, force: false};
-        const nextTerminal = jest.fn(), rejected = jest.fn(), order: string[] = [];
-        const snapshots: unknown[] = [];
-        let next: ReturnType<typeof recover>;
-        const afterWelcome = jest.fn().mockResolvedValue(undefined);
-        if (name === 'afterWelcome') afterWelcome.mockRejectedValueOnce(error);
-        else manager.initWebSocket.mockRejectedValueOnce(error);
-        const hook = jest.fn((_attempt, _outcome, reported) => {
-          order.push('hook');
-          snapshots.push({
-            closed: manager.close.mock.calls.map(args => [...args]),
-            reconnect: manager.shouldReconnect,
-            flightAborted: manager.initWebSocket.mock.calls[0][0].signal.aborted,
-            invocationDetached: remove.mock.calls.some(([type, listener]) =>
-              type === 'abort' && listener === add.mock.calls[0][1]),
-            messages: manager.listenerCount('message'),
-            closes: manager.listenerCount('socketClose'),
-            timers: jest.getTimerCount(),
-          });
-          if (action === 'recoverRegion') next = recover();
-          if (action === 'pause') service.pause();
-          if (action === 'stop') service.stop();
-          if (action === 'reset' || action === 'resetRegion') {
-            service.reset({subscribeRequest: nextRequest, signal: nextRegistration.signal,
-              onTerminalFailure: nextTerminal});
-            if (action === 'resetRegion') next = recover();
-          }
-          parent.abort(); registration.abort();
-          // The observer's copy cannot replace the captured terminal error's data.
-          reported.status = 418; reported.reason = 'observer mutation';
-          if (throwing) throw new Error('observer failed');
-        });
-        const run = recover({signal: parent.signal, afterWelcome, onAttemptSettled: hook});
-        const observed = run.promise.catch(error => { order.push('rejected'); rejected(error); });
-        await tick(100000); await observed;
-        expect(rejected.mock.calls[0][0]).toBeInstanceOf(Error);
-        expect(rejected.mock.calls[0][0].data).toEqual({...failure, kind});
-        expect(order).toEqual(['hook', 'rejected']);
-        expect(hook.mock.calls[0].slice(0, 2)).toEqual([1, 'terminal']);
-        expect(snapshots).toEqual([{
-          closed: [[false, 'Terminal recovery']], reconnect: false, flightAborted: true,
-          invocationDetached: true, messages: 0, closes: 0, timers: 0,
-        }]);
-        expect(run.onScheduled.mock.calls).toEqual([[1, 100000]]);
-        expect(manager.close.mock.calls).toEqual([[false, 'Terminal recovery']]);
-        expect(terminal).not.toHaveBeenCalled();
-
-        if (action === 'reset' || action === 'resetRegion') {
-          expect(manager.shouldReconnect).toBe(true);
-          expect(manager.listenerCount('message')).toBe(1);
-          expect(manager.listenerCount('socketClose')).toBe(1);
-          const delay = action === 'reset' ? 5000 : 100000;
-          await tick(delay - 1); expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
-          await tick(1);
-          if (next) await expect(next.promise).resolves.toBeUndefined();
-          expect(manager.initWebSocket).toHaveBeenCalledTimes(2);
-          expect(manager.initWebSocket.mock.calls[1][0].body).toEqual(nextRequest);
-          const signal = manager.initWebSocket.mock.calls[1][0].signal;
-          expect(signal.aborted).toBe(false);
-          expect(manager.usable).toBe(true);
-          expect(manager.close).toHaveBeenCalledTimes(1);
-          expect(nextTerminal).not.toHaveBeenCalled();
-          nextRegistration.abort(); expect(signal.aborted).toBe(true);
-        } else {
-          if (next) {
-            await expect(next.promise).rejects.toMatchObject({data: {kind: 'cancelled'}});
-            expect(next.onScheduled).not.toHaveBeenCalled();
-          }
-          const stopped = recover();
-          await expect(stopped.promise).rejects.toMatchObject({data: {kind: 'cancelled'}});
-          expect(stopped.onScheduled).not.toHaveBeenCalled();
-          lose(); manager.emit('message', JSON.stringify({keepalive: 'true'}));
-          await tick(600000);
-          expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
-          expect(manager.listenerCount('message')).toBe(0);
-          expect(manager.listenerCount('socketClose')).toBe(0);
-        }
-        expect(jest.getTimerCount()).toBe(0);
-        expect(hook).toHaveBeenCalledTimes(1);
-        expect(rejected).toHaveBeenCalledTimes(1);
-      });
-
   it('cancellation and supersession are silent to failed-attempt hooks and old results', async () => {
     const pending = createDeferred<any>(); manager.initWebSocket.mockReturnValueOnce(pending.promise);
     const old = recover(); await tick(100000); const next = recover();
@@ -754,25 +568,22 @@ describe('ConnectionService with actual WebSocketManager', () => {
   }
   let service: ConnectionService;
   let manager: WebSocketManager;
-  let registration: AbortController;
   let request: jest.Mock;
   let terminal: jest.Mock;
   let events: jest.Mock;
   const startRecovery = (overrides: Record<string, any> = {}) => {
-    const parent = new AbortController();
     const onScheduled = jest.fn(), afterWelcome = jest.fn().mockResolvedValue(undefined), onAttemptSettled = jest.fn();
-    const promise = service.recoverRegion({signal: parent.signal, onScheduled,
+    const promise = service.recoverRegion({onScheduled,
       afterWelcome, onAttemptSettled, ...overrides});
     promise.catch(() => undefined);
 
-    return {promise, parent, onScheduled, afterWelcome, onAttemptSettled};
+    return {promise, onScheduled, afterWelcome, onAttemptSettled};
   };
   const recover = async () => {
     const run = startRecovery();
     await tick(100000);
     Socket.instances[0].welcome(); await flush(); await run.promise;
 
-    return run.parent;
   };
 
   beforeEach(() => {
@@ -791,8 +602,8 @@ describe('ConnectionService with actual WebSocketManager', () => {
         updateServices: jest.fn().mockResolvedValue(undefined),
       }}} as any});
     service = new ConnectionService(manager);
-    registration = new AbortController(); terminal = jest.fn(); events = jest.fn();
-    service.reset({subscribeRequest, signal: registration.signal, onTerminalFailure: terminal});
+    terminal = jest.fn(); events = jest.fn();
+    service.reset({subscribeRequest, onTerminalFailure: terminal});
     service.on('connectionLost', events);
   });
   afterEach(() => {
@@ -803,7 +614,7 @@ describe('ConnectionService with actual WebSocketManager', () => {
   });
 
   it.each(['subscribe', 'open', 'Welcome'])(
-    'T-004 watchdogAbortsSubscribeOpenAndWelcome %s with actual WebSocketManager', async (phase) => {
+    'T-004 watchdogClosesSubscribeOpenAndWelcome %s with actual WebSocketManager', async (phase) => {
       const sinks = levels.map(level => jest.spyOn(LoggerProxy, level).mockImplementation(() => undefined));
       const pending: ReturnType<typeof createDeferred<any>>[] = [];
       if (phase === 'subscribe') {
@@ -826,10 +637,8 @@ describe('ConnectionService with actual WebSocketManager', () => {
       const settled = [attemptRecord(1, phase === 'subscribe' ? 25000 : 35000, 'retrying')];
       expect(ordinaryRecords()).toEqual(settled);
       expectNoLoggedSecrets(sinks);
-      const activeSignal = init.mock.calls[init.mock.calls.length - 1][0].signal!;
       const lateCallbacks = Socket.instances.map(({onopen, onmessage}) => ({onopen, onmessage}));
       await tick(5000);
-      expect(activeSignal.aborted).toBe(true);
       expect(manager.hasUsableSocket()).toBe(false);
       expect(manager.getServingRegion()).toBeUndefined();
       expect(events.mock.calls.filter(([event]) => event.isRestoreFailed)).toHaveLength(1);
@@ -878,7 +687,6 @@ describe('ConnectionService with actual WebSocketManager', () => {
       expect(run.onScheduled.mock.calls).toEqual([[1, 100000], [2, 60000]]);
       expect(run.onAttemptSettled.mock.invocationCallOrder[0])
         .toBeLessThan(run.onScheduled.mock.invocationCallOrder[1]);
-      expect(init.mock.calls[0][0].signal!.aborted).toBe(true);
       if (phase === 'Welcome') {
         expect(expiredSocket.close).toHaveBeenCalledTimes(1);
         expect(expiredSocket.onopen).toBeNull(); expect(expiredSocket.onmessage).toBeNull();
@@ -908,14 +716,11 @@ describe('ConnectionService with actual WebSocketManager', () => {
       await tick(1);
       expect(request).toHaveBeenCalledTimes(2);
       expect(init).toHaveBeenCalledTimes(2);
-      expect(init.mock.calls[1][0].signal).not.toBe(init.mock.calls[0][0].signal);
-      expect(init.mock.calls[1][0].signal!.aborted).toBe(false);
       expect(Socket.instances).toHaveLength(socketCount + 1);
-      run.parent.abort();
+      service.pause();
       await expect(run.promise).rejects.toHaveProperty('data', {kind: 'cancelled'});
       await observed; await tick(600000);
       expect(rejected).toHaveBeenCalledTimes(1); expect(resolved).not.toHaveBeenCalled();
-      expect(init.mock.calls[1][0].signal!.aborted).toBe(true);
       expect(Socket.instances[socketCount].close).toHaveBeenCalledTimes(1);
       expect(request).toHaveBeenCalledTimes(2);
       expect(Socket.instances).toHaveLength(socketCount + 1);
@@ -938,20 +743,16 @@ describe('ConnectionService with actual WebSocketManager', () => {
       await tick(100000);
       const socket = Socket.instances[0];
       socket.welcome(); await flush();
-      const signal = init.mock.calls[0][0].signal!;
-      expect(afterWelcome.mock.calls).toEqual([[{}, signal]]);
-      expect(signal).not.toBe(run.parent.signal);
-      expect(signal).not.toBe(registration.signal);
-      expect(signal.aborted).toBe(false);
+      const isConnected = afterWelcome.mock.calls[0][1];
+      expect(afterWelcome.mock.calls).toEqual([[{}, isConnected]]);
+      expect(isConnected()).toBe(true);
       expect(manager.hasUsableSocket()).toBe(true);
       expect(jest.getTimerCount()).toBe(0);
 
       if (action === 'multi-login') socket.message({type: CC_EVENTS.AGENT_MULTI_LOGIN});
       else service.pause();
-      expect(signal.aborted).toBe(true);
+      expect(manager.hasUsableSocket()).toBe(false);
       await expect(run.promise).rejects.toHaveProperty('data', {kind: 'cancelled'});
-      expect(run.parent.signal.aborted).toBe(false);
-      expect(registration.signal.aborted).toBe(false);
       expect(socket.close).toHaveBeenCalledTimes(1);
       expect(manager.hasUsableSocket()).toBe(false);
       expect(manager.getServingRegion()).toBeUndefined();
@@ -987,8 +788,9 @@ describe('ConnectionService with actual WebSocketManager', () => {
     await tick(100000);
     const socket = Socket.instances[0];
     socket.welcome(); await flush();
-    const signal = init.mock.calls[0][0].signal!;
-    expect(afterWelcome.mock.calls).toEqual([[{}, signal]]);
+    const isConnected = afterWelcome.mock.calls[0][1];
+    expect(afterWelcome.mock.calls).toEqual([[{}, isConnected]]);
+    expect(isConnected()).toBe(true);
     await tick(60000);
     expect(jest.getTimerCount()).toBe(0);
     expect(events.mock.calls).toEqual(before);
@@ -997,7 +799,6 @@ describe('ConnectionService with actual WebSocketManager', () => {
 
     restore.resolve(); await flush(); await expect(run.promise).resolves.toBeUndefined();
     expect(jest.getTimerCount()).toBe(2);
-    expect(signal.aborted).toBe(false);
     expect(manager.hasUsableSocket()).toBe(true);
     await tick(7999);
     expect(events.mock.calls).toEqual(before);
@@ -1011,12 +812,10 @@ describe('ConnectionService with actual WebSocketManager', () => {
     expect(events.mock.calls).toEqual([...before, [lost]]);
     expect(events.mock.calls.filter(([event]) => event.isRestoreFailed)).toHaveLength(0);
     expect(socket.close).not.toHaveBeenCalled();
-    expect(signal.aborted).toBe(false);
     await tick(1);
     expect(events.mock.calls).toEqual([...before, [lost], [{...lost, isRestoreFailed: true}]]);
     expect(events.mock.calls.filter(([event]) => event.isRestoreFailed)).toHaveLength(1);
     expect(socket.close).not.toHaveBeenCalled();
-    expect(signal.aborted).toBe(false);
     expect(manager.hasUsableSocket()).toBe(true);
     expect(jest.getTimerCount()).toBe(0);
     const worker = (global.Worker as jest.Mock).mock.results[0].value;
@@ -1058,10 +857,9 @@ describe('ConnectionService with actual WebSocketManager', () => {
       headers: {'X-WXCC-Region-Reason': failure.reason, trackingid: failure.trackingId}});
     const init = jest.spyOn(manager, 'initWebSocket');
     const close = jest.spyOn(manager, 'close');
-    const parent = new AbortController();
     const onScheduled = jest.fn(), afterWelcome = jest.fn(), onAttemptSettled = jest.fn();
     const rejected = jest.fn();
-    const promise = service.recoverRegion({signal: parent.signal, onScheduled, afterWelcome, onAttemptSettled});
+    const promise = service.recoverRegion({onScheduled, afterWelcome, onAttemptSettled});
     const observed = promise.catch(rejected);
 
     expect(onScheduled.mock.calls).toEqual([[1, 100000]]);
@@ -1072,7 +870,6 @@ describe('ConnectionService with actual WebSocketManager', () => {
     expect(request.mock.calls.map(([options]) => options.resource)).toEqual([SUBSCRIBE_API, SUBSCRIBE_API]);
     expect(onAttemptSettled.mock.calls).toEqual([[1, 'terminal', failure]]);
     expect(close.mock.calls).toEqual([[false, 'Terminal recovery']]);
-    expect(init.mock.calls[0][0].signal.aborted).toBe(true);
     expect(manager.shouldReconnect).toBe(false);
     expect(manager.hasUsableSocket()).toBe(false);
     expect(manager.listenerCount('socketClose')).toBe(0);
@@ -1084,7 +881,7 @@ describe('ConnectionService with actual WebSocketManager', () => {
       manager.emit('message', JSON.stringify({keepalive: 'true'}));
       await tick(delay);
     }
-    parent.abort(); await flush();
+    service.pause(); await flush();
     expect(rejected).toHaveBeenCalledTimes(1);
     expect(afterWelcome).not.toHaveBeenCalled();
     expect(terminal).not.toHaveBeenCalled();
@@ -1098,9 +895,8 @@ describe('ConnectionService with actual WebSocketManager', () => {
     expect(jest.getTimerCount()).toBe(0);
   });
 
-  it('keeps a completed regional socket usable after its settled parent aborts', async () => {
-    const parent = await recover();
-    parent.abort();
+  it('keeps a completed regional socket usable for ordinary keepalives', async () => {
+    await recover();
     expect(manager.hasUsableSocket()).toBe(true);
     expect(Socket.instances[0].close).not.toHaveBeenCalled();
     for (let elapsed = 0; elapsed < 60000; elapsed += 5000) {
@@ -1114,11 +910,9 @@ describe('ConnectionService with actual WebSocketManager', () => {
     expect(terminal).not.toHaveBeenCalled();
   });
 
-  it.each(['registration abort', 'explicit stop'])(
-    'disposes a completed regional socket on %s', async (action) => {
+  it('disposes a completed regional socket when registration ends', async () => {
       await recover();
-      if (action === 'registration abort') registration.abort();
-      else service.stop();
+      service.stop(); manager.close(false);
       expect(manager.hasUsableSocket()).toBe(false);
       expect(Socket.instances[0].close).toHaveBeenCalledTimes(1);
       expect(manager.getServingRegion()).toBeUndefined();
@@ -1128,51 +922,6 @@ describe('ConnectionService with actual WebSocketManager', () => {
       await tick(60000);
       expect(request).toHaveBeenCalledTimes(1);
       expect(events).not.toHaveBeenCalled();
-      expect(terminal).not.toHaveBeenCalled();
-    }
-  );
-
-  it('rebinds a retained socket to the new registration on reset', async () => {
-    const parent = await recover();
-    const next = new AbortController();
-    service.reset({subscribeRequest, signal: next.signal, onTerminalFailure: terminal});
-    parent.abort(); registration.abort();
-    expect(manager.hasUsableSocket()).toBe(true);
-    expect(Socket.instances[0].close).not.toHaveBeenCalled();
-    next.abort();
-    expect(manager.hasUsableSocket()).toBe(false);
-    expect(Socket.instances[0].close).toHaveBeenCalledTimes(1);
-    expect(jest.getTimerCount()).toBe(0);
-    expect(request).toHaveBeenCalledTimes(1);
-  });
-
-  it.each(['stop', 'reset'] as const)(
-    'abandons the old native close when an adopted socket abort reenters %s', async (action) => {
-      const init = jest.spyOn(manager, 'initWebSocket');
-      await recover();
-      const {signal} = init.mock.calls[0][0];
-      const onAbort = jest.fn(() => {
-        if (action === 'stop') service.stop();
-        else service.reset({subscribeRequest, signal: registration.signal, onTerminalFailure: terminal});
-      });
-      signal.addEventListener('abort', onAbort, {once: true});
-      const socket = Socket.instances[0];
-
-      socket.readyState = 3;
-      socket.onclose?.();
-
-      expect(onAbort).toHaveBeenCalledTimes(1);
-      expect(events).toHaveBeenCalledTimes(action === 'reset' ? 1 : 0);
-      expect(jest.getTimerCount()).toBe(action === 'reset' ? 2 : 0);
-      await tick(action === 'reset' ? 4999 : 60000);
-      expect(request).toHaveBeenCalledTimes(1);
-      if (action === 'reset') {
-        await tick(1);
-        expect(request).toHaveBeenCalledTimes(2);
-        Socket.instances[1].welcome(); await flush();
-        expect(events).toHaveBeenCalledTimes(2);
-        expect(events).toHaveBeenLastCalledWith(expect.objectContaining({isSocketReconnected: true}));
-      }
       expect(terminal).not.toHaveBeenCalled();
     }
   );
@@ -1215,12 +964,12 @@ describe('ConnectionService with actual WebSocketManager', () => {
 
       expect(socket.close).toHaveBeenCalledTimes(1);
       if (run) {
-        expect(run.onAttemptSettled.mock.calls).toEqual([[1, 'retrying', {}]]);
+        expect(run.onAttemptSettled.mock.calls).toEqual([[1, 'retrying', {reason: 'RECOVERY_INTERRUPTED'}]]);
         expect(run.afterWelcome).not.toHaveBeenCalled();
       } else {
         expect(info).toHaveBeenCalledWith('Ordinary reconnect attempt settled', {
           module: CONNECTION_SERVICE_FILE, method: METHODS.HANDLE_SOCKET_CLOSE,
-          data: {attempt: 1, elapsedMs: 5000, outcome: 'retrying'},
+          data: {attempt: 1, elapsedMs: 5000, outcome: 'retrying', reason: 'RECOVERY_INTERRUPTED'},
         });
       }
 
