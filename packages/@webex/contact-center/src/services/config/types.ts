@@ -197,6 +197,14 @@ export const CC_AGENT_EVENTS = {
   AGENT_CONTACT_RESERVED: 'AgentContactReserved',
   /** Agent-level Agent Wellness Break notification */
   WELLNESS_BREAK: 'WellnessBreak',
+  /** V2: Per-channel state change notification */
+  AGENT_CHANNEL_STATE_CHANGED: 'AgentChannelStateChanged',
+  /** V2: Per-channel state change failure notification */
+  AGENT_CHANNEL_STATE_CHANGE_FAILED: 'AgentChannelStateChangeFailed',
+  /** V2: Per-channel relogin success notification */
+  AGENT_CHANNEL_RELOGIN_SUCCESS: 'AgentChannelReloginSuccess',
+  /** V2: Outer message category for channel state change events (used in AQM bind) */
+  AGENT_CHANNEL_STATE_CHANGE: 'AgentChannelStateChange',
 } as const;
 
 /**
@@ -258,7 +266,10 @@ export type WebSocketEvent = {
     | Agent.LogoutSuccess
     | Agent.ReloginSuccess
     | Agent.StateChangeSuccess
-    | Agent.BuddyAgentsSuccess;
+    | Agent.BuddyAgentsSuccess
+    | Agent.AgentChannelStateChanged
+    | Agent.AgentChannelStateChangeFailed
+    | Agent.AgentChannelReloginSuccess;
 };
 
 /**
@@ -440,6 +451,12 @@ export type AgentProfile = {
    * Timeout desktop inactivity minutes.
    */
   timeoutDesktopInactivityMins?: number;
+
+  /**
+   * Whether granular per-channel agent state control (V2) is enabled for this agent profile.
+   * When true, agents can set availability independently per channel (telephony, chat, email, social).
+   */
+  manageChannelAvailability?: boolean;
 };
 
 /**
@@ -1183,6 +1200,8 @@ export type Profile = {
    * Server-side rollout remains enforced by the backend configuration and notification delivery.
    */
   isWellnessBreakEnabled?: boolean;
+  /** Whether granular per-channel agent state control (V2) is enabled for this agent profile */
+  manageChannelAvailability?: boolean;
 };
 
 /**

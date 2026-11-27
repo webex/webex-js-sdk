@@ -32,6 +32,7 @@ const {
   getLegacyExternalTransitionDecision,
   getRecoveryDecision,
   getSelectableIdleCodes,
+  getUnconfirmedChannelTypes,
   getWellnessTransition,
   parseRecoveryMarker,
   shouldResetForSessionEvent,
@@ -40,6 +41,7 @@ const {
 const WELLNESS_OFFER_TIMEOUT_MS = 5 * 60 * 1000;
 const WELLNESS_REQUEST_DECISION_TIMEOUT_MS = 5 * 60 * 1000;
 const WELLNESS_STATE_SETTLE_DELAY_MS = 2 * 1000;
+const WELLNESS_CHANNEL_CONFIRMATION_TIMEOUT_MS = 20 * 1000;
 const WELLNESS_SAFE_STATE_RECHECK_MS = 1000;
 const WELLNESS_BREAK_DURATION_MS = 60 * 1000;
 const WELLNESS_RESTORE_MAX_ATTEMPTS = 3;
@@ -281,6 +283,125 @@ const disableWebRTCRegistrationCheckbox = document.querySelector('#disableWebRTC
 const enableWxBetterTogetherCheckbox = document.querySelector('#enableWxBetterTogetherFlag');
 deregisterBtn.style.backgroundColor = 'red';
 let enableProd = true;
+
+// Granular Agent State (WXCC-15791) — constants
+// User-selectable channels only; workItem and customMessaging are internal channel
+// types that do not participate in user-facing state control.
+const GRANULAR_CHANNEL_ORDER = ['telephony', 'chat', 'email', 'social'];
+const GRANULAR_CHANNEL_LABELS = {
+  telephony: 'Voice',
+  chat: 'Chat',
+  email: 'Email',
+  social: 'Social',
+  workItem: 'Work Item',
+  customMessaging: 'Custom Messaging',
+};
+// Momentum Design icons, as used by the Agent Desktop channel avatars and the
+// "Manage channel availability" rows.
+const MD_ICON_BASE_URL = 'https://cdn.jsdelivr.net/npm/@momentum-design/icons@0.17.0/dist/svg/';
+const GRANULAR_CHANNEL_AVATAR_ICONS = {
+  telephony: 'handset-filled',
+  chat: 'chat-filled',
+  email: 'email-filled',
+  social: 'sms-message-filled',
+  workItem: 'apps-filled',
+  customMessaging: 'chat-group-filled',
+};
+const GRANULAR_CHANNEL_MANAGE_ICONS = {
+  telephony: 'handset-regular',
+  chat: 'chat-regular',
+  email: 'email-regular',
+  social: 'sms-message-regular',
+  workItem: 'apps-regular',
+  customMessaging: 'chat-group-regular',
+};
+// Presence type -> Momentum presence badge icon (mdc-presence getIconValue).
+const GRANULAR_PRESENCE_ICONS = {
+  active: 'active-presence-small-filled',
+  away: 'recents-presence-badge-filled',
+  rona: 'dnd-presence-badge-filled',
+  engaged: 'busy-presence-bold',
+  wrapup: 'busy-presence-bold',
+};
+const GRANULAR_STATE_LABELS = {
+  available: 'Available',
+  engaged: 'Engaged',
+  reserved: 'Reserved',
+  wrapup: 'Wrap Up',
+  engagedother: 'Engaged Other',
+};
+// Desktop presenceTypeMap; idle-code names not listed here show as 'away'.
+const GRANULAR_PRESENCE_TYPES = {
+  idle: 'away',
+  available: 'active',
+  engaged: 'engaged',
+  engagedother: 'engaged',
+  reserved: 'engaged',
+  wrapup: 'wrapup',
+  rona: 'rona',
+};
+// Agent Desktop RonaUtils: system idle codes that open a per-channel alert.
+const GRANULAR_RONA_MESSAGES = {
+  Agent_Unavailable: () => 'You missed an interaction. This can happen due to user synchronization problems or system errors.',
+  Agent_Declined: () => 'You declined an interaction. Your availability is now set to Idle. Do you want to switch back to Available?',
+  RONA: (channel) =>
+    `You missed a ${channel} interaction, so your ${channel} interaction state is now RONA (Idle). Update your availability state to continue receiving ${channel} interactions.`,
+  Agent_Busy: () => 'You missed a call because your device is in use. Your availability is now set to Idle. Do you want to switch back to Available?',
+  Channel_Failure: () => 'Something unexpected happened. Your availability is now set to Idle. Do you want to switch back to Available?',
+  Invalid_Number: () =>
+    'You missed a call because your dial number is invalid. Your availability is now Idle. Update your dial number in your profile menu and set yourself as Available.',
+};
+const TELEPHONY_DISCONNECTED_TOOLTIP =
+  'Desktop telephony is disconnected. Please try other telephony options or contact your administrator.';
+
+/** Momentum icon drawn as a CSS mask so `color` sets its fill. */
+function mdIcon(name, cls = '') {
+  return `<span class="md-icon ${cls}" style="--md-icon: url('${MD_ICON_BASE_URL}${name}.svg')" aria-hidden="true"></span>`;
+}
+
+/**
+ * Escapes HTML special characters to prevent XSS when inserting server-sourced
+ * strings (e.g. idle code names) into innerHTML / attribute values.
+ */
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.appendChild(document.createTextNode(str ?? ''));
+  return div.innerHTML.replace(/"/g, '&quot;');
+}
+const GRANULAR_AVAILABLE_AUX_CODE_ID = '0';
+const GRANULAR_AGENT_STATE_AVAILABLE = 'Available';
+const GRANULAR_AGENT_STATE_IDLE = 'Idle';
+// Platform-assigned states (ERROR_TRIGGERING_IDLE_CODES plus Engaged) that an agent cannot pick.
+const NON_SELECTABLE_STATE_NAMES = [
+  'Invalid_Number', 'Agent_Unavailable', 'Agent_Declined',
+  'Agent_Busy', 'Channel_Failure', 'RONA', 'Engaged',
+];
+
+// Granular Agent State — DOM element refs
+const legacyAgentStateElm = document.getElementById('v1-agent-state');
+const granularAgentStateElm = document.getElementById('v2-agent-state');
+const granularStateContainerElm = document.getElementById('granular-agent-state-container');
+const agentSessionStatusElm = document.getElementById('agent-session-status');
+const granularRonaAlertsElm = document.getElementById('granular-rona-alerts');
+
+// Granular Agent State — mutable state
+let isGranularAgentStateActive = false;
+let granularIdleCodes = [];
+let granularAllIdleCodes = [];
+const granularAgentState = {channelStates: {}, mmProfile: {}};
+let channelStateListenersClient;
+let isGranularStateErrorShown = false;
+let isSettingAgentState = false;
+let granularTimerInterval = null;
+let granularPanelView = null; // null = closed, 'menu', 'manage'
+let granularHoverVisible = false;
+
+// Manage-panel draft: toggles the agent has changed but not applied yet.
+let granularManageDraft = null;
+let granularManageInitial = null;
+let granularApplyError = null;
+// Open RONA alerts, one per channel: channelType -> idle-code name.
+let granularRonaAlerts = {};
 
 function changeEnv() {
   enableProd = !enableProd;
@@ -3083,7 +3204,8 @@ function registerTaskListeners(task) {
   task.on('task:rejected', (reason) => {
     updateTaskList();
     console.info('Task is rejected with reason:', reason);
-    showAgentStatePopup(reason);
+    // V2 shows the per-channel RONA alert instead; this popup sends a V1 request.
+    if (!isGranularAgentStateActive) showAgentStatePopup(reason);
   });
 
   task.on('task:outdialFailed', (reason) => {
@@ -3847,6 +3969,7 @@ function attachVoiceConnectionStateLogging() {
   cc.on('voice:connectionStateChange', (state) => {
     console.log('[Contact Center] Browser voice state changed:', state);
     renderVoiceConnectionState(state);
+    if (isGranularAgentStateActive) updateGranularUI();
   });
   const state = cc.getVoiceConnectionState();
   console.log('[Contact Center] Current browser voice state:', state);
@@ -4151,7 +4274,17 @@ function captureWellnessSession(event) {
     wellnessState.legacyAuxCodeId = undefined;
   }
   wellnessState.agentSessionId = event.agentSessionId;
-  if (Object.prototype.hasOwnProperty.call(event, 'auxCodeId')) {
+
+  if (event.channelStates) {
+    const wellnessCodeId = wellnessState.idleCode?.id;
+    wellnessState.legacyStateKnown = Boolean(wellnessCodeId);
+    wellnessState.legacyAuxCodeId = wellnessCodeId && (
+      GRANULAR_CHANNEL_ORDER.some(
+        (channelType) => event.channelStates[channelType]?.auxCodeId === wellnessCodeId
+      ) ? wellnessCodeId : '0'
+    );
+  } else if (Object.prototype.hasOwnProperty.call(event, 'auxCodeId')) {
+    // V1: auxCodeId comes directly from the backend.
     wellnessState.legacyStateKnown = true;
     wellnessState.legacyAuxCodeId = event.auxCodeId?.trim() || '0';
   }
@@ -4212,6 +4345,13 @@ async function initializeWellnessProfile(agentProfile) {
   wellnessCodeStatusElm.textContent = 'Loading…';
   try {
     wellnessState.idleCode = await webex.cc.getWellbeingBreakIdleCode();
+    const channelStates = granularAgentState.channelStates;
+    if (Object.keys(channelStates).length > 0) {
+      wellnessState.legacyStateKnown = true;
+      wellnessState.legacyAuxCodeId = GRANULAR_CHANNEL_ORDER.some(
+        (channelType) => channelStates[channelType]?.auxCodeId === wellnessState.idleCode.id
+      ) ? wellnessState.idleCode.id : '0';
+    }
     if (!WELLNESS_OWNED_LIFECYCLES.has(wellnessState.lifecycle)) {
       wellnessState.lifecycle = wellnessState.agentSessionId ? 'Ready' : 'Unavailable';
     }
@@ -4272,6 +4412,19 @@ function handleWellnessBreak(event) {
 }
 
 function handleWellnessLegacyStateChanged(event, nextAuxCodeId) {
+  if (event.channelStates) {
+    if (!wellnessState.idleCode) {
+      wellnessState.legacyStateKnown = false;
+      return;
+    }
+    // Keep the break owned until every channel has left the wellness code.
+    if (GRANULAR_CHANNEL_ORDER.some(
+      (channelType) => event.channelStates[channelType]?.auxCodeId === wellnessState.idleCode.id
+    )) {
+      nextAuxCodeId = wellnessState.idleCode.id;
+    }
+  }
+  const wasDeferred = !wellnessState.legacyStateKnown;
   wellnessState.legacyStateKnown = true;
   wellnessState.legacyAuxCodeId = nextAuxCodeId;
   const stateName = nextAuxCodeId === '0' ? 'Available' : event.subStatus || 'another state';
@@ -4291,6 +4444,11 @@ function handleWellnessLegacyStateChanged(event, nextAuxCodeId) {
     completeWellnessExternalTransition(
       `Wellness break ended because the authoritative agent state changed to ${stateName}.`
     );
+    return;
+  }
+  // A refreshed V2 session can arrive before the wellness code is loaded.
+  if (wasDeferred) {
+    void recoverWellnessBreakIfNeeded();
   }
 }
 
@@ -4334,14 +4492,85 @@ async function requestWellnessBreak() {
 }
 
 async function setWellnessAgentState(state, options = {}) {
-  return webex.cc.setAgentState({
-    state,
-    auxCodeId: state === 'Idle' ? options.auxCodeId || wellnessState.idleCode.id : '0',
-    lastStateChangeReason:
-      options.reason ||
-      (state === 'Idle' ? 'wellness-break' : 'wellness-break-complete'),
-    agentId,
-  });
+  const auxCodeId = state === 'Idle' ? options.auxCodeId || wellnessState.idleCode?.id || '0' : '0';
+  const channelTypes = isGranularAgentStateActive
+    ? options.channelType || getSelectableChannelTypes().filter((channelType) =>
+      state !== 'Available' ||
+      granularAgentState.channelStates[channelType]?.auxCodeId === wellnessState.idleCode?.id
+    )
+    : undefined;
+  if (channelTypes?.length === 0) {
+    if (state === 'Available') return;
+    throw new Error('No selectable channels are available for the wellness break.');
+  }
+  const observedRequests = new Map();
+  let requestTrackingId;
+  let checkConfirmation;
+  const onStateChange = (event) => {
+    if (event?.channelStates) granularAgentState.channelStates = event.channelStates;
+    const changedChannels = event?.changedChannels ||
+      (event?.changedChannelType ? [event.changedChannelType] : []);
+    changedChannels.forEach((channelType) => {
+      if (channelTypes.includes(channelType) &&
+        (!requestTrackingId || event.requestTrackingId === requestTrackingId)) {
+        observedRequests.set(channelType, event.requestTrackingId);
+      }
+    });
+    checkConfirmation?.();
+  };
+  if (channelTypes) webex.cc.on('agent:stateChange', onStateChange);
+  try {
+    const response = await webex.cc.setAgentState({
+      state,
+      auxCodeId,
+      lastStateChangeReason:
+        options.reason ||
+        (state === 'Idle' ? 'wellness-break' : 'wellness-break-complete'),
+      agentId,
+      ...(channelTypes ? {channelType: channelTypes} : {}),
+    });
+    if (channelTypes) {
+      requestTrackingId = response?.data?.trackingId;
+      if (!requestTrackingId) {
+        throw new Error('The V2 state change did not include a request tracking ID.');
+      }
+      // AQM completes on the first channel. Confirm every target for this request
+      // so a delayed entry notification cannot outlive a successful rollback.
+      await new Promise((resolve, reject) => {
+        const finish = (error) => {
+          clearTimeout(timeout);
+          webex.cc.off('agent:stateChangeFailed', onStateChangeFailed);
+          if (error) reject(error);
+          else resolve();
+        };
+        const onStateChangeFailed = (event) => {
+          if (
+            event?.trackingId === requestTrackingId &&
+            channelTypes.includes(event.channelType)
+          ) {
+            finish(new Error(`${event.channelType} state change failed: ${event.reason || 'unknown reason'}`));
+          }
+        };
+        checkConfirmation = () => {
+          if (
+            channelTypes.every((channelType) => observedRequests.get(channelType) === requestTrackingId) &&
+            getUnconfirmedChannelTypes(
+              granularAgentState.channelStates, channelTypes, state, auxCodeId
+            ).length === 0
+          ) finish();
+        };
+        const timeout = setTimeout(
+          () => finish(new Error('Timed out waiting for every wellness channel to change state.')),
+          WELLNESS_CHANNEL_CONFIRMATION_TIMEOUT_MS
+        );
+        webex.cc.on('agent:stateChangeFailed', onStateChangeFailed);
+        checkConfirmation();
+      });
+    }
+    return response;
+  } finally {
+    if (channelTypes) webex.cc.off('agent:stateChange', onStateChange);
+  }
 }
 
 function captureWellnessBreakContext() {
@@ -4443,13 +4672,15 @@ async function enterWellnessBreak(sendAccepted) {
     `${areAllTasksSafe(getWellnessTaskList()) ? WELLNESS_COPY.acceptedNotEngaged : WELLNESS_COPY.acceptedEngaged} Requesting Idle / WellbeingBreak.`
   );
   renderWellnessState();
+  let targetChannels;
   try {
-    await setWellnessAgentState('Idle');
+    targetChannels = isGranularAgentStateActive ? getSelectableChannelTypes() : undefined;
+    await setWellnessAgentState('Idle', {channelType: targetChannels});
   } catch (error) {
     if (wellnessState.operationGeneration !== operationGeneration) return;
     setWellnessMessage(`${WELLNESS_COPY.startFailure} Starting safe cleanup.`, true);
     await restoreWellnessState({
-      forceAvailableChannels: true,
+      channelTypes: targetChannels,
       completionMessage: 'The failed wellness transition was cleaned up.',
     });
     return;
@@ -4551,9 +4782,10 @@ function waitForWellnessRestoreRetry(delay, operationGeneration) {
   });
 }
 
-async function performSingleWellnessRestore() {
+async function performSingleWellnessRestore(channelTypes) {
   await setWellnessAgentState('Available', {
     reason: 'wellness-break-complete',
+    channelType: channelTypes,
   });
 }
 
@@ -4613,14 +4845,16 @@ async function restoreWellnessState(options = {}) {
       ) {
         return false;
       }
+
       try {
-        await performSingleWellnessRestore();
+        await performSingleWellnessRestore(options.channelTypes);
         if (
           wellnessState.operationGeneration !== operationGeneration ||
           wellnessState.agentSessionId !== sessionId
         ) {
           return false;
         }
+
         clearWellnessLifecycleOwnership();
         wellnessState.lifecycle = isWellnessReady() ? 'Ready' : 'Unavailable';
         setWellnessMessage(options.completionMessage || 'Previous agent state restored.');
@@ -4751,6 +4985,7 @@ wellnessRestoreBtn.addEventListener('click', restoreWellnessState);
 renderWellnessState();
 
 function register() {
+    registerChannelStateEventListeners();
     attachWellnessSdkListeners();
     webex.cc.register().then((agentProfile) => {
         registerStatus.innerHTML = 'Subscribed';
@@ -4765,9 +5000,12 @@ function register() {
         const listTeams = agentProfile.teams;
         agentId = agentProfile.agentId;
         agentName = agentProfile.agentName;
+        if (agentProfile.isAgentLoggedIn) handleGranularStateLogin(agentProfile);
+        else handleGranularStateLogout();
         if (agentProfile.isAgentLoggedIn && agentProfile.agentSessionId && !wellnessState.agentSessionId) {
           captureWellnessSession({
             agentSessionId: agentProfile.agentSessionId,
+            ...(agentProfile.channelStates ? {channelStates: agentProfile.channelStates} : {}),
             ...(typeof agentProfile.lastStateAuxCodeId === 'string'
               ? {auxCodeId: agentProfile.lastStateAuxCodeId}
               : {}),
@@ -4830,7 +5068,10 @@ function register() {
             }
             idleCodesDropdown.add(option);
         });
+        granularAllIdleCodes = idleCodesList;
+        storeGranularIdleCodes(idleCodesList);
         entryPointId = agentProfile.outDialEp;
+        if (isGranularAgentStateActive) updateGranularUI();
         webex.cc.on('task:incoming', (task) => {
           console.log('Incoming task received: ', task);
           updateTaskList();
@@ -4868,6 +5109,7 @@ function register() {
       if (data && typeof data === 'object' && data.type === 'AgentMultiLoginCloseSession') {
         if (shouldResetForSessionEvent(data.agentSessionId, wellnessState.agentSessionId)) {
           resetWellnessSession();
+          handleGranularStateLogout();
         }
         agentMultiLoginAlert.innerHTML = 'Multiple Agent Login Session Detected!';
         agentMultiLoginAlert.style.color = 'red';``
@@ -4956,6 +5198,8 @@ function resetDeregisteredSampleState() {
 
     // Hide logout button if visible
     logoutAgentElm.classList.add('hidden');
+    handleGranularStateLogout();
+    setAgentSessionStatus('');
 }
 
 // New function to handle unregistration
@@ -5033,6 +5277,7 @@ function doAgentLogin() {
   .then((response) => {
     console.log('Agent Logged in successfully', response);
     console.log('[Contact Center] Voice state after station login:', webex.cc.getVoiceConnectionState());
+    handleGranularStateLogin(response);
     captureWellnessSession(response);
     loginAgentElm.disabled = true;
     logoutAgentElm.classList.remove('hidden');
@@ -5045,7 +5290,7 @@ function doAgentLogin() {
     const index = [...idleCodesDropdown.options].findIndex(option => option.value === auxCodeId);
     idleCodesDropdown.selectedIndex = index !== -1 ? index : 0;
     startStateTimer(lastStateChangeTimestamp, lastIdleCodeChangeTimestamp);
-    
+
   }).catch((error) => {
     console.log('Agent Login failed', error);
     if(['EXTENSION', 'AGENT_DN'].includes(error.data.fieldName))  {
@@ -5111,6 +5356,7 @@ function logoutAgent() {
     
     // Add an immediate call to update button state
     updateUnregisterButtonState();
+    handleGranularStateLogout();
   }
   ).catch((error) => {
     console.log('Agent logout failed', error);
@@ -6138,3 +6384,913 @@ async function deleteUserPreference() {
     console.error('deleteUserPreference error:', error);
   }
 }
+
+
+// ============================================================================
+// Granular Agent State — Widget-like UI (WXCC-15791)
+// ============================================================================
+
+/**
+ * Switches between V1 (simple dropdown) and V2 (widget-like) agent state UI.
+ * Called after stationLogin resolves. The accepted login mode selects the UI
+ * surface for the active session.
+ */
+function switchAgentStateUI(isV2) {
+  isGranularAgentStateActive = isV2;
+  if (legacyAgentStateElm) legacyAgentStateElm.style.display = isV2 ? 'none' : '';
+  if (granularAgentStateElm) granularAgentStateElm.style.display = isV2 ? '' : 'none';
+}
+
+/**
+ * Returns the ordered list of selectable channels (those with capacity > 0).
+ */
+function getSelectableChannelTypes() {
+  return GRANULAR_CHANNEL_ORDER.filter(
+    (channelType) => granularAgentState.mmProfile[channelType] > 0
+  );
+}
+
+/**
+ * Builds the channel state info array used to render all widget views.
+ */
+function buildChannelStates() {
+  const channelStatesMap = granularAgentState.channelStates;
+  const now = Date.now();
+  return getSelectableChannelTypes()
+    .filter((channelType) => Boolean(channelStatesMap[channelType]?.agentState))
+    .map((channelType) => {
+      const state = channelStatesMap[channelType];
+      const isIdle = state.agentState === GRANULAR_AGENT_STATE_IDLE;
+      const pendingIdle = Boolean(state.pendingIdle);
+      // Desktop buildAgentChannelStates: idle shows the idle-code name; a pending
+      // idle keeps the current state and shows "Pending <code>" underneath.
+      const idleCodeName = (isIdle || pendingIdle) ? getIdleCodeName(state.auxCodeId) : undefined;
+      const stateToDisplay = pendingIdle ? state.agentState : idleCodeName || state.agentState;
+      const stateChangeTimestamp = state.stateChangeTimestamp || now;
+      const idleCodeChangeTimestamp = state.lastIdleCodeChangeTimestamp || 0;
+      return {
+        channelType,
+        label: GRANULAR_CHANNEL_LABELS[channelType] || channelType,
+        agentState: state.agentState,
+        displayState: GRANULAR_STATE_LABELS[stateToDisplay.toLowerCase()] || stateToDisplay,
+        idleCodeName,
+        pendingLabel: pendingIdle ? `Pending ${idleCodeName || GRANULAR_AGENT_STATE_IDLE}` : '',
+        presence: getGranularPresenceType(state.agentState, pendingIdle, idleCodeName),
+        capacity: getGranularCapacity(channelType, state),
+        auxCodeId: state.auxCodeId,
+        pendingIdle,
+        stateChangeTimestamp,
+        idleCodeChangeTimestamp,
+        // Desktop showMultiIdleTimer: idle-code time / total idle time.
+        hasDualTimer: isIdle && idleCodeChangeTimestamp > 0 && idleCodeChangeTimestamp !== stateChangeTimestamp,
+        elapsedTime: Math.max(0, Math.floor((now - stateChangeTimestamp) / 1000)),
+        // Desktop rule: non-Idle channels are "on" unless Idle is pending.
+        // Engaged/Reserved/WrapUp toggles are disabled separately (ACTIVE_TASK_STATES).
+        isAvailable: state.agentState !== GRANULAR_AGENT_STATE_IDLE && !pendingIdle,
+      };
+    });
+}
+
+/**
+ * Looks the code up in every profile idle code, including system codes such as RONA.
+ */
+function getIdleCodeName(auxCodeId) {
+  if (!auxCodeId) return undefined;
+  const code = granularAllIdleCodes.find((c) => c.id === auxCodeId) || granularIdleCodes.find((c) => c.id === auxCodeId);
+  return code ? code.name : undefined;
+}
+
+/**
+ * Desktop presenceTypeMap. A pending idle shows 'away' so the avatar reflects the upcoming state.
+ */
+function getGranularPresenceType(agentState, pendingIdle, idleCodeName) {
+  if (pendingIdle) return 'away';
+  const key = (agentState || '').toLowerCase();
+  if (key === 'idle' && idleCodeName === 'RONA') return 'rona';
+  return GRANULAR_PRESENCE_TYPES[key] || 'away';
+}
+
+/**
+ * "(used/total)" for digital channels that are busy, as in the desktop preview.
+ * Hidden for telephony, Idle, Available, and pending idle.
+ */
+function getGranularCapacity(channelType, state) {
+  if (
+    channelType === 'telephony' ||
+    state.pendingIdle ||
+    state.agentState === GRANULAR_AGENT_STATE_IDLE ||
+    state.agentState === GRANULAR_AGENT_STATE_AVAILABLE
+  ) {
+    return '';
+  }
+  const manualLimit = state.totalManuallyAssignedChannelCount ?? 0;
+  const available = (state.availableChannelCount ?? 0) + (manualLimit - (state.manuallyAssignedChannelCount ?? 0));
+  const total = (state.totalChannelCount ?? 0) + manualLimit;
+  return `(${total - available}/${total})`;
+}
+
+/**
+ * Agent Desktop telephony: Available is blocked while the browser voice line is down.
+ */
+function isTelephonyAvailableBlocked() {
+  return webex?.cc?.getVoiceConnectionState?.()?.status === 'unavailable';
+}
+
+function filterGranularIdleCodes(codes, searchText) {
+  const query = (searchText || '').trim().toLowerCase();
+  if (!query) return codes;
+  return codes.filter((c) => c.name.toLowerCase().includes(query));
+}
+
+/**
+ * Returns only channels not already in the target state (widget's getChannelsToChange).
+ */
+function getGranularChannelsToChange(channelTypes, targetState, auxCodeId) {
+  const channelStatesMap = granularAgentState.channelStates;
+  return channelTypes.filter((ch) => {
+    const state = channelStatesMap[ch];
+    if (!state) return true;
+    if (targetState === GRANULAR_AGENT_STATE_AVAILABLE) {
+      return state.agentState !== GRANULAR_AGENT_STATE_AVAILABLE || state.pendingIdle;
+    }
+    return state.agentState !== GRANULAR_AGENT_STATE_IDLE || state.auxCodeId !== auxCodeId;
+  });
+}
+
+/**
+ * Finds the last-used idle code across all channels, matching widget behavior.
+ */
+function findLastUsedIdleCode() {
+  const channelStatesMap = granularAgentState.channelStates;
+  const selectable = getSelectableIdleCodes(granularIdleCodes);
+  const lastIdle = Object.values(channelStatesMap)
+    .filter((s) => s && s.agentState === GRANULAR_AGENT_STATE_IDLE && s.auxCodeId)
+    .sort((a, b) =>
+      (b.lastIdleCodeChangeTimestamp ?? b.stateChangeTimestamp ?? 0) -
+      (a.lastIdleCodeChangeTimestamp ?? a.stateChangeTimestamp ?? 0)
+    )
+    .map((s) => selectable.find((c) => c.id === s.auxCodeId))
+    .find(Boolean);
+  return lastIdle || selectable.find((c) => c.isDefault) || selectable[0];
+}
+
+/**
+ * Desktop TaskTimer: mm:ss under an hour, hh:mm:ss after; `hoursFormat` always shows hours.
+ */
+function formatGranularDuration(seconds, hoursFormat = true) {
+  const safe = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(safe / 3600);
+  const m = Math.floor((safe % 3600) / 60);
+  const s = safe % 60;
+  const parts = hoursFormat || h > 0 ? [h, m, s] : [m, s];
+  return parts.map((p) => p.toString().padStart(2, '0')).join(':');
+}
+
+/** A timer span the 1 s tick updates in place from its start timestamp. */
+function granularTimerHTML(startTimestamp, hoursFormat, cls = '') {
+  const seconds = (Date.now() - startTimestamp) / 1000;
+  return `<span class="granular-timer ${cls}" data-ts="${startTimestamp}" data-hours="${hoursFormat ? '1' : '0'}">${formatGranularDuration(seconds, hoursFormat)}</span>`;
+}
+
+function updateGranularTimers() {
+  if (!granularStateContainerElm) return;
+  const now = Date.now();
+  granularStateContainerElm.querySelectorAll('.granular-timer[data-ts]').forEach((el) => {
+    el.textContent = formatGranularDuration((now - Number(el.dataset.ts)) / 1000, el.dataset.hours === '1');
+  });
+}
+
+// --- Rendering helpers ---
+
+function createChannelAvatarHTML(channel, size) {
+  const sz = size || 24;
+  const icon = GRANULAR_CHANNEL_AVATAR_ICONS[channel.channelType] || 'chat-filled';
+  const presenceIcon = GRANULAR_PRESENCE_ICONS[channel.presence] || GRANULAR_PRESENCE_ICONS.away;
+  return `<span class="granular-channel-avatar size-${sz} ${escapeHTML(channel.channelType)}" title="${escapeHTML(channel.label)}: ${escapeHTML(channel.displayState)}">` +
+    mdIcon(icon, 'granular-channel-avatar-icon') +
+    `<span class="presence-badge presence-${channel.presence}">${mdIcon(presenceIcon)}</span>` +
+  `</span>`;
+}
+
+function showChannelStatePreview() {
+  granularHoverVisible = true;
+  renderChannelStatePreview();
+}
+
+function hideChannelStatePreview() {
+  granularHoverVisible = false;
+  const el = granularStateContainerElm.querySelector('.granular-state-preview');
+  if (el) el.style.display = 'none';
+}
+
+function renderChannelStatePreview() {
+  let previewElm = granularStateContainerElm.querySelector('.granular-state-preview');
+  if (!previewElm) {
+    previewElm = document.createElement('div');
+    previewElm.className = 'granular-state-preview';
+    granularStateContainerElm.appendChild(previewElm);
+  }
+  // Desktop GranularStatePreviewItem: main timer is the idle-code time when the
+  // dual timer applies; the second line is "Total Idle Duration" or "Pending <code>".
+  previewElm.innerHTML = buildChannelStates().map((ch) => {
+    const subLabel = ch.pendingIdle ? ch.pendingLabel : ch.hasDualTimer ? 'Total Idle Duration' : '';
+    return `<div class="granular-state-preview-item">` +
+      createChannelAvatarHTML(ch, 32) +
+      `<div class="granular-state-preview-details">` +
+        `<div class="granular-state-preview-label"><strong>${escapeHTML(ch.label)}</strong>` +
+          `<span class="granular-state-preview-separator">:</span>${escapeHTML(ch.displayState)}` +
+          (ch.capacity ? ` <span class="granular-state-preview-capacity">${escapeHTML(ch.capacity)}</span>` : '') +
+        `</div>` +
+        (subLabel ? `<div class="granular-state-preview-sublabel">${escapeHTML(subLabel)}</div>` : '') +
+      `</div>` +
+      `<div class="granular-state-preview-timers">` +
+        granularTimerHTML(ch.hasDualTimer ? ch.idleCodeChangeTimestamp : ch.stateChangeTimestamp, true, 'main') +
+        (ch.hasDualTimer && !ch.pendingIdle ? granularTimerHTML(ch.stateChangeTimestamp, true, 'sub') : '') +
+      `</div>` +
+    `</div>`;
+  }).join('');
+  previewElm.style.display = granularHoverVisible && !granularPanelView ? '' : 'none';
+}
+
+/**
+ * Full re-render of the widget: pill + preview (if visible).
+ * Pill layout: primary avatar, "<state> - <time>", other channel avatars, chevron.
+ */
+function renderGranularAgentState() {
+  if (!granularStateContainerElm) return;
+  const channels = buildChannelStates();
+  const primary = channels[0];
+
+  let pillElm = granularStateContainerElm.querySelector('#granular-pill-btn');
+  if (!primary) {
+    if (pillElm) pillElm.remove();
+    hideChannelStatePreview();
+    return;
+  }
+  if (!pillElm) {
+    pillElm = document.createElement('button');
+    pillElm.type = 'button';
+    pillElm.id = 'granular-pill-btn';
+    pillElm.setAttribute('aria-label', 'State Selector');
+    pillElm.setAttribute('aria-haspopup', 'menu');
+    granularStateContainerElm.prepend(pillElm);
+    pillElm.addEventListener('click', () => {
+      if (granularPanelView) {
+        closeGranularStateMenu();
+      } else {
+        openGranularStateMenu('menu');
+      }
+    });
+  }
+
+  const secondary = channels.filter((ch) => ch.channelType !== primary.channelType);
+  // Desktop GranularStateSelectorIndicator: "<code> - <idle-code time>/<total idle time>"
+  // when the dual timer applies, else "<state> - <time in state>".
+  const pillTimers = primary.hasDualTimer
+    ? granularTimerHTML(primary.idleCodeChangeTimestamp, false) +
+      `<span class="granular-state-pill-time-divider">/</span>` +
+      granularTimerHTML(primary.stateChangeTimestamp, false)
+    : granularTimerHTML(primary.stateChangeTimestamp, false);
+  pillElm.className = `granular-state-pill presence-${primary.presence}${granularPanelView ? ' open' : ''}`;
+  pillElm.setAttribute('aria-expanded', granularPanelView ? 'true' : 'false');
+  pillElm.innerHTML =
+    createChannelAvatarHTML(primary, 24) +
+    `<span class="granular-state-pill-label">${escapeHTML(primary.displayState)} - ` +
+      `<span class="granular-state-pill-time" id="granular-pill-timer">${pillTimers}</span>` +
+    `</span>` +
+    (secondary.length > 0
+      ? `<span class="granular-state-pill-channels">` +
+          `<span class="granular-state-pill-separator"></span>` +
+          secondary.map((ch) => createChannelAvatarHTML(ch, 24)).join('') +
+        `</span>`
+      : '') +
+    mdIcon(granularPanelView ? 'arrow-up-bold' : 'arrow-down-bold', 'granular-state-pill-chevron');
+  fitGranularPillLabel();
+  renderGranularRonaAlerts();
+
+  if (granularHoverVisible && !granularPanelView) {
+    renderChannelStatePreview();
+  }
+}
+
+if (granularStateContainerElm) {
+  granularStateContainerElm.addEventListener('mouseenter', () => {
+    if (!granularPanelView && granularStateContainerElm.querySelector('#granular-pill-btn')) {
+      showChannelStatePreview();
+    }
+  });
+  granularStateContainerElm.addEventListener('mouseleave', () => hideChannelStatePreview());
+}
+
+function openGranularStateMenu(view) {
+  const nextView = view || 'menu';
+  if (nextView !== granularPanelView) resetGranularManageDraft();
+  granularPanelView = nextView;
+  hideChannelStatePreview();
+  if (granularPanelView === 'menu') {
+    renderGranularStateMenuPanel();
+  } else if (granularPanelView === 'manage') {
+    renderManageChannelAvailability();
+  }
+  renderGranularAgentState();
+}
+
+function closeGranularStateMenu() {
+  granularPanelView = null;
+  resetGranularManageDraft();
+  const panel = granularStateContainerElm.querySelector('#granular-menu-panel');
+  if (panel) panel.remove();
+  granularHoverVisible = granularStateContainerElm.matches(':hover');
+  renderGranularAgentState();
+}
+
+function renderGranularStateMenuPanel() {
+  let panel = granularStateContainerElm.querySelector('#granular-menu-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'granular-menu-panel';
+    panel.className = 'granular-state-panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', 'State Selector');
+    granularStateContainerElm.appendChild(panel);
+  }
+
+  const existingSearchInput = panel.querySelector('#granular-search-input');
+  if (existingSearchInput) {
+    renderGranularMenuBody(panel, existingSearchInput.value);
+    return;
+  }
+
+  panel.innerHTML =
+    `<div class="granular-state-menu" role="menu">` +
+      `<div class="granular-state-search-wrapper">` +
+        mdIcon('search-bold', 'granular-state-search-icon') +
+        `<input type="text" id="granular-search-input" class="granular-state-search" placeholder="Search" aria-label="Search" />` +
+      `</div>` +
+      `<div id="granular-menu-body"></div>` +
+    `</div>`;
+
+  const searchInput = panel.querySelector('#granular-search-input');
+  searchInput.addEventListener('input', () => renderGranularMenuBody(panel, searchInput.value));
+  renderGranularMenuBody(panel, '');
+  searchInput.focus();
+}
+
+/**
+ * Multi-channel and not searching: Available (all), Manage, then the idle reasons.
+ * Single channel: Available is the first item of the idle list.
+ * Searching: only the filtered idle codes.
+ */
+function renderGranularMenuBody(panel, searchText) {
+  const bodyElm = panel.querySelector('#granular-menu-body');
+  if (!bodyElm) return;
+  const selectableCodes = getSelectableIdleCodes(granularIdleCodes);
+  const filteredCodes = filterGranularIdleCodes(selectableCodes, searchText);
+  const isSearching = (searchText || '').trim().length > 0;
+  const channels = buildChannelStates();
+  const isMultiChannel = channels.length > 1;
+  const disabled = isSettingAgentState ? ' disabled' : '';
+  // Desktop disables Available for a telephony-only agent while voice is down.
+  const availableBlocked =
+    !isMultiChannel && channels[0]?.channelType === 'telephony' && isTelephonyAvailableBlocked();
+
+  const availableItem = (label) =>
+    `<button type="button" role="menuitem" class="granular-state-menu-item available"` +
+      `${isSettingAgentState || availableBlocked ? ' disabled' : ''} data-action="set-available"` +
+      `${availableBlocked ? ` title="${escapeHTML(TELEPHONY_DISCONNECTED_TOOLTIP)}"` : ''}>` +
+      mdIcon('active-presence-small-filled', 'granular-state-available-icon') +
+      `${escapeHTML(label)}` +
+    `</button>`;
+
+  const sectionHTML =
+    !isSearching && isMultiChannel
+      ? `<div class="granular-state-menu-section">` +
+          availableItem('Set as Available (all channels)') +
+          `<button type="button" role="menuitem" class="granular-state-menu-item manage"${disabled} data-action="manage-channels">` +
+            `<span>Manage Channel Availability</span>` + mdIcon('arrow-right-bold', 'granular-state-chevron') +
+          `</button>` +
+          `<hr class="granular-state-divider" />` +
+          `<p class="granular-state-idle-title">Set as Idle (all channels)</p>` +
+          `<p class="granular-state-idle-subtitle">Select a reason:</p>` +
+        `</div>`
+      : '';
+
+  const idleItemsHTML = filteredCodes.map((code) =>
+    `<button type="button" role="menuitem" class="granular-state-menu-item idle"${disabled} data-action="set-idle" data-idle-id="${escapeHTML(code.id)}" data-idle-name="${escapeHTML(code.name)}">` +
+      mdIcon('recents-presence-filled', 'granular-state-idle-icon') +
+      `${escapeHTML(code.name)}` +
+    `</button>`
+  ).join('');
+
+  bodyElm.innerHTML =
+    sectionHTML +
+    `<div id="granular-idle-list" class="granular-state-idle-list">` +
+      (!isSearching && !isMultiChannel ? availableItem('Available') : '') +
+      idleItemsHTML +
+      (isSearching && filteredCodes.length === 0
+        ? `<p class="granular-state-no-match">No matches found</p>`
+        : '') +
+    `</div>`;
+
+  bodyElm.querySelector('[data-action="set-available"]')?.addEventListener('click', () => {
+    setAllChannelsAvailable();
+  });
+  bodyElm.querySelector('[data-action="manage-channels"]')?.addEventListener('click', () => {
+    openGranularStateMenu('manage');
+  });
+  bodyElm.querySelectorAll('[data-action="set-idle"]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      setAllChannelsIdle({ id: btn.dataset.idleId, name: btn.dataset.idleName });
+    });
+  });
+}
+
+function renderManageChannelAvailability() {
+  let panel = granularStateContainerElm.querySelector('#granular-menu-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'granular-menu-panel';
+    panel.className = 'granular-state-panel';
+    granularStateContainerElm.appendChild(panel);
+  }
+
+  const channels = buildChannelStates();
+  const initial = Object.fromEntries(channels.map((ch) => [ch.channelType, ch.isAvailable]));
+  // Merge SDK updates into the draft without discarding toggles the agent has
+  // not applied yet. This matters when Apply sends Available then Idle.
+  if (granularManageDraft && granularManageInitial) {
+    const previous = granularManageInitial;
+    const draft = granularManageDraft;
+    granularManageDraft = { ...initial };
+    Object.keys(initial).forEach((key) => {
+      if (draft[key] !== undefined && draft[key] !== previous[key]) granularManageDraft[key] = draft[key];
+    });
+  } else {
+    granularManageDraft = { ...initial };
+  }
+  granularManageInitial = initial;
+
+  // Desktop ChannelsStateManager disables the Voice and All toggles while voice is down.
+  // Channels in active-task states (Engaged, Reserved, WrapUp) cannot be toggled.
+  const ACTIVE_TASK_STATES = ['Engaged', 'EngagedOther', 'Reserved', 'WrapUp'];
+  const telephonyBlocked =
+    isTelephonyAvailableBlocked() && channels.some((ch) => ch.channelType === 'telephony');
+  const isChannelBlocked = (ch) =>
+    (telephonyBlocked && ch.channelType === 'telephony') ||
+    ACTIVE_TASK_STATES.includes(ch.agentState);
+  const toggleRow = (key, icon, title, subtitle, checked, blocked) =>
+    `<div class="manage-channel-availability-row"${blocked ? ` title="${escapeHTML(TELEPHONY_DISCONNECTED_TOOLTIP)}"` : ''}>` +
+      mdIcon(icon, 'manage-channel-availability-icon') +
+      `<div class="manage-channel-availability-text">` +
+        `<span class="manage-channel-availability-title">${escapeHTML(title)}</span>` +
+        `<span class="manage-channel-availability-subtitle">${escapeHTML(subtitle)}</span>` +
+      `</div>` +
+      `<label class="toggle-switch">` +
+        `<input type="checkbox" data-toggle="${escapeHTML(key)}" aria-label="${escapeHTML(title)}"` +
+          `${checked ? ' checked' : ''}${isSettingAgentState || blocked ? ' disabled' : ''} />` +
+        `<span class="toggle-slider"></span>` +
+      `</label>` +
+    `</div>`;
+
+  panel.innerHTML =
+    `<div class="manage-channel-availability">` +
+      `<div class="manage-channel-availability-header">` +
+        `<button type="button" id="granular-manage-back" aria-label="Go back" title="Go back">${mdIcon('back-bold')}</button>` +
+        `<h3>Manage channel availability</h3>` +
+      `</div>` +
+      `<div class="manage-channel-availability-body">` +
+        toggleRow('all', 'checkbox-group-regular', 'All', 'Available on all channels', false,
+          telephonyBlocked || channels.some((ch) => isChannelBlocked(ch))) +
+        channels.map((ch) =>
+          toggleRow(
+            ch.channelType,
+            GRANULAR_CHANNEL_MANAGE_ICONS[ch.channelType] || 'chat-regular',
+            ch.label,
+            `State : ${ch.displayState}`,
+            Boolean(granularManageDraft[ch.channelType]),
+            isChannelBlocked(ch)
+          )
+        ).join('') +
+      `</div>` +
+      (granularApplyError
+        ? `<p class="manage-channel-availability-error" role="alert">${escapeHTML(granularApplyError)}</p>`
+        : '') +
+      `<div class="manage-channel-availability-footer">` +
+        `<button type="button" class="btn-cancel" id="granular-manage-cancel">Cancel</button>` +
+        `<button type="button" class="btn-apply" id="granular-manage-apply">Apply</button>` +
+      `</div>` +
+    `</div>`;
+
+  const toggleAllElm = panel.querySelector('input[data-toggle="all"]');
+  const applyBtn = panel.querySelector('#granular-manage-apply');
+  const getChanged = () =>
+    Object.fromEntries(
+      Object.keys(granularManageInitial)
+        .filter((key) => granularManageDraft[key] !== granularManageInitial[key])
+        .map((key) => [key, granularManageDraft[key]])
+    );
+
+  function syncControls() {
+    panel.querySelectorAll('input[data-toggle]').forEach((toggle) => {
+      if (toggle.dataset.toggle !== 'all') toggle.checked = Boolean(granularManageDraft[toggle.dataset.toggle]);
+    });
+    toggleAllElm.checked = channels.length > 0 && channels.every((ch) => granularManageDraft[ch.channelType]);
+    applyBtn.disabled = Object.keys(getChanged()).length === 0 || isSettingAgentState;
+  }
+
+  panel.querySelectorAll('input[data-toggle]').forEach((toggle) => {
+    toggle.addEventListener('change', () => {
+      if (toggle.dataset.toggle === 'all') {
+        channels.forEach((ch) => { granularManageDraft[ch.channelType] = toggle.checked; });
+      } else {
+        granularManageDraft[toggle.dataset.toggle] = toggle.checked;
+      }
+      syncControls();
+    });
+  });
+
+  const backToMenu = () => openGranularStateMenu('menu');
+  panel.querySelector('#granular-manage-back').addEventListener('click', backToMenu);
+  panel.querySelector('#granular-manage-cancel').addEventListener('click', backToMenu);
+  applyBtn.addEventListener('click', async () => {
+    granularApplyError = null;
+    const applied = await applyChannelAvailability(getChanged());
+    if (granularPanelView !== 'manage') return;
+    if (applied) {
+      closeGranularStateMenu();
+    } else {
+      granularApplyError = 'Failed to apply changes. Please try again.';
+      renderManageChannelAvailability();
+    }
+  });
+  syncControls();
+}
+
+function resetGranularManageDraft() {
+  granularManageDraft = null;
+  granularManageInitial = null;
+  granularApplyError = null;
+}
+
+/**
+ * Sends one V2 setAgentState request. Resolves true on success (or when there is
+ * nothing to change) and false on failure, matching the widget's requestStateChange.
+ */
+async function requestGranularStateChange(state, auxCodeId, channelTypes, reason) {
+  if (channelTypes.length === 0) return true;
+  isSettingAgentState = true;
+  updateGranularUIDisabledState();
+  try {
+    await webex.cc.setAgentState({
+      state,
+      auxCodeId,
+      lastStateChangeReason: reason || state,
+      agentId,
+      channelType: channelTypes,
+    });
+    console.log(`Granular state set to ${state}`, channelTypes);
+    clearGranularStateError();
+    return true;
+  } catch (error) {
+    console.error(`Granular state change to ${state} failed`, error);
+    showGranularStateError(error);
+    return false;
+  } finally {
+    isSettingAgentState = false;
+    updateGranularUI();
+  }
+}
+
+/**
+ * Sets all selectable channels to Available (skips channels already Available).
+ * The menu closes right away; failures surface in the session status line.
+ */
+function setAllChannelsAvailable() {
+  if (isSettingAgentState) return;
+  closeGranularStateMenu();
+  // Telephony stays out of the request while voice is down (desktop behavior).
+  const channelTypes = getSelectableChannelTypes().filter(
+    (ch) => ch !== 'telephony' || !isTelephonyAvailableBlocked()
+  );
+  const toChange = getGranularChannelsToChange(
+    channelTypes,
+    GRANULAR_AGENT_STATE_AVAILABLE,
+    GRANULAR_AVAILABLE_AUX_CODE_ID
+  );
+  requestGranularStateChange(GRANULAR_AGENT_STATE_AVAILABLE, GRANULAR_AVAILABLE_AUX_CODE_ID, toChange);
+}
+
+/**
+ * Sets all selectable channels to Idle with the given idle code (skips channels already in target state).
+ */
+function setAllChannelsIdle(idleCode) {
+  if (isSettingAgentState || !idleCode) return;
+  closeGranularStateMenu();
+  const toChange = getGranularChannelsToChange(
+    getSelectableChannelTypes(),
+    GRANULAR_AGENT_STATE_IDLE,
+    idleCode.id
+  );
+  requestGranularStateChange(GRANULAR_AGENT_STATE_IDLE, idleCode.id, toChange, idleCode.name);
+}
+
+/**
+ * Applies the changed channels from the Manage panel: Available first, then Idle
+ * with the last-used idle code, sequentially (W-R-6). Resolves false on any failure.
+ */
+async function applyChannelAvailability(changed) {
+  if (isSettingAgentState) return false;
+  const entries = Object.entries(changed);
+  const toAvailable = entries.filter(([, isAvailable]) => isAvailable).map(([ch]) => ch);
+  const toIdle = entries.filter(([, isAvailable]) => !isAvailable).map(([ch]) => ch);
+  const idleCode = toIdle.length > 0 ? findLastUsedIdleCode() : undefined;
+  if (toIdle.length > 0 && !idleCode) return false;
+
+  const availableOk = await requestGranularStateChange(
+    GRANULAR_AGENT_STATE_AVAILABLE,
+    GRANULAR_AVAILABLE_AUX_CODE_ID,
+    toAvailable
+  );
+  if (!availableOk) return false;
+  if (!idleCode) return true;
+  return requestGranularStateChange(GRANULAR_AGENT_STATE_IDLE, idleCode.id, toIdle, idleCode.name);
+}
+
+function updateGranularUIDisabledState() {
+  const panel = granularStateContainerElm
+    ? granularStateContainerElm.querySelector('#granular-menu-panel')
+    : null;
+  if (!panel) return;
+  if (!isSettingAgentState) return;
+  panel.querySelectorAll('button.granular-state-menu-item, #granular-manage-apply, input[data-toggle]').forEach((control) => {
+    control.disabled = true;
+  });
+}
+
+function updateGranularUI() {
+  renderGranularAgentState();
+  if (granularPanelView === 'menu') {
+    renderGranularStateMenuPanel();
+  } else if (granularPanelView === 'manage') {
+    renderManageChannelAvailability();
+  }
+}
+
+function startGranularTimer() {
+  stopGranularTimer();
+  granularTimerInterval = setInterval(() => {
+    const timerElm = granularStateContainerElm
+      ? granularStateContainerElm.querySelector('#granular-pill-timer')
+      : null;
+    if (!timerElm) return;
+    updateGranularTimers();
+    fitGranularPillLabel();
+  }, 1000);
+}
+
+/**
+ * Compact pill: when the state label does not fit next to the avatars, only the
+ * avatars are shown (the hover preview still lists every channel's state and timers).
+ */
+function fitGranularPillLabel() {
+  const pillElm = granularStateContainerElm
+    ? granularStateContainerElm.querySelector('#granular-pill-btn')
+    : null;
+  const labelElm = pillElm ? pillElm.querySelector('.granular-state-pill-label') : null;
+  if (!labelElm) return;
+  pillElm.classList.remove('compact');
+  if (labelElm.scrollWidth > labelElm.clientWidth) {
+    pillElm.classList.add('compact');
+  }
+}
+
+if (granularStateContainerElm && typeof ResizeObserver !== 'undefined') {
+  new ResizeObserver(() => fitGranularPillLabel()).observe(granularStateContainerElm);
+}
+
+function stopGranularTimer() {
+  if (granularTimerInterval) {
+    clearInterval(granularTimerInterval);
+    granularTimerInterval = null;
+  }
+}
+
+/**
+ * Agent Desktop RonaDialog: a channel moved to Idle with a system code opens an
+ * alert for that channel only; Available on that channel closes it.
+ *
+ * Reconciles every channel in `changedChannels` (not just the last one in
+ * the batch) so that a bulk state change (e.g. Voice+Chat → Available)
+ * clears RONA alerts for all affected channels.
+ */
+function handleGranularRonaEvent(data) {
+  const channels = data?.changedChannels;
+  const allStates = data?.channelStates;
+  if (!channels || !allStates) return;
+
+  for (const channelType of channels) {
+    const detail = allStates[channelType];
+    if (!detail) continue;
+    if (detail.agentState === GRANULAR_AGENT_STATE_AVAILABLE) {
+      delete granularRonaAlerts[channelType];
+      continue;
+    }
+    const codeName = detail.agentState === GRANULAR_AGENT_STATE_IDLE ? getIdleCodeName(detail.auxCodeId) : undefined;
+    if (codeName && GRANULAR_RONA_MESSAGES[codeName]) {
+      granularRonaAlerts[channelType] = codeName;
+    } else if (detail.agentState === GRANULAR_AGENT_STATE_IDLE) {
+      delete granularRonaAlerts[channelType];
+    }
+  }
+}
+
+function renderGranularRonaAlerts() {
+  if (!granularRonaAlertsElm) return;
+  const entries = Object.entries(granularRonaAlerts);
+  granularRonaAlertsElm.innerHTML = entries.map(([channelType, codeName]) => {
+    const label = GRANULAR_CHANNEL_LABELS[channelType] || channelType;
+    const okOnly = codeName === 'Invalid_Number';
+    const availableBlocked = channelType === 'telephony' && isTelephonyAvailableBlocked();
+    return `<div class="granular-rona-alert" role="alert" data-channel="${escapeHTML(channelType)}">` +
+      mdIcon('warning-filled', 'granular-rona-alert-icon') +
+      `<div class="granular-rona-alert-body">` +
+        `<p class="granular-rona-alert-title">${escapeHTML(label)}: State changed to Idle</p>` +
+        `<p class="granular-rona-alert-message">${escapeHTML(GRANULAR_RONA_MESSAGES[codeName](label.toLowerCase()))}</p>` +
+        `<div class="granular-rona-alert-footer">` +
+          (okOnly
+            ? `<button type="button" class="btn-apply" data-rona-action="dismiss">Ok</button>`
+            : `<button type="button" class="btn-cancel" data-rona-action="dismiss">Stay as Idle</button>` +
+              `<button type="button" class="btn-apply" data-rona-action="available"` +
+                `${availableBlocked || isSettingAgentState ? ' disabled' : ''}` +
+                `${availableBlocked ? ` title="${escapeHTML(TELEPHONY_DISCONNECTED_TOOLTIP)}"` : ''}>Set as Available</button>`) +
+        `</div>` +
+      `</div>` +
+    `</div>`;
+  }).join('');
+}
+
+if (granularRonaAlertsElm) {
+  granularRonaAlertsElm.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-rona-action]');
+    if (!button) return;
+    const channelType = button.closest('.granular-rona-alert')?.dataset.channel;
+    if (!channelType) return;
+    delete granularRonaAlerts[channelType];
+    renderGranularRonaAlerts();
+    if (button.dataset.ronaAction === 'available') {
+      requestGranularStateChange(GRANULAR_AGENT_STATE_AVAILABLE, GRANULAR_AVAILABLE_AUX_CODE_ID, [channelType]);
+    }
+  });
+}
+
+/**
+ * Stores idle codes for the granular state widget.
+ * Applies the wellness filter first (removes isSystem codes), then additionally
+ * excludes the "Available" entry (auxCodeId '0'), Engaged, and error-triggering
+ * system codes that should never appear as user-selectable idle reasons — matching
+ * the widget's getSelectableIdleCodes in cc-components.
+ */
+function storeGranularIdleCodes(idleCodesList) {
+  granularIdleCodes = getSelectableIdleCodes(idleCodesList || []).filter(
+    (code) =>
+      code.id !== GRANULAR_AVAILABLE_AUX_CODE_ID &&
+      code.name !== GRANULAR_AGENT_STATE_AVAILABLE &&
+      !NON_SELECTABLE_STATE_NAMES.includes(code.name)
+  );
+}
+
+/**
+ * Applies login/relogin snapshots and initializes the granular state widget.
+ */
+function handleGranularStateLogin(data) {
+  if (data?.channelStates) granularAgentState.channelStates = data.channelStates;
+  if (data?.mmProfile) granularAgentState.mmProfile = data.mmProfile;
+  // Only V2 (granular) sessions carry channelStates on login/relogin payloads.
+  const isV2 = Boolean(data?.channelStates && Object.keys(data.channelStates).length > 0);
+  if (!isV2) {
+    granularAgentState.channelStates = {};
+    granularAgentState.mmProfile = {};
+  }
+  switchAgentStateUI(isV2);
+  if (isV2) {
+    renderGranularAgentState();
+    startGranularTimer();
+  }
+}
+
+/**
+ * Called on logout/deregister. Tears down the widget and restores V1 UI.
+ */
+function handleGranularStateLogout() {
+  granularAgentState.channelStates = {};
+  granularAgentState.mmProfile = {};
+  clearGranularStateError();
+  stopGranularTimer();
+  granularPanelView = null;
+  resetGranularManageDraft();
+  granularHoverVisible = false;
+  isSettingAgentState = false;
+  isGranularAgentStateActive = false;
+  if (granularStateContainerElm) granularStateContainerElm.innerHTML = '';
+  granularRonaAlerts = {};
+  renderGranularRonaAlerts();
+  switchAgentStateUI(false);
+}
+
+/**
+ * Registers SDK event listeners for channel state changes. Guarded by
+ * channelStateListenersClient to prevent duplicate registration on the
+ * same cc instance while re-attaching when the instance is replaced
+ * (e.g. initWebex / initOauth).
+ */
+function registerChannelStateEventListeners() {
+  const cc = webex?.cc;
+  if (!cc || channelStateListenersClient === cc) return;
+  handleGranularStateLogout();
+  channelStateListenersClient = cc;
+
+  // Unified agent:stateChange — works for V1 (base fields) and V2 (enriched with per-channel data)
+  webex.cc.on('agent:stateChange', (data) => {
+    console.log('agent:stateChange (unified)', data);
+    if (data?.channelStates) {
+      granularAgentState.channelStates = data.channelStates;
+      // V2 enrichment available — update per-channel UI
+      if (isGranularAgentStateActive) {
+        handleGranularRonaEvent(data);
+        updateGranularUI();
+      }
+    }
+  });
+
+  // Unified agent:stateChangeFailed — V2 adds channelType
+  webex.cc.on('agent:stateChangeFailed', (data) => {
+    console.error('agent:stateChangeFailed (unified)', data);
+    if (data?.channelType) {
+      const label = GRANULAR_CHANNEL_LABELS[data.channelType] || data.channelType || 'Channel';
+      showGranularStateError(null, `${label} state change failed${data?.reason ? `: ${data.reason}` : ''}.`);
+    }
+    if (isGranularAgentStateActive) updateGranularUI();
+  });
+
+  // Unified agent:reloginSuccess — V2 enriched with channelStates
+  webex.cc.on('agent:reloginSuccess', (data) => {
+    handleGranularStateLogin(data);
+    setAgentSessionStatus('');
+  });
+
+  // Covers remote logouts (supervisor, inactivity, another client). The SDK
+  // clears V2 session state before emitting when the logout is for this session.
+  webex.cc.on('agent:logoutSuccess', (data) => {
+    if (shouldResetForSessionEvent(data?.agentSessionId, wellnessState.agentSessionId)) {
+      handleGranularStateLogout();
+    }
+  });
+
+  webex.cc.on('agent:stationLoginSuccess', (data) => {
+    handleGranularStateLogin(data);
+    setAgentSessionStatus('');
+  });
+}
+
+/**
+ * Shows a V2 state-change failure in the session status line, which otherwise
+ * only reaches the console.
+ */
+function showGranularStateError(error, message) {
+  const text =
+    message ||
+    (error?.message === 'BROWSER_VOICE_NOT_READY'
+      ? 'Browser voice is not ready. Telephony can go Available once voice connects.'
+      : `Could not change agent state${error?.message ? `: ${error.message}` : ''}.`);
+  setAgentSessionStatus(text, 'danger');
+  isGranularStateErrorShown = true;
+}
+
+function clearGranularStateError() {
+  if (!isGranularStateErrorShown) return;
+  isGranularStateErrorShown = false;
+  setAgentSessionStatus('');
+}
+
+function setAgentSessionStatus(message, level = 'info') {
+  isGranularStateErrorShown = false;
+  if (!agentSessionStatusElm) return;
+  agentSessionStatusElm.textContent = message;
+  agentSessionStatusElm.className = `alert alert-${level} my-3`;
+  agentSessionStatusElm.style.display = message ? '' : 'none';
+}
+
+// Close the granular panel (discarding a manage draft) on any press outside it.
+// Capture phase, so elements that stop propagation still close it.
+document.addEventListener('pointerdown', (e) => {
+  if (!granularPanelView || !granularStateContainerElm) return;
+  // composedPath keeps the container even when the clicked node was re-rendered away.
+  if (!e.composedPath().includes(granularStateContainerElm)) {
+    closeGranularStateMenu();
+  }
+}, true);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (granularPanelView) closeGranularStateMenu();
+});

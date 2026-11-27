@@ -250,6 +250,8 @@
               <fieldset style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px;">
                 <legend>Agent status</legend>
                 <p id="voice-connection-state" aria-live="polite">Browser voice: not-required</p>
+
+                <div id="v1-agent-state">
                 <select name="idleCodesDropdown" id="idleCodesDropdown" class="form-control w-auto my-3"
                   onchange="handleAgentStatus(event)">
                   <option value="" selected hidden>Select Idle Codes</option>
@@ -260,6 +262,18 @@
                 <div class="timer-container my-3">
                   <span id="timerDisplay">00:00:00</span>
                 </div>
+                </div>
+
+                <!-- V2: Granular Agent State widget-like UI (hidden until V2 session detected) -->
+                <div id="v2-agent-state" style="display: none;">
+                  <div id="granular-agent-state-container" class="granular-agent-state-container" aria-live="off">
+                  </div>
+                  <!-- Per-channel RONA / system idle-code alerts, as in the Agent Desktop RonaDialog -->
+                  <div id="granular-rona-alerts" class="granular-rona-alerts" aria-live="polite"></div>
+                </div>
+
+                <!-- Granular state change errors -->
+                <div id="agent-session-status" class="alert alert-info my-3" role="status" aria-live="polite" style="display: none;"></div>
               </fieldset>
             </div>
             <fieldset id="buddyAgentsBox">

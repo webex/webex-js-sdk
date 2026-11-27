@@ -235,6 +235,8 @@ export type StationLoginSuccessResponse = {
   type: 'AgentStationLoginSuccess';
   /** Tracking ID for notifications */
   notifsTrackingId: string;
+  /** Full snapshot of ALL channel states after login (V2 sessions only). */
+  channelStates?: Record<ChannelType, AgentChannelTypeStates>;
 };
 
 /**
@@ -287,6 +289,12 @@ export type StateChange = {
   lastStateChangeReason?: string;
   /** ID of the agent whose state is being changed */
   agentId?: string;
+  /**
+   * V2 only: channel types to change state for (e.g. `['chat', 'email']`).
+   * When omitted or empty, all selectable channels with capacity are targeted.
+   * Ignored in V1 sessions.
+   */
+  channelType?: ChannelType[];
 };
 
 /**
@@ -438,3 +446,134 @@ export enum AGENT_EVENTS {
   /** Emitted when agent state change attempt fails */
   AGENT_STATE_CHANGE_FAILED = 'agent:stateChangeFailed',
 }
+
+// ─── V2 Granular Agent State Control Types ────────────────────────────────────
+
+/**
+ * Channel types supported by V2 granular state control
+ * @public
+ */
+export type ChannelType =
+  | 'telephony'
+  | 'chat'
+  | 'email'
+  | 'social'
+  | 'workItem'
+  | 'customMessaging';
+
+/**
+ * Channel types that are selectable by agents for V2 per-channel state control.
+ * `workItem` and `customMessaging` are internal channel types excluded from selection.
+ * @public
+ */
+export const SELECTABLE_CHANNEL_TYPES: ChannelType[] = ['telephony', 'chat', 'email', 'social'];
+
+/**
+ * Per-channel state change request input for granular (V2) agent state.
+ * Mirrors {@link StateChange} but targets specific channel types.
+ * @public
+ */
+export type ChannelStateChangeRequest = {
+  /** Target channel types */
+  channelType: ChannelType[];
+  /** Target state */
+  state: AgentState;
+  /** Auxiliary code ID */
+  auxCodeId: string;
+  /** Reason for the state change */
+  reason?: string;
+  /** Agent ID (defaults to current agent) */
+  agentId?: string;
+};
+
+/**
+ * Per-channel state detail from backend
+ * @public
+ */
+export type AgentChannelTypeStates = {
+  /** Current agent state on this channel */
+  agentState: AgentState;
+  /** Whether an idle state change is pending */
+  pendingIdle: boolean;
+  /** Auxiliary code ID for the current state */
+  auxCodeId?: string;
+  /** Number of available (open) channel slots */
+  availableChannelCount: number;
+  /** Total channel slots configured for this type */
+  totalChannelCount: number;
+  /** Number of manually assigned channel slots */
+  manuallyAssignedChannelCount?: number;
+  /** Total number of manually assigned channel slots */
+  totalManuallyAssignedChannelCount?: number;
+  /** Number of manually assigned channel slots currently available */
+  manuallyAssignedAvailableChannelCount?: number | null;
+  /** Human-readable reason for the state change */
+  stateChangeReason: string;
+  /** Unix timestamp (ms) of the state change */
+  stateChangeTimestamp: number;
+  /** Unix timestamp (ms) of the last idle code change */
+  lastIdleCodeChangeTimestamp?: number;
+};
+
+/**
+ * V2 channel state change success notification
+ * @public
+ */
+export type AgentChannelStateChanged = Msg<{
+  type: 'AgentChannelStateChanged';
+  channelType: ChannelType;
+  agentChannelStateDetail: AgentChannelTypeStates;
+  agentId: string;
+  agentSessionId: string;
+  orgId: string;
+  subStatus: string;
+  status: string;
+  isClientInitiated: boolean;
+  changedBy: string;
+  changedById: string | null;
+  changedByName: string | null;
+  queueId?: string | null;
+  eventTime?: number;
+  connectedChannels: ChannelType[];
+  isAgentLogin: boolean;
+  /** Request correlation ID shared by the per-channel notifications of one state change request */
+  trackingId?: string;
+}>;
+
+/**
+ * V2 channel state change failure notification
+ * @public
+ */
+export type AgentChannelStateChangeFailed = Msg<{
+  type: 'AgentChannelStateChangeFailed';
+  channelType: ChannelType;
+  reason: string;
+  reasonCode: number;
+  isClientInitiated?: boolean;
+  eventTime?: number;
+}>;
+
+/**
+ * V2 channel relogin success notification
+ * @public
+ */
+export type AgentChannelReloginSuccess = Msg<{
+  type: 'AgentChannelReloginSuccess';
+  agentChannelStateDetailMap: Record<ChannelType, AgentChannelTypeStates>;
+  channelsMap: Record<string, string[]>;
+  interactionIds: string[];
+  reservedAgentChannelIds: string[];
+  profileType: string;
+  deviceType: string;
+  dn: string;
+  siteId: string;
+  teamId: string;
+  agentId: string;
+  agentSessionId: string;
+  trackingId: string;
+  orgId: string;
+  deviceId: string;
+  isExtension: boolean;
+  roles: string[];
+  eventTime?: number;
+}>;

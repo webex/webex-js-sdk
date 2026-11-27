@@ -51,7 +51,20 @@ import {AGENT, RTD_SUBSCRIBE_API, SUBSCRIBE_API, WEB_RTC_PREFIX} from './service
 import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
-import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
+import {
+  StateChange,
+  Logout,
+  StateChangeSuccess,
+  AGENT_EVENTS,
+  ChannelType,
+  SELECTABLE_CHANNEL_TYPES,
+  AgentChannelTypeStates,
+  AgentChannelStateChanged,
+  AgentChannelReloginSuccess,
+  ChannelStateChangeRequest,
+  ReloginSuccess,
+} from './services/agent/types';
+import {bridgeStateChangeSuccess, buildAgentStateChangeEvent} from './services/agent/utils';
 import {
   getErrorDetails,
   isRecord,
@@ -209,6 +222,9 @@ const CC_EVENT_ALLOW_LIST = new Set<string>(Object.values(CC_EVENTS));
  * @public
  */
 
+/** stateChangeReason set by the backend when channels go idle due to WSS disconnect. */
+const WSS_DISCONNECT_REASON = 'agent-wss-disconnect';
+
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   /**
    * The plugin's unique namespace identifier in the Webex SDK.
@@ -329,6 +345,43 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private updateWellnessSession(agentSessionId?: string): void {
     this.currentAgentSessionId = agentSessionId;
   }
+
+  /**
+   * V2 per-channel state map. Populated when V2 session is active.
+   * Typed as a full Record for public-API compatibility, but at runtime only
+   * the channels with capacity are populated — always use optional chaining
+   * (`this.channelStatesMap[ct]?.`) when accessing individual entries.
+   * @private
+   */
+  private channelStatesMap: Record<ChannelType, AgentChannelTypeStates> = {} as Record<
+    ChannelType,
+    AgentChannelTypeStates
+  >;
+
+  /**
+   * Stored channelsMap from login for channel selection validation.
+   * @private
+   */
+  private loginChannelsMap: Record<string, string[]> = {};
+
+  /**
+   * Pending batches for trackingId-based debounce of V2 channel state notifications.
+   * Key = data.trackingId (request correlation ID shared across channels from one setAgentState call).
+   * Flushed when all active channels are received (count-based) OR after 50ms timeout.
+   * @private
+   */
+  private pendingBatches = new Map<
+    string,
+    {
+      channels: Array<{channelType: ChannelType; detail: AgentChannelTypeStates}>;
+      timer: ReturnType<typeof setTimeout>;
+      agentId: string;
+      agentSessionId: string;
+      orgId: string;
+      attribution: {changedBy: string; changedById: string | null; changedByName: string | null};
+      isClientInitiated?: boolean;
+    }
+  >();
 
   /**
    * API instance for managing Webex Contact Center entry points
@@ -825,6 +878,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
    */
   public async deregister(): Promise<void> {
+    this.clearV2LocalState();
     this.wellnessRegistrationGeneration += 1;
     this.wellbeingBreakIdleCode = undefined;
     this.updateWellnessSession();
@@ -1205,8 +1259,31 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       }
 
+      // Refresh the profile flag so a re-login picks up an admin change; the
+      // session keeps the version it was created with until logout.
+      let manageChannelAvailability = this.agentConfig?.manageChannelAvailability ?? false;
+      if (this.agentConfig?.agentId) {
+        try {
+          const {agentProfile} = await this.services.config.getUserDesktopLoginConfig(
+            this.$webex.credentials.getOrgId(),
+            this.agentConfig.agentId
+          );
+          manageChannelAvailability = agentProfile?.manageChannelAvailability === true;
+        } catch (error) {
+          LoggerProxy.warn(
+            `Could not refresh manageChannelAvailability (${error}), using cached value: ${manageChannelAvailability}`,
+            loggerContext
+          );
+        }
+      }
+      // Set before the request: the login success notification handler reads it.
+      this.agentConfig.manageChannelAvailability = manageChannelAvailability;
+
       const deviceId = this.getDeviceId(data.loginOption, data.dialNumber);
-      const loginResponse = await this.services.agent.stationLogin({
+      const stationLoginRequest = manageChannelAvailability
+        ? this.services.agent.stationLoginV2
+        : this.services.agent.stationLogin;
+      const loginResponse = await stationLoginRequest({
         data: {
           // BROWSER DN must be webrtc-{agentId} so VPOP/RTMS do not treat a bare UUID as PSTN.
           dialNumber: data.loginOption === LoginOption.BROWSER ? deviceId : data.dialNumber,
@@ -1289,7 +1366,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       await this.ensureWxAppPostStationLogin();
 
-      return response;
+      return this.agentConfig.manageChannelAvailability === true
+        ? {
+            ...response,
+            // Per-channel copies so callers cannot mutate SDK state.
+            channelStates: Object.fromEntries(
+              Object.entries(this.channelStatesMap).map(([ct, state]) => [ct, {...state}])
+            ) as Record<ChannelType, AgentChannelTypeStates>,
+          }
+        : response;
     } catch (error) {
       const failure = error.details as Failure;
       this.metricsManager.trackEvent(
@@ -1338,9 +1423,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
         METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED,
       ]);
-      const logoutResponse = this.services.agent.logout({
-        data,
-      });
+      const logoutResponse =
+        this.agentConfig?.manageChannelAvailability === true
+          ? this.services.agent.logoutV2({data})
+          : this.services.agent.logout({data});
 
       const resp = await logoutResponse;
 
@@ -1359,6 +1445,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       await this.teardownWxAppLocalState();
       this.updateWellnessSession();
+      this.clearV2LocalState();
 
       LoggerProxy.log(`Agent station logout completed successfully`, {
         module: CC_FILE,
@@ -1404,6 +1491,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * - agent:stateChangeSuccess: Emitted when agent state change is successful
    * - agent:stateChangeFailed: Emitted when agent state change attempt fails
    *
+   * V2 (granular) sessions: pass `channelType` to target specific channels (omit for all
+   * selectable channels). The response is normalized to the V1 `StateChangeSuccess` shape and
+   * resolves on the first channel confirmation; per-channel results arrive on `agent:stateChange`.
+   * Wait for the returned promise before starting another state change.
+   *
    * @param {StateChange} data State change parameters including the new state
    * @returns {Promise<SetStateResponse>} Response with updated state information
    * @throws {Error} If state change fails
@@ -1425,6 +1517,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * } catch (error) {
    *   console.error('State change failed:', error);
    * }
+   *
+   * // V2: target specific channels
+   * await cc.setAgentState({state: 'Available', auxCodeId: '0', channelType: ['chat', 'email']});
    *
    * // Optionally, listen for events
    * cc.on('agent:stateChange', (eventData) => {
@@ -1451,8 +1546,39 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED,
       ]);
+      let agentStatusResponse;
+      let channels: ChannelType[] | undefined;
+
+      if (this.agentConfig?.manageChannelAvailability === true) {
+        const selectable = SELECTABLE_CHANNEL_TYPES.filter(
+          (ct) => this.loginChannelsMap[ct]?.length > 0
+        );
+        channels = data.channelType?.length ? data.channelType : selectable;
+        const invalid = channels.filter((ct) => !selectable.includes(ct));
+
+        if (channels.length === 0 || invalid.length > 0) {
+          const reason =
+            channels.length === 0
+              ? 'No eligible channels for state change. Ensure the agent has capacity on at least one selectable channel.'
+              : `Invalid channel types for state change: ${invalid.join(
+                  ', '
+                )}. Selectable channels: ${selectable.join(', ')}`;
+          const error = new Error(reason) as GenericError;
+          error.details = {
+            type: 'SDK_VALIDATION_ERROR',
+            orgId: this.$webex.credentials.getOrgId(),
+            trackingId: EMPTY_STRING,
+            data: {reason},
+          };
+          throw error;
+        }
+      }
+
+      // V1 (no channels array) always targets all channels including telephony.
+      const affectsTelephony = !channels || channels.includes('telephony');
       if (
         data.state === AGENT_STATE_AVAILABLE &&
+        affectsTelephony &&
         this.webCallingService?.isBrowserVoiceRequired() &&
         !this.webCallingService.isVoiceReady()
       ) {
@@ -1465,9 +1591,26 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         };
         throw error;
       }
-      const agentStatusResponse = await this.services.agent.stateChange({
-        data: {...data, agentId: data.agentId || this.agentConfig.agentId},
-      });
+
+      if (this.agentConfig?.manageChannelAvailability === true) {
+        const channelStateChangeData: ChannelStateChangeRequest = {
+          channelType: channels ?? [],
+          state: data.state,
+          auxCodeId: data.auxCodeId,
+          reason: data.lastStateChangeReason,
+          agentId: data.agentId || this.agentConfig.agentId,
+        };
+
+        agentStatusResponse = await this.services.agent.stateChangeV2({
+          data: channelStateChangeData,
+          agentSessionId: this.currentAgentSessionId,
+        });
+      } else {
+        const {channelType, ...v1Data} = data; // channelType is V2-only
+        agentStatusResponse = await this.services.agent.stateChange({
+          data: {...v1Data, agentId: data.agentId || this.agentConfig.agentId},
+        });
+      }
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
@@ -1483,16 +1626,51 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
-      LoggerProxy.log(
-        `Agent state changed successfully to auxCodeId: ${agentStatusResponse.data.auxCodeId}`,
-        {
-          module: CC_FILE,
-          method: METHODS.SET_AGENT_STATE,
-          trackingId: agentStatusResponse.trackingId,
-        }
-      );
+      const loggedAuxCodeId =
+        agentStatusResponse.data?.auxCodeId ??
+        agentStatusResponse.data?.agentChannelStateDetail?.auxCodeId;
+      LoggerProxy.log(`Agent state changed successfully to auxCodeId: ${loggedAuxCodeId}`, {
+        module: CC_FILE,
+        method: METHODS.SET_AGENT_STATE,
+        trackingId: agentStatusResponse.trackingId,
+      });
 
-      return agentStatusResponse;
+      // V2→V1 return bridge: normalize AgentChannelStateChanged to
+      // StateChangeSuccess so callers get .data.auxCodeId etc.
+      if (
+        this.agentConfig?.manageChannelAvailability === true &&
+        agentStatusResponse.data?.agentChannelStateDetail
+      ) {
+        const v2Data = agentStatusResponse.data as AgentChannelStateChanged['data'];
+        const detail = v2Data.agentChannelStateDetail;
+
+        const bridged: StateChangeSuccess = {
+          type: agentStatusResponse.type,
+          orgId: agentStatusResponse.orgId,
+          trackingId: agentStatusResponse.trackingId,
+          data: {
+            eventType: 'AgentDesktopMessage',
+            type: CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS,
+            agentId: v2Data.agentId,
+            agentSessionId: v2Data.agentSessionId,
+            orgId: v2Data.orgId,
+            status: v2Data.status,
+            subStatus: v2Data.subStatus as 'Available' | 'Idle',
+            auxCodeId: detail.auxCodeId ?? data.auxCodeId,
+            lastStateChangeTimestamp: detail.stateChangeTimestamp,
+            lastIdleCodeChangeTimestamp: detail.lastIdleCodeChangeTimestamp ?? 0,
+            lastStateChangeReason: detail.stateChangeReason,
+            trackingId: v2Data.trackingId ?? agentStatusResponse.trackingId,
+            changedBy: v2Data.changedBy ?? null,
+            changedById: v2Data.changedById ?? null,
+            changedByName: v2Data.changedByName ?? null,
+          },
+        };
+
+        return bridged as SetStateResponse;
+      }
+
+      return agentStatusResponse as SetStateResponse;
     } catch (error) {
       const failure = error.details as Failure;
       this.metricsManager.trackEvent(
@@ -1661,6 +1839,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             eventData.data.agentSessionId === this.currentAgentSessionId)
         ) {
           this.updateWellnessSession();
+          this.clearV2LocalState();
         }
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_MULTI_LOGIN, eventData.data);
@@ -1681,6 +1860,22 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       case CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS: {
         const {channelsMap, ...loginData} = eventData.data;
         this.updateWellnessSession(loginData.agentSessionId);
+
+        const isV2 = this.agentConfig?.manageChannelAvailability === true;
+
+        if (isV2) {
+          if (channelsMap) {
+            this.loginChannelsMap = channelsMap;
+            this.channelStatesMap = this.seedChannelStates(
+              channelsMap,
+              eventData.data.subStatus,
+              eventData.data.auxCodeId
+            );
+          }
+        } else {
+          this.clearV2LocalState(); // V1 session — drop stale V2 state
+        }
+
         if (
           loginData.deviceType === LoginOption.EXTENSION ||
           loginData.deviceType === LoginOption.AGENT_DN
@@ -1696,6 +1891,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             telephony: channelsMap.telephony?.length,
           },
           notifsTrackingId: eventData.trackingId,
+          ...(isV2 ? {channelStates: {...this.channelStatesMap}} : {}),
         };
         this.webCallingService.setLoginOption(loginData.deviceType as LoginOption);
         // @ts-ignore
@@ -1703,6 +1899,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         break;
       }
       case CC_EVENTS.AGENT_RELOGIN_SUCCESS: {
+        // V1 session restored (possibly via reloadV2). Pin the session to V1.
+        if (this.agentConfig?.manageChannelAvailability === true) {
+          this.agentConfig.manageChannelAvailability = false;
+          this.clearV2LocalState();
+        }
+
         const {channelsMap, ...loginData} = eventData.data;
         this.updateWellnessSession(loginData.agentSessionId);
         const stationReLoginData = {
@@ -1737,6 +1939,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           eventData.data.agentSessionId === this.currentAgentSessionId
         ) {
           this.updateWellnessSession();
+          this.clearV2LocalState();
         }
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_LOGOUT_SUCCESS, eventData.data);
@@ -1749,6 +1952,34 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_DN_REGISTERED, eventData.data);
         break;
+
+      // ─── V2 Granular Agent State Control Events ─────────────────────
+      case CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED:
+        this.handleChannelStateChanged(eventData);
+        break;
+
+      case CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED:
+        if (this.agentConfig?.manageChannelAvailability === true) {
+          const failAgentId = eventData.data?.agentId;
+          const ownId = this.agentConfig?.agentId;
+          if (ownId && failAgentId && failAgentId !== ownId) break; // Not our failure
+          if (
+            !this.currentAgentSessionId ||
+            (eventData.data?.agentSessionId &&
+              eventData.data.agentSessionId !== this.currentAgentSessionId)
+          ) {
+            break; // Session ended or mismatch
+          }
+
+          // @ts-ignore
+          this.trigger(AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED, eventData.data);
+        }
+        break;
+
+      case CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS:
+        this.handleChannelReloginSuccess(eventData);
+        break;
+
       default:
         break;
     }
@@ -2380,6 +2611,201 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
+   * Flush a trackingId batch into one enriched `agent:stateChange` emit.
+   *
+   * Batches are flushed either by count-based completion (all active channels
+   * received for the batch) or by a 50ms timeout. If the timeout fires before
+   * all channels arrive, a partial batch is emitted — consumers may receive a
+   * second event for the same `requestTrackingId` when late channels arrive
+   * and start a fresh batch. Consumers should use `requestTrackingId` to
+   * group events from the same `setAgentState()` request and treat the
+   * `channelStates` snapshot as the authoritative state.
+   * @private
+   */
+  private flushBatch(batchKey: string): void {
+    const batch = this.pendingBatches.get(batchKey);
+    this.pendingBatches.delete(batchKey);
+    if (!batch || batch.channels.length === 0) return;
+
+    const changedChannels = batch.channels.map((c) => c.channelType);
+    const lastChannel = batch.channels[batch.channels.length - 1];
+
+    // Use live map (not batch snapshot) so channelDetail stays consistent with channelStates.
+    const reconciledDetail = this.channelStatesMap[lastChannel.channelType] ?? lastChannel.detail;
+
+    const enriched = buildAgentStateChangeEvent(
+      this.channelStatesMap,
+      batch.agentId,
+      batch.agentSessionId,
+      batch.orgId,
+      batch.attribution,
+      {
+        channelStates: {...this.channelStatesMap},
+        changedChannelType: lastChannel.channelType,
+        channelDetail: reconciledDetail,
+        requestTrackingId: batchKey,
+        changedChannels,
+        isClientInitiated: batch.isClientInitiated,
+      }
+    );
+
+    // @ts-ignore
+    this.trigger(AGENT_EVENTS.AGENT_STATE_CHANGE, enriched);
+  }
+
+  /** V2 AgentChannelStateChanged handler: updates state, emits batched agent:stateChange. @private */
+  private handleChannelStateChanged(eventData: AgentChannelStateChanged): void {
+    const data = eventData.data;
+    const channelType = data.channelType as ChannelType;
+
+    if (this.agentConfig?.manageChannelAvailability !== true) return; // Not V2
+    if (!this.currentAgentSessionId) return; // No active session
+    if (data.agentSessionId && data.agentSessionId !== this.currentAgentSessionId) return;
+
+    const ownAgentId = this.agentConfig.agentId;
+    if (ownAgentId && data.agentId && data.agentId !== ownAgentId) return; // Other agent
+
+    if (!SELECTABLE_CHANNEL_TYPES.includes(channelType)) {
+      LoggerProxy.warn(
+        `Ignoring AgentChannelStateChanged for unknown channelType: ${data.channelType}`,
+        {module: CC_FILE, method: METHODS.HANDLE_CHANNEL_STATE_CHANGED}
+      );
+
+      return;
+    }
+
+    if (data.agentChannelStateDetail) {
+      this.channelStatesMap[channelType] = data.agentChannelStateDetail;
+    }
+
+    // Batch by trackingId → emit one enriched agent:stateChange per request.
+    const batchKey = data.trackingId;
+    const agentId = data.agentId || this.agentConfig?.agentId || '';
+    const agentSessionId = data.agentSessionId || '';
+    const orgId = data.orgId || '';
+    const attribution = {
+      changedBy: data.changedBy,
+      changedById: data.changedById,
+      changedByName: data.changedByName,
+    };
+
+    if (batchKey) {
+      if (!this.pendingBatches.has(batchKey)) {
+        const timer = setTimeout(() => this.flushBatch(batchKey), 50);
+        this.pendingBatches.set(batchKey, {
+          channels: [],
+          timer,
+          agentId,
+          agentSessionId,
+          orgId,
+          attribution,
+          isClientInitiated: data.isClientInitiated,
+        });
+      }
+      const batch = this.pendingBatches.get(batchKey)!;
+      batch.channels.push({channelType, detail: data.agentChannelStateDetail});
+
+      // All channels in → flush now; flush older batches first for ordering.
+      const activeChannelCount = SELECTABLE_CHANNEL_TYPES.filter(
+        (ct) => this.loginChannelsMap[ct]?.length > 0
+      ).length;
+      if (batch.channels.length >= activeChannelCount) {
+        clearTimeout(batch.timer);
+        const olderKeys: string[] = [];
+        for (const [key] of this.pendingBatches) {
+          if (key === batchKey) break;
+          olderKeys.push(key);
+        }
+        for (const key of olderKeys) {
+          const older = this.pendingBatches.get(key);
+          if (older) clearTimeout(older.timer);
+          this.flushBatch(key);
+        }
+        this.flushBatch(batchKey);
+      }
+    } else {
+      // No trackingId — emit enriched event immediately (fallback)
+      const enriched = buildAgentStateChangeEvent(
+        this.channelStatesMap,
+        agentId,
+        agentSessionId,
+        orgId,
+        attribution,
+        {
+          channelStates: {...this.channelStatesMap},
+          changedChannelType: channelType,
+          channelDetail: data.agentChannelStateDetail,
+          changedChannels: [channelType],
+          isClientInitiated: data.isClientInitiated,
+        }
+      );
+      // @ts-ignore
+      this.trigger(AGENT_EVENTS.AGENT_STATE_CHANGE, enriched);
+    }
+  }
+
+  /** V2 AgentChannelReloginSuccess handler: restores channel states + emits enriched reloginSuccess. @private */
+  private handleChannelReloginSuccess(eventData: AgentChannelReloginSuccess): void {
+    const data = eventData.data;
+
+    // V2 session restored. Pin the session to V2 before emitting so listeners see the correct mode.
+    if (this.agentConfig) {
+      this.agentConfig.manageChannelAvailability = true;
+    }
+
+    // The reload snapshot is authoritative: it replaces earlier local channel state
+    // (notifications are delivered in order on the same socket).
+    if (data.agentChannelStateDetailMap) {
+      this.pendingBatches.forEach((batch) => clearTimeout(batch.timer));
+      this.pendingBatches.clear();
+      this.channelStatesMap = {...data.agentChannelStateDetailMap};
+    }
+    if (data.channelsMap) {
+      this.loginChannelsMap = data.channelsMap;
+    }
+
+    this.updateWellnessSession(data.agentSessionId);
+    this.restoreV2AgentConfigFromChannels(data.agentId, data.agentSessionId, data.orgId);
+
+    // Set voice guard before emit so listeners can't bypass it.
+    if (data.deviceType) {
+      this.webCallingService.setLoginOption(data.deviceType as LoginOption);
+      this.webCallingService.setBrowserVoiceRequired(
+        this.isBrowserVoiceRequired(data.deviceType as LoginOption)
+      );
+    }
+
+    // Emit enriched agent:reloginSuccess with V1 base fields + channelStates.
+    const {agentChannelStateDetailMap, channelsMap, ...loginData} = data;
+    const bridged = bridgeStateChangeSuccess(
+      this.channelStatesMap,
+      data.agentId || this.agentConfig?.agentId || '',
+      data.agentSessionId || '',
+      data.orgId || ''
+    );
+    // Fall back to Idle (not Available) when bridge returns null to avoid wellness side-effects.
+    const reloginPayload = {
+      ...loginData,
+      type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
+      status: bridged?.status ?? 'LoggedIn',
+      subStatus: bridged?.subStatus ?? 'Idle',
+      auxCodeId: bridged?.auxCodeId ?? '',
+      lastStateChangeTimestamp: bridged?.lastStateChangeTimestamp ?? 0,
+      lastIdleCodeChangeTimestamp: bridged?.lastIdleCodeChangeTimestamp ?? 0,
+      mmProfile: {
+        telephony: channelsMap?.telephony?.length,
+        chat: channelsMap?.chat?.length,
+        email: channelsMap?.email?.length,
+        social: channelsMap?.social?.length,
+      },
+      notifsTrackingId: eventData.trackingId,
+      channelStates: {...this.channelStatesMap},
+    };
+    // @ts-ignore
+    this.trigger(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, reloginPayload);
+  }
+
+  /**
    * Initializes event listeners for the Contact Center service
    * Sets up handlers for connection state changes and other core events
    * @private
@@ -2437,8 +2863,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
 
     try {
-      const reLoginResponse = await this.services.agent.reload();
+      // reloadV2 restores either version; the response type tells which one the session uses.
+      const reLoginResponse = await this.services.agent.reloadV2();
       this.updateWellnessSession(reLoginResponse.data.agentSessionId);
+
+      if (reLoginResponse.data.type === CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS) {
+        await this.recoverV2Session(reLoginResponse as AgentChannelReloginSuccess);
+
+        return;
+      }
 
       const {
         agentId,
@@ -2447,14 +2880,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         dn,
         lastStateChangeTimestamp,
         lastIdleCodeChangeTimestamp,
-      } = reLoginResponse.data;
-      let {auxCodeId} = reLoginResponse.data;
+      } = reLoginResponse.data as ReloginSuccess['data'];
+      let {auxCodeId} = reLoginResponse.data as ReloginSuccess['data'];
       this.agentConfig.lastStateChangeTimestamp = lastStateChangeTimestamp;
       this.agentConfig.lastIdleCodeChangeTimestamp = lastIdleCodeChangeTimestamp;
       this.agentConfig.currentTeamId = reLoginResponse.data.teamId;
       await this.handleDeviceType(deviceType as LoginOption, dn);
 
-      if (lastStateChangeReason === 'agent-wss-disconnect') {
+      if (lastStateChangeReason === WSS_DISCONNECT_REASON) {
         LoggerProxy.log(
           'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
           {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
@@ -2559,6 +2992,119 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         });
         throw new Error(`Unsupported device type: ${deviceType}`);
     }
+  }
+
+  /**
+   * Completes a V2 silent relogin, mirroring the V1 recovery: restores the device
+   * and returns channels idled by the socket disconnect to Available. Telephony is
+   * left out while browser voice is required but not ready, so digital channels
+   * still recover.
+   * @param {AgentChannelReloginSuccess} reLoginResponse V2 reload response
+   * @private
+   */
+  private async recoverV2Session(reLoginResponse: AgentChannelReloginSuccess): Promise<void> {
+    const {agentId, agentSessionId, orgId, deviceType, dn, teamId} = reLoginResponse.data;
+    this.agentConfig.currentTeamId = teamId;
+    await this.handleDeviceType(deviceType as LoginOption, dn);
+
+    const telephonyBlocked =
+      this.webCallingService.isBrowserVoiceRequired() && !this.webCallingService.isVoiceReady();
+    const channelType = SELECTABLE_CHANNEL_TYPES.filter(
+      (ct) =>
+        this.loginChannelsMap[ct]?.length > 0 &&
+        this.channelStatesMap[ct]?.stateChangeReason === WSS_DISCONNECT_REASON &&
+        !(ct === 'telephony' && telephonyBlocked)
+    );
+
+    if (channelType.length > 0) {
+      LoggerProxy.log(
+        `event=requestAutoStateChange | V2: requesting state change to available on socket reconnect for ${channelType.join(
+          ', '
+        )}`,
+        {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
+      );
+      try {
+        await this.setAgentState({
+          state: AGENT_STATE_AVAILABLE,
+          auxCodeId: AGENT_STATE_AVAILABLE_ID,
+          lastStateChangeReason: WSS_DISCONNECT_REASON,
+          agentId,
+          channelType,
+        });
+      } catch (error) {
+        LoggerProxy.error(
+          `event=requestAutoStateChange | V2: Error requesting state change to available on socket reconnect: ${error}`,
+          {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
+        );
+      }
+    }
+
+    this.restoreV2AgentConfigFromChannels(agentId, agentSessionId, orgId);
+    this.agentConfig.isAgentLoggedIn = true;
+
+    await this.ensureWxAppPostStationLogin();
+
+    LoggerProxy.log(
+      `Silent relogin (V2) completed successfully with login Option: ${deviceType} teamId: ${teamId}`,
+      {
+        module: CC_FILE,
+        method: METHODS.SILENT_RELOGIN,
+        trackingId: reLoginResponse.trackingId,
+      }
+    );
+  }
+
+  /** Resets V2 in-memory state. Called on logout, deregister, remote logout and V1 relogin. @private */
+  private clearV2LocalState(): void {
+    this.channelStatesMap = {} as Record<ChannelType, AgentChannelTypeStates>;
+    this.loginChannelsMap = {};
+    this.pendingBatches.forEach((batch) => clearTimeout(batch.timer));
+    this.pendingBatches.clear();
+  }
+
+  /** Copy bridged V1 aggregate onto agentConfig after V2 reload. @private */
+  private restoreV2AgentConfigFromChannels(
+    agentId: string,
+    agentSessionId?: string,
+    orgId?: string
+  ): void {
+    const bridged = bridgeStateChangeSuccess(
+      this.channelStatesMap,
+      agentId || this.agentConfig?.agentId || '',
+      agentSessionId || this.currentAgentSessionId || '',
+      orgId || ''
+    );
+    if (!bridged || !this.agentConfig) return;
+    this.agentConfig.lastStateChangeTimestamp = bridged.lastStateChangeTimestamp;
+    this.agentConfig.lastIdleCodeChangeTimestamp = bridged.lastIdleCodeChangeTimestamp;
+    this.agentConfig.lastStateAuxCodeId = bridged.auxCodeId;
+  }
+
+  // ─── V2 Granular Agent State — channel helpers ──────────────────────────
+
+  /** Seed per-channel states from login channelsMap. @private */
+  private seedChannelStates(
+    channelsMap: Record<string, string[]>,
+    initialState: string,
+    auxCodeId: string
+  ): Record<ChannelType, AgentChannelTypeStates> {
+    const states: Partial<Record<ChannelType, AgentChannelTypeStates>> = {};
+    for (const channelType of SELECTABLE_CHANNEL_TYPES.filter(
+      (ct) => channelsMap[ct]?.length > 0
+    )) {
+      const channelIds = channelsMap[channelType] || [];
+      states[channelType] = {
+        agentState: initialState,
+        pendingIdle: false,
+        auxCodeId,
+        availableChannelCount: channelIds.length,
+        totalChannelCount: channelIds.length,
+        stateChangeReason: 'Agent login',
+        stateChangeTimestamp: Date.now(),
+      };
+    }
+
+    return states as Record<ChannelType, AgentChannelTypeStates>;
   }
 
   /**

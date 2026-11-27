@@ -231,6 +231,7 @@ function parseAgentConfigs(profileData: {
       tenantData.lostConnectionRecoveryTimeout || LOST_CONNECTION_RECOVERY_TIMEOUT,
     aiFeature,
     isWellnessBreakEnabled: isWellnessConfigured && hasAIAssistantLicense,
+    manageChannelAvailability: agentProfileData.manageChannelAvailability === true,
   };
 
   return finalData;

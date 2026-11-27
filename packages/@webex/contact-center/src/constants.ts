@@ -50,6 +50,7 @@ export const METHODS = {
   SET_AGENT_STATE: 'setAgentState',
   HANDLE_WEBSOCKET_MESSAGE: 'handleWebsocketMessage',
   SETUP_EVENT_LISTENERS: 'setupEventListeners',
+  HANDLE_CHANNEL_STATE_CHANGED: 'handleChannelStateChanged',
   GET_CONNECTION_CONFIG: 'getConnectionConfig',
   HANDLE_CONNECTION_LOST: 'handleConnectionLost',
   SILENT_RELOGIN: 'silentRelogin',

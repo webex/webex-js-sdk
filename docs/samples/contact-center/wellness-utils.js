@@ -110,6 +110,26 @@
     return succeeded || !hasAgentConfig;
   }
 
+  function getUnconfirmedChannelTypes(channelStates, channelTypes, state, auxCodeId) {
+    return channelTypes.filter((channelType) => {
+      const channelState = channelStates?.[channelType];
+      const idleRequestConfirmed =
+        state === 'Idle' &&
+        channelState?.pendingIdle === true &&
+        channelState.auxCodeId === auxCodeId;
+      const pendingIdleCancelled =
+        state === 'Available' &&
+        channelState?.pendingIdle === false &&
+        ['Engaged', 'EngagedOther', 'WrapUp', 'Reserved', 'RONA'].includes(channelState.agentState);
+      return (
+        !channelState ||
+        (channelState.agentState !== state && !idleRequestConfirmed && !pendingIdleCancelled) ||
+        (state === 'Idle' && channelState.auxCodeId !== auxCodeId) ||
+        (state === 'Available' && channelState.pendingIdle === true)
+      );
+    });
+  }
+
   function getWellnessTransition(state, event) {
     const readyLifecycle = state.isReady ? 'Ready' : 'Unavailable';
 
@@ -149,6 +169,7 @@
     getLegacyExternalTransitionDecision,
     getRecoveryDecision,
     getSelectableIdleCodes,
+    getUnconfirmedChannelTypes,
     getWellnessTransition,
     isTaskBlockingWellness,
     normalizeState,

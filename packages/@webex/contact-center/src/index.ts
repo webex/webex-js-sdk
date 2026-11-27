@@ -209,7 +209,14 @@ export type {
   BuddyDetails,
   /** Buddy agents success response */
   BuddyAgentsSuccess,
+  /** V2: Channel type for granular state control */
+  ChannelType,
+  /** V2: Per-channel state detail */
+  AgentChannelTypeStates,
 } from './services/agent/types';
+
+/** `agent:stateChange` payload (V1 base fields + optional V2 per-channel enrichment) */
+export type {AgentStateChangeEvent} from './services/agent/utils';
 
 /** Config related types */
 export type {
