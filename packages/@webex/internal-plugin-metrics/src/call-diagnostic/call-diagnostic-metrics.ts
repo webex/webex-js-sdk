@@ -3,7 +3,7 @@
 /* eslint-disable valid-jsdoc */
 import {BrowserDetection, getBrowserSerial} from '@webex/common';
 import uuid from 'uuid';
-import {merge} from 'lodash';
+import {merge, pick} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
 import {getOSNameInternal} from '../metrics';
 import * as AutomatedUserUtils from '../automated-user';
@@ -30,13 +30,13 @@ import {
   EnvironmentType,
   NewEnvironmentType,
   ClientEvent,
+  SubmitClientEventArgs,
   SubmitClientEventOptions,
   MediaQualityEvent,
   SubmitMQEOptions,
   SubmitMQEPayload,
   ClientLaunchMethodType,
   ClientEventError,
-  ClientEventPayload,
   ClientInfo,
   ClientEventPayloadError,
   ClientSubServiceType,
@@ -116,7 +116,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
   private hasLoggedBrowserSerial: boolean;
   private device: any;
-  private delayedClientEvents: DelayedClientEvent[] = [];
+  private delayedClientEvents: SubmitClientEventArgs[] = [];
   private delayedClientFeatureEvents: DelayedClientFeatureEvent[] = [];
   private eventErrorCache: WeakMap<any, any> = new WeakMap();
   private isMercuryConnected = false;
@@ -1288,6 +1288,41 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     return clientEventObject;
   }
 
+  /** Build auth diagnostics without meeting context. */
+  private createClientEventObjectAuthAnalysis({
+    name,
+    options,
+    errors,
+  }: {
+    name: ClientEvent['name'];
+    options: SubmitClientEventOptions;
+    errors?: ClientEventPayloadError;
+  }): ClientEvent['payload'] {
+    const {correlationId} = options;
+
+    if (!correlationId) {
+      throw new Error('Auth diagnostics require a correlation ID');
+    }
+
+    return {
+      name,
+      errors,
+      canProceed: true,
+      identifiers: pick(this.getIdentifiers({correlationId}), [
+        'correlationId',
+        'userId',
+        'deviceId',
+        'orgId',
+        'machineId',
+      ]),
+      eventData: {webClientDomain: window.location.hostname},
+      loginType: this.getCurLoginType(),
+      telemetryOptOut: this.getTelemetryOptOut(),
+      isAutomatedUser: AutomatedUserUtils.isAutomatedUser(),
+      userActivation: this.getUserActivation(),
+    };
+  }
+
   /**
    * Prepare Client Event CA event.
    * @param arg - submit params
@@ -1297,15 +1332,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @returns {any} options to be with fetch
    * @throws
    */
-  private prepareClientEvent({
-    name,
-    payload,
-    options,
-  }: {
-    name: ClientEvent['name'];
-    payload?: ClientEventPayload;
-    options?: SubmitClientEventOptions;
-  }) {
+  private prepareClientEvent({name, payload, options}: SubmitClientEventArgs) {
     const {meetingId, correlationId, rawError} = options;
     let clientEventObject: ClientEvent['payload'];
 
@@ -1324,8 +1351,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       );
     }
 
-    // events that will most likely happen in join phase
-    if (meetingId) {
+    if (options.diagnosticType === 'auth') {
+      clientEventObject = this.createClientEventObjectAuthAnalysis({name, options, errors});
+    } else if (meetingId) {
       clientEventObject = this.createClientEventObjectInMeeting({name, options, errors});
     } else if (correlationId) {
       // any pre join events or events that are outside the meeting.
@@ -1357,12 +1385,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     payload,
     options,
     delaySubmitEvent,
-  }: {
-    name: ClientEvent['name'];
-    payload?: ClientEventPayload;
-    options?: SubmitClientEventOptions;
-    delaySubmitEvent?: boolean;
-  }) {
+  }: SubmitClientEventArgs & {delaySubmitEvent?: boolean}) {
     if (delaySubmitEvent) {
       // Preserve the time when the event was triggered if delaying the submission to Call Diagnostics
       const delayedOptions = {
@@ -1414,7 +1437,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     const promises = this.delayedClientEvents.map((delayedSubmitClientEventParams) => {
       const {name, payload, options} = delayedSubmitClientEventParams;
-      const optionsWithOverrides: DelayedClientEvent['options'] = {...options, ...overrides};
+      const optionsWithOverrides: SubmitClientEventArgs['options'] = {...options, ...overrides};
 
       return this.submitClientEvent({name, payload, options: optionsWithOverrides});
     });
@@ -1495,11 +1518,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     name,
     payload,
     options,
-  }: {
-    name: ClientEvent['name'];
-    payload?: ClientEventPayload;
-    options?: SubmitClientEventOptions;
-  }): Promise<any> {
+  }: SubmitClientEventArgs): Promise<any> {
     this.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
       'CallDiagnosticMetrics: @buildClientEventFetchRequestOptions. Building request options object for fetch()...',
