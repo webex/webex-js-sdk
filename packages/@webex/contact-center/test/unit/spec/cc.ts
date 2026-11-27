@@ -80,6 +80,7 @@ jest.mock('../../../src/services', () => ({
   __esModule: true,
   default: {
     getInstance: jest.fn(() => ({
+      subscribe: jest.fn().mockResolvedValue('wss://routing.produs1.cisco.com'),
       agent: {
         stationLogin: jest.fn(),
         logout: jest.fn(),
@@ -304,7 +305,6 @@ class EventEmitterDouble extends EventEmitter {
   });
   public mapCallToTask = jest.fn();
   public cleanUpCall = jest.fn();
-  public getServingRegion = jest.fn();
   public hasUsableSocket = jest.fn(() => true);
   public reset = jest.fn();
   public stop = jest.fn();
@@ -419,8 +419,6 @@ describe('webex.cc', () => {
 
     mockWebSocketManager = {
       initWebSocket: jest.fn(),
-      clearServingRegion: jest.fn(),
-      getServingRegion: jest.fn(),
       hasUsableSocket: jest.fn(() => true),
       on: jest.fn(),
       off: jest.fn(),
@@ -455,6 +453,7 @@ describe('webex.cc', () => {
 
     // Mock Services instance
     const mockServicesInstance = {
+      subscribe: jest.fn().mockResolvedValue('wss://routing.produs1.cisco.com'),
       agent: {
         stationLogin: jest.fn(),
         logout: jest.fn(),
@@ -691,14 +690,14 @@ describe('webex.cc', () => {
       expect(mercuryConnect).toHaveBeenCalled();
       expect(connectWebsocketSpy).toHaveBeenCalled();
       expect(setupEventListenersSpy).toHaveBeenCalled();
+      expect(webex.cc.services.subscribe).toHaveBeenCalledWith({
+        force: true,
+        isKeepAliveEnabled: false,
+        clientType: 'WebexCCSDK',
+        allowMultiLogin: false,
+      }, SUBSCRIBE_API);
       expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        body: {
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: false,
-        },
-        resource: SUBSCRIBE_API,
+        url: 'wss://routing.produs1.cisco.com',
         signal: expect.any(AbortSignal),
       });
 
@@ -716,14 +715,14 @@ describe('webex.cc', () => {
         expect.any(Function)
       );
       expect(mockWebSocketManager.on).toHaveBeenCalledWith('message', expect.any(Function));
+      expect(webex.cc.services.subscribe).toHaveBeenCalledWith({
+        force: true,
+        isKeepAliveEnabled: false,
+        clientType: 'WebexCCSDK',
+        allowMultiLogin: false,
+      }, 'v1/realtime/subscribe');
       expect(webex.cc.services.rtdWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        body: {
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: false,
-        },
-        resource: 'v1/realtime/subscribe',
+        url: 'wss://routing.produs1.cisco.com',
         signal: expect.any(AbortSignal),
       });
       expect(webex.cc.services.rtdWebSocketManager.on).toHaveBeenCalledWith(
@@ -784,14 +783,14 @@ describe('webex.cc', () => {
       const result = await webex.cc.register();
 
       expect(connectWebsocketSpy).toHaveBeenCalled();
+      expect(webex.cc.services.subscribe).toHaveBeenCalledWith({
+        force: true,
+        isKeepAliveEnabled: false,
+        clientType: 'WebexCCSDK',
+        allowMultiLogin: true,
+      }, SUBSCRIBE_API);
       expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        body: {
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: true,
-        },
-        resource: SUBSCRIBE_API,
+        url: 'wss://routing.produs1.cisco.com',
         signal: expect.any(AbortSignal),
       });
       expect(configSpy).toHaveBeenCalled();
@@ -884,14 +883,14 @@ describe('webex.cc', () => {
       );
       expect(connectWebsocketSpy).toHaveBeenCalled();
       expect(setupEventListenersSpy).toHaveBeenCalled();
+      expect(webex.cc.services.subscribe).toHaveBeenCalledWith({
+        force: true,
+        isKeepAliveEnabled: false,
+        clientType: 'WebexCCSDK',
+        allowMultiLogin: false,
+      }, SUBSCRIBE_API);
       expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        body: {
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: false,
-        },
-        resource: SUBSCRIBE_API,
+        url: 'wss://routing.produs1.cisco.com',
         signal: expect.any(AbortSignal),
       });
 
@@ -973,14 +972,14 @@ describe('webex.cc', () => {
 
       expect(connectWebsocketSpy).toHaveBeenCalled();
       expect(setupEventListenersSpy).toHaveBeenCalled();
+      expect(webex.cc.services.subscribe).toHaveBeenCalledWith({
+        force: true,
+        isKeepAliveEnabled: false,
+        clientType: 'WebexCCSDK',
+        allowMultiLogin: false,
+      }, SUBSCRIBE_API);
       expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        body: {
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: false,
-        },
-        resource: SUBSCRIBE_API,
+        url: 'wss://routing.produs1.cisco.com',
         signal: expect.any(AbortSignal),
       });
 
@@ -1010,14 +1009,14 @@ describe('webex.cc', () => {
 
       await webex.cc.register();
 
+      expect(webex.cc.services.subscribe).toHaveBeenCalledWith({
+        force: true,
+        isKeepAliveEnabled: false,
+        clientType: 'WebexCCSDK',
+        allowMultiLogin: false,
+      }, 'v1/realtime/subscribe');
       expect(webex.cc.services.rtdWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        body: {
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: false,
-        },
-        resource: 'v1/realtime/subscribe',
+        url: 'wss://routing.produs1.cisco.com',
         signal: expect.any(AbortSignal),
       });
       expect(webex.cc.services.rtdWebSocketManager.on).toHaveBeenCalledWith(
@@ -1079,14 +1078,14 @@ describe('webex.cc', () => {
 
         await webex.cc.register();
 
+        expect(webex.cc.services.subscribe).toHaveBeenCalledWith({
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: false,
+        }, 'v1/realtime/subscribe');
         expect(webex.cc.services.rtdWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-          body: {
-            force: true,
-            isKeepAliveEnabled: false,
-            clientType: 'WebexCCSDK',
-            allowMultiLogin: false,
-          },
-          resource: 'v1/realtime/subscribe',
+          url: 'wss://routing.produs1.cisco.com',
           signal: expect.any(AbortSignal),
         });
       }
@@ -1165,14 +1164,14 @@ describe('webex.cc', () => {
 
         const result = await webex.cc.register();
 
+        expect(webex.cc.services.subscribe).toHaveBeenCalledWith({
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: false,
+        }, SUBSCRIBE_API);
         expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-          body: {
-            force: true,
-            isKeepAliveEnabled: false,
-            clientType: 'WebexCCSDK',
-            allowMultiLogin: false,
-          },
-          resource: SUBSCRIBE_API,
+          url: 'wss://routing.produs1.cisco.com',
           signal: expect.any(AbortSignal),
         });
         expect(configSpy).toHaveBeenCalledWith('mockOrgId', welcomeAgentId);
@@ -6652,7 +6651,12 @@ describe('regional recovery wiring', () => {
         '/v1/agents/login',
       ]);
       for (const subscribe of requests.filter(({resource}) => resource === SUBSCRIBE_API)) {
-        expect(subscribe).toMatchObject({method: 'POST', service: WCC_API_GATEWAY});
+        expect(subscribe).toMatchObject({
+          method: 'POST',
+          service: WCC_API_GATEWAY,
+          headers: {'X-ORGANIZATION-ID': 'org'},
+          timeout: 20000,
+        });
       }
     });
   });
@@ -6757,6 +6761,72 @@ describe('regional recovery wiring', () => {
       },
       {browserVoice: true}
     );
+  });
+
+  it('retries a transient regional subscribe failure before restoring the station', async () => {
+    await withRouting(async ({
+      cc, requests, currentRouting, startSwitch, advanceSwitch, setSubscribeFailure, login,
+    }) => {
+      await login();
+      const state = jest.fn();
+      cc.on('region:stateChange', state);
+      setSubscribeFailure({statusCode: 503});
+      startSwitch('FAILOVER');
+      await advanceSwitch();
+
+      const subscriptions = () => requests.filter(({resource}) => resource === SUBSCRIBE_API);
+      expect(subscriptions()).toHaveLength(2);
+      expect(state).toHaveBeenLastCalledWith(
+        expect.objectContaining({status: 'recovering', retryAfterMs: 63000})
+      );
+      setSubscribeFailure();
+      jest.advanceTimersByTime(62999);
+      await flush();
+      expect(subscriptions()).toHaveLength(2);
+      jest.advanceTimersByTime(1);
+      await flush();
+      expect(subscriptions()).toHaveLength(3);
+      const replacement = currentRouting();
+      replacement.welcome();
+      await flush();
+      replacement.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS));
+      await flush();
+      expect(state).toHaveBeenLastCalledWith(expect.objectContaining({status: 'ready'}));
+    });
+  });
+
+  it('waits for the current reload to settle after socket loss before retrying the region', async () => {
+    await withRouting(async ({cc, requests, currentRouting, connectBackup, login}) => {
+      await login();
+      const state = jest.fn();
+      cc.on('region:stateChange', state);
+      const backup = await connectBackup();
+      const subscriptions = () => requests.filter(({resource}) => resource === SUBSCRIBE_API);
+      const reloads = () => requests.filter(({resource}) => resource === '/v1/agents/reload');
+      expect(subscriptions()).toHaveLength(2);
+      expect(reloads()).toHaveLength(1);
+      backup.lose();
+
+      jest.advanceTimersByTime(19999);
+      await flush();
+      expect(subscriptions()).toHaveLength(2);
+      expect(reloads()).toHaveLength(1);
+      jest.advanceTimersByTime(1);
+      await flush();
+      expect(state).toHaveBeenLastCalledWith(
+        expect.objectContaining({status: 'recovering', retryAfterMs: 63000})
+      );
+      jest.advanceTimersByTime(63000);
+      await flush();
+      expect(subscriptions()).toHaveLength(3);
+      const replacement = currentRouting();
+      replacement.welcome();
+      await flush();
+      expect(reloads()).toHaveLength(2);
+      replacement.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS));
+      await flush();
+      expect(state).toHaveBeenLastCalledWith(expect.objectContaining({status: 'ready'}));
+    });
   });
 
   it('refreshes U2C after a regional subscribe conflict and restores the accepted station', async () => {
@@ -7228,7 +7298,7 @@ describe('regional recovery wiring', () => {
           await expect(registration).resolves.toMatchObject({isAgentLoggedIn: true});
         } else {
           await expect(registration).rejects.toMatchObject({
-            data: {kind: 'authentication-failed', status: 401},
+            statusCode: 401,
           });
         }
         expect(updateServices).toHaveBeenCalledTimes(failure?.statusCode === 409 ? 1 : 0);

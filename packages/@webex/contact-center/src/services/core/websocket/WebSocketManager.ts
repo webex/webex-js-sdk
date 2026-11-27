@@ -1,40 +1,21 @@
 import EventEmitter from 'events';
-import {HTTP_METHODS} from '../../../types';
-import type {WebexSDK, SubscribeRequest} from '../../../types';
-import {WCC_API_GATEWAY, SUBSCRIBE_API} from '../../constants';
 import type {ConnectionLostDetails} from './types';
 import {CC_EVENTS} from '../../config/types';
-import type {SubscribeResponse, WelcomeResponse} from '../../config/types';
+import type {WelcomeResponse} from '../../config/types';
 import LoggerProxy from '../../../logger-proxy';
 import workerScript from './keepalive.worker';
 import {
   KEEPALIVE_WORKER_INTERVAL,
   CLOSE_SOCKET_TIMEOUT,
-  TIMEOUT_REQ,
   WELCOME_TIMEOUT,
   METHODS,
   ALLOWED_ROUTING_NOTIFS_DOMAINS,
-  REFERENCE_SERVING_REGIONS,
 } from '../constants';
 import {WEB_SOCKET_MANAGER_FILE} from '../../../constants';
-import {
-  createRegionRecoveryError,
-  getSubscriptionMismatchReason,
-  isAllowedUrlHost,
-  isRecord,
-  normalizeRecoveryFailure,
-} from '../Utils';
+import {isAllowedUrlHost, isRecord} from '../Utils';
 
-/** Placement parsing is independent of socket URL authorization. @internal */
-export const parseServingRegion = (webSocketUrl: string): string | undefined => {
-  try {
-    const labels = new URL(webSocketUrl).hostname.toLowerCase().split('.');
-
-    return REFERENCE_SERVING_REGIONS.find((region) => labels.includes(region));
-  } catch {
-    return undefined;
-  }
-};
+const interrupted = (): Error =>
+  Object.assign(new Error('WebSocket connection interrupted'), {name: 'AbortError'});
 
 type SocketAttempt = {
   signal?: AbortSignal;
@@ -50,7 +31,7 @@ type SocketAttempt = {
 
 /**
  * WebSocketManager handles the WebSocket connection for Contact Center operations.
- * It manages the connection lifecycle, including registration, reconnection, and message handling.
+ * It connects the supplied URL and handles socket lifecycle and message delivery.
  * It also utilizes a Web Worker to manage keepalive messages and socket closure.
  * @ignore
  */
@@ -58,25 +39,23 @@ export class WebSocketManager extends EventEmitter {
   public shouldReconnect = true;
   private isConnectionLost = false;
   private attempt?: SocketAttempt;
-  private servingRegion?: string;
-  private webex: WebexSDK;
-
-  constructor(options: {webex: WebexSDK}) {
-    super();
-    const {webex} = options;
-    this.webex = webex;
-  }
-
-  initWebSocket(options: {
-    body: SubscribeRequest;
-    resource: string;
-    signal?: AbortSignal;
-  }): Promise<WelcomeResponse> {
+  initWebSocket(options: {url: string; signal?: AbortSignal}): Promise<WelcomeResponse> {
     if (options.signal?.aborted) {
-      return Promise.reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+      return Promise.reject(interrupted());
     }
+
+    let secure = false;
+    try {
+      secure = new URL(options.url).protocol === 'wss:';
+    } catch {
+      secure = false;
+    }
+    if (!secure || !isAllowedUrlHost(options.url, ALLOWED_ROUTING_NOTIFS_DOMAINS)) {
+      return Promise.reject(new Error('Rejected WebSocket URL: scheme or host not allow-listed'));
+    }
+
     const previous = this.attempt;
-    if (previous) this.disposeAttempt(previous, createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+    if (previous) this.disposeAttempt(previous, interrupted());
     this.shouldReconnect = true;
 
     return new Promise((resolve, reject) => {
@@ -85,42 +64,20 @@ export class WebSocketManager extends EventEmitter {
         accepted: false,
         resolve,
         reject,
-        onAbort: () =>
-          this.disposeAttempt(attempt, createRegionRecoveryError('RECOVERY_INTERRUPTED')),
+        onAbort: () => this.disposeAttempt(attempt, interrupted()),
       };
       this.attempt = attempt;
       attempt.signal?.addEventListener('abort', attempt.onAbort, {once: true});
       attempt.timer = setTimeout(
-        () => this.disposeAttempt(attempt, new Error('Subscribe deadline exceeded')),
-        TIMEOUT_REQ
+        () => this.disposeAttempt(attempt, new Error('Welcome deadline exceeded')),
+        WELCOME_TIMEOUT
       );
-      // Retain both continuations after cancellation: late HTTP cannot install a socket.
-      const {body: connectionConfig, resource} = options;
-      this.register(connectionConfig, resource, attempt).then(
-        (url) => {
-          if (!this.ownsAttempt(attempt)) return;
-          clearTimeout(attempt.timer);
-          attempt.timer = setTimeout(
-            () => this.disposeAttempt(attempt, new Error('Welcome deadline exceeded')),
-            WELCOME_TIMEOUT
-          );
-          try {
-            this.connect(attempt, url, resource === SUBSCRIBE_API);
-          } catch (error) {
-            this.disposeAttempt(attempt, error);
-          }
-        },
-        (error) => this.disposeAttempt(attempt, error)
-      );
+      try {
+        this.connect(attempt, options.url);
+      } catch (error) {
+        this.disposeAttempt(attempt, error);
+      }
     });
-  }
-
-  public getServingRegion(): string | undefined {
-    return this.servingRegion;
-  }
-
-  public clearServingRegion(): void {
-    this.servingRegion = undefined;
   }
 
   public hasUsableSocket(): boolean {
@@ -138,7 +95,7 @@ export class WebSocketManager extends EventEmitter {
     this.shouldReconnect = shouldReconnect;
     const attempt = this.attempt;
     if (!attempt) return;
-    this.disposeAttempt(attempt, createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+    this.disposeAttempt(attempt, interrupted());
     this.emit('socketClose', {shouldReconnect});
     if (reason) WebSocketManager.diagnose('WebSocket connection closed', METHODS.CLOSE);
   }
@@ -160,67 +117,7 @@ export class WebSocketManager extends EventEmitter {
     }
   }
 
-  private async register(
-    connectionConfig: SubscribeRequest,
-    resource: string,
-    attempt: SocketAttempt,
-    refreshCatalog = true
-  ): Promise<string> {
-    // X-ORGANIZATION-ID header is only required for INT environments
-    const isIntEnv = this.webex.internal?.services?.isIntegrationEnvironment() || false;
-    const orgId = this.webex.credentials.getOrgId();
-    let subscribeResponse: SubscribeResponse;
-    try {
-      subscribeResponse = await this.webex.request({
-        service: WCC_API_GATEWAY,
-        resource,
-        method: HTTP_METHODS.POST,
-        body: connectionConfig,
-        headers: isIntEnv && orgId ? {'X-ORGANIZATION-ID': orgId} : undefined,
-        timeout: TIMEOUT_REQ,
-      });
-      const failure = normalizeRecoveryFailure(subscribeResponse);
-      if (failure.status !== undefined && (failure.status < 200 || failure.status >= 300)) {
-        throw subscribeResponse;
-      }
-    } catch (error) {
-      if (
-        resource !== SUBSCRIBE_API ||
-        !refreshCatalog ||
-        !this.shouldReconnect ||
-        !getSubscriptionMismatchReason(error) ||
-        !this.ownsAttempt(attempt)
-      )
-        throw error;
-
-      this.emit('regionMismatch');
-      await this.webex.internal.services.updateServices({forceRefresh: true});
-      if (!this.ownsAttempt(attempt)) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-
-      return this.register(connectionConfig, resource, attempt, false);
-    }
-    const webSocketUrl = subscribeResponse.body?.webSocketUrl;
-
-    // Only a `wss` URL whose hostname is, or is a subdomain of, one of the allow-listed
-    // RoutingNotifs domains is considered trusted.
-    let isWssUrl = false;
-
-    try {
-      isWssUrl = new URL(webSocketUrl).protocol === 'wss:';
-    } catch {
-      isWssUrl = false;
-    }
-
-    if (!isWssUrl || !isAllowedUrlHost(webSocketUrl, ALLOWED_ROUTING_NOTIFS_DOMAINS)) {
-      throw new Error(
-        'Rejected webSocketUrl from RoutingNotifs registration: scheme or host not allow-listed'
-      );
-    }
-
-    return webSocketUrl;
-  }
-
-  private connect(attempt: SocketAttempt, url: string, primary: boolean): void {
+  private connect(attempt: SocketAttempt, url: string): void {
     const socket = new WebSocket(url);
     attempt.socket = socket;
     socket.onopen = () => {
@@ -277,13 +174,12 @@ export class WebSocketManager extends EventEmitter {
       ) {
         attempt.accepted = true;
         clearTimeout(attempt.timer);
-        if (primary) this.servingRegion = parseServingRegion(url);
         attempt.resolve(messageData as WelcomeResponse);
       }
       if (messageType === CC_EVENTS.AGENT_MULTI_LOGIN) {
         // Capture and close the receiving owner before observers can replace it.
         this.shouldReconnect = false;
-        this.disposeAttempt(attempt, createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+        this.disposeAttempt(attempt, interrupted());
         this.emit('socketClose', {shouldReconnect: false});
       } else if (!attempt.accepted) {
         return;
@@ -304,7 +200,6 @@ export class WebSocketManager extends EventEmitter {
   private disposeAttempt(attempt: SocketAttempt, error: unknown, closeSocket = true): void {
     if (this.attempt !== attempt) return;
     this.attempt = undefined;
-    this.clearServingRegion();
     clearTimeout(attempt.timer);
     attempt.signal?.removeEventListener('abort', attempt.onAbort);
     if (!attempt.accepted) attempt.reject(error);

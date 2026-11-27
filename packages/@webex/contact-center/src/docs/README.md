@@ -207,7 +207,7 @@ contracts are owned by the services modules that declare them; this module re-ex
 | CONTACT_CENTER-R-011 | `enableWxBetterTogether` (default false) is an init-only flag read by `isWxBetterTogetherEnabled()`. After station login and silent relogin, ContactCenter applies the wxApp session hooks described under Design overview without failing the login, and `deregister()` clears the flag. | The private setter's JSDoc makes the init flag the Phase 1 host contract and keeps the runtime toggle internal; usersub state suppresses Webex App toasts, so a stale value must be cleared after a page refresh. | `src/cc.ts`, `src/config.ts`, `src/services/WebexCrossClientService.ts`, `src/services/WxAppTelephonyMercurySync.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/WebexCrossClientService.ts`, `test/unit/spec/services/WxAppTelephonyMercurySync.ts` | Compatibility with `allowMultiLogin: true` is stated by the design but has no dedicated case. | PRESENT |
 | CONTACT_CENTER-R-012 | At READY, ContactCenter throws `Invalid Contact Center configuration: disableWebRTCRegistration cannot be true when allowMultiLogin is false. …` when that combination is configured, before any collaborator is created. The subscribe request carries `force`, `isKeepAliveEnabled`, `clientType`, and `allowMultiLogin` from the plugin config. | The error text states the reason: an SDK instance can receive Mobius/WebRTC task events only when it registers WebRTC or allows multi-login. | `src/cc.ts`, `src/config.ts`, `src/types.ts` | `test/unit/spec/cc.ts` | `getConnectionConfig` falls back to `allowMultiLogin` true when no config is present, while the registered default is false. | PRESENT |
 | CONTACT_CENTER-R-013 | After Welcome and Profile identity validation, `register()` reads eligibility from the optional internal `Profile.multiRegionSettings` populated by the organization desktop-login response. Literal `true` enables recovery for an accepted current-org switch. Literal `false` yields `unavailable` with reason `not-eligible`; unknown eligibility ignores the switch. Registration clears previous eligibility and deduplicates up to 128 accepted switch IDs. Ordinary reconnect does not reread eligibility. | Reuse the existing registration request and protect the current station from stale or foreign switch events. | `src/cc.ts`, `src/services/config/index.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/config/index.ts` | `register()` removes `multiRegionSettings` before returning the profile. | PRESENT |
-| CONTACT_CENTER-R-014 | ContactCenter stops old transport recovery and publishes `recovering` so hosts can pause station actions. A current Welcome permits session restoration. With a previously signed-in station and automatic relogin enabled, try up to four reloads with 2/4/8-second transient spacing. At most one fallback `stationLogin()` uses the previously accepted station details. A recognized existing-session response permits one extra reload. Publish `ready` or `stationLoginRequired` only after station recovery completes on the connected replacement socket. Emit `stationLoginRequired` when applicable automatic station paths cannot complete. A recognized primary subscribe mismatch refreshes the Webex service catalog and retries subscribe once. A second mismatch ends in `unavailable`. | Hosts use the station outcome to resume actions with current station and Task data. | `src/cc.ts`, `src/services/core/websocket/connection-service.ts` | `test/unit/spec/cc.ts` | See `docs/getting-started.md` and the Contact Center sample for automatic discovery recovery and host loading behavior. | PRESENT |
+| CONTACT_CENTER-R-014 | ContactCenter stops ordinary transport recovery, publishes `recovering`, and schedules regional attempts at 100/60/30/15-second base delays with up to 50 percent jitter and repeated 15-second slots. A current Welcome permits session restoration. With a previously signed-in station and automatic relogin enabled, try up to four reloads with 2/4/8-second transient spacing. At most one fallback `stationLogin()` uses the previously accepted station details. A recognized existing-session response permits one extra reload. Publish `ready` or `stationLoginRequired` only after station recovery completes on the connected replacement socket. Emit `stationLoginRequired` when applicable automatic station paths cannot complete. A recognized primary subscribe mismatch refreshes the Webex service catalog and retries subscribe once. A second mismatch ends in `unavailable`. | Hosts use the station outcome to resume actions with current station and Task data. | `src/cc.ts`, `src/services/index.ts` | `test/unit/spec/cc.ts` | See `docs/getting-started.md` and the Contact Center sample for automatic discovery recovery and host loading behavior. | PRESENT |
 | CONTACT_CENTER-R-015 | Publish complete `region:stateChange` snapshots. Station acceptance produces `ready`. When a reload restores the disconnect state, the SDK can request Available once through `setAgentState`. Required browser voice must be ready first. An explicit state change, socket loss, logout, or session replacement cancels a pending automatic request before it is sent. `autoAvailable` reports the action independently of station readiness. | Hosts can use station and voice readiness to decide when to enable controls. | `src/cc.ts`, `src/types.ts`, `src/index.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/index.ts` | Local evidence covers browser voice readiness and the Available request. Live media continuity remains unverified. | PRESENT |
 | CONTACT_CENTER-R-016 | Use elapsed time and normalized, bounded fields from the current recovery attempt in recovery diagnostics. Optional RTD failures stay within the RTD lifecycle. | Recovery telemetry summarizes the attempt and protects credentials. | `src/cc.ts`, `src/services/core/Utils.ts`, `src/metrics/constants.ts` | `test/unit/spec/cc.ts` | The wiring test checks independent RTD recovery. Recovery metrics have no dedicated assertion. | PRESENT |
 
@@ -290,6 +290,7 @@ sequenceDiagram
 sequenceDiagram
   participant App
   participant CC as ContactCenter
+  participant Services
   participant WS as Primary WebSocketManager
   participant Cfg as AgentConfigService
   participant Agent as Services.agent
@@ -298,7 +299,9 @@ sequenceDiagram
   CC->>CC: new registration generation; clear idle-code cache
   CC->>Metrics: time register success/failure
   CC->>CC: setupEventListeners(); listen for WS messages
-  CC->>WS: initWebSocket({body, resource: SUBSCRIBE_API})
+  CC->>Services: subscribe(body, SUBSCRIBE_API)
+  Services-->>CC: URL
+  CC->>WS: initWebSocket({url})
   WS-->>CC: Welcome data containing agentId
   CC->>Cfg: getAgentConfig(orgId, agentId)
   alt profile fetched
@@ -353,12 +356,14 @@ sequenceDiagram
 
 Ordinary reconnect uses the existing relogin path shown below. For a current entitled region
 switch, ContactCenter pauses RTD and ordinary retry, publishes `recovering`, and starts the region
-driver. Hosts pause new station actions. Replacement Welcome starts the station policy. If that
-socket is lost during station recovery, socket-readiness checks end that attempt and the driver retries
-its connection and station restoration. The failed region's Tasks are retired when the switch begins.
-ContactCenter publishes `ready` or `stationLoginRequired` after the driver confirms the socket is usable.
-A recognized primary subscribe mismatch refreshes U2C and retries subscribe once through the existing
-Webex service-discovery API.
+timer. Hosts pause new station actions. ContactCenter obtains the replacement URL from
+`Services.subscribe` and passes it to WebSocketManager. Welcome starts station restoration.
+Socket-readiness checks end a dropped attempt, and ContactCenter schedules the next regional retry.
+The failed region's Tasks are retired when the switch begins. ContactCenter publishes `ready` or
+`stationLoginRequired` on a usable replacement socket and resumes ordinary ConnectionService
+monitoring. Its `getPrimaryWebSocketUrl()` helper refreshes U2C and retries subscribe once for a
+recognized primary region mismatch. ContactCenter also derives serving-region metadata from that
+primary URL.
 Station reload, login, and agent-state requests use the existing AQM event matching and timeout.
 Auto-Available uses `setAgentState` after required browser voice is ready (CONTACT_CENTER-R-015).
 
@@ -663,7 +668,7 @@ lifecycle errors before its ordinary failure diagnostics.
 | Condition | Signal or result | Caller behavior | Retry or recovery | Evidence |
 | --------- | ---------------- | --------------- | ----------------- | -------- |
 | Region recovery is active | `region:stateChange` with status `recovering` | Pause task and station actions in the app | Wait for `ready`. When `stationLoginRequired` is emitted, use the existing station login flow | `src/cc.ts`, [getting started](../../docs/getting-started.md#multi-region-recovery) |
-| A recognized primary subscribe region mismatch occurs | The SDK refreshes U2C and retries subscribe once. A second mismatch emits `unavailable` with reason `region-mismatch`. | Keep recovery controls paused until the SDK settles. | Enable a new `register()` attempt after recovery stops. | `src/cc.ts`, `src/services/core/websocket/WebSocketManager.ts`, `test/unit/spec/cc.ts` |
+| A recognized primary subscribe region mismatch occurs | The SDK refreshes U2C and retries subscribe once. A second mismatch emits `unavailable` with reason `region-mismatch`. | Keep recovery controls paused until the SDK settles. | Enable a new `register()` attempt after recovery stops. | `src/cc.ts`, `src/services/index.ts`, `test/unit/spec/cc.ts` |
 | Registration or recovery work is superseded | Plain `Error` with `data.reason = RECOVERY_INTERRUPTED` | Use the current registration and recovery state | Reconcile the current state before retrying | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | An application invokes a WebRTC call control on a Task retired by regional recovery | Plain `Error` with `data.reason = STALE_TASK` | Drop the retained Task reference and read current tasks again | Invoke commands on a fresh Task once the station is ready | `src/services/task/voice/WebRTC.ts`, `test/unit/spec/services/task/voice/WebRTC.ts` |
 | `stationLogout()` fails or times out | The usual AQM failure or timeout reaches the caller. The accepted station clears on a confirmed logout. | Check the current agent session. | Use the existing station logout flow after reconnect. | `src/cc.ts`, `test/unit/spec/cc.ts` |

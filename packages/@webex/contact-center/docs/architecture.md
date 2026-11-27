@@ -170,7 +170,7 @@ the owning module specification linked in the Owner column.
 | `contact-center-task-events` — `TASK_EVENTS` (`task:*`, including `task:hydrate`, `task:wrapup`, `task:midCallSummaryReceived`, `task:wxapp-mute-state-updated`), `TaskData`, `TaskResponse`, and task payload types | Event, published | [`src/services/task`](../src/services/task/docs/README.md) | Applications holding `ITask` objects | Additive constants; semantic extensions keep existing event names | `src/services/task/types.ts` |
 | `contact-center-task-state-machine` — state machine factory, `TaskState`, `TaskEvent`, guards, actions, UI-control computer | SDK, internal (only `getDefaultUIControls` is re-exported) | [`src/services/task/state-machine`](../src/services/task/state-machine/docs/README.md) | Task and TaskManager | Internal; `TaskUIControls` fields are public and additive | `src/services/task/state-machine/index.ts` |
 | `contact-center-services` — Services composition root and request factories | SDK, internal | [`src/services`](../src/services/docs/README.md) | ContactCenter, TaskManager | Internal | `src/services/index.ts` |
-| `contact-center-core-transport` — AqmReqs, WebexRequest, WebSocketManager, ConnectionService, and error helpers. Owns AQM event matching and timeout, paced transport admission with one pending attempt and callback-based regional outcomes, manager-owned socket cleanup, Welcome deadlines, automatic U2C refresh for recognized primary subscribe mismatches, and terminal recovery classification. | SDK, internal | [`src/services/core`](../src/services/core/docs/README.md) | Services, ContactCenter, TaskManager | Internal | `src/services/core/aqm-reqs.ts` |
+| `contact-center-core-transport` — AqmReqs, WebexRequest, WebSocketManager, ConnectionService, and error helpers. Owns AQM event matching and timeout, URL-only WebSocket admission and cleanup, Welcome deadlines, and ordinary liveness/reconnect timing. Services owns subscription HTTP. ContactCenter owns regional pacing, U2C recovery, placement metadata, and station restoration. | SDK, internal | [`src/services/core`](../src/services/core/docs/README.md) | Services, ContactCenter, TaskManager | Internal | `src/services/core/aqm-reqs.ts` |
 | `contact-center-metrics` — `METRIC_EVENT_NAMES` and the MetricsManager submission API, including generation-owned regional recovery outcomes. | Event, internal | [`src/metrics`](../src/metrics/docs/README.md) | Every module that tracks events | Internal; names reach the Webex metrics backend | `src/metrics/constants.ts` |
 | `contact-center-page-cache` — PageCache and pagination types and defaults | SDK, internal | [`src/utils`](../src/utils/docs/README.md) | AddressBook, Queue; EntryPoint reads its defaults | Internal | `src/utils/PageCache.ts` |
 | `wxcc-api-gateway` — Contact Center REST API through `webex.request` service `wcc-api-gateway` | HTTP, external | Contact Center backend | Services, Config, data services | Owned by the backend; the package owns no route | Webex Contact Center API gateway (external) |
@@ -219,7 +219,7 @@ Package compatibility and event-loop safety are primary: published exports/types
 |---|---|---|
 | Unit coverage | 85% branches/functions/lines/statements | package Jest configuration |
 | Operation duration/success/failure | no local numeric SLO routed | MetricsManager event taxonomy |
-| Connection recovery | Ordinary 8s loss detection, 5s retry slots, and a 50s watchdog. Region recovery uses separate pacing. | Core constants/ConnectionService |
+| Connection recovery | Ordinary 8s loss detection, 5s retry slots, and a 50s watchdog. ContactCenter owns regional retry pacing. | Core constants/ConnectionService and `src/cc.ts` |
 
 <!-- Include if: repository resources call, import, or exchange events with one another. [condition-id: repo.components_interact] -->
 
@@ -397,7 +397,7 @@ flowchart LR
 - **Hard rule:** never commit or log secrets, tokens, keys, or connection strings.
 - Validate public inputs before request construction; use typed constants and endpoint builders; never concatenate credentials or executable commands.
 - Authenticated requests use the Webex SDK service catalog and HTTPS. Realtime traffic uses host-resolved WSS; header/environment behavior is owned by `src/services/core/WebexRequest.ts` and the host request layer.
-- WebSocketManager connects only to a `wss:` URL whose host is in `ALLOWED_ROUTING_NOTIFS_DOMAINS` (`cisco.com`, `ciscoccservice.com`) and rejects any other subscribe response (`src/services/core/websocket/WebSocketManager.ts`).
+- WebSocketManager connects only to a `wss:` URL whose host is in `ALLOWED_ROUTING_NOTIFS_DOMAINS` (`cisco.com`, `ciscoccservice.com`) and rejects other supplied URLs (`src/services/core/websocket/WebSocketManager.ts`).
 
 | Data class | Examples | Storage rule | Logging rule | In transit |
 |---|---|---|---|---|

@@ -4,7 +4,11 @@ import AgentConfigService from './config';
 import AqmReqs from './core/aqm-reqs';
 import {WebSocketManager} from './core/websocket/WebSocketManager';
 import {ConnectionService} from './core/websocket/connection-service';
-import type {WebexSDK} from '../types';
+import {HTTP_METHODS} from '../types';
+import type {WebexSDK, SubscribeRequest} from '../types';
+import {WCC_API_GATEWAY} from './constants';
+import type {SubscribeResponse} from './config/types';
+import {TIMEOUT_REQ} from './core/constants';
 import aqmDialer from './task/dialer';
 
 /**
@@ -31,6 +35,7 @@ export default class Services {
   public readonly connectionService: ConnectionService;
   /** Singleton instance of the Services class */
   private static instance: Services;
+  private readonly webex: WebexSDK;
 
   /**
    * Creates a new Services instance
@@ -39,15 +44,36 @@ export default class Services {
    */
   constructor(options: {webex: WebexSDK}) {
     const {webex} = options;
-    this.webSocketManager = new WebSocketManager({webex});
+    this.webex = webex;
+    this.webSocketManager = new WebSocketManager();
     // TODO: Implement reconnection logic for this websocket in upcoming PR
-    this.rtdWebSocketManager = new WebSocketManager({webex});
+    this.rtdWebSocketManager = new WebSocketManager();
     const aqmReq = new AqmReqs(this.webSocketManager);
     this.config = new AgentConfigService();
     this.agent = routingAgent(aqmReq);
     this.contact = routingContact(aqmReq);
     this.dialer = aqmDialer(aqmReq);
     this.connectionService = new ConnectionService(this.webSocketManager);
+  }
+
+  public async subscribe(body: SubscribeRequest, resource: string): Promise<string> {
+    const orgId = this.webex.credentials.getOrgId();
+    const isIntegration = this.webex.internal.services.isIntegrationEnvironment();
+    const response: SubscribeResponse = await this.webex.request({
+      service: WCC_API_GATEWAY,
+      resource,
+      method: HTTP_METHODS.POST,
+      body,
+      headers: isIntegration && orgId ? {'X-ORGANIZATION-ID': orgId} : undefined,
+      timeout: TIMEOUT_REQ,
+    });
+    if (
+      response.statusCode !== undefined &&
+      (response.statusCode < 200 || response.statusCode >= 300)
+    )
+      throw response;
+
+    return response.body?.webSocketUrl;
   }
 
   /**

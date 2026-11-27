@@ -1,52 +1,20 @@
 import {EventEmitter} from 'events';
 import type {WebSocketManager} from './WebSocketManager';
 import LoggerProxy from '../../../logger-proxy';
-import type {
-  ConnectionLostDetails,
-  ConnectionResetOptions,
-  RegionRecoveryOptions,
-  ConnectionRecoveryError,
-  ConnectionRecoveryFailureKind,
-} from './types';
+import type {ConnectionLostDetails, ConnectionResetOptions} from './types';
 import {
   LOST_CONNECTION_RECOVERY_TIMEOUT,
   WS_DISCONNECT_ALLOWED,
   CONNECTIVITY_CHECK_INTERVAL,
   METHODS,
-  REGION_RECOVERY_ERROR_CODES,
-  SUBSCRIPTION_MISMATCH_REASONS,
 } from '../constants';
 import {CONNECTION_SERVICE_FILE} from '../../../constants';
-import type {SubscribeRequest} from '../../../types';
-import {SUBSCRIBE_API} from '../../constants';
-import type {WelcomeResponse} from '../../config/types';
 import type {RecoveryFailure} from '../types';
-import {getSubscriptionMismatchReason, isRecord, normalizeRecoveryFailure} from '../Utils';
+import {isRecord, normalizeRecoveryFailure} from '../Utils';
 
-const REGION_RETRY_DELAYS = [100000, 60000, 30000, 15000];
-const SAFE_REASONS = new Set([
-  ...Object.values(REGION_RECOVERY_ERROR_CODES),
-  ...SUBSCRIPTION_MISMATCH_REASONS,
-  'INTERNAL_ERROR',
-  'AGENT_NOT_FOUND',
-  'AGENT_DN_NOT_REGISTERED',
-  'AGENT_SESSION_ALREADY_EXISTS',
-]);
-const safeFailure = (error: unknown, mismatch?: string): RecoveryFailure => {
-  const failure = normalizeRecoveryFailure(error);
-  if (mismatch) failure.reason = mismatch;
-  else if (failure.reason && !SAFE_REASONS.has(failure.reason)) delete failure.reason;
-
-  return failure;
-};
-const terminalError = (
-  kind: ConnectionRecoveryFailureKind,
-  failure?: RecoveryFailure
-): ConnectionRecoveryError => Object.assign(new Error(kind), {data: {...failure, kind}});
-
-/** Single-flight transport scheduler; station/session policy stays with ContactCenter. */
+/** Schedules ordinary socket reconnection and monitors connection liveness. */
 export class ConnectionService extends EventEmitter {
-  private mode: 'ordinary' | 'paused' | 'region' | 'stopped' = 'stopped';
+  private mode: 'ordinary' | 'paused' | 'stopped' = 'stopped';
   private retryTimer?: ReturnType<typeof setTimeout>;
   private reconnectingTimer?: ReturnType<typeof setTimeout>;
   private restoreTimer?: ReturnType<typeof setTimeout>;
@@ -57,7 +25,8 @@ export class ConnectionService extends EventEmitter {
   private pending?: {reconnectOnClose: boolean};
   private onTerminalFailure?: ConnectionResetOptions['onTerminalFailure'];
   private readonly webSocketManager: WebSocketManager;
-  private subscribeRequest: SubscribeRequest;
+  private getWebSocketUrl?: ConnectionResetOptions['getWebSocketUrl'];
+  private isTerminalFailure?: ConnectionResetOptions['isTerminalFailure'];
 
   constructor(webSocketManager: WebSocketManager) {
     super();
@@ -66,7 +35,8 @@ export class ConnectionService extends EventEmitter {
 
   public reset(options: ConnectionResetOptions): void {
     this.stop();
-    this.subscribeRequest = options.subscribeRequest;
+    this.getWebSocketUrl = options.getWebSocketUrl;
+    this.isTerminalFailure = options.isTerminalFailure;
     this.onTerminalFailure = options.onTerminalFailure;
     this.mode = 'ordinary';
     this.webSocketManager.shouldReconnect = true;
@@ -85,16 +55,11 @@ export class ConnectionService extends EventEmitter {
   public stop(): void {
     this.mode = 'stopped';
     this.cancelWork();
+    this.getWebSocketUrl = undefined;
+    this.isTerminalFailure = undefined;
     this.onTerminalFailure = undefined;
     this.webSocketManager.off('message', this.onPing);
     this.webSocketManager.off('socketClose', this.onSocketClose);
-  }
-
-  public recoverRegion(options: RegionRecoveryOptions): void {
-    if (this.mode === 'stopped') return;
-    this.pause();
-    this.mode = 'region';
-    this.scheduleRegion(options, 1);
   }
 
   private setupEventListeners(): void {
@@ -117,89 +82,6 @@ export class ConnectionService extends EventEmitter {
     const pending = this.pending;
     this.pending = undefined;
     if (pending) this.webSocketManager.close(false, 'Recovery cancelled');
-  }
-
-  private subscribePrimary(): Promise<WelcomeResponse> {
-    return this.webSocketManager.initWebSocket({
-      body: this.subscribeRequest,
-      resource: SUBSCRIBE_API,
-    });
-  }
-
-  private scheduleRegion(options: RegionRecoveryOptions, attempt: number): void {
-    if (this.mode !== 'region' || this.retryTimer) return;
-    const base = REGION_RETRY_DELAYS[Math.min(attempt, REGION_RETRY_DELAYS.length) - 1];
-    const wait = base * (1 + 0.5 * Math.random());
-    this.retryTimer = setTimeout(() => {
-      this.retryTimer = undefined;
-      this.runRegionAttempt(options, attempt);
-    }, wait);
-    try {
-      options.onScheduled(attempt, wait);
-    } catch {
-      /* A diagnostic callback cannot prevent the scheduled reconnect. */
-    }
-  }
-
-  private async runRegionAttempt(options: RegionRecoveryOptions, attempt: number): Promise<void> {
-    if (this.mode !== 'region' || this.pending) return;
-    const pending = {reconnectOnClose: false};
-    this.pending = pending;
-    const isConnected = () =>
-      this.pending === pending &&
-      !pending.reconnectOnClose &&
-      this.webSocketManager.hasUsableSocket();
-    let welcomed = false;
-    try {
-      const welcome = await this.subscribePrimary();
-      if (this.pending !== pending) return;
-      if (!isConnected()) throw new Error('WebSocket closed');
-      welcomed = true;
-      const publishOutcome = await options.afterWelcome(welcome, isConnected);
-      if (this.pending !== pending) return;
-      if (!isConnected()) throw new Error('WebSocket closed');
-      this.mode = 'ordinary';
-      this.updateConnectionData();
-      this.monitorOrdinary();
-      try {
-        options.onAttemptSettled?.(attempt, 'succeeded');
-      } catch {
-        /* Recovery progress is independent of diagnostics. */
-      }
-      try {
-        if (publishOutcome) publishOutcome();
-      } finally {
-        if (this.pending === pending) this.pending = undefined;
-      }
-    } catch (error) {
-      if (this.pending !== pending) return;
-      const mismatch = welcomed ? undefined : getSubscriptionMismatchReason(error);
-      const failure = safeFailure(error, mismatch);
-      let kind: ConnectionRecoveryFailureKind | undefined;
-      if (failure.status === 401 || failure.status === 403) kind = 'authentication-failed';
-      else if (mismatch) kind = 'region-mismatch';
-      else if (welcomed && !pending.reconnectOnClose) kind = 'after-welcome-failed';
-      this.pending = undefined;
-      if (kind) {
-        const callback = this.onTerminalFailure;
-        this.stop();
-        this.webSocketManager.close(false, 'Terminal recovery');
-        try {
-          options.onAttemptSettled?.(attempt, 'terminal', failure);
-        } catch {
-          /* Recovery failure is independent of diagnostics. */
-        }
-        callback?.(terminalError(kind, failure));
-
-        return;
-      }
-      try {
-        options.onAttemptSettled?.(attempt, 'retrying', failure);
-      } catch {
-        /* Recovery progress is independent of diagnostics. */
-      }
-      this.scheduleRegion(options, attempt + 1);
-    }
   }
 
   private dispatchConnectionEvent(socketReconnected = false): void {
@@ -320,7 +202,9 @@ export class ConnectionService extends EventEmitter {
     try {
       if (typeof navigator !== 'undefined' && navigator.onLine === false)
         throw new Error('Browser offline');
-      await this.subscribePrimary();
+      const url = await this.getWebSocketUrl();
+      if (this.pending !== pending) return;
+      await this.webSocketManager.initWebSocket({url});
       if (this.mode !== 'ordinary' || this.pending !== pending) return;
       if (pending.reconnectOnClose) throw new Error('WebSocket closed');
       diagnose('succeeded');
@@ -339,22 +223,17 @@ export class ConnectionService extends EventEmitter {
 
         return;
       }
-      const mismatch = getSubscriptionMismatchReason(error);
-      const failure = safeFailure(error, mismatch);
-      const {status} = failure;
-      const isTerminal = status === 401 || status === 403 || !!mismatch;
+      const failure = normalizeRecoveryFailure(error);
+      delete failure.reason;
+      const isTerminal = this.isTerminalFailure(error);
       diagnose(isTerminal ? 'terminal' : 'retrying', failure);
       if (this.mode !== 'ordinary' || this.lossEpisode !== episode) return;
       if (isTerminal) {
         const callback = this.onTerminalFailure;
-        const terminal = terminalError(
-          mismatch ? 'region-mismatch' : 'authentication-failed',
-          failure
-        );
         this.stop();
         this.webSocketManager.close(false, 'Terminal admission');
         try {
-          callback?.(terminal);
+          callback?.(error);
         } catch {
           /* Terminal ownership is detached before callback delivery. */
         }
@@ -381,7 +260,7 @@ export class ConnectionService extends EventEmitter {
   }
 
   private onSocketClose = (event?: {shouldReconnect?: boolean}): void => {
-    if (this.mode !== 'ordinary' && this.mode !== 'region') return;
+    if (this.mode !== 'ordinary') return;
     const shouldReconnect =
       event?.shouldReconnect !== false && this.webSocketManager.shouldReconnect;
     if (!shouldReconnect) {
@@ -394,7 +273,6 @@ export class ConnectionService extends EventEmitter {
 
       return;
     }
-    if (this.mode !== 'ordinary') return;
     const episode = this.lossEpisode ?? {startedAt: Date.now(), attempt: 0};
     this.lossEpisode = episode;
     clearTimeout(this.reconnectingTimer);
