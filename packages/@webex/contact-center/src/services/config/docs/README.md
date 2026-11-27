@@ -234,12 +234,12 @@ The AgentProfile is the central configuration object required for an agent to op
 const agentId = data.agentId;
 const orgId = this.$webex.credentials.getOrgId();
 const profile = await this.services.config.getAgentConfig(orgId, agentId);
-// After validating the current registration and Welcome identity:
 const {multiRegionSettings} = profile;
 delete profile.multiRegionSettings;
 this.agentConfig = profile;
-// After resetting ordinary connection monitoring:
-this.multiRegionSettings = multiRegionSettings ?? null;
+this.services.connectionService.setMultiRegionSettings(multiRegionSettings);
+// After Mercury and optional station relogin complete:
+this.services.connectionService.reset();
 ```
 
 Stack: TypeScript 5.4 REST client, Promise-based parallel aggregation, Jest 27.

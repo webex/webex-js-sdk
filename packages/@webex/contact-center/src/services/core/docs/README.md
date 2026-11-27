@@ -163,7 +163,7 @@ contract `contact-center-core-transport` (internal SDK contract, canonical sourc
 | `message` | string (JSON) | WebSocket message received |
 | `socketClose` | `{shouldReconnect: boolean}` | Reports explicit or admitted socket closure. False disables retries. |
 | `connectionLost` | `ConnectionLostDetails` | Emitted by `ConnectionService` on ordinary lost, recovered, reconnected, and restore-failed transitions. A keepalive echo sets `isKeepAlive: true` and emits only in ordinary mode with no pending admission in progress. |
-| `reconnectFailed` | Original error (`unknown`) | Reports connection failures; ConnectionService owns retry/terminal policy when configured. ContactCenter uses the notification to settle pending registration or tear down an identity mismatch. |
+| `reconnectFailed` | Original error (`unknown`) | Reports connection failures; ConnectionService owns retry/terminal policy when configured. Registration failures propagate through the awaited connection promise. |
 | `regionStateChange` | `RegionRecoveryState` | Complete, deduplicated recovery snapshot from ConnectionService. ContactCenter forwards it as the public `region:stateChange` event. |
 
 Generic message wrapper used throughout the SDK. All WebSocket messages and AQM responses conform to this shape:
@@ -436,6 +436,7 @@ sequenceDiagram
   CS->>WS: initWebSocket({body, resource})
   WS-->>CS: Welcome
   CS-->>CC: Welcome
+  CC->>CC: Fetch Profile, connect Mercury, optionally restore station
   CC->>CS: reset()
   Note over CS,WS: connect() refreshes U2C and retries once for a recognized primary 409
   alt Ordinary socket loss
@@ -553,7 +554,7 @@ bindings and operation settlement. ConnectionService owns ordinary and regional 
 | -------------- | ----- | ------------- | ------------------- | ----------------------------- |
 | Current `websocket`, `keepaliveWorker` and `isWelcomeReceived` | `WebSocketManager` | No socket; one worker | Subscription, Welcome, error, close, or replacement | Socket replacement or explicit close releases the timer and socket, and stops the worker's keepalive loop |
 | Pending success, failure, and cancel bindings | `AqmReqs` | Empty | Dispatch, notification, host rejection, or timeout | Clear pending bindings on settlement |
-| `isStopped`, `reconnectInterval`, `pending` flag and ordinary liveness timers | `ConnectionService` | Listening after construction; registration calls `reset()` | Registration reset, socket loss, region recovery or stop | Reset or stop clears ordinary timers and the pending flag; WebSocketManager closes pending initialization |
+| `isStopped`, `reconnectInterval`, `pending` flag and ordinary liveness timers | `ConnectionService` | Listening after construction; registration stops monitoring until setup completes | Registration reset, socket loss, region recovery or stop | Reset or stop clears ordinary timers and the pending flag; WebSocketManager closes pending initialization |
 | Regional timer, retry stage and budget, last switch tracking ID, settings, placement, snapshot, and auto-Available | `ConnectionService` | No regional work; unknown settings | Accepted profile settings, forwarded switch, subscription/session outcomes, and voice readiness | `resetRecovery()` clears registration-scoped recovery state; completed recovery releases its active attempt |
 | `WebexRequest.instance` | `WebexRequest` class | Unset until the first `getInstance({webex})` | First call with `webex` | Process lifetime |
 
@@ -577,6 +578,7 @@ A keepalive resets ordinary liveness timers and emits only in ordinary mode with
 Slots are anchored to the loss time by the interval, without timestamp calculations or catch-up.
 ConnectionService stops ordinary monitoring
 while its regional timer reconnects and restores the station. Reset resumes ordinary monitoring.
+Registration also keeps monitoring stopped until profile, Mercury, and optional station restoration complete.
 Stop clears pending work and listeners.
 
 | Constant                           | Value     | Purpose                                      |

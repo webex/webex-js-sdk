@@ -6606,7 +6606,13 @@ describe('regional recovery wiring', () => {
       });
       await flush();
       expect(state).toHaveBeenLastCalledWith(
-        expect.objectContaining({status: 'ready', reason: 'initial-login'})
+        expect.objectContaining({
+          status: 'ready',
+          reason: 'initial-login',
+          homeRegion: 'produs1',
+          servingRegion: 'produs1',
+          limitedService: false,
+        })
       );
       expect(registerLine).toHaveBeenCalledTimes(browserVoice ? 1 : 0);
       expect(updateServices).not.toHaveBeenCalled();
@@ -7088,23 +7094,6 @@ describe('regional recovery wiring', () => {
     );
   });
 
-  it('rejects regional Welcome for another agent before attempting station reload', async () => {
-    await withRouting(async ({cc, requests, currentRouting, startSwitch, advanceSwitch, login}) => {
-      await login();
-      const state = jest.fn();
-      cc.on('region:stateChange', state);
-      startSwitch('FAILOVER');
-      await advanceSwitch();
-      const backup = currentRouting();
-      backup.welcome('another-agent');
-      await flush();
-
-      expect(backup.close).toHaveBeenCalledTimes(1);
-      expect(state).toHaveBeenLastCalledWith(expect.objectContaining({status: 'unavailable'}));
-      expect(requests.some(({resource}) => resource === '/v1/agents/reload')).toBe(false);
-    });
-  });
-
   it('retries a transient 1037 reload on the adopted routing connection', async () => {
     await withRouting(async ({cc, requests, connectBackup, login}) => {
       await login();
@@ -7396,87 +7385,28 @@ describe('regional recovery wiring', () => {
     );
   });
 
-  it.each([
-    {title: 'welcomes the replacement socket'},
-    {
-      title: 'refreshes U2C after a region mismatch',
-      failure: subscribeConflict('REGION_MISMATCH_NO_OVERRIDE'),
-    },
-    {title: 'rejects expired credentials', failure: {statusCode: 401}},
-    {title: 'retries a transient subscribe failure', failure: {statusCode: 503}},
-  ])('registration uses ordinary reconnect and $title', async ({failure}) => {
-    await withRouting(
-      async ({cc, requests, currentRouting, setSubscribeFailure, updateServices}) => {
-        const configService = cc.services.config;
-        const getProfile = configService.getAgentConfig.bind(configService);
-        const profileAvailable = createDeferred<void>();
-        jest.spyOn(configService, 'getAgentConfig').mockImplementation(async (orgId, agentId) => {
-          const profile = await getProfile(orgId, agentId);
-          await profileAvailable.promise;
-
-          return profile;
-        });
-        cc.$config.allowAutomatedRelogin = true;
-        const registration = cc.register();
-        const onRegistrationSettled = jest.fn();
-        registration.then(onRegistrationSettled, onRegistrationSettled);
-        await flush();
-        currentRouting().welcome();
-        await flush();
-        currentRouting().lose();
-        profileAvailable.resolve();
-        await flush();
-
-        setSubscribeFailure(failure);
-        jest.advanceTimersByTime(5000);
-        await flush();
-        if (failure?.statusCode === 503) {
-          expect(onRegistrationSettled).not.toHaveBeenCalled();
-          expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(2);
-          setSubscribeFailure();
-          jest.advanceTimersByTime(5000);
-          await flush();
-        }
-        const authFailure = failure?.statusCode === 401;
-        if (!authFailure) {
-          currentRouting().welcome();
-          await flush();
-          currentRouting().message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS));
-          await expect(registration).resolves.toMatchObject({isAgentLoggedIn: true});
-        } else {
-          await expect(registration).rejects.toMatchObject({
-            statusCode: 401,
-          });
-        }
-        expect(updateServices).toHaveBeenCalledTimes(failure?.statusCode === 409 ? 1 : 0);
-        expect(requests.filter(({resource}) => resource === SUBSCRIBE_API))
-          .toHaveLength([409, 503].includes(failure?.statusCode) ? 3 : 2);
-      },
-      {autoRegister: false}
-    );
-  });
-
-  it('rejects registration when routing authentication fails while Mercury is connecting', async () => {
-    await withRouting(async ({cc, requests, currentRouting, setSubscribeFailure}) => {
+  it('rejects registration if the routing socket closes while Mercury is connecting', async () => {
+    await withRouting(async ({cc, requests, currentRouting}) => {
       const mercuryConnection = createDeferred<void>();
       const connectMercury = jest.fn(() => mercuryConnection.promise);
       cc.$webex.internal.mercury.connect = connectMercury;
       cc.$config.allowAutomatedRelogin = true;
       const registration = cc.register();
-      const rejection = expect(registration).rejects.toMatchObject({statusCode: 401});
+      const rejection = expect(registration).rejects.toThrow(
+        'WebSocket disconnected during registration'
+      );
       await flush();
       currentRouting().welcome();
       await flush();
       expect(connectMercury).toHaveBeenCalledTimes(1);
 
       currentRouting().lose();
-      setSubscribeFailure({statusCode: 401});
       jest.advanceTimersByTime(5000);
       await flush();
       mercuryConnection.resolve();
       await rejection;
 
-      expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(2);
+      expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(1);
       expect(requests.filter(({resource}) => resource === '/v1/agents/reload')).toHaveLength(0);
       expect(requests.filter(({resource}) => resource === '/v1/agents/login')).toHaveLength(0);
       expect(requests.filter(({resource}) => resource === 'v1/realtime/subscribe')).toHaveLength(0);
@@ -7562,6 +7492,30 @@ describe('regional recovery wiring', () => {
       );
       expect(requests.some(({resource}) => resource === '/v1/agents/reload')).toBe(restores);
     });
+  });
+
+  it('keeps RTD connected when ordinary reconnect restores a new station session', async () => {
+    await withRouting(async ({requests, sockets, currentRouting, login}) => {
+      const rtd = sockets.find((socket) => socket.url.includes('rtd.'));
+      rtd.welcome();
+      await flush();
+      await login();
+
+      currentRouting().lose();
+      jest.advanceTimersByTime(5000);
+      await flush();
+      const replacement = currentRouting();
+      replacement.welcome();
+      await flush();
+      replacement.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS, {
+        agentSessionId: 'restored-session',
+      }));
+      await flush();
+
+      expect(requests.filter(({resource}) => resource === '/v1/agents/reload')).toHaveLength(1);
+      expect(requests.filter(({resource}) => resource === 'v1/realtime/subscribe')).toHaveLength(1);
+      expect(rtd.close).not.toHaveBeenCalled();
+    }, {rtdEnabled: true});
   });
 
   it.each([undefined, 503])(

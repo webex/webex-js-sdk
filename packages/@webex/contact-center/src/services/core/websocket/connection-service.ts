@@ -104,15 +104,11 @@ export class ConnectionService extends EventEmitter {
     this.multiRegionSettings = settings ?? null;
   }
 
-  public resetRecovery(identityFailure = false): void {
+  public resetRecovery(): void {
     const cancelled = this.cancelAutoAvailable();
     this.cancelRegionRecovery();
     this.lastSwitchTrackingId = undefined;
     if (cancelled) this.publishRegionState(cancelled);
-    if (identityFailure) {
-      delete this.regionStateContext.autoAvailable;
-      this.publishRegionState({status: 'unavailable', reason: 'recovery-failed'});
-    }
     this.multiRegionSettings = null;
     this.resetRegionState();
   }
@@ -282,15 +278,9 @@ export class ConnectionService extends EventEmitter {
       this.recordRecoveryDiagnostic('ignored-event', 'dropped', 0, startedAt, {
         trackingId: event.trackingId,
       });
-    const {orgId, agentId} = this.recoveryOptions.getSession();
-    if (!agentId) return;
+    const {orgId} = this.recoveryOptions.getSession();
     if (this.regionState?.status === 'unavailable') {
       recordIgnoredSwitch();
-
-      return;
-    }
-    if (this.recoveryOptions.webex.credentials.getOrgId() !== orgId) {
-      this.emit('reconnectFailed', createRegionRecoveryError('RECOVERY_INTERRUPTED'));
 
       return;
     }
@@ -351,15 +341,9 @@ export class ConnectionService extends EventEmitter {
     const welcomeStartedAt = Date.now();
     const manager = this.webSocketManager;
     try {
-      const welcome = await this.connect();
+      await this.connect();
       if (this.recovery !== recovery) return;
-      const agentId = isRecord(welcome) ? welcome.agentId : undefined;
-      this.recordRecoveryDiagnostic(
-        'welcome',
-        agentId === this.recoveryOptions.getSession().agentId ? 'succeeded' : 'failed',
-        attempt,
-        welcomeStartedAt
-      );
+      this.recordRecoveryDiagnostic('welcome', 'succeeded', attempt, welcomeStartedAt);
       const state = await this.restoreRegionSession(recovery);
       if (this.recovery !== recovery) return;
       if (!manager.hasUsableSocket()) throw new Error('WebSocket closed');

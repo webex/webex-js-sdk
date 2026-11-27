@@ -12,7 +12,6 @@ export type RecoveryOptions = {
   metricsManager: MetricsManager;
   getSession: () => {
     orgId?: string;
-    agentId?: string;
     connectionConfig: SubscribeRequest;
     isAgentLoggedIn?: boolean;
     station?: Agent.UserStationLogin;
