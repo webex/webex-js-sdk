@@ -366,6 +366,7 @@ recognized primary region mismatch. ContactCenter also derives serving-region me
 primary URL.
 Station reload, login, and agent-state requests use the existing AQM event matching and timeout.
 Auto-Available uses `setAgentState` after required browser voice is ready (CONTACT_CENTER-R-015).
+After regional recovery completes, a confirmed station logout retains the recovered primary socket.
 
 ```mermaid
 sequenceDiagram
@@ -670,7 +671,7 @@ lifecycle errors before its ordinary failure diagnostics.
 | Region recovery is active | `region:stateChange` with status `recovering` | Pause task and station actions in the app | Wait for `ready`. When `stationLoginRequired` is emitted, use the existing station login flow | `src/cc.ts`, [getting started](../../docs/getting-started.md#multi-region-recovery) |
 | A recognized primary subscribe region mismatch occurs | The SDK refreshes U2C and retries subscribe once. A second mismatch emits `unavailable` with reason `region-mismatch`. | Keep recovery controls paused until the SDK settles. | Enable a new `register()` attempt after recovery stops. | `src/cc.ts`, `src/services/index.ts`, `test/unit/spec/cc.ts` |
 | Registration or recovery work is superseded | Plain `Error` with `data.reason = RECOVERY_INTERRUPTED` | Use the current registration and recovery state | Reconcile the current state before retrying | `src/cc.ts`, `test/unit/spec/cc.ts` |
-| An application invokes a WebRTC call control on a Task retired by regional recovery | Plain `Error` with `data.reason = STALE_TASK` | Drop the retained Task reference and read current tasks again | Invoke commands on a fresh Task once the station is ready | `src/services/task/voice/WebRTC.ts`, `test/unit/spec/services/task/voice/WebRTC.ts` |
+| A pending WebRTC microphone request completes after its Task is retired by regional recovery | The SDK releases the granted tracks and rejects `accept()` with `data.reason = STALE_TASK` | Drop the retained Task reference and read current tasks again | Invoke commands on a fresh Task once the station is ready | `src/services/task/voice/WebRTC.ts`, `test/unit/spec/services/task/voice/WebRTC.ts` |
 | `stationLogout()` fails or times out | The usual AQM failure or timeout reaches the caller. The accepted station clears on a confirmed logout. | Check the current agent session. | Use the existing station logout flow after reconnect. | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | Invalid plugin configuration at READY | `Error` `Invalid Contact Center configuration: …` thrown in the READY handler | Fix the config (allow multi-login or WebRTC registration) | Re-init; no collaborator exists | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | An AQM operation gets no correlated notification before its timeout | AqmReqs rejects `Service.aqm.reqs.Timeout`; the façade logs, uploads logs, and rethrows `Error` with the backend reason or `Error while performing` plus the method name | Treat the outcome as unknown and wait for the next agent or task notification | Retry only operations that are safe to repeat | `src/services/core/aqm-reqs.ts`, `src/services/core/Utils.ts` |

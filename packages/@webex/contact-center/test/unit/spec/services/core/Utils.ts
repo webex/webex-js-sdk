@@ -402,11 +402,17 @@ describe('Utils', () => {
   });
 
   describe('createErrDetailsObject', () => {
-    it('retains optional structured HTTP diagnostics without changing the backend body', () => {
+    it('preserves HTTP status and reads recovery codes from the original backend body', () => {
       const body = {error: {reason: 'INTERNAL_ERROR', reasonCode: '1037'}};
       const result = Utils.createErrDetailsObject({statusCode: 503, headers: {trackingid: 'request-id'}, body});
-      expect(result.data).toEqual({status: 503, reason: 'INTERNAL_ERROR', reasonCode: 1037, trackingId: 'request-id', msg: body});
+      expect(result.data).toEqual({status: 503, trackingId: 'request-id', msg: body});
       expect(result.data.msg).toBe(body);
+      expect(Utils.normalizeRecoveryFailure({details: result.data})).toEqual({
+        status: 503,
+        reason: 'INTERNAL_ERROR',
+        reasonCode: 1037,
+        trackingId: 'request-id',
+      });
     });
     it('should create error details object with correct parameters', () => {
       const errObj: WebexRequestPayload = {

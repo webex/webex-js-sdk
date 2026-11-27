@@ -141,7 +141,6 @@ export const METHODS = {
   ON_MESSAGE: 'onMessage',
 
   // WebSocketManager methods
-  DISPOSE_ATTEMPT: 'disposeAttempt',
   CLOSE: 'close',
   HANDLE_CONNECTION_LOST: 'handleConnectionLost',
   REGISTER: 'register',

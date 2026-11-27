@@ -14,22 +14,13 @@ export type ErrDetails = {
   reasonCode?: number;
 };
 
-/** Compatible diagnostics for generic HTTP failures. */
-type GenericFailureDetails = {
-  trackingId: string;
-  status?: number;
-  reason?: string;
-  reasonCode?: number;
-  msg?: unknown;
-};
-
 export type AgentErrorIds =
   | {'Service.aqm.agent.stationLogin': ErrDetails}
   | {'Service.aqm.agent.stationLoginFailed': Failure}
   | {'Service.aqm.agent.stateChange': Failure}
   | {'Service.aqm.agent.reload': Failure}
   | {'Service.aqm.agent.logout': Failure}
-  | {'Service.reqs.generic.failure': GenericFailureDetails}
+  | {'Service.reqs.generic.failure': {trackingId: string; status?: number; msg?: unknown}}
   | {'Service.aqm.agent.BuddyAgentsRetrieveFailed': Failure};
 
 export type vteamType = 'inboundqueue' | 'inboundentrypoint' | string;
@@ -57,7 +48,7 @@ export type TaskErrorIds =
   | {'Service.aqm.dialer.acceptPreviewContact': Failure}
   | {'Service.aqm.dialer.skipPreviewContact': Failure}
   | {'Service.aqm.dialer.removePreviewContact': Failure}
-  | {'Service.reqs.generic.failure': GenericFailureDetails};
+  | {'Service.reqs.generic.failure': {trackingId: string; status?: number; msg?: unknown}};
 
 export type ReqError =
   | 'Service.aqm.reqs.GenericRequestError'

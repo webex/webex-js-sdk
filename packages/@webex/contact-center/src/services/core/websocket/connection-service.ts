@@ -1,5 +1,5 @@
 import {EventEmitter} from 'events';
-import type {WebSocketManager} from './WebSocketManager';
+import {WebSocketManager} from './WebSocketManager';
 import LoggerProxy from '../../../logger-proxy';
 import type {ConnectionLostDetails, ConnectionResetOptions} from './types';
 import {
@@ -24,7 +24,7 @@ export class ConnectionService extends EventEmitter {
   private lossEpisode?: {startedAt: number; attempt: number};
   private pending?: {reconnectOnClose: boolean};
   private onTerminalFailure?: ConnectionResetOptions['onTerminalFailure'];
-  private readonly webSocketManager: WebSocketManager;
+  private webSocketManager: WebSocketManager;
   private getWebSocketUrl?: ConnectionResetOptions['getWebSocketUrl'];
   private isTerminalFailure?: ConnectionResetOptions['isTerminalFailure'];
 
@@ -67,7 +67,7 @@ export class ConnectionService extends EventEmitter {
     this.webSocketManager.on('socketClose', this.onSocketClose);
   }
 
-  private clearTimers(): void {
+  private cancelWork(): void {
     clearTimeout(this.retryTimer);
     clearTimeout(this.reconnectingTimer);
     clearTimeout(this.restoreTimer);
@@ -75,10 +75,6 @@ export class ConnectionService extends EventEmitter {
     this.reconnectingTimer = undefined;
     this.restoreTimer = undefined;
     this.lossEpisode = undefined;
-  }
-
-  private cancelWork(): void {
-    this.clearTimers();
     const pending = this.pending;
     this.pending = undefined;
     if (pending) this.webSocketManager.close(false, 'Recovery cancelled');
@@ -91,22 +87,14 @@ export class ConnectionService extends EventEmitter {
       isSocketReconnected: socketReconnected,
       isKeepAlive: this.isKeepAlive,
     };
-    try {
-      this.webSocketManager.handleConnectionLost(event);
-    } catch {
-      /* Owner state is already settled. */
-    }
-    try {
-      this.emit('connectionLost', event);
-    } catch {
-      /* Host observers cannot restart scheduling. */
-    }
+    this.webSocketManager.handleConnectionLost(event);
+    this.emit('connectionLost', event);
   }
 
-  private updateConnectionData(): void {
+  private updateConnectionData = (): void => {
     this.isConnectionLost = false;
     this.isRestoreFailed = false;
-  }
+  };
 
   private monitorOrdinary(): void {
     clearTimeout(this.reconnectingTimer);
@@ -143,16 +131,18 @@ export class ConnectionService extends EventEmitter {
     try {
       parsedEvent = JSON.parse(event as string);
     } catch {
-      ConnectionService.diagnose('error', 'onPing failed to parse payload', METHODS.ON_PING);
+      LoggerProxy.error('onPing failed to parse payload', {
+        module: CONNECTION_SERVICE_FILE,
+        method: METHODS.ON_PING,
+      });
 
       return;
     }
     if (!isRecord(parsedEvent) || Array.isArray(parsedEvent)) {
-      ConnectionService.diagnose(
-        'error',
-        'onPing received non-object payload, ignoring',
-        METHODS.ON_PING
-      );
+      LoggerProxy.error('onPing received non-object payload, ignoring', {
+        module: CONNECTION_SERVICE_FILE,
+        method: METHODS.ON_PING,
+      });
 
       return;
     }
@@ -185,17 +175,16 @@ export class ConnectionService extends EventEmitter {
       outcome: 'retrying' | 'terminal' | 'succeeded',
       failure: RecoveryFailure = {}
     ) => {
-      ConnectionService.diagnose(
-        'info',
-        'Ordinary reconnect attempt settled',
-        METHODS.HANDLE_SOCKET_CLOSE,
-        {
+      LoggerProxy.info('Ordinary reconnect attempt settled', {
+        module: CONNECTION_SERVICE_FILE,
+        method: METHODS.HANDLE_SOCKET_CLOSE,
+        data: {
           attempt,
           elapsedMs: Math.max(0, Date.now() - episode.startedAt),
           outcome,
           ...failure,
-        }
-      );
+        },
+      });
     };
     const pending = {reconnectOnClose: false};
     this.pending = pending;
@@ -205,18 +194,16 @@ export class ConnectionService extends EventEmitter {
       const url = await this.getWebSocketUrl();
       if (this.pending !== pending) return;
       await this.webSocketManager.initWebSocket({url});
-      if (this.mode !== 'ordinary' || this.pending !== pending) return;
+      if (this.pending !== pending) return;
       if (pending.reconnectOnClose) throw new Error('WebSocket closed');
       diagnose('succeeded');
-      if (this.mode !== 'ordinary' || this.pending !== pending || this.lossEpisode !== episode)
-        return;
       this.lossEpisode = undefined;
       this.pending = undefined;
       this.updateConnectionData();
       this.monitorOrdinary();
       this.dispatchConnectionEvent(true);
     } catch (error) {
-      if (this.mode !== 'ordinary' || this.pending !== pending) return;
+      if (this.pending !== pending) return;
       this.pending = undefined;
       if (!this.webSocketManager.shouldReconnect) {
         this.stop();
@@ -227,35 +214,12 @@ export class ConnectionService extends EventEmitter {
       delete failure.reason;
       const isTerminal = this.isTerminalFailure(error);
       diagnose(isTerminal ? 'terminal' : 'retrying', failure);
-      if (this.mode !== 'ordinary' || this.lossEpisode !== episode) return;
       if (isTerminal) {
         const callback = this.onTerminalFailure;
         this.stop();
         this.webSocketManager.close(false, 'Terminal admission');
-        try {
-          callback?.(error);
-        } catch {
-          /* Terminal ownership is detached before callback delivery. */
-        }
+        callback?.(error);
       } else this.scheduleOrdinary();
-    }
-  }
-
-  /** Constant messages and selected scalars only; diagnostics never own scheduler progress. */
-  private static diagnose(
-    level: 'info' | 'error',
-    message: string,
-    method: string,
-    data?: Record<string, unknown>
-  ): void {
-    try {
-      LoggerProxy[level](message, {
-        module: CONNECTION_SERVICE_FILE,
-        method,
-        ...(data ? {data} : {}),
-      });
-    } catch {
-      /* Best-effort diagnostic sink. */
     }
   }
 
@@ -273,13 +237,12 @@ export class ConnectionService extends EventEmitter {
 
       return;
     }
-    const episode = this.lossEpisode ?? {startedAt: Date.now(), attempt: 0};
-    this.lossEpisode = episode;
+    this.lossEpisode = this.lossEpisode ?? {startedAt: Date.now(), attempt: 0};
     clearTimeout(this.reconnectingTimer);
     this.isConnectionLost = true;
     if (!this.restoreTimer)
       this.restoreTimer = setTimeout(this.handleRestoreFailed, LOST_CONNECTION_RECOVERY_TIMEOUT);
     this.scheduleOrdinary();
-    if (this.lossEpisode === episode) this.dispatchConnectionEvent();
+    this.dispatchConnectionEvent();
   };
 }

@@ -35,9 +35,8 @@ class WebexRequest {
     method: HTTP_METHODS;
     body?: RequestBody;
     headers?: Record<string, string | null>;
-    timeout?: number;
   }): Promise<IHttpResponse> {
-    const {service, resource, method, body, headers, timeout} = options;
+    const {service, resource, method, body, headers} = options;
 
     return this.webex.request({
       service,
@@ -45,7 +44,6 @@ class WebexRequest {
       method,
       body,
       ...(headers ? {headers} : {}),
-      ...(timeout !== undefined ? {timeout} : {}),
     });
   }
 

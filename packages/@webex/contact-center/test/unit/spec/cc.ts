@@ -7319,6 +7319,38 @@ describe('regional recovery wiring', () => {
     });
   });
 
+  it.each([true, false])(
+    'keeps the restored socket after confirmed station logout (local %s)',
+    async (local) => {
+      await withRouting(async ({cc, requests, currentRouting, connectBackup, login}) => {
+        await login();
+        const backup = await connectBackup();
+        backup.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS));
+        await flush();
+        expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
+        const subscribeCount = requests.filter(({resource}) => resource === SUBSCRIBE_API).length;
+
+        const logout = local ? cc.stationLogout({logoutReason: 'User requested'}) : undefined;
+        await flush();
+        backup.message({
+          ...agentFrame(CC_EVENTS.AGENT_LOGOUT_SUCCESS),
+          type: CC_EVENTS.AGENT_LOGOUT,
+        });
+        await logout;
+        await flush();
+
+        expect(backup.close).not.toHaveBeenCalled();
+        expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
+        jest.advanceTimersByTime(5000);
+        await flush();
+        expect(currentRouting()).toBe(backup);
+        expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(
+          subscribeCount
+        );
+      });
+    }
+  );
+
   it.each([
     {title: 'local logout', local: true, sessionId: 'session', restores: false},
     {

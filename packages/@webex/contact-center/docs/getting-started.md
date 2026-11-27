@@ -173,7 +173,8 @@ including any device permissions or station details the agent needs to provide.
 
 A Welcome frame establishes transport. A successful station acknowledgment establishes readiness.
 Active calls and audio can be interrupted by a switch. Obtain replacement Tasks through the
-existing Task events. WebRTC call controls on a retired Task reject with `STALE_TASK`. Fresh
+existing Task events. If a pending WebRTC microphone request completes after its Task is retired,
+the SDK releases the granted tracks and rejects `accept()` with `STALE_TASK`. Fresh
 `FEATURE_ENABLEMENT` enables restored AI summary capabilities. Optional realtime services resume
 independently, after manual login if required for the previous station.
 

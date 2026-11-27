@@ -317,21 +317,16 @@ describe('WebSocketManager URL transport', () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
   });
 
-  it('contains cleanup failures without exposing signed URLs in diagnostics', async () => {
+  it('keeps signed URLs out of socket-close diagnostics', async () => {
     const socket = await admit();
-    const failure = new Error(url);
-    socket.close.mockImplementationOnce(() => { throw failure; });
-    workers[0].terminate.mockImplementationOnce(() => { throw failure; });
-    (URL.revokeObjectURL as jest.Mock).mockImplementationOnce(() => { throw failure; });
-    (LoggerProxy.log as jest.Mock).mockImplementationOnce(() => { throw failure; });
 
-    expect(() => manager.close(false, url)).not.toThrow();
+    manager.close(false, url);
     expectReleased(socket);
     expect(workers[0].terminate).toHaveBeenCalledTimes(1);
     expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
     const calls = (LoggerProxy.log as jest.Mock).mock.calls;
-    expect(calls).toContainEqual(['Socket disposal failed', {
-      module: WEB_SOCKET_MANAGER_FILE, method: METHODS.DISPOSE_ATTEMPT,
+    expect(calls).toContainEqual(['WebSocket connection closed', {
+      module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CLOSE,
     }]);
     expect(JSON.stringify(calls)).not.toContain('private-sentinel');
   });

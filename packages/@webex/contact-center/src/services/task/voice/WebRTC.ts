@@ -55,12 +55,6 @@ export default class WebRTC extends Voice implements IWebRTC {
     this.localAudioStream = undefined;
   }
 
-  private assertTaskActive(): void {
-    if (this.regionallyInvalidated) {
-      throw createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.STALE_TASK);
-    }
-  }
-
   private registerWebCallListeners() {
     this.webCallingService.on(CALL_EVENT_KEYS.REMOTE_MEDIA, this.handleRemoteMedia);
   }
@@ -92,7 +86,6 @@ export default class WebRTC extends Voice implements IWebRTC {
    * ```
    */
   public async accept(): Promise<TaskResponse> {
-    this.assertTaskActive();
     LoggerProxy.log(`Accepting WebRTC task for taskId:${this.data.interactionId}`, {
       module: 'WebRTC',
       method: 'accept',
@@ -108,7 +101,7 @@ export default class WebRTC extends Voice implements IWebRTC {
       const tracks = localStream.getTracks();
       if (this.regionallyInvalidated) {
         tracks.forEach((track) => track.stop());
-        this.assertTaskActive();
+        throw createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.STALE_TASK);
       }
       tracks.forEach((track) => this.microphoneTracks.add(track));
       const audioTrack = localStream.getAudioTracks()[0];
@@ -153,7 +146,6 @@ export default class WebRTC extends Voice implements IWebRTC {
    * ```
    */
   public async decline(): Promise<TaskResponse> {
-    this.assertTaskActive();
     LoggerProxy.log(`Declining WebRTC task for taskId:${this.data.interactionId}`, {
       module: 'WebRTC',
       method: 'decline',
@@ -201,7 +193,6 @@ export default class WebRTC extends Voice implements IWebRTC {
    * ```
    */
   public async toggleMute(options?: TaskToggleMuteOptions) {
-    this.assertTaskActive();
     if (options) {
       // parameter intentionally unused — WebRTC toggles from local stream state
     }

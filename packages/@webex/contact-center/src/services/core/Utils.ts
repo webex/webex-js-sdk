@@ -1,6 +1,6 @@
 import * as Err from './Err';
 import {LoginOption, WebexRequestPayload} from '../../types';
-import type {Failure, AugmentedError} from './GlobalTypes';
+import {Failure, AugmentedError} from './GlobalTypes';
 import type {RecoveryFailure} from './types';
 import type {RegionRecoveryErrorCode} from '../../types';
 import LoggerProxy from '../../logger-proxy';
@@ -241,14 +241,12 @@ export const isRegionRecoveryError = (
  * @ignore
  */
 const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
-  const {status, reason, reasonCode} = normalizeRecoveryFailure(errObj);
+  const {status} = normalizeRecoveryFailure(errObj);
 
   return {
     trackingId: errObj?.headers?.trackingid || errObj?.headers?.TrackingID,
     msg: errObj?.body,
     ...(status !== undefined ? {status} : {}),
-    ...(reason !== undefined ? {reason} : {}),
-    ...(reasonCode !== undefined ? {reasonCode} : {}),
   };
 };
 

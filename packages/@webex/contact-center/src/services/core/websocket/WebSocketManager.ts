@@ -92,7 +92,11 @@ export class WebSocketManager extends EventEmitter {
     if (!this.websocket) return;
     this.cleanupWebSocket(interrupted());
     this.emit('socketClose', {shouldReconnect});
-    if (reason) WebSocketManager.diagnose('WebSocket connection closed', METHODS.CLOSE);
+    if (reason)
+      LoggerProxy.log('WebSocket connection closed', {
+        module: WEB_SOCKET_MANAGER_FILE,
+        method: METHODS.CLOSE,
+      });
   }
 
   handleConnectionLost(event: ConnectionLostDetails) {
@@ -198,37 +202,13 @@ export class WebSocketManager extends EventEmitter {
       websocket.onmessage = null;
       websocket.onerror = null;
       websocket.onclose = null;
-      if (closeSocket) {
-        try {
-          websocket.close();
-        } catch {
-          WebSocketManager.diagnose('Socket disposal failed', METHODS.DISPOSE_ATTEMPT);
-        }
-      }
+      if (closeSocket) websocket.close();
     }
     if (keepaliveWorker) {
       keepaliveWorker.onmessage = null;
-      try {
-        keepaliveWorker.terminate();
-      } catch {
-        WebSocketManager.diagnose('Worker disposal failed', METHODS.DISPOSE_ATTEMPT);
-      }
+      keepaliveWorker.terminate();
     }
-    if (workerUrl) {
-      try {
-        URL.revokeObjectURL(workerUrl);
-      } catch {
-        WebSocketManager.diagnose('Worker URL disposal failed', METHODS.DISPOSE_ATTEMPT);
-      }
-    }
-  }
-
-  private static diagnose(message: string, method: string): void {
-    try {
-      LoggerProxy.log(message, {module: WEB_SOCKET_MANAGER_FILE, method});
-    } catch {
-      // Diagnostics cannot interrupt socket cleanup.
-    }
+    if (workerUrl) URL.revokeObjectURL(workerUrl);
   }
 }
 

@@ -133,7 +133,6 @@ type RecoveryPhase =
   | 'cancelled';
 
 type InitialRegistration = {
-  readonly registration: number;
   readonly orgId: string;
   readonly controller: AbortController;
   failure?: Error;
@@ -448,23 +447,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     'trackingId' | 'operation' | 'scope' | 'autoAvailable'
   > = {};
 
-  private recordBestEffort(effect: () => void): void {
-    try {
-      effect();
-    } catch {
-      /* Diagnostics and host observers do not own SDK progress. */
-    }
-  }
-
-  private publishHostEvent(event: string, payload: unknown, trigger = false): void {
-    this.recordBestEffort(() => {
-      // @ts-ignore - ampersand-events methods are provided by WebexPlugin at runtime.
-      if (trigger) this.trigger(event, payload);
-      // @ts-ignore - ampersand-events methods are provided by WebexPlugin at runtime.
-      else this.emit(event, payload);
-    });
-  }
-
   private static isRecoveryDiagnosticReason(
     value: unknown
   ): value is RegionRecoveryState['reason'] | RegionRecoveryErrorCode {
@@ -495,13 +477,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ? {reason: failure.reason}
         : {}),
     };
-    this.recordBestEffort(() =>
-      LoggerProxy.info('Region recovery', {
-        module: CC_FILE,
-        method: METHODS.RECORD_RECOVERY_DIAGNOSTIC,
-        data: {...payload},
-      })
-    );
+    LoggerProxy.info('Region recovery', {
+      module: CC_FILE,
+      method: METHODS.RECORD_RECOVERY_DIAGNOSTIC,
+      data: {...payload},
+    });
     let metric:
       | typeof METRIC_EVENT_NAMES.REGION_RECOVERY_SUCCESS
       | typeof METRIC_EVENT_NAMES.REGION_RECOVERY_FAILED
@@ -517,10 +497,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       else if (['retrying', 'terminal', 'failed'].includes(outcome))
         metric = METRIC_EVENT_NAMES.STATION_RELOGIN_FAILED;
     }
-    if (metric)
-      this.recordBestEffort(() =>
-        this.metricsManager.trackEvent(metric, {...payload}, ['operational'])
-      );
+    if (metric) this.metricsManager.trackEvent(metric, {...payload}, ['operational']);
   }
 
   private static getRegistrationErrorDetails(error: unknown) {
@@ -561,7 +538,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
     if (isEqual(snapshot, this.lastPublishedRegionState)) return;
     this.lastPublishedRegionState = snapshot;
-    this.publishHostEvent(REGION_RECOVERY_EVENTS.STATE_CHANGE, snapshot, true);
+    // @ts-ignore
+    this.trigger(REGION_RECOVERY_EVENTS.STATE_CHANGE, snapshot);
   }
 
   /** Builds initiating recovery context; publication adds the current placement metadata. */
@@ -609,7 +587,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (!recovery) return;
     clearTimeout(recovery.timer);
     recovery.detach();
-    recovery.controller.abort();
+    // Completed recovery has handed its socket back to ordinary monitoring.
+    if (this.recoveryPhase !== 'ready' && this.recoveryPhase !== 'manualLoginRequired')
+      recovery.controller.abort();
     const {attempt} = recovery;
     if (attempt)
       this.recordRecoveryDiagnostic('admission', 'cancelled', attempt.attempt, attempt.startedAt);
@@ -628,11 +608,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /** Full registration boundaries are distinct from station logout and optional RTD loss. */
-  private terminateRegistration(identityFailure = false): number | undefined {
+  private terminateRegistration(identityFailure = false): number {
     const cancelled = this.cancelAutoAvailable();
     const publicationSettings = this.multiRegionSettings;
     this.registrationGeneration += 1;
-    // Invalidate the ended owner before aborts, diagnostics or host publication can reenter.
     this.acceptedSwitchIds.clear();
     this.clearAcceptedStation();
     this.multiRegionSettings = null;
@@ -642,21 +621,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.cancelRegionRecovery();
     this.fenceRecoveryWork('unavailable');
     const termination = this.registrationGeneration;
-    const ownsTermination = () => termination === this.registrationGeneration;
     this.services.connectionService.stop();
     this.pauseRtd('registrationEnded');
     this.services.webSocketManager.close(false, 'registrationEnded');
     this.taskManager.unregisterIncomingCallEvent();
     this.taskManager.invalidateRegionalTasks();
     if (cancelled) this.publishRegionState(cancelled, publicationSettings);
-    if (!ownsTermination()) return undefined;
     if (identityFailure) {
       delete this.regionStateContext.autoAvailable;
       this.publishRegionState(
         this.buildRegionState('unavailable', 'recovery-failed'),
         publicationSettings
       );
-      if (!ownsTermination()) return undefined;
     }
     this.resetRegionState();
 
@@ -784,9 +760,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.services.webSocketManager.close(false, 'recoveryFailed');
     this.pauseRtd('recoveryFailed');
     this.taskManager.invalidateRegionalTasks();
-    const generation = this.recoveryGeneration;
     if (cancelled) this.publishRegionState(cancelled);
-    if (generation !== this.recoveryGeneration) return;
     delete this.regionStateContext.autoAvailable;
     this.publishRegionState(this.buildRegionState('unavailable', reason));
   }
@@ -830,7 +804,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.services.connectionService.pause();
     this.pauseRtd();
     if (cancelled) this.publishRegionState(cancelled);
-    if (signal.aborted) return;
     this.resetRegionState();
     this.regionStateContext = {trackingId: event.trackingId, ...event.data};
     if (this.multiRegionSettings?.multiRegionEnabled === false) {
@@ -858,10 +831,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     };
     this.recovery = recovery;
     this.publishRegionState(this.buildRegionState('recovering', 'region-switch'));
-    if (!this.isCurrentRecovery(recovery)) return;
     this.services.webSocketManager.close(false, 'regionRecovery');
     this.taskManager.invalidateRegionalTasks();
-    if (!this.isCurrentRecovery(recovery)) return;
     this.scheduleRegionRecovery(recovery, 1);
   }
 
@@ -1012,10 +983,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private buildStationLoginPayload(data: AgentLogin): Agent.UserStationLogin {
     const {loginOption, dialNumber, teamId} = data;
-    const deviceId =
-      loginOption === LoginOption.EXTENSION || loginOption === LoginOption.AGENT_DN
-        ? dialNumber
-        : WEB_RTC_PREFIX + this.agentConfig.agentId;
+    const deviceId = this.getDeviceId(loginOption, dialNumber);
 
     return {
       dialNumber: loginOption === LoginOption.BROWSER ? deviceId : dialNumber,
@@ -1046,11 +1014,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const manual =
       (reason: RegionRecoveryState['reason'], resumeRtd = false) =>
       () => {
-        if (!this.isCurrentRecovery(recovery) || !isConnected()) return;
+        if (!isConnected()) return;
         this.recoveryPhase = 'manualLoginRequired';
         this.publishRegionState(this.buildRegionState('stationLoginRequired', reason));
-        if (resumeRtd && this.isCurrentRecovery(recovery) && isConnected())
-          this.resumeRtd(this.registrationAbortController.signal);
+        if (resumeRtd) this.resumeRtd(this.registrationAbortController.signal);
       };
     if (!this.priorStationActive) return manual('region-switch', true);
     if (!this.$config.allowAutomatedRelogin || this.suppressAutomaticRelogin)
@@ -1058,11 +1025,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     const payload = this.acceptedStation;
     this.recoveryPhase = 'restoringSession';
-    while (this.isCurrentRecovery(recovery) && isConnected()) {
+    while (isConnected()) {
       // eslint-disable-next-line no-await-in-loop -- Generation-owned retries are serial.
       await waitForRecoveryDelay(recovery.retryNotBefore - Date.now(), signal);
-      if (!isConnected() || !this.isCurrentRecovery(recovery))
-        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      if (!isConnected()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
       if (recovery.stage === 'reload' && recovery.reloads > STATION_RELOAD_RETRY_DELAYS_MS.length)
         recovery.stage = 'fallback';
       const stage = recovery.stage;
@@ -1084,8 +1050,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           // eslint-disable-next-line no-await-in-loop -- Bounded reload budget survives sockets.
           response = await this.services.agent.reload();
         }
-        if (!this.isCurrentRecovery(recovery) || !isConnected())
-          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+        if (!isConnected()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
         if (stage === 'fallback')
           this.rememberAcceptedStation({
             source: 'login',
@@ -1099,15 +1064,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           });
         applying = true;
         this.recordRecoveryDiagnostic(diagnosticStage, 'succeeded', attempt, startedAt);
-        if (!this.isCurrentRecovery(recovery) || !isConnected())
-          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
         // eslint-disable-next-line no-await-in-loop -- Apply only this accepted session.
         await this.applyRestoredStationEffects();
-        if (!this.isCurrentRecovery(recovery) || !isConnected())
-          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+        if (!isConnected()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
 
         return () => {
-          if (!this.isCurrentRecovery(recovery) || !isConnected()) return;
+          if (!isConnected()) return;
           this.recoveryPhase = 'ready';
           if (
             response.data.type === CC_EVENTS.AGENT_RELOGIN_SUCCESS &&
@@ -1119,15 +1081,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
               : 'requesting';
           }
           this.publishRegionState(this.buildRegionState('ready', 'region-switch'));
-          if (this.isCurrentRecovery(recovery) && isConnected()) {
-            this.resumeRtd(this.registrationAbortController.signal);
-            this.requestAutoAvailable();
-          }
+          this.resumeRtd(this.registrationAbortController.signal);
+          this.requestAutoAvailable();
         };
       } catch (error) {
         const retryDelay = STATION_RELOAD_RETRY_DELAYS_MS[recovery.reloads - 1];
         const current = this.isCurrentRecovery(recovery);
-        if (!current || !isConnected()) {
+        if (!isConnected()) {
           if (current && stage === 'reload' && retryDelay !== undefined)
             recovery.retryNotBefore = Math.max(recovery.retryNotBefore, Date.now() + retryDelay);
           throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
@@ -1377,7 +1337,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   private handleVoiceConnectionStateChange = (state: VoiceConnectionState): void => {
-    this.publishHostEvent(VOICE_CONNECTION_EVENTS.STATE_CHANGE, state, true);
+    // @ts-ignore
+    this.trigger(VOICE_CONNECTION_EVENTS.STATE_CHANGE, state);
     this.requestAutoAvailable();
   };
 
@@ -1522,7 +1483,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     const wellnessEvent = this.normalizeWellnessBreakEvent(payload);
     if (wellnessEvent) {
-      this.publishHostEvent(CC_EVENTS.WELLNESS_BREAK, wellnessEvent);
+      // @ts-ignore
+      this.emit(CC_EVENTS.WELLNESS_BREAK, wellnessEvent);
     }
 
     return true;
@@ -1676,31 +1638,24 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.wellbeingBreakIdleCode = undefined;
     const registration = this.registrationGeneration;
     if (cancelled) this.publishRegionState(cancelled, publicationSettings);
-    if (registration !== this.registrationGeneration)
-      throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
     const controller = new AbortController();
     this.registrationAbortController = controller;
     const orgId = this.$webex.credentials.getOrgId();
-    const attempt: InitialRegistration = {registration, orgId, controller};
+    const attempt: InitialRegistration = {orgId, controller};
     this.pendingRegistration = attempt;
     this.registrationOrgId = orgId;
     this.suppressAutomaticRelogin = false;
     this.recoveryPhase = 'idle';
     this.resetRegionState();
-    this.recordBestEffort(() =>
-      LoggerProxy.log('Starting CC SDK registration', {
-        module: CC_FILE,
-        method: METHODS.REGISTER,
-      })
-    );
+    LoggerProxy.log('Starting CC SDK registration', {
+      module: CC_FILE,
+      method: METHODS.REGISTER,
+    });
     try {
-      this.recordBestEffort(() =>
-        this.metricsManager.timeEvent([
-          METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
-          METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
-        ])
-      );
-      this.assertInitialRegistration(attempt);
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
+      ]);
       this.setupEventListeners();
       this.incomingTaskListener();
       this.services.webSocketManager.off('message', this.handleWebsocketMessage);
@@ -1710,32 +1665,23 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.assertInitialRegistration(attempt);
       // Ensure 'dn' is always populated from 'defaultDn'
       resp.dn = resp.defaultDn;
-      this.recordBestEffort(() =>
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
-          {
-            ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
-            deviceType: resp.deviceType || EMPTY_STRING,
-          },
-          ['operational']
-        )
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
+          deviceType: resp.deviceType || EMPTY_STRING,
+        },
+        ['operational']
       );
 
-      this.recordBestEffort(() =>
-        LoggerProxy.log(
-          `CC SDK registration completed successfully with agentId: ${resp.agentId}`,
-          {
-            module: CC_FILE,
-            method: METHODS.REGISTER,
-          }
-        )
-      );
+      LoggerProxy.log(`CC SDK registration completed successfully with agentId: ${resp.agentId}`, {
+        module: CC_FILE,
+        method: METHODS.REGISTER,
+      });
 
       // Registration can silently restore a station session without emitting a
       // relogin event. Project the active session for consumers that must
       // recover session-scoped state after a page refresh.
-      this.assertInitialRegistration(attempt);
-
       return resp.isAgentLoggedIn && this.currentAgentSessionId
         ? {...resp, agentSessionId: this.currentAgentSessionId}
         : resp;
@@ -1744,33 +1690,25 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         controller.abort();
         if (this.recovery?.registration === registration)
           this.finishRegionRecovery('recovery-failed');
-        if (this.registrationAbortController === controller) this.multiRegionSettings = null;
+        this.multiRegionSettings = null;
       }
       if (attempt.failure) throw attempt.failure;
       if (isRegionRecoveryError(error)) throw error;
-      this.recordBestEffort(() =>
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
-          {
-            orgId: normalizeRecoveryDiagnosticId(isRecord(error) ? error.orgId : undefined),
-          },
-          ['operational']
-        )
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
+        {
+          orgId: normalizeRecoveryDiagnosticId(isRecord(error) ? error.orgId : undefined),
+        },
+        ['operational']
       );
-      let correlationId: string | undefined;
-      this.recordBestEffort(() => {
-        const data = ContactCenter.getRegistrationErrorDetails(error);
-        correlationId = data.trackingId;
-        LoggerProxy.error('Error during register', {
-          module: CC_FILE,
-          method: METHODS.REGISTER,
-          data,
-        });
+      const data = ContactCenter.getRegistrationErrorDetails(error);
+      LoggerProxy.error('Error during register', {
+        module: CC_FILE,
+        method: METHODS.REGISTER,
+        data,
       });
-      this.recordBestEffort(() => {
-        Promise.resolve(this.webexRequest.uploadLogs({correlationId})).catch(() => {
-          /* Log upload failure must not replace the registration error. */
-        });
+      Promise.resolve(this.webexRequest.uploadLogs({correlationId: data.trackingId})).catch(() => {
+        /* Log upload failure must not replace the registration error. */
       });
 
       throw error;
@@ -1812,16 +1750,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async deregister(): Promise<void> {
     const termination = this.terminateRegistration();
-    if (termination !== this.registrationGeneration) return;
     this.registrationOrgId = undefined;
     this.updateWellnessSession();
     try {
-      this.recordBestEffort(() =>
-        this.metricsManager.timeEvent([
-          METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,
-          METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
-        ])
-      );
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,
+        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
+      ]);
 
       this.taskManager.clearAISummaryState();
       this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
@@ -1844,20 +1779,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       if (
         this.agentConfig?.webRtcEnabled &&
-        this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER) &&
-        this.$webex.internal.mercury.connected
+        this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)
       ) {
-        this.$webex.internal.mercury.off('online');
-        this.$webex.internal.mercury.off('offline');
-        await this.$webex.internal.mercury.disconnect();
-        // @ts-ignore
-        await this.$webex.internal.device.unregister();
-        this.recordBestEffort(() =>
+        if (this.$webex.internal.mercury.connected) {
+          this.$webex.internal.mercury.off('online');
+          this.$webex.internal.mercury.off('offline');
+          await this.$webex.internal.mercury.disconnect();
+          // @ts-ignore
+          await this.$webex.internal.device.unregister();
           LoggerProxy.log(MERCURY_DISCONNECTED_SUCCESS, {
             module: CC_FILE,
             method: METHODS.DEREGISTER,
-          })
-        );
+          });
+        }
       }
 
       if (termination !== this.registrationGeneration) return;
@@ -1867,35 +1801,27 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         throw wxAppPublishError;
       }
 
-      this.recordBestEffort(() =>
-        LoggerProxy.log('Deregistered successfully', {
-          module: CC_FILE,
-          method: METHODS.DEREGISTER,
-        })
-      );
+      LoggerProxy.log('Deregistered successfully', {
+        module: CC_FILE,
+        method: METHODS.DEREGISTER,
+      });
 
-      this.recordBestEffort(() =>
-        this.metricsManager.trackEvent(METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS, {}, [
-          'operational',
-        ])
-      );
+      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS, {}, [
+        'operational',
+      ]);
     } catch (error) {
-      this.recordBestEffort(() =>
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
-          {
-            error: error.message || UNKNOWN_ERROR,
-          },
-          ['operational']
-        )
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
+        {
+          error: error.message || UNKNOWN_ERROR,
+        },
+        ['operational']
       );
 
-      this.recordBestEffort(() =>
-        LoggerProxy.error(`Error during deregister: ${error}`, {
-          module: CC_FILE,
-          method: METHODS.DEREGISTER,
-        })
-      );
+      LoggerProxy.error(`Error during deregister: ${error}`, {
+        module: CC_FILE,
+        method: METHODS.DEREGISTER,
+      });
 
       throw error;
     }
@@ -2001,12 +1927,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private async connectWebsocket(attempt: InitialRegistration) {
     const {orgId, controller} = attempt;
     const {signal} = controller;
-    this.recordBestEffort(() =>
-      LoggerProxy.log('Connecting to websocket', {
-        module: CC_FILE,
-        method: METHODS.CONNECT_WEBSOCKET,
-      })
-    );
+    LoggerProxy.log('Connecting to websocket', {
+      module: CC_FILE,
+      method: METHODS.CONNECT_WEBSOCKET,
+    });
 
     try {
       this.assertInitialRegistration(attempt);
@@ -2031,10 +1955,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         throw new Error('Primary Welcome agent identity is required');
       }
       const agentId = data.agentId;
-      const profile = await awaitRecoveryWork(
-        this.services.config.getAgentConfig(orgId, agentId),
-        signal
-      );
+      const profile = await this.services.config.getAgentConfig(orgId, agentId);
       this.assertInitialRegistration(attempt);
       if (profile.agentId !== agentId) {
         this.terminateRegistration(true);
@@ -2046,16 +1967,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.agentConfig = profile;
       this.registrationAgentId = agentId;
       this.resetOrdinaryConnection();
-      this.assertInitialRegistration(attempt);
       this.multiRegionSettings = multiRegionSettings ?? null;
       this.taskManager.registerIncomingCallEvent();
 
-      this.recordBestEffort(() =>
-        LoggerProxy.log(`Agent config is fetched successfully`, {
-          module: CC_FILE,
-          method: METHODS.CONNECT_WEBSOCKET,
-        })
-      );
+      LoggerProxy.log(`Agent config is fetched successfully`, {
+        module: CC_FILE,
+        method: METHODS.CONNECT_WEBSOCKET,
+      });
 
       const configFlags: ConfigFlags = {
         isEndTaskEnabled: this.agentConfig.isEndTaskEnabled,
@@ -2089,29 +2007,23 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       ) {
         try {
           await this.$webex.internal.mercury.connect();
-          this.recordBestEffort(() =>
-            LoggerProxy.log('Authentication: webex.internal.mercury.connect successful', {
-              module: CC_FILE,
-              method: METHODS.CONNECT_WEBSOCKET,
-            })
-          );
+          LoggerProxy.log('Authentication: webex.internal.mercury.connect successful', {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
+          });
         } catch (error) {
-          this.recordBestEffort(() =>
-            LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
-              module: CC_FILE,
-              method: METHODS.CONNECT_WEBSOCKET,
-            })
-          );
+          LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
+          });
         }
       } else if (this.isWebRTCRegistrationDisabled()) {
-        this.recordBestEffort(() =>
-          LoggerProxy.info(
-            'Skipping Mobius registration because disableWebRTCRegistration is enabled',
-            {
-              module: CC_FILE,
-              method: METHODS.CONNECT_WEBSOCKET,
-            }
-          )
+        LoggerProxy.info(
+          'Skipping Mobius registration because disableWebRTCRegistration is enabled',
+          {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
+          }
         );
       }
 
@@ -2121,12 +2033,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.assertInitialRegistration(attempt);
         await this.silentRelogin(true);
       } else {
-        this.recordBestEffort(() =>
-          LoggerProxy.log('Skipping silent relogin: allowAutomatedRelogin is disabled', {
-            module: CC_FILE,
-            method: METHODS.CONNECT_WEBSOCKET,
-          })
-        );
+        LoggerProxy.log('Skipping silent relogin: allowAutomatedRelogin is disabled', {
+          module: CC_FILE,
+          method: METHODS.CONNECT_WEBSOCKET,
+        });
       }
 
       this.assertInitialRegistration(attempt);
@@ -2142,13 +2052,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (error?.name === 'AbortError') throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
       if (this.isCurrentRegistration(orgId, signal)) this.updateWellnessSession();
       if (isRegionRecoveryError(error)) throw error;
-      this.recordBestEffort(() =>
-        LoggerProxy.error('Error during register', {
-          module: CC_FILE,
-          method: METHODS.CONNECT_WEBSOCKET,
-          data: ContactCenter.getRegistrationErrorDetails(error),
-        })
-      );
+      LoggerProxy.error('Error during register', {
+        module: CC_FILE,
+        method: METHODS.CONNECT_WEBSOCKET,
+        data: ContactCenter.getRegistrationErrorDetails(error),
+      });
 
       throw error;
     }
@@ -2219,10 +2127,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
 
       const payload = this.buildStationLoginPayload(data);
-      const resp = await this.services.agent.stationLogin({data: payload});
+      const loginResponse = await this.services.agent.stationLogin({data: payload});
       if (generation !== this.recoveryGeneration)
         throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-      this.rememberAcceptedStation({source: 'login', payload, response: resp});
+      this.rememberAcceptedStation({source: 'login', payload, response: loginResponse});
       this.suppressAutomaticRelogin = false;
       this.recoveryPhase = 'ready';
 
@@ -2246,6 +2154,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         );
       }
 
+      const resp = await loginResponse;
       const {channelsMap, ...loginData} = resp.data;
       const response = {
         ...loginData,
@@ -2337,7 +2246,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
         METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED,
       ]);
-      const resp = await this.services.agent.logout({data});
+      const logoutResponse = this.services.agent.logout({
+        data,
+      });
+
+      const resp = await logoutResponse;
       if (this.priorStationActive) this.clearStationSession();
 
       this.metricsManager.trackEvent(
@@ -2376,6 +2289,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const {error: detailedError} = getErrorDetails(error, METHODS.STATION_LOGOUT, CC_FILE);
       throw detailedError;
     }
+  }
+
+  /**
+   * Gets the device ID based on login option and dial number
+   * @param {string} loginOption The login option (BROWSER, EXTENSION, etc)
+   * @param {string} dialNumber The dial number if applicable
+   * @returns {string} The device ID
+   * @private
+   */
+  private getDeviceId(loginOption: string, dialNumber: string): string {
+    if (loginOption === LoginOption.EXTENSION || loginOption === LoginOption.AGENT_DN) {
+      return dialNumber;
+    }
+
+    return WEB_RTC_PREFIX + this.agentConfig.agentId;
   }
 
   /**
@@ -2527,7 +2455,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     pending.requesting = true;
     this.regionStateContext.autoAvailable = 'requesting';
     this.publishRegionState(this.buildRegionState('ready', 'region-switch'));
-    if (this.autoAvailable !== pending || pending.signal.aborted) return;
 
     const startedAt = Date.now();
     let outcome: 'succeeded' | 'failed' = 'succeeded';
@@ -3474,20 +3401,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const cancelled = this.cancelAutoAvailable();
       if (cancelled) this.publishRegionState(cancelled);
       // TODO: Emit an event saying connection is lost
-      this.recordBestEffort(() =>
-        LoggerProxy.log('event=handleConnectionLost | Connection lost', {
-          module: CC_FILE,
-          method: METHODS.HANDLE_CONNECTION_LOST,
-        })
-      );
+      LoggerProxy.log('event=handleConnectionLost | Connection lost', {
+        module: CC_FILE,
+        method: METHODS.HANDLE_CONNECTION_LOST,
+      });
     } else if (msg.isSocketReconnected) {
       if (this.primaryWebSocketUrl) this.rememberServingRegion(this.primaryWebSocketUrl);
       // TODO: Emit an event saying connection is re-estabilished
-      this.recordBestEffort(() =>
-        LoggerProxy.log(
-          'event=handleConnectionReconnect | Connection reconnected attempting to request silent relogin',
-          {module: CC_FILE, method: METHODS.HANDLE_CONNECTION_LOST}
-        )
+      LoggerProxy.log(
+        'event=handleConnectionReconnect | Connection reconnected attempting to request silent relogin',
+        {module: CC_FILE, method: METHODS.HANDLE_CONNECTION_LOST}
       );
       if (
         this.$config?.allowAutomatedRelogin &&
@@ -3527,20 +3450,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     };
     if (!initialRegistration) {
       const cancelled = this.cancelAutoAvailable();
-      if (cancelled) {
-        const phase = this.recoveryPhase;
-        this.recoveryPhase = 'cancelled';
-        this.publishRegionState(cancelled);
-        assertReloginAdmission();
-        this.recoveryPhase = phase;
-      }
+      if (cancelled) this.publishRegionState(cancelled);
     }
-    this.recordBestEffort(() =>
-      LoggerProxy.log('Starting silent relogin process', {
-        module: CC_FILE,
-        method: METHODS.SILENT_RELOGIN,
-      })
-    );
+    LoggerProxy.log('Starting silent relogin process', {
+      module: CC_FILE,
+      method: METHODS.SILENT_RELOGIN,
+    });
 
     let fallbackAttempted = false;
     try {
@@ -3595,11 +3510,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       assertReloginAdmission();
 
       if (lastStateChangeReason === 'agent-wss-disconnect') {
-        this.recordBestEffort(() =>
-          LoggerProxy.log(
-            'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
-            {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
-          )
+        LoggerProxy.log(
+          'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
+          {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
         );
         const stateChangeData: StateChange = {
           state: AGENT_STATE_AVAILABLE,
@@ -3612,11 +3525,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           assertReloginAdmission();
           this.applyAvailableState(result);
         } catch (error) {
-          this.recordBestEffort(() =>
-            LoggerProxy.error(
-              `event=requestAutoStateChange | Error requesting state change to available on socket reconnect: ${error}`,
-              {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
-            )
+          LoggerProxy.error(
+            `event=requestAutoStateChange | Error requesting state change to available on socket reconnect: ${error}`,
+            {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
           );
         }
       }
@@ -3628,15 +3539,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.buildRegionState('ready', initialRegistration ? 'initial-login' : 'region-switch')
       );
 
-      this.recordBestEffort(() =>
-        LoggerProxy.log(
-          `Silent relogin process completed successfully with login Option: ${this.agentConfig.deviceType} teamId: ${reLoginResponse.data.teamId}`,
-          {
-            module: CC_FILE,
-            method: METHODS.SILENT_RELOGIN,
-            trackingId: reLoginResponse.trackingId,
-          }
-        )
+      LoggerProxy.log(
+        `Silent relogin process completed successfully with login Option: ${this.agentConfig.deviceType} teamId: ${reLoginResponse.data.teamId}`,
+        {
+          module: CC_FILE,
+          method: METHODS.SILENT_RELOGIN,
+          trackingId: reLoginResponse.trackingId,
+        }
       );
     } catch (error) {
       if (
@@ -3658,12 +3567,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         CC_FILE
       );
       if (reason === 'AGENT_NOT_FOUND') {
-        this.recordBestEffort(() =>
-          LoggerProxy.log('Agent not found during relogin, handling silently', {
-            module: CC_FILE,
-            method: METHODS.SILENT_RELOGIN,
-          })
-        );
+        LoggerProxy.log('Agent not found during relogin, handling silently', {
+          module: CC_FILE,
+          method: METHODS.SILENT_RELOGIN,
+        });
 
         return;
       }
@@ -3699,16 +3606,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           this.isWebRTCRegistrationDisabled() ||
           (restoringRegion && !this.isBrowserVoiceRequired(deviceType))
         ) {
-          this.recordBestEffort(() =>
-            LoggerProxy.info(
-              this.isWebRTCRegistrationDisabled()
-                ? 'Skipping web calling line registration because disableWebRTCRegistration is enabled'
-                : 'Skipping web calling line registration because browser voice is not required',
-              {
-                module: CC_FILE,
-                method: METHODS.HANDLE_DEVICE_TYPE,
-              }
-            )
+          LoggerProxy.info(
+            this.isWebRTCRegistrationDisabled()
+              ? 'Skipping web calling line registration because disableWebRTCRegistration is enabled'
+              : 'Skipping web calling line registration because browser voice is not required',
+            {
+              module: CC_FILE,
+              method: METHODS.HANDLE_DEVICE_TYPE,
+            }
           );
           break;
         }
@@ -3731,12 +3636,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.agentConfig.dn = dn;
         break;
       default:
-        this.recordBestEffort(() =>
-          LoggerProxy.error(`Unsupported device type: ${deviceType}`, {
-            module: CC_FILE,
-            method: METHODS.HANDLE_DEVICE_TYPE,
-          })
-        );
+        LoggerProxy.error(`Unsupported device type: ${deviceType}`, {
+          module: CC_FILE,
+          method: METHODS.HANDLE_DEVICE_TYPE,
+        });
         throw new Error(`Unsupported device type: ${deviceType}`);
     }
   }

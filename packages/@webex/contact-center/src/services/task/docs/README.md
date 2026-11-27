@@ -500,6 +500,8 @@ On a region switch, TaskManager retires the old tasks, stops their actors and ti
 WebRTC microphone tracks. The replacement socket uses the same TaskManager listeners to hydrate
 fresh tasks. Applications pause task controls during recovery and read the current tasks when the
 station is ready. Pending AI summaries are cleared when the old RTD stream closes.
+If microphone permission is granted after the old Task is retired, WebRTC releases the granted
+tracks and rejects the pending `accept()` with `STALE_TASK` before answering a call.
 
 TaskManager uses a staged pipeline in `registerTaskListeners()`. For each primary WebSocket `message`:
 parse the JSON and drop keepalives (`parseWebSocketMessage`, which also runs `normalizeTaskData`); build
