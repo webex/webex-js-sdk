@@ -9,7 +9,9 @@ import {FeatureCollection, FeatureModel, FeaturesModel} from './features/index';
 import DeviceUrlInterceptor from './interceptors/device-url';
 import * as constants from './constants';
 import config from './config';
-import {CatalogDetails, DeviceRegistrationOptions} from './types';
+import {CatalogDetails} from './types';
+
+/** @typedef {import('./types').DeviceRegistrationOptions} DeviceRegistrationOptions */
 
 registerInternalPlugin('device', Device, {
   config,
@@ -32,7 +34,6 @@ export {
   config,
   constants,
   CatalogDetails,
-  DeviceRegistrationOptions,
   DeviceUrlInterceptor,
   FeatureCollection,
   FeatureModel,
