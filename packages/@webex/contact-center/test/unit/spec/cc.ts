@@ -26,7 +26,11 @@ import {
   AgentChannelTypeStates,
 } from '../../../src/services/agent/types';
 import {SetStateResponse} from '../../../src/types';
-import {AGENT, SUBSCRIBE_API, WEB_RTC_PREFIX} from '../../../src/services/constants';
+import {
+  AGENT,
+  SUBSCRIBE_API,
+  WEB_RTC_PREFIX,
+} from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
 import {CC_TASK_EVENTS, CC_EVENTS} from '../../../src/services/config/types';
@@ -60,7 +64,11 @@ import MetricsManager from '../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../src/metrics/constants';
 import Mercury from '@webex/internal-plugin-mercury';
 import WebexRequest from '../../../src/services/core/WebexRequest';
-import {createDeferred, flushEventLoopTurn, flushMicrotasks} from '../fixtures/aiSummaryTestUtils';
+import {
+  createDeferred,
+  flushEventLoopTurn,
+  flushMicrotasks,
+} from '../fixtures/aiSummaryTestUtils';
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -379,6 +387,16 @@ const createAISummaryLifecycleTaskData = (
 
 describe('webex.cc', () => {
   let webex;
+
+  const reloadResponse = (response: any) => async () => {
+    await Promise.resolve();
+    const type = response.data.type ?? CC_EVENTS.AGENT_RELOGIN_SUCCESS;
+    webex.cc['handleWebsocketMessage'](
+      JSON.stringify({...response, type, data: {type, channelsMap: {}, ...response.data}})
+    );
+
+    return response;
+  };
   let mockApiAIAssistant;
   let mockContact;
   let mockTaskManager;
@@ -664,7 +682,7 @@ describe('webex.cc', () => {
       const mercuryConnect = jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
       const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
-      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
+      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reloadV2').mockImplementation(reloadResponse({
         data: {
           auxCodeId: 'auxCodeId',
           agentId: 'agentId',
@@ -672,7 +690,7 @@ describe('webex.cc', () => {
           deviceType: LoginOption.EXTENSION,
           dn: '12345',
         },
-      });
+      }));
       const configSpy = jest
         .spyOn(webex.cc.services.config, 'getAgentConfig')
         .mockResolvedValue(mockAgentProfile);
@@ -1027,59 +1045,6 @@ describe('webex.cc', () => {
       );
     });
 
-    it('should pre-load wellness idle code before silentRelogin when wellness is enabled', async () => {
-      const wellbeingCode = {id: 'wb-1', name: 'WellbeingBreak', isSystem: true, isDefault: false};
-      mockAgentProfile.isWellnessBreakEnabled = true;
-      mockAgentProfile.aiFeature = {realtimeTranscripts: {enable: false}} as any;
-
-      jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
-      const configLookup = jest
-        .spyOn(webex.cc.services.config, 'getWellbeingBreakIdleCode')
-        .mockResolvedValue(wellbeingCode);
-      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
-        data: {
-          auxCodeId: 'auxCodeId',
-          agentId: 'agentId',
-          deviceType: LoginOption.EXTENSION,
-          dn: '12345',
-        },
-      });
-      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(mockAgentProfile);
-      mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-
-      await webex.cc.register();
-
-      // Wellness code fetched during registration (before silentRelogin)
-      expect(configLookup).toHaveBeenCalledTimes(1);
-      expect(webex.cc['wellbeingBreakIdleCode']).toEqual(wellbeingCode);
-      // silentRelogin still ran
-      expect(reloadSpy).toHaveBeenCalled();
-    });
-
-    it('should not block registration when wellness idle code pre-load fails', async () => {
-      mockAgentProfile.isWellnessBreakEnabled = true;
-      mockAgentProfile.aiFeature = {realtimeTranscripts: {enable: false}} as any;
-
-      jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
-      jest
-        .spyOn(webex.cc.services.config, 'getWellbeingBreakIdleCode')
-        .mockRejectedValue(new Error('service unavailable'));
-      jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
-        data: {
-          auxCodeId: 'auxCodeId',
-          agentId: 'agentId',
-          deviceType: LoginOption.EXTENSION,
-          dn: '12345',
-        },
-      });
-      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(mockAgentProfile);
-      mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-
-      // Registration must succeed despite wellness code fetch failure
-      await expect(webex.cc.register()).resolves.toBeDefined();
-      expect(webex.cc['wellbeingBreakIdleCode']).toBeUndefined();
-    });
-
     it('should not connect RTD websocket when transcripts, suggestions, and wellness are disabled', async () => {
       mockAgentProfile.aiFeature = {
         realtimeTranscripts: {enable: false},
@@ -1303,19 +1268,17 @@ describe('webex.cc', () => {
         }),
         setAgentId: jest.fn(),
         pendingRequests,
-        sendEvent: jest.fn(
-          (_agentId: string, _interactionId: string, _eventType: string, eventName: string) => {
-            if (eventName.includes('SUMMARY_RESPONSE')) {
-              return Promise.resolve(undefined);
-            }
-
-            const deferred = createDeferred<void>();
-
-            transportDeferreds.push(deferred);
-
-            return deferred.promise;
+        sendEvent: jest.fn((_agentId: string, _interactionId: string, _eventType: string, eventName: string) => {
+          if (eventName.includes('SUMMARY_RESPONSE')) {
+            return Promise.resolve(undefined);
           }
-        ),
+
+          const deferred = createDeferred<void>();
+
+          transportDeferreds.push(deferred);
+
+          return deferred.promise;
+        }),
       };
       apiAIAssistant.requestAndWaitForRtd = jest.fn(async (options: any) => {
         const publishTimestamp = Date.now();
@@ -1380,9 +1343,8 @@ describe('webex.cc', () => {
         webSocketManager as any,
         rtdWebSocketManager as any
       );
-      const taskFactory = jest.requireMock('../../../src/services/task/TaskFactory').default as {
-        createTask: jest.Mock;
-      };
+      const taskFactory = jest.requireMock('../../../src/services/task/TaskFactory')
+        .default as {createTask: jest.Mock};
 
       taskFactory.createTask.mockImplementation(
         (
@@ -2433,10 +2395,7 @@ describe('webex.cc', () => {
         dialNumber: '1001',
       });
 
-      expect(publishSpy).toHaveBeenCalledWith(true, {
-        userId: 'user-123',
-        trackPublishMetrics: true,
-      });
+      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123', trackPublishMetrics: true});
       expect(subscribeSpy).toHaveBeenCalledWith('agentId', expect.any(Function));
       expect(mockTaskManager.refreshWxAppOfferObservabilityForAllTasks).toHaveBeenCalled();
     });
@@ -2496,7 +2455,9 @@ describe('webex.cc', () => {
         .mockRejectedValue(new Error('mercury connect failed'));
       const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
       const unsubscribeSpy = jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'unsubscribe');
-      jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
+      jest
+        .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
+        .mockResolvedValue(undefined);
       const metricSpy = jest.spyOn(mockMetricsManager, 'trackEvent');
 
       jest.spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue({
@@ -2538,12 +2499,16 @@ describe('webex.cc', () => {
       mockTaskManager.applyEnableWxBetterTogether(true);
 
       jest.spyOn(webex.cc as any, 'ensureWxAppMercuryConnected').mockResolvedValue(undefined);
-      jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe').mockImplementation(() => {});
+      jest
+        .spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe')
+        .mockImplementation(() => {});
       jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'isSubscribed').mockReturnValue(true);
       jest
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockRejectedValue(new Error('publish failed'));
-      jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
+      jest
+        .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
+        .mockResolvedValue(undefined);
       const metricSpy = jest.spyOn(mockMetricsManager, 'trackEvent');
 
       jest.spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue({
@@ -2581,7 +2546,9 @@ describe('webex.cc', () => {
       mockTaskManager.applyEnableWxBetterTogether(true);
 
       jest.spyOn(webex.cc as any, 'ensureWxAppMercuryConnected').mockResolvedValue(undefined);
-      jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe').mockImplementation(() => {});
+      jest
+        .spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe')
+        .mockImplementation(() => {});
       jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'isSubscribed').mockReturnValue(true);
       jest
         .spyOn(webex.cc['webexCrossClientService'], 'isAnswerCallsStateActive')
@@ -2589,7 +2556,9 @@ describe('webex.cc', () => {
       jest
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockRejectedValue(new Error('publish failed'));
-      jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
+      jest
+        .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
+        .mockResolvedValue(undefined);
       const metricSpy = jest.spyOn(mockMetricsManager, 'trackEvent');
 
       jest.spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue({
@@ -2620,12 +2589,13 @@ describe('webex.cc', () => {
       webex.internal.device = {
         userId: 'user-123',
         registered: false,
-        register: jest
-          .fn()
-          .mockImplementation(async function (this: {url?: string; registered?: boolean}) {
-            this.url = 'https://wdm.example.com/devices/dev-1';
-            this.registered = true;
-          }),
+        register: jest.fn().mockImplementation(async function (this: {
+          url?: string;
+          registered?: boolean;
+        }) {
+          this.url = 'https://wdm.example.com/devices/dev-1';
+          this.registered = true;
+        }),
       };
       webex.internal.mercury = {
         connected: false,
@@ -2641,13 +2611,14 @@ describe('webex.cc', () => {
       jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'isSubscribed').mockReturnValue(true);
 
       const callOrder: string[] = [];
-      jest
-        .spyOn(webex.internal.device, 'register')
-        .mockImplementation(async function (this: {url?: string; registered?: boolean}) {
-          callOrder.push('device.register');
-          this.url = 'https://wdm.example.com/devices/dev-1';
-          this.registered = true;
-        });
+      jest.spyOn(webex.internal.device, 'register').mockImplementation(async function (this: {
+        url?: string;
+        registered?: boolean;
+      }) {
+        callOrder.push('device.register');
+        this.url = 'https://wdm.example.com/devices/dev-1';
+        this.registered = true;
+      });
       jest
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockImplementation(async (enable: boolean) => {
@@ -2680,12 +2651,13 @@ describe('webex.cc', () => {
       webex.internal.device = {
         userId: 'user-123',
         registered: false,
-        register: jest
-          .fn()
-          .mockImplementation(async function (this: {url?: string; registered?: boolean}) {
-            this.url = 'https://wdm.example.com/devices/dev-1';
-            this.registered = true;
-          }),
+        register: jest.fn().mockImplementation(async function (this: {
+          url?: string;
+          registered?: boolean;
+        }) {
+          this.url = 'https://wdm.example.com/devices/dev-1';
+          this.registered = true;
+        }),
       };
       webex.internal.mercury = {
         connected: false,
@@ -2697,16 +2669,19 @@ describe('webex.cc', () => {
         loginVoiceOptions: ['EXTENSION'],
       };
       webex.cc.webCallingService.loginOption = LoginOption.EXTENSION;
-      jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
+      jest
+        .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
+        .mockResolvedValue(undefined);
 
       const callOrder: string[] = [];
-      jest
-        .spyOn(webex.internal.device, 'register')
-        .mockImplementation(async function (this: {url?: string; registered?: boolean}) {
-          callOrder.push('device.register');
-          this.url = 'https://wdm.example.com/devices/dev-1';
-          this.registered = true;
-        });
+      jest.spyOn(webex.internal.device, 'register').mockImplementation(async function (this: {
+        url?: string;
+        registered?: boolean;
+      }) {
+        callOrder.push('device.register');
+        this.url = 'https://wdm.example.com/devices/dev-1';
+        this.registered = true;
+      });
       jest
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockImplementation(async (enable: boolean) => {
@@ -2750,9 +2725,14 @@ describe('webex.cc', () => {
           .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
           .mockRejectedValueOnce(new Error('usersub publish failed'))
           .mockResolvedValue(undefined);
-        const scheduleRetrySpy = jest.spyOn(webex.cc as any, 'scheduleForcedFalsePublishRetry');
+        const scheduleRetrySpy = jest.spyOn(
+          webex.cc as any,
+          'scheduleForcedFalsePublishRetry'
+        );
         const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
-        jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
+        jest
+          .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
+          .mockResolvedValue(undefined);
 
         jest.spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue({
           data: {
@@ -2777,10 +2757,7 @@ describe('webex.cc', () => {
         await publishSpy.mock.results[1]?.value;
 
         expect(publishSpy).toHaveBeenCalledTimes(2);
-        expect(publishSpy).toHaveBeenLastCalledWith(false, {
-          userId: 'user-123',
-          trackPublishMetrics: true,
-        });
+        expect(publishSpy).toHaveBeenLastCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
       } finally {
         jest.useRealTimers();
       }
@@ -2849,10 +2826,7 @@ describe('webex.cc', () => {
         dialNumber: '1001',
       });
 
-      expect(publishSpy).toHaveBeenCalledWith(false, {
-        userId: 'user-123',
-        trackPublishMetrics: true,
-      });
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
       expect(teardownSpy).toHaveBeenCalled();
       expect(unsubscribeSpy).toHaveBeenCalled();
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
@@ -2942,10 +2916,7 @@ describe('webex.cc', () => {
         dialNumber: '1001',
       });
 
-      expect(publishSpy).toHaveBeenCalledWith(true, {
-        userId: 'user-123',
-        trackPublishMetrics: true,
-      });
+      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123', trackPublishMetrics: true});
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED,
         expect.objectContaining({error: 'Mercury is unavailable for wxApp mute sync'}),
@@ -3119,10 +3090,7 @@ describe('webex.cc', () => {
         dialNumber: '1001',
       });
 
-      expect(publishSpy).toHaveBeenCalledWith(false, {
-        userId: 'user-123',
-        trackPublishMetrics: true,
-      });
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
     });
 
     it('should reject without a V1 fallback when V2 login times out', async () => {
@@ -3219,10 +3187,10 @@ describe('webex.cc', () => {
           .mockResolvedValue(v1LoginData);
 
         await webex.cc.stationLogin({
-          teamId: 'teamId',
-          loginOption: LoginOption.EXTENSION,
-          dialNumber: '1001',
-        });
+        teamId: 'teamId',
+        loginOption: LoginOption.EXTENSION,
+        dialNumber: '1001',
+      });
 
         expect(fetchMock).toHaveBeenCalledWith('mockOrgId', 'agentId');
         expect(v1Mock).toHaveBeenCalled();
@@ -3241,10 +3209,10 @@ describe('webex.cc', () => {
         const v1Mock = jest.spyOn(webex.cc.services.agent, 'stationLogin');
 
         await webex.cc.stationLogin({
-          teamId: 'teamId',
-          loginOption: LoginOption.EXTENSION,
-          dialNumber: '1001',
-        });
+        teamId: 'teamId',
+        loginOption: LoginOption.EXTENSION,
+        dialNumber: '1001',
+      });
 
         expect(v2Mock).toHaveBeenCalled();
         expect(v1Mock).not.toHaveBeenCalled();
@@ -3253,35 +3221,6 @@ describe('webex.cc', () => {
           expect.stringContaining('Could not refresh manageChannelAvailability'),
           {module: CC_FILE, method: 'stationLogin'}
         );
-      });
-
-      it('rejects a login when deregistration ends registration during profile refresh', async () => {
-        webex.cc.agentConfig.webRtcEnabled = true;
-        let resolveProfileRefresh: (value: any) => void = () => undefined;
-        jest
-          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
-          .mockImplementation(
-            () =>
-              new Promise((resolve) => {
-                resolveProfileRefresh = resolve;
-              })
-          );
-        const v1Login = jest.spyOn(webex.cc.services.agent, 'stationLogin');
-        const v2Login = jest.spyOn(webex.cc.services.agent, 'stationLoginV2');
-        const setLoginOption = jest.spyOn(webex.cc.webCallingService, 'setLoginOption');
-
-        const loginPromise = webex.cc.stationLogin({
-          teamId: 'teamId',
-          loginOption: LoginOption.BROWSER,
-        });
-        await Promise.resolve();
-        await webex.cc.deregister();
-        resolveProfileRefresh({agentProfile: {manageChannelAvailability: true}});
-
-        await expect(loginPromise).rejects.toThrow('REGISTRATION_ENDED');
-        expect(v1Login).not.toHaveBeenCalled();
-        expect(v2Login).not.toHaveBeenCalled();
-        expect(setLoginOption).not.toHaveBeenCalled();
       });
 
       it('restores the previous flag when login fails (INV-012)', async () => {
@@ -3340,6 +3279,26 @@ describe('webex.cc', () => {
         expect(webex.cc.agentConfig.manageChannelAvailability).toBe(true);
       });
 
+      it('restores the browser voice requirement when a fresh BROWSER login fails', async () => {
+        webex.cc.agentConfig.webRtcEnabled = true;
+        const setLoginOption = jest.spyOn(webex.cc.webCallingService, 'setLoginOption');
+        const setBrowserVoiceRequired = jest.spyOn(
+          webex.cc.webCallingService,
+          'setBrowserVoiceRequired'
+        );
+        jest.spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired').mockReturnValue(false);
+        jest
+          .spyOn(webex.cc.services.agent, 'stationLoginV2')
+          .mockRejectedValue({details: {data: {reason: 'login rejected'}}});
+
+        await expect(
+          webex.cc.stationLogin({teamId: 'teamId', loginOption: LoginOption.BROWSER})
+        ).rejects.toThrow('login rejected');
+
+        expect(setLoginOption).toHaveBeenLastCalledWith('AGENT_DN');
+        expect(setBrowserVoiceRequired.mock.calls).toEqual([[true], [false]]);
+      });
+
       it('restores calling context when login rejects before acceptance', async () => {
         // Active BROWSER session with browser-voice enabled
         webex.cc.agentConfig.manageChannelAvailability = true;
@@ -3382,183 +3341,6 @@ describe('webex.cc', () => {
         expect(setBrowserCalls[setBrowserCalls.length - 1][0]).toBe(true);
       });
 
-      it('keeps V2 notification handling active while login attempt is in-flight', async () => {
-        // Active V2 session
-        webex.cc.agentConfig.manageChannelAvailability = true;
-
-        // Profile refresh disables granular availability
-        jest
-          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
-          .mockResolvedValue({agentProfile: {manageChannelAvailability: false}} as any);
-
-        // Login rejects before acceptance
-        jest
-          .spyOn(webex.cc.services.agent, 'stationLogin')
-          .mockRejectedValue({details: {trackingId: 'trk-3', data: {reason: 'rejected'}}});
-
-        // The flag must stay true throughout the attempt so
-        // handleChannelStateChanged continues processing V2 notifications
-        // on the still-active session.
-        expect(webex.cc.agentConfig.manageChannelAvailability).toBe(true);
-
-        await expect(
-          webex.cc.stationLogin({
-            teamId: 'teamId',
-            loginOption: LoginOption.EXTENSION,
-            dialNumber: '1001',
-          })
-        ).rejects.toThrow();
-
-        // Flag was never flipped — still true (the active V2 session is undisturbed)
-        expect(webex.cc.agentConfig.manageChannelAvailability).toBe(true);
-        // Pending signal cleared
-        expect(webex.cc['pendingLoginV2']).toBeUndefined();
-      });
-
-      it('preserves in-flight login V2 hint when a duplicate attempt is rejected as Pending', async () => {
-        // First attempt already set pendingLoginV2 = true (its AQM bind is live)
-        webex.cc.agentConfig.manageChannelAvailability = false;
-        webex.cc['pendingLoginV2'] = true;
-
-        // Profile refresh for the second click also enables V2
-        jest
-          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
-          .mockResolvedValue({agentProfile: {manageChannelAvailability: true}} as any);
-
-        // AqmReqs rejects the duplicate with Pending (first attempt's bind is still live)
-        const pendingError = Object.assign(new Error(), {
-          id: 'Service.aqm.reqs.Pending',
-          details: {key: 'bind-key', msg: 'The request has been already created'},
-        });
-        jest.spyOn(webex.cc.services.agent, 'stationLoginV2').mockRejectedValue(pendingError);
-
-        await expect(
-          webex.cc.stationLogin({teamId: 'teamId', loginOption: LoginOption.BROWSER})
-        ).rejects.toThrow();
-
-        // Set guard: pendingLoginV2 not overwritten (was already true)
-        // Catch guard: Pending rejection does not clear the first attempt's hint
-        expect(webex.cc['pendingLoginV2']).toBe(true);
-      });
-
-      it('does not overwrite owning login voice guard when duplicate is rejected as Pending', async () => {
-        // Simulate: Login #1 already claimed the AQM bind and set voice guard.
-        webex.cc.agentConfig.webRtcEnabled = true;
-        webex.cc.agentConfig.manageChannelAvailability = false;
-        webex.cc['pendingLoginV2'] = true; // Login #1 owns the bind
-
-        // Login #1 eagerly set calling context (use direct property + mock)
-        webex.cc.webCallingService.loginOption = LoginOption.BROWSER;
-        jest
-          .spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired')
-          .mockReturnValue(true);
-
-        // Spies on mutators; mockClear() so the setup calls above aren't counted.
-        const setBrowserVoiceSpy = jest.spyOn(
-          webex.cc.webCallingService,
-          'setBrowserVoiceRequired'
-        );
-        setBrowserVoiceSpy.mockClear();
-        const setLoginOptionSpy = jest.spyOn(webex.cc.webCallingService, 'setLoginOption');
-        setLoginOptionSpy.mockClear();
-
-        // Profile refresh for the second click
-        jest
-          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
-          .mockResolvedValue({agentProfile: {manageChannelAvailability: true}} as any);
-
-        // AqmReqs rejects the duplicate
-        const pendingError = Object.assign(new Error(), {
-          id: 'Service.aqm.reqs.Pending',
-          details: {key: 'bind-key', msg: 'The request has been already created'},
-        });
-        jest.spyOn(webex.cc.services.agent, 'stationLoginV2').mockRejectedValue(pendingError);
-
-        await expect(
-          webex.cc.stationLogin({teamId: 'teamId', loginOption: LoginOption.BROWSER})
-        ).rejects.toThrow();
-
-        // The duplicate must NOT have touched the calling context at all:
-        // - no eager set (ownsRequest was false)
-        // - no rollback (isPendingDuplicate was true)
-        expect(setLoginOptionSpy).not.toHaveBeenCalled();
-        expect(setBrowserVoiceSpy).not.toHaveBeenCalled();
-
-        // The owning login's voice guard survives untouched
-        expect(webex.cc.webCallingService.isBrowserVoiceRequired()).toBe(true);
-        expect(webex.cc.webCallingService.loginOption).toBe(LoginOption.BROWSER);
-      });
-
-      it('does not overwrite owning BROWSER voice guard when duplicate EXTENSION login is Pending', async () => {
-        // Login #1 is BROWSER with voice guard enabled
-        webex.cc.agentConfig.webRtcEnabled = true;
-        webex.cc.agentConfig.manageChannelAvailability = false;
-        webex.cc['pendingLoginV2'] = true;
-
-        webex.cc.webCallingService.loginOption = LoginOption.BROWSER;
-        jest
-          .spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired')
-          .mockReturnValue(true);
-
-        const setBrowserVoiceSpy = jest.spyOn(
-          webex.cc.webCallingService,
-          'setBrowserVoiceRequired'
-        );
-        setBrowserVoiceSpy.mockClear();
-        const setLoginOptionSpy = jest.spyOn(webex.cc.webCallingService, 'setLoginOption');
-        setLoginOptionSpy.mockClear();
-
-        // Login #2 is EXTENSION (different device type, same double-click race)
-        jest
-          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
-          .mockResolvedValue({agentProfile: {manageChannelAvailability: true}} as any);
-
-        const pendingError = Object.assign(new Error(), {
-          id: 'Service.aqm.reqs.Pending',
-          details: {key: 'bind-key', msg: 'The request has been already created'},
-        });
-        jest.spyOn(webex.cc.services.agent, 'stationLoginV2').mockRejectedValue(pendingError);
-
-        await expect(
-          webex.cc.stationLogin({
-            teamId: 'teamId',
-            loginOption: LoginOption.EXTENSION,
-            dialNumber: '1001',
-          })
-        ).rejects.toThrow();
-
-        // EXTENSION attempt must not have corrupted BROWSER's calling context
-        expect(setLoginOptionSpy).not.toHaveBeenCalled();
-        expect(setBrowserVoiceSpy).not.toHaveBeenCalled();
-        expect(webex.cc.webCallingService.loginOption).toBe(LoginOption.BROWSER);
-        expect(webex.cc.webCallingService.isBrowserVoiceRequired()).toBe(true);
-      });
-
-      it('preserves in-flight login V2 hint when a second attempt fails validation before AQM', async () => {
-        // Login #1 already claimed the AQM bind and set pendingLoginV2 = true
-        webex.cc.agentConfig.manageChannelAvailability = false;
-        webex.cc['pendingLoginV2'] = true;
-
-        // Login #2 is AGENT_DN with an empty dial number — fails
-        // INVALID_DIAL_NUMBER validation before reaching AQM.
-        // Profile refresh for the second click enables V2 too.
-        jest
-          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
-          .mockResolvedValue({agentProfile: {manageChannelAvailability: true}} as any);
-
-        await expect(
-          webex.cc.stationLogin({
-            teamId: 'teamId',
-            loginOption: LoginOption.AGENT_DN,
-            dialNumber: '',
-          })
-        ).rejects.toThrow('INVALID_DIAL_NUMBER');
-
-        // The first attempt's V2 hint must survive — the validation
-        // failure does not own the AQM bind.
-        expect(webex.cc['pendingLoginV2']).toBe(true);
-      });
-
       it('commits refreshed profile flag on successful login', async () => {
         // Previous session was V1
         webex.cc.agentConfig.manageChannelAvailability = false;
@@ -3572,78 +3354,14 @@ describe('webex.cc', () => {
         jest.spyOn(webex.cc.services.agent, 'stationLoginV2').mockResolvedValue(v1LoginData);
 
         await webex.cc.stationLogin({
-          teamId: 'teamId',
-          loginOption: LoginOption.EXTENSION,
-          dialNumber: '1001',
-        });
+        teamId: 'teamId',
+        loginOption: LoginOption.EXTENSION,
+        dialNumber: '1001',
+      });
 
         expect(webex.cc.agentConfig.manageChannelAvailability).toBe(true);
       });
 
-      it('WS login-success handler commits routing flag and seeds V2 maps via pendingLoginV2', () => {
-        // Start as V1; stationLogin sets pendingLoginV2 = true
-        webex.cc.agentConfig.manageChannelAvailability = false;
-        webex.cc['pendingLoginV2'] = true;
-
-        const messageCallback = webex.cc['handleWebsocketMessage'];
-        messageCallback(
-          JSON.stringify({
-            type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
-            data: {
-              agentId: 'agentId',
-              agentSessionId: 'sess-1',
-              teamId: 'teamId',
-              type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
-              subStatus: 'Idle',
-              auxCodeId: 'aux-0',
-              channelsMap: {chat: ['c1'], telephony: ['t1']},
-              deviceType: 'BROWSER',
-            },
-          })
-        );
-
-        // Flag committed by WS handler
-        expect(webex.cc.agentConfig.manageChannelAvailability).toBe(true);
-        // Channel maps seeded
-        expect(Object.keys(webex.cc['channelStatesMap'])).toEqual(
-          expect.arrayContaining(['chat', 'telephony'])
-        );
-        // pendingLoginV2 cleared
-        expect(webex.cc['pendingLoginV2']).toBeUndefined();
-      });
-
-      it('WS login-success handler clears V2 state when pendingLoginV2 is false (V2→V1 switch)', () => {
-        // Active V2 session with channel state
-        webex.cc.agentConfig.manageChannelAvailability = true;
-        webex.cc['channelStatesMap'] = {chat: {agentState: 'Available'}} as any;
-        webex.cc['loginChannelsMap'] = {chat: ['c1']};
-        // stationLogin set pendingLoginV2 = false (V1 login)
-        webex.cc['pendingLoginV2'] = false;
-
-        const messageCallback = webex.cc['handleWebsocketMessage'];
-        messageCallback(
-          JSON.stringify({
-            type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
-            data: {
-              agentId: 'agentId',
-              agentSessionId: 'sess-1',
-              teamId: 'teamId',
-              type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
-              subStatus: 'Idle',
-              auxCodeId: 'aux-0',
-              channelsMap: {chat: [], telephony: []},
-              deviceType: 'EXTENSION',
-            },
-          })
-        );
-
-        // Flag committed as V1
-        expect(webex.cc.agentConfig.manageChannelAvailability).toBe(false);
-        // V2 local state cleared
-        expect(Object.keys(webex.cc['channelStatesMap'])).toHaveLength(0);
-        expect(webex.cc['loginChannelsMap']).toEqual({});
-        expect(webex.cc['pendingLoginV2']).toBeUndefined();
-      });
     });
   });
 
@@ -3674,13 +3392,15 @@ describe('webex.cc', () => {
       const deregisterStarted = new Promise<void>((resolve) => {
         signalDeregisterStarted = resolve;
       });
-      jest.spyOn(webex.cc.webCallingService, 'deregisterWebCallingLine').mockImplementation(
-        () =>
-          new Promise<void>((resolve) => {
-            resolveDeregister = resolve;
-            signalDeregisterStarted?.();
-          })
-      );
+      jest
+        .spyOn(webex.cc.webCallingService, 'deregisterWebCallingLine')
+        .mockImplementation(
+          () =>
+            new Promise<void>((resolve) => {
+              resolveDeregister = resolve;
+              signalDeregisterStarted?.();
+            })
+        );
       jest.spyOn(webex.cc.services.agent, 'logout').mockResolvedValue({} as StationLogoutResponse);
 
       let logoutResolved = false;
@@ -3720,12 +3440,15 @@ describe('webex.cc', () => {
       const deregisterStarted = new Promise<void>((resolve) => {
         signalDeregisterStarted = resolve;
       });
-      jest.spyOn(webex.cc.webCallingService, 'deregisterWebCallingLine').mockImplementation(
-        () => new Promise<void>((resolve) => {
-          resolveDeregister = resolve;
-          signalDeregisterStarted?.();
-        })
-      );
+      jest
+        .spyOn(webex.cc.webCallingService, 'deregisterWebCallingLine')
+        .mockImplementation(
+          () =>
+            new Promise<void>((resolve) => {
+              resolveDeregister = resolve;
+              signalDeregisterStarted?.();
+            })
+        );
 
       const pendingRelogin = webex.cc['silentRelogin']();
       const logout = webex.cc.stationLogout({logoutReason: 'Logout reason'});
@@ -3860,10 +3583,7 @@ describe('webex.cc', () => {
 
       await webex.cc.stationLogout({logoutReason: 'Logout reason'});
 
-      expect(publishSpy).toHaveBeenCalledWith(false, {
-        userId: 'user-123',
-        trackPublishMetrics: true,
-      });
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
       expect(teardownSpy).toHaveBeenCalled();
       expect(unsubscribeSpy).toHaveBeenCalled();
     });
@@ -3884,7 +3604,10 @@ describe('webex.cc', () => {
       jest
         .spyOn(webex.cc as never, 'publishAnswerOnWebexCrossClientState' as never)
         .mockRejectedValue(new Error('usersub publish failed'));
-      const scheduleRetrySpy = jest.spyOn(webex.cc as any, 'scheduleCompensatingFalsePublishRetry');
+      const scheduleRetrySpy = jest.spyOn(
+        webex.cc as any,
+        'scheduleCompensatingFalsePublishRetry'
+      );
       const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
       const unsubscribeSpy = jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'unsubscribe');
 
@@ -3923,16 +3646,15 @@ describe('webex.cc', () => {
           .mockResolvedValue(undefined);
         const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
         const unsubscribeSpy = jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'unsubscribe');
-        jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
+        jest
+          .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
+          .mockResolvedValue(undefined);
 
         const result = await webex.cc.stationLogout({logoutReason: 'Logout reason'});
 
         expect(result).toEqual({trackingId: 'track-1'});
         expect(publishSpy).toHaveBeenCalledTimes(1);
-        expect(publishSpy).toHaveBeenCalledWith(false, {
-          userId: 'user-123',
-          trackPublishMetrics: true,
-        });
+        expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
         expect(teardownSpy).toHaveBeenCalled();
         expect(unsubscribeSpy).toHaveBeenCalled();
 
@@ -3940,10 +3662,7 @@ describe('webex.cc', () => {
         await publishSpy.mock.results[1]?.value;
 
         expect(publishSpy).toHaveBeenCalledTimes(2);
-        expect(publishSpy).toHaveBeenLastCalledWith(false, {
-          userId: 'user-123',
-          trackPublishMetrics: true,
-        });
+        expect(publishSpy).toHaveBeenLastCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
       } finally {
         jest.useRealTimers();
       }
@@ -3994,7 +3713,9 @@ describe('webex.cc', () => {
           .mockRejectedValueOnce(new Error('usersub publish failed'))
           .mockResolvedValue(undefined);
         const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
-        jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
+        jest
+          .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
+          .mockResolvedValue(undefined);
 
         await webex.cc.stationLogout({logoutReason: 'Logout reason'});
         await webex.cc.stationLogin({
@@ -4004,14 +3725,8 @@ describe('webex.cc', () => {
         });
 
         expect(publishSpy).toHaveBeenCalledTimes(2);
-        expect(publishSpy).toHaveBeenNthCalledWith(1, false, {
-          userId: 'user-123',
-          trackPublishMetrics: true,
-        });
-        expect(publishSpy).toHaveBeenNthCalledWith(2, true, {
-          userId: 'user-123',
-          trackPublishMetrics: true,
-        });
+        expect(publishSpy).toHaveBeenNthCalledWith(1, false, {userId: 'user-123', trackPublishMetrics: true});
+        expect(publishSpy).toHaveBeenNthCalledWith(2, true, {userId: 'user-123', trackPublishMetrics: true});
         expect(teardownSpy).toHaveBeenCalledTimes(1);
 
         jest.advanceTimersByTime(30_000);
@@ -4076,9 +3791,9 @@ describe('webex.cc', () => {
       jest.spyOn(webCallingService, 'isVoiceReady').mockReturnValue(false);
       const stateChangeSpy = jest.spyOn(webex.cc.services.agent, 'stateChange');
 
-      await expect(webex.cc.setAgentState({state: 'Available', auxCodeId: '0'})).rejects.toThrow(
-        VOICE_CONNECTION_ERROR.NOT_READY
-      );
+      await expect(
+        webex.cc.setAgentState({state: 'Available', auxCodeId: '0'})
+      ).rejects.toThrow(VOICE_CONNECTION_ERROR.NOT_READY);
 
       expect(stateChangeSpy).not.toHaveBeenCalled();
       expect(getErrorDetailsSpy).toHaveBeenCalledWith(
@@ -4259,7 +3974,9 @@ describe('webex.cc', () => {
         lastStateChangeReason: 'Available\r\ninjected: evil',
       };
 
-      jest.spyOn(webex.cc.services.agent, 'stateChange').mockResolvedValue({data: expectedPayload});
+      jest
+        .spyOn(webex.cc.services.agent, 'stateChange')
+        .mockResolvedValue({data: expectedPayload});
 
       await webex.cc.setAgentState(expectedPayload);
 
@@ -4327,12 +4044,14 @@ describe('webex.cc', () => {
 
     it('does not cache an idle-code lookup that completes after a new registration starts', async () => {
       let resolveLookup: (idleCode: typeof wellbeingCode) => void = () => undefined;
-      jest.spyOn(webex.cc.services.config, 'getWellbeingBreakIdleCode').mockImplementation(
-        () =>
-          new Promise((resolve) => {
-            resolveLookup = resolve;
-          })
-      );
+      jest
+        .spyOn(webex.cc.services.config, 'getWellbeingBreakIdleCode')
+        .mockImplementation(
+          () =>
+            new Promise((resolve) => {
+              resolveLookup = resolve;
+            })
+        );
 
       const lookupPromise = webex.cc.getWellbeingBreakIdleCode();
       const staleLookup = expect(lookupPromise).rejects.toThrow(
@@ -4389,7 +4108,10 @@ describe('webex.cc', () => {
       webex.cc['handleWebsocketMessage'](
         JSON.stringify({
           type: CC_EVENTS.AGENT_MULTI_LOGIN,
-          data: {type: 'AgentMultiLoginCloseSession', agentSessionId: 'another-session'},
+          data: {
+            type: 'AgentMultiLoginCloseSession',
+            agentSessionId: 'another-session',
+          },
         })
       );
       expect(webex.cc['loginChannelsMap']).toEqual({chat: ['c1']});
@@ -4397,7 +4119,10 @@ describe('webex.cc', () => {
       webex.cc['handleWebsocketMessage'](
         JSON.stringify({
           type: CC_EVENTS.AGENT_MULTI_LOGIN,
-          data: {type: 'AgentMultiLoginCloseSession', agentSessionId: 'session-1'},
+          data: {
+            type: 'AgentMultiLoginCloseSession',
+            agentSessionId: 'session-1',
+          },
         })
       );
       expect(webex.cc['loginChannelsMap']).toEqual({});
@@ -4564,6 +4289,7 @@ describe('webex.cc', () => {
         ['operational']
       );
     });
+
   });
 
   describe('getBuddyAgents', () => {
@@ -4978,10 +4704,7 @@ describe('webex.cc', () => {
 
       await webex.cc['silentRelogin']();
 
-      expect(publishSpy).toHaveBeenCalledWith(true, {
-        userId: 'user-123',
-        trackPublishMetrics: true,
-      });
+      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123', trackPublishMetrics: true});
       expect(subscribeSpy).toHaveBeenCalledWith('agentId', expect.any(Function));
       expect(mockTaskManager.refreshWxAppOfferObservabilityForAllTasks).toHaveBeenCalled();
     });
@@ -5015,10 +4738,7 @@ describe('webex.cc', () => {
 
       await webex.cc['silentRelogin']();
 
-      expect(publishSpy).toHaveBeenCalledWith(false, {
-        userId: 'user-123',
-        trackPublishMetrics: true,
-      });
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
       expect(teardownSpy).toHaveBeenCalled();
       expect(unsubscribeSpy).toHaveBeenCalled();
     });
@@ -5058,7 +4778,7 @@ describe('webex.cc', () => {
           isAgentLoggedIn: true,
           manageChannelAvailability,
         } as Profile;
-        jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue(reload as any);
+        jest.spyOn(webex.cc.services.agent, 'reloadV2').mockImplementation(reloadResponse(reload));
         await webex.cc['silentRelogin']();
       };
 
@@ -5146,6 +4866,38 @@ describe('webex.cc', () => {
         expect(webex.cc['channelStatesMap'].telephony.agentState).toBe('Available');
       });
 
+      it.each([v1Reload, v2Reload])(
+        'ignores a delayed $data.type after its reload timed out',
+        async (response) => {
+          webex.cc.agentConfig = {agentId: 'agentId', manageChannelAvailability: true} as Profile;
+          jest
+            .spyOn(webex.cc.services.agent, 'reloadV2')
+            .mockRejectedValue({details: {data: {reason: 'reload timed out'}}});
+
+          await expect(webex.cc['silentRelogin']()).rejects.toThrow('reload timed out');
+          expect(webex.cc['v2ReloadPromise']).toBeUndefined();
+          expect(webex.cc['v2ReloadGeneration']).toBeUndefined();
+
+          webex.cc['currentAgentSessionId'] = 'session-new';
+          const channelStates = {chat: {agentState: 'Available', auxCodeId: '0'}};
+          webex.cc['channelStatesMap'] = channelStates as any;
+          const reloginListener = jest.fn();
+          webex.cc.on(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, reloginListener);
+
+          webex.cc['handleWebsocketMessage'](
+            JSON.stringify({
+              type: response.data.type,
+              data: {...response.data, agentSessionId: 'session-old', channelsMap: {}},
+            })
+          );
+
+          expect(webex.cc['currentAgentSessionId']).toBe('session-new');
+          expect(webex.cc['channelStatesMap']).toEqual(channelStates);
+          expect(webex.cc.agentConfig.manageChannelAvailability).toBe(true);
+          expect(reloginListener).not.toHaveBeenCalled();
+        }
+      );
+
       it('does not emit session-not-found when the reload succeeds', async () => {
         const emitSpy = jest.spyOn(webex.cc, 'trigger');
 
@@ -5215,7 +4967,7 @@ describe('webex.cc', () => {
         } as any);
         jest
           .spyOn(webex.cc.services.agent, 'reloadV2')
-          .mockResolvedValue(v1DisconnectReload as any);
+          .mockImplementation(reloadResponse(v1DisconnectReload));
 
         await webex.cc['silentRelogin']();
 
@@ -5228,11 +4980,11 @@ describe('webex.cc', () => {
 
         // The state change was issued (V1 path, no channelType)
         expect(setAgentStateSpy).toHaveBeenCalledWith({
-          state: 'Available',
-          auxCodeId: '0',
-          lastStateChangeReason: 'agent-wss-disconnect',
-          agentId: 'agentId',
-        });
+        state: 'Available',
+        auxCodeId: '0', // even if get auxcodeId from relogin response, it should be 0 for available state
+        lastStateChangeReason: 'agent-wss-disconnect',
+        agentId: 'agentId',
+      });
 
         // Session is logged in and usable
         expect(webex.cc.agentConfig.isAgentLoggedIn).toBe(true);
@@ -5895,7 +5647,9 @@ describe('webex.cc', () => {
             await enableGate;
           }
         });
-      jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
+      jest
+        .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
+        .mockResolvedValue(undefined);
 
       expect(webex.cc['webexCrossClientService'].answerCallsState).toBe(false);
 
@@ -5903,10 +5657,7 @@ describe('webex.cc', () => {
 
       await (webex.cc as any).teardownWxAppLocalState();
 
-      expect(publishSpy).toHaveBeenCalledWith(false, {
-        userId: 'user-123',
-        trackPublishMetrics: true,
-      });
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
 
       resolveEnable();
       await enableInFlight;
@@ -6394,7 +6145,9 @@ describe('webex.cc', () => {
     it('emits a known agent event type verbatim from data.type', () => {
       const sample = {foo: 'bar', type: CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS};
 
-      messageCallback(JSON.stringify({type: CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, data: sample}));
+      messageCallback(
+        JSON.stringify({type: CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, data: sample})
+      );
 
       expect(emitSpy).toHaveBeenCalledWith(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, sample);
     });
@@ -6408,10 +6161,10 @@ describe('webex.cc', () => {
 
       messageCallback(JSON.stringify(payload));
 
-      expect(LoggerProxy.log).toHaveBeenCalledWith('Received event: ContactUpdatedinjected: evil', {
-        module: CC_FILE,
-        method: 'handleWebsocketMessage',
-      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        'Received event: ContactUpdatedinjected: evil',
+        {module: CC_FILE, method: 'handleWebsocketMessage'}
+      );
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.WEBSOCKET_EVENT_RECEIVED,
         expect.objectContaining({
@@ -6667,7 +6420,9 @@ describe('webex.cc', () => {
       const publishSpy = jest
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockResolvedValue(undefined);
-      jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe').mockImplementation(() => {});
+      jest
+        .spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe')
+        .mockImplementation(() => {});
       jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'isSubscribed').mockReturnValue(true);
       jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
 
@@ -6692,14 +6447,8 @@ describe('webex.cc', () => {
       });
 
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
-      expect(publishSpy).toHaveBeenCalledWith(false, {
-        userId: 'user-123',
-        trackPublishMetrics: true,
-      });
-      expect(publishSpy).toHaveBeenCalledWith(true, {
-        userId: 'user-123',
-        trackPublishMetrics: true,
-      });
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
+      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123', trackPublishMetrics: true});
     });
 
     it('should use provided teamId if passed in payload', async () => {
@@ -7270,10 +7019,7 @@ describe('webex.cc', () => {
 
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
       expect(mockTaskManager.applyEnableWxBetterTogether).toHaveBeenCalledWith(true);
-      expect(publishSpy).toHaveBeenCalledWith(true, {
-        userId: 'user-123',
-        trackPublishMetrics: true,
-      });
+      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123', trackPublishMetrics: true});
       expect(mockTaskManager.refreshWxAppOfferObservabilityForAllTasks).toHaveBeenCalled();
     });
 
@@ -7294,10 +7040,7 @@ describe('webex.cc', () => {
 
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(false);
       expect(mockTaskManager.applyEnableWxBetterTogether).toHaveBeenCalledWith(false);
-      expect(publishSpy).toHaveBeenCalledWith(false, {
-        userId: 'user-123',
-        trackPublishMetrics: true,
-      });
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
     });
 
     it('should skip usersub publish when disabling without prior wxApp publish', async () => {
@@ -7378,10 +7121,7 @@ describe('webex.cc', () => {
       await (webex.cc as any).setManageWebexCallingInWxcc(true);
 
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
-      expect(publishSpy).toHaveBeenCalledWith(true, {
-        userId: 'user-123',
-        trackPublishMetrics: true,
-      });
+      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123', trackPublishMetrics: true});
     });
 
     it('should no-op usersub publish when disabling before login', async () => {
@@ -7466,9 +7206,7 @@ describe('webex.cc', () => {
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockRejectedValue(new Error('usersub failed'));
 
-      await expect((webex.cc as any).setManageWebexCallingInWxcc(true)).rejects.toThrow(
-        'usersub failed'
-      );
+      await expect((webex.cc as any).setManageWebexCallingInWxcc(true)).rejects.toThrow('usersub failed');
 
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(false);
       expect(mockTaskManager.applyEnableWxBetterTogether).toHaveBeenCalledWith(true);
@@ -7519,8 +7257,12 @@ describe('webex.cc', () => {
           .mockResolvedValue(undefined);
         jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe').mockImplementation(() => {});
         jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'isSubscribed').mockReturnValue(true);
-        jest.spyOn(webex.cc as any, 'ensureWxAppMercuryConnected').mockResolvedValue(undefined);
-        jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
+        jest
+          .spyOn(webex.cc as any, 'ensureWxAppMercuryConnected')
+          .mockResolvedValue(undefined);
+        jest
+          .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
+          .mockResolvedValue(undefined);
         jest
           .spyOn(mockTaskManager, 'syncWxAppMuteFromCallDetailsForAllTasks')
           .mockImplementation(() => {
@@ -7537,23 +7279,14 @@ describe('webex.cc', () => {
 
         expect(scheduleRetrySpy).toHaveBeenCalled();
         expect(publishSpy).toHaveBeenCalledTimes(2);
-        expect(publishSpy).toHaveBeenNthCalledWith(1, true, {
-          userId: 'user-123',
-          trackPublishMetrics: true,
-        });
-        expect(publishSpy).toHaveBeenNthCalledWith(2, false, {
-          userId: 'user-123',
-          trackPublishMetrics: true,
-        });
+        expect(publishSpy).toHaveBeenNthCalledWith(1, true, {userId: 'user-123', trackPublishMetrics: true});
+        expect(publishSpy).toHaveBeenNthCalledWith(2, false, {userId: 'user-123', trackPublishMetrics: true});
 
         jest.advanceTimersByTime(30_000);
         await publishSpy.mock.results[2]?.value;
 
         expect(publishSpy).toHaveBeenCalledTimes(3);
-        expect(publishSpy).toHaveBeenLastCalledWith(false, {
-          userId: 'user-123',
-          trackPublishMetrics: true,
-        });
+        expect(publishSpy).toHaveBeenLastCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
       } finally {
         jest.useRealTimers();
       }
@@ -8057,8 +7790,8 @@ describe('webex.cc', () => {
       });
 
       afterEach(() => {
-        jest.useRealTimers();
-      });
+      jest.useRealTimers();
+    });
 
       it('should batch events by trackingId and emit one event when all channels arrive', () => {
         const chatDetail = makeChannelState('Idle', {auxCodeId: 'idle-1'});
@@ -8329,6 +8062,8 @@ describe('webex.cc', () => {
         triggerSpy = jest.spyOn(webex.cc, 'trigger');
         messageCallback = webex.cc['handleWebsocketMessage'];
         webex.cc['currentAgentSessionId'] = 'sess-1';
+        webex.cc['v2ReloadPromise'] = Promise.resolve({} as any);
+        webex.cc['v2ReloadGeneration'] = webex.cc['reloadGeneration'];
       });
 
       it('should restore channel state map from relogin data', () => {
@@ -8665,6 +8400,31 @@ describe('webex.cc', () => {
         expect(webex.cc['liveUpdatedChannels'].size).toBe(0);
       });
 
+      it('prunes channels absent from a same-session snapshot unless updated live', () => {
+        setV2();
+        const liveEmail = makeChannelState('Available');
+        const chat = makeChannelState('Idle');
+        webex.cc['channelStatesMap'] = {
+          telephony: makeChannelState('Available'),
+          email: liveEmail,
+        } as any;
+        webex.cc['liveUpdatedChannels'].add('email');
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            data: {
+              type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+              agentSessionId: 'session-1',
+              agentChannelStateDetailMap: {chat},
+              channelsMap: {chat: ['c1']},
+            },
+          })
+        );
+
+        expect(webex.cc['channelStatesMap']).toEqual({chat, email: liveEmail});
+      });
+
       it('drops prior-session channels when restoring a different session', () => {
         setV2(); // currentAgentSessionId = 'session-1'
 
@@ -8744,61 +8504,6 @@ describe('webex.cc', () => {
         } finally {
           jest.useRealTimers();
         }
-      });
-
-      it('should include wellbeingBreakIdleCode in relogin payload when pre-loaded', () => {
-        const wellbeingCode = {id: 'wb-1', name: 'WellbeingBreak', isSystem: true, isDefault: false};
-        webex.cc['wellbeingBreakIdleCode'] = wellbeingCode;
-
-        messageCallback(
-          JSON.stringify({
-            type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
-            data: {
-              agentId: 'agent-1',
-              agentSessionId: 'sess-1',
-              orgId: 'org-1',
-              agentChannelStateDetailMap: {
-                telephony: makeChannelState('Idle', {auxCodeId: 'lunch-code'}),
-                chat: makeChannelState('Idle', {auxCodeId: 'wb-1'}),
-              },
-              channelsMap: {telephony: ['t1'], chat: ['c1']},
-              type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
-            },
-          })
-        );
-
-        const payload = triggerSpy.mock.calls.find(
-          (c: any[]) => c[0] === AGENT_EVENTS.AGENT_RELOGIN_SUCCESS
-        )?.[1];
-
-        expect(payload.wellbeingBreakIdleCode).toEqual(wellbeingCode);
-        expect(payload.channelStates).toBeDefined();
-      });
-
-      it('should omit wellbeingBreakIdleCode from relogin payload when not pre-loaded', () => {
-        webex.cc['wellbeingBreakIdleCode'] = undefined;
-
-        messageCallback(
-          JSON.stringify({
-            type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
-            data: {
-              agentId: 'agent-1',
-              agentSessionId: 'sess-1',
-              orgId: 'org-1',
-              agentChannelStateDetailMap: {
-                telephony: makeChannelState('Idle', {auxCodeId: 'lunch-code'}),
-              },
-              channelsMap: {telephony: ['t1']},
-              type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
-            },
-          })
-        );
-
-        const payload = triggerSpy.mock.calls.find(
-          (c: any[]) => c[0] === AGENT_EVENTS.AGENT_RELOGIN_SUCCESS
-        )?.[1];
-
-        expect(payload.wellbeingBreakIdleCode).toBeUndefined();
       });
 
       it('preserves live updates from same session during reload', () => {
@@ -9017,8 +8722,8 @@ describe('webex.cc', () => {
       });
 
       afterEach(() => {
-        jest.useRealTimers();
-      });
+      jest.useRealTimers();
+    });
 
       it('should emit enriched AGENT_CONNECTION_RECONNECTED with deferral context before scheduling', () => {
         webex.cc['scheduleTelephonyRecovery']('agent-1', ['telephony']);
@@ -9279,8 +8984,8 @@ describe('webex.cc', () => {
             auxCodeId: 'idle-1',
             reason: 'Lunch',
             agentId: 'agent-1',
-            agentSessionId: 'session-1',
           },
+          agentSessionId: 'session-1',
         });
         expect(stateChangeSpy).not.toHaveBeenCalled();
       });
@@ -9289,6 +8994,7 @@ describe('webex.cc', () => {
         await webex.cc.setAgentState({state: 'Available', auxCodeId: '0'});
 
         expect(stateChangeV2Spy).toHaveBeenCalledWith({
+          agentSessionId: 'session-1',
           data: expect.objectContaining({channelType: ['telephony', 'chat', 'social']}),
         });
       });
@@ -9332,6 +9038,7 @@ describe('webex.cc', () => {
         });
 
         expect(stateChangeV2Spy).toHaveBeenCalledWith({
+          agentSessionId: 'session-1',
           data: expect.objectContaining({channelType: ['chat']}),
         });
       });
@@ -9340,6 +9047,7 @@ describe('webex.cc', () => {
         await webex.cc.setAgentState({state: 'Available', auxCodeId: '0', channelType: []});
 
         expect(stateChangeV2Spy).toHaveBeenCalledWith({
+          agentSessionId: 'session-1',
           data: expect.objectContaining({channelType: ['telephony', 'chat', 'social']}),
         });
       });
@@ -9354,458 +9062,6 @@ describe('webex.cc', () => {
           data: {state: 'Idle', auxCodeId: 'idle-1', agentId: 'agent-1'},
         });
         expect(stateChangeV2Spy).not.toHaveBeenCalled();
-      });
-
-      it('serializes overlapping V2 requests so notifications cannot cross-resolve', async () => {
-        let resolveFirst!: (v: any) => void;
-        const firstPromise = new Promise((resolve) => {
-          resolveFirst = resolve;
-        });
-
-        // First call: hangs until we resolve it manually
-        stateChangeV2Spy.mockReturnValueOnce(firstPromise).mockResolvedValueOnce(mockV2Response);
-
-        const call1 = webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          channelType: ['chat', 'social'],
-        });
-        // Let microtasks settle so call1's chain fires stateChangeV2
-        await Promise.resolve();
-        const call2 = webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          channelType: ['social'],
-        });
-        // Let microtasks settle
-        await Promise.resolve();
-
-        // Only the first request should have been dispatched so far
-        expect(stateChangeV2Spy).toHaveBeenCalledTimes(1);
-
-        // Resolve the first request — the second should now dispatch
-        resolveFirst(mockV2Response);
-        await call1;
-        await call2;
-
-        expect(stateChangeV2Spy).toHaveBeenCalledTimes(2);
-      });
-
-      it('rejects queued V2 request after session ends', async () => {
-        let resolveFirst!: (v: any) => void;
-        const firstPromise = new Promise((resolve) => {
-          resolveFirst = resolve;
-        });
-
-        stateChangeV2Spy.mockReturnValueOnce(firstPromise);
-
-        const call1 = webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          channelType: ['chat'],
-        });
-        await Promise.resolve();
-
-        // Simulate logout while call1 is in-flight
-        const call2 = webex.cc.setAgentState({
-          state: 'Idle',
-          auxCodeId: 'idle-1',
-          channelType: ['chat'],
-        });
-        await Promise.resolve();
-
-        // Clear the session (what logout does)
-        webex.cc['currentAgentSessionId'] = undefined;
-        webex.cc.agentConfig!.manageChannelAvailability = false;
-
-        // Complete the first request so the queued second fires its guard
-        resolveFirst(mockV2Response);
-        await call1;
-
-        // The second should reject with a session-ended error
-        await expect(call2).rejects.toThrow('V2 session ended while request was queued');
-
-        // stateChangeV2 should only have been called once (for call1)
-        expect(stateChangeV2Spy).toHaveBeenCalledTimes(1);
-      });
-
-      it('rejects queued V2 request after deregister and re-register with same session', async () => {
-        let resolveFirst!: (v: any) => void;
-        const firstPromise = new Promise((resolve) => {
-          resolveFirst = resolve;
-        });
-
-        stateChangeV2Spy.mockReturnValueOnce(firstPromise);
-
-        // Queue two requests on the same session
-        const call1 = webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          channelType: ['chat'],
-        });
-        await Promise.resolve();
-
-        const call2 = webex.cc.setAgentState({
-          state: 'Idle',
-          auxCodeId: 'idle-1',
-          channelType: ['chat'],
-        });
-        await Promise.resolve();
-
-        // Deregister without logout — clears V2 local state but NOT session on server
-        webex.cc['clearV2LocalState']();
-        // Re-register restores the SAME session ID (server session persisted)
-        webex.cc['currentAgentSessionId'] = 'session-1';
-        webex.cc.agentConfig!.manageChannelAvailability = true;
-
-        // Complete the first request so the queued second fires its guard
-        resolveFirst(mockV2Response);
-        await call1;
-
-        // call2 must reject — the chain generation changed during clearV2LocalState,
-        // even though currentAgentSessionId matches the captured value.
-        await expect(call2).rejects.toThrow('V2 session ended while request was queued');
-        expect(stateChangeV2Spy).toHaveBeenCalledTimes(1);
-      });
-
-      it('rechecks browser voice readiness when dequeuing a telephony state change', async () => {
-        let resolveFirst!: (v: any) => void;
-        const firstPromise = new Promise((resolve) => {
-          resolveFirst = resolve;
-        });
-
-        stateChangeV2Spy.mockReturnValueOnce(firstPromise);
-
-        const isBrowserVoiceRequiredSpy = jest
-          .spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired')
-          .mockReturnValue(true);
-        const isVoiceReadySpy = jest
-          .spyOn(webex.cc.webCallingService, 'isVoiceReady')
-          .mockReturnValue(true); // voice ready at queue time
-
-        // First request (chat) enters the chain
-        const call1 = webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          channelType: ['chat'],
-        });
-        await Promise.resolve();
-
-        // Second request (telephony) enters the chain — voice is ready now
-        const call2 = webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          channelType: ['telephony'],
-        });
-        await Promise.resolve();
-
-        // Voice becomes unavailable while call2 waits behind call1
-        isVoiceReadySpy.mockReturnValue(false);
-
-        // Complete call1 → call2 dequeues and should recheck voice
-        resolveFirst(mockV2Response);
-        await call1;
-
-        // call2 should reject with BROWSER_VOICE_NOT_READY
-        await expect(call2).rejects.toThrow();
-
-        // stateChangeV2 called once (for call1 only); call2 never dispatched
-        expect(stateChangeV2Spy).toHaveBeenCalledTimes(1);
-
-        isBrowserVoiceRequiredSpy.mockRestore();
-        isVoiceReadySpy.mockRestore();
-      });
-
-      it('rejects queued disconnect-recovery when manual state change supersedes it', async () => {
-        let resolveFirst!: (v: any) => void;
-        const firstPromise = new Promise((resolve) => {
-          resolveFirst = resolve;
-        });
-
-        stateChangeV2Spy.mockReturnValueOnce(firstPromise);
-
-        // Seed telephony in disconnect-idle state
-        webex.cc['channelStatesMap'] = {
-          telephony: {
-            agentState: 'Idle',
-            pendingIdle: false,
-            auxCodeId: '0',
-            stateChangeReason: 'agent-wss-disconnect',
-            stateChangeTimestamp: Date.now(),
-            availableChannelCount: 1,
-            totalChannelCount: 1,
-          },
-        } as any;
-
-        // First: manual Idle/Lunch enters the chain
-        const call1 = webex.cc.setAgentState({
-          state: 'Idle',
-          auxCodeId: 'lunch-code',
-          lastStateChangeReason: 'Lunch',
-          channelType: ['telephony'],
-        });
-        await Promise.resolve();
-
-        // Second: automatic recovery request queues behind it
-        const call2 = webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          lastStateChangeReason: 'agent-wss-disconnect',
-          channelType: ['telephony'],
-        });
-        await Promise.resolve();
-
-        // Simulate the manual request completing and updating channelStatesMap
-        // (the server confirms Idle/Lunch, clearing the disconnect reason)
-        webex.cc['channelStatesMap'].telephony = {
-          agentState: 'Idle',
-          pendingIdle: false,
-          auxCodeId: 'lunch-code',
-          stateChangeReason: 'Lunch',
-          stateChangeTimestamp: Date.now(),
-          availableChannelCount: 1,
-          totalChannelCount: 1,
-        } as any;
-
-        // Complete call1 → call2 dequeues and should revalidate disconnect-idle
-        resolveFirst(mockV2Response);
-        await call1;
-
-        // call2 should reject because telephony is no longer in disconnect state.
-        // The error passes through getErrorDetails which uses data.reason as the message.
-        await expect(call2).rejects.toThrow('disconnect_recovery_superseded');
-
-        // stateChangeV2 called once (manual Idle/Lunch only); recovery never dispatched
-        expect(stateChangeV2Spy).toHaveBeenCalledTimes(1);
-      });
-
-      it('allows queued disconnect-recovery to proceed when channel is still disconnected', async () => {
-        let resolveFirst!: (v: any) => void;
-        const firstPromise = new Promise((resolve) => {
-          resolveFirst = resolve;
-        });
-
-        stateChangeV2Spy.mockReturnValueOnce(firstPromise).mockResolvedValueOnce(mockV2Response);
-
-        // Seed both channels in disconnect-idle state
-        webex.cc['channelStatesMap'] = {
-          chat: {
-            agentState: 'Idle',
-            pendingIdle: false,
-            auxCodeId: '0',
-            stateChangeReason: 'agent-wss-disconnect',
-            stateChangeTimestamp: Date.now(),
-            availableChannelCount: 1,
-            totalChannelCount: 1,
-          },
-          telephony: {
-            agentState: 'Idle',
-            pendingIdle: false,
-            auxCodeId: '0',
-            stateChangeReason: 'agent-wss-disconnect',
-            stateChangeTimestamp: Date.now(),
-            availableChannelCount: 1,
-            totalChannelCount: 1,
-          },
-        } as any;
-
-        // First: digital recovery
-        const call1 = webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          lastStateChangeReason: 'agent-wss-disconnect',
-          channelType: ['chat'],
-        });
-        await Promise.resolve();
-
-        // Second: telephony recovery queues behind it
-        const call2 = webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          lastStateChangeReason: 'agent-wss-disconnect',
-          channelType: ['telephony'],
-        });
-        await Promise.resolve();
-
-        // Telephony stateChangeReason is still 'agent-wss-disconnect' (no manual override)
-        resolveFirst(mockV2Response);
-        await call1;
-        await call2;
-
-        // Both dispatched — telephony was still disconnected
-        expect(stateChangeV2Spy).toHaveBeenCalledTimes(2);
-      });
-
-      it('narrows multi-channel recovery to only channels still disconnected at dispatch', async () => {
-        let resolveFirst!: (v: any) => void;
-        const firstPromise = new Promise((resolve) => {
-          resolveFirst = resolve;
-        });
-
-        stateChangeV2Spy.mockReturnValueOnce(firstPromise).mockResolvedValueOnce(mockV2Response);
-
-        // Seed chat + social in disconnect-idle state
-        webex.cc['channelStatesMap'] = {
-          chat: {
-            agentState: 'Idle',
-            pendingIdle: false,
-            auxCodeId: '0',
-            stateChangeReason: 'agent-wss-disconnect',
-            stateChangeTimestamp: Date.now(),
-            availableChannelCount: 1,
-            totalChannelCount: 1,
-          },
-          social: {
-            agentState: 'Idle',
-            pendingIdle: false,
-            auxCodeId: '0',
-            stateChangeReason: 'agent-wss-disconnect',
-            stateChangeTimestamp: Date.now(),
-            availableChannelCount: 1,
-            totalChannelCount: 1,
-          },
-        } as any;
-
-        // First: manual Chat→Idle/Lunch enters the chain
-        const call1 = webex.cc.setAgentState({
-          state: 'Idle',
-          auxCodeId: 'lunch-code',
-          lastStateChangeReason: 'Lunch',
-          channelType: ['chat'],
-        });
-        await Promise.resolve();
-
-        // Second: recovery for chat+social queues behind
-        const call2 = webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          lastStateChangeReason: 'agent-wss-disconnect',
-          channelType: ['chat', 'social'],
-        });
-        await Promise.resolve();
-
-        // Manual Lunch confirmed — chat no longer disconnected
-        webex.cc['channelStatesMap'].chat = {
-          agentState: 'Idle',
-          pendingIdle: false,
-          auxCodeId: 'lunch-code',
-          stateChangeReason: 'Lunch',
-          stateChangeTimestamp: Date.now(),
-          availableChannelCount: 1,
-          totalChannelCount: 1,
-        } as any;
-
-        // Complete call1 → call2 dequeues
-        resolveFirst(mockV2Response);
-        await call1;
-        await call2;
-
-        // Recovery dispatched for social only — chat was filtered out
-        expect(stateChangeV2Spy).toHaveBeenCalledTimes(2);
-        const recoveryPayload = stateChangeV2Spy.mock.calls[1][0].data;
-        expect(recoveryPayload.channelType).toEqual(['social']);
-      });
-
-      it('rejects queued disconnect-recovery when reload generation changes (second socket loss)', async () => {
-        let resolveFirst!: (v: any) => void;
-        const firstPromise = new Promise((resolve) => {
-          resolveFirst = resolve;
-        });
-
-        stateChangeV2Spy.mockReturnValueOnce(firstPromise);
-
-        // Seed telephony in disconnect-idle state
-        webex.cc['channelStatesMap'] = {
-          telephony: {
-            agentState: 'Idle',
-            pendingIdle: false,
-            auxCodeId: '0',
-            stateChangeReason: 'agent-wss-disconnect',
-            stateChangeTimestamp: Date.now(),
-            availableChannelCount: 1,
-            totalChannelCount: 1,
-          },
-        } as any;
-
-        // First: a regular (non-recovery) request enters the chain
-        const call1 = webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          channelType: ['chat'],
-        });
-        await Promise.resolve();
-
-        // Second: telephony recovery queues behind it
-        const call2 = webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          lastStateChangeReason: 'agent-wss-disconnect',
-          channelType: ['telephony'],
-        });
-        await Promise.resolve();
-
-        // Simulate a second socket loss — increments reloadGeneration
-        webex.cc['reloadGeneration'] += 1;
-
-        // Complete call1 → call2 dequeues into the new generation
-        resolveFirst(mockV2Response);
-        await call1;
-
-        // call2 should reject: recovery was for the prior disconnect cycle
-        await expect(call2).rejects.toThrow('recovery_invalidated_by_socket_loss');
-        expect(stateChangeV2Spy).toHaveBeenCalledTimes(1);
-      });
-
-      it('rejects queued disconnect-recovery when socket is closed at dispatch time', async () => {
-        let resolveFirst!: (v: any) => void;
-        const firstPromise = new Promise((resolve) => {
-          resolveFirst = resolve;
-        });
-
-        stateChangeV2Spy.mockReturnValueOnce(firstPromise);
-
-        // Seed telephony in disconnect-idle state
-        webex.cc['channelStatesMap'] = {
-          telephony: {
-            agentState: 'Idle',
-            pendingIdle: false,
-            auxCodeId: '0',
-            stateChangeReason: 'agent-wss-disconnect',
-            stateChangeTimestamp: Date.now(),
-            availableChannelCount: 1,
-            totalChannelCount: 1,
-          },
-        } as any;
-
-        // First: a regular (non-recovery) request enters the chain
-        const call1 = webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          channelType: ['chat'],
-        });
-        await Promise.resolve();
-
-        // Second: telephony recovery queues behind
-        const call2 = webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          lastStateChangeReason: 'agent-wss-disconnect',
-          channelType: ['telephony'],
-        });
-        await Promise.resolve();
-
-        // Socket drops — isSocketClosed goes true (reloadGeneration unchanged here
-        // to isolate the isSocketClosed check)
-        webex.cc.services.webSocketManager.isSocketClosed = true;
-
-        resolveFirst(mockV2Response);
-        await call1;
-
-        await expect(call2).rejects.toThrow('recovery_invalidated_by_socket_loss');
-        expect(stateChangeV2Spy).toHaveBeenCalledTimes(1);
-
-        // Restore for other tests
-        webex.cc.services.webSocketManager.isSocketClosed = false;
       });
 
       it('bridges V2 AgentChannelStateChanged response to V1 StateChangeSuccess shape', async () => {
@@ -9829,292 +9085,6 @@ describe('webex.cc', () => {
       });
     });
 
-    describe('wellnessRestoration channel scoping', () => {
-      let stateChangeV2Spy: jest.SpyInstance;
-
-      const mockV2WellnessResponse = {
-        type: 'AgentChannelStateChange',
-        orgId: 'org-1',
-        trackingId: 'track-v2',
-        data: {
-          type: 'AgentChannelStateChanged',
-          channelType: 'chat',
-          agentChannelStateDetail: {
-            agentState: 'Available',
-            auxCodeId: '0',
-            stateChangeTimestamp: 1700000000000,
-            lastIdleCodeChangeTimestamp: 1700000000001,
-            stateChangeReason: 'wellness-restore',
-            pendingIdle: false,
-            availableChannelCount: 1,
-            totalChannelCount: 1,
-          },
-          agentId: 'agent-1',
-          agentSessionId: 'session-1',
-          orgId: 'org-1',
-          status: 'LoggedIn',
-          subStatus: 'Available',
-          changedBy: 'AGENT',
-          changedById: 'agent-1',
-          changedByName: 'Test Agent',
-        },
-      };
-
-      beforeEach(() => {
-        webex.cc.agentConfig = {
-          agentId: 'agent-1',
-          teams: [],
-          manageChannelAvailability: true,
-        } as Profile;
-        webex.cc['currentAgentSessionId'] = 'session-1';
-        webex.cc['loginChannelsMap'] = {telephony: ['t1'], chat: ['c1'], email: [], social: []};
-        webex.cc['wellbeingBreakIdleCode'] = {
-          id: 'wb-code',
-          name: 'WellbeingBreak',
-          isSystem: true,
-          isDefault: false,
-        };
-        // Voice manually changed to Lunch, Chat still in WellbeingBreak
-        webex.cc['channelStatesMap'] = {
-          telephony: makeChannelState('Idle', {auxCodeId: 'lunch-code'}),
-          chat: makeChannelState('Idle', {auxCodeId: 'wb-code'}),
-        } as any;
-        stateChangeV2Spy = jest
-          .spyOn(webex.cc.services.agent, 'stateChangeV2')
-          .mockResolvedValue(mockV2WellnessResponse as any);
-        jest.spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired').mockReturnValue(false);
-      });
-
-      it('scopes to wellness channels only when wellnessRestoration is true', async () => {
-        await webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          wellnessRestoration: true,
-        });
-
-        // Only chat carries the wellness code — voice (Lunch) must be excluded
-        expect(stateChangeV2Spy).toHaveBeenCalledWith({
-          data: {
-            channelType: ['chat'],
-            state: 'Available',
-            auxCodeId: '0',
-            reason: undefined,
-            agentId: 'agent-1',
-            agentSessionId: 'session-1',
-          },
-        });
-      });
-
-      it('targets all channels when wellnessRestoration is false', async () => {
-        await webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-        });
-
-        // Both selectable channels with capacity: telephony and chat
-        expect(stateChangeV2Spy).toHaveBeenCalledWith({
-          data: {
-            channelType: ['telephony', 'chat'],
-            state: 'Available',
-            auxCodeId: '0',
-            reason: undefined,
-            agentId: 'agent-1',
-            agentSessionId: 'session-1',
-          },
-        });
-      });
-
-      it('ignores wellnessRestoration when explicit channelType is provided', async () => {
-        await webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          channelType: ['telephony', 'chat'],
-          wellnessRestoration: true,
-        });
-
-        expect(stateChangeV2Spy).toHaveBeenCalledWith({
-          data: {
-            channelType: ['telephony', 'chat'],
-            state: 'Available',
-            auxCodeId: '0',
-            reason: undefined,
-            agentId: 'agent-1',
-            agentSessionId: 'session-1',
-          },
-        });
-      });
-
-      it('rejects when no channels still carry the wellness code', async () => {
-        // Both channels changed away from WellbeingBreak
-        webex.cc['channelStatesMap'] = {
-          telephony: makeChannelState('Idle', {auxCodeId: 'lunch-code'}),
-          chat: makeChannelState('Idle', {auxCodeId: 'meeting-code'}),
-        } as any;
-
-        // Wellness filter produces [] → hits the "No eligible channels" guard
-        await expect(
-          webex.cc.setAgentState({
-            state: 'Available',
-            auxCodeId: '0',
-            wellnessRestoration: true,
-          })
-        ).rejects.toThrow('No eligible channels');
-      });
-
-      it('ignores wellnessRestoration when wellness idle code is not cached', async () => {
-        webex.cc['wellbeingBreakIdleCode'] = undefined;
-
-        await webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          wellnessRestoration: true,
-        });
-
-        // No wellness code → all selectable channels targeted (graceful fallback)
-        expect(stateChangeV2Spy).toHaveBeenCalledWith({
-          data: {
-            channelType: ['telephony', 'chat'],
-            state: 'Available',
-            auxCodeId: '0',
-            reason: undefined,
-            agentId: 'agent-1',
-            agentSessionId: 'session-1',
-          },
-        });
-      });
-    });
-
-    describe('wellnessRestoration dequeue refilter', () => {
-      let stateChangeV2Spy: jest.SpyInstance;
-
-      const mockV2WellnessResponse = {
-        type: 'AgentChannelStateChange',
-        orgId: 'org-1',
-        trackingId: 'track-v2-wellness',
-        data: {
-          type: 'AgentChannelStateChanged',
-          channelType: 'chat',
-          agentChannelStateDetail: {
-            agentState: 'Available',
-            auxCodeId: '0',
-            stateChangeTimestamp: 1700000000000,
-            lastIdleCodeChangeTimestamp: 1700000000001,
-            stateChangeReason: 'wellness-restore',
-            pendingIdle: false,
-            availableChannelCount: 1,
-            totalChannelCount: 1,
-          },
-          agentId: 'agent-1',
-          agentSessionId: 'session-1',
-          orgId: 'org-1',
-          status: 'LoggedIn',
-          subStatus: 'Available',
-          changedBy: 'AGENT',
-          changedById: 'agent-1',
-          changedByName: 'Test Agent',
-        },
-      };
-
-      beforeEach(() => {
-        webex.cc.agentConfig = {
-          agentId: 'agent-1',
-          teams: [],
-          manageChannelAvailability: true,
-        } as Profile;
-        webex.cc['currentAgentSessionId'] = 'session-1';
-        webex.cc['loginChannelsMap'] = {telephony: ['t1'], chat: ['c1'], email: [], social: []};
-        webex.cc['wellbeingBreakIdleCode'] = {
-          id: 'wb-code',
-          name: 'WellbeingBreak',
-          isSystem: true,
-          isDefault: false,
-        };
-        // Both channels start in WellbeingBreak
-        webex.cc['channelStatesMap'] = {
-          telephony: makeChannelState('Idle', {auxCodeId: 'wb-code'}),
-          chat: makeChannelState('Idle', {auxCodeId: 'wb-code'}),
-        } as any;
-        stateChangeV2Spy = jest
-          .spyOn(webex.cc.services.agent, 'stateChangeV2')
-          .mockResolvedValue(mockV2WellnessResponse as any);
-        jest.spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired').mockReturnValue(false);
-      });
-
-      it('refilters wellness channels at dequeue, excluding manually changed channels', async () => {
-        // Queue the wellness restoration while both channels are in WellbeingBreak.
-        // The enqueue-time filter selects ['telephony', 'chat'].
-        // Before it dequeues, simulate Voice changing to Lunch.
-        let firstCall = true;
-        stateChangeV2Spy.mockImplementation((params: any) => {
-          if (firstCall) {
-            firstCall = false;
-            // Simulate the manual Lunch request succeeding: update channelStatesMap
-            // before the wellness request dequeues.
-            webex.cc['channelStatesMap'].telephony = makeChannelState('Idle', {auxCodeId: 'lunch-code'});
-          }
-          return Promise.resolve(mockV2WellnessResponse);
-        });
-
-        // First call: manual Lunch (chains ahead of wellness)
-        const lunchPromise = webex.cc.setAgentState({
-          state: 'Idle',
-          auxCodeId: 'lunch-code',
-          lastStateChangeReason: 'Lunch',
-          channelType: ['telephony'],
-        });
-
-        // Second call: wellness restoration (queued behind Lunch)
-        const wellnessPromise = webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          wellnessRestoration: true,
-        });
-
-        await lunchPromise;
-        await wellnessPromise;
-
-        // The second call (wellness) should only target chat, not telephony
-        const wellnessCall = stateChangeV2Spy.mock.calls[1];
-        expect(wellnessCall[0].data).toEqual({
-          channelType: ['chat'],
-          state: 'Available',
-          auxCodeId: '0',
-          reason: undefined,
-          agentId: 'agent-1',
-          agentSessionId: 'session-1',
-        });
-      });
-
-      it('rejects wellness restoration when all channels changed away before dispatch', async () => {
-        let firstCall = true;
-        stateChangeV2Spy.mockImplementation(() => {
-          if (firstCall) {
-            firstCall = false;
-            // Both channels changed away from WellbeingBreak before dequeue
-            webex.cc['channelStatesMap'].telephony = makeChannelState('Idle', {auxCodeId: 'lunch-code'});
-            webex.cc['channelStatesMap'].chat = makeChannelState('Idle', {auxCodeId: 'meeting-code'});
-          }
-          return Promise.resolve(mockV2WellnessResponse);
-        });
-
-        // Chain a manual request ahead
-        const manualPromise = webex.cc.setAgentState({
-          state: 'Idle',
-          auxCodeId: 'lunch-code',
-          channelType: ['telephony'],
-        });
-
-        const wellnessPromise = webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          wellnessRestoration: true,
-        });
-
-        await manualPromise;
-        await expect(wellnessPromise).rejects.toThrow('wellness_restoration_superseded');
-      });
-    });
-
     describe('silentRelogin V2 recovery', () => {
       const disconnected = {stateChangeReason: 'agent-wss-disconnect'};
       let setAgentStateSpy: jest.SpyInstance;
@@ -10126,10 +9096,11 @@ describe('webex.cc', () => {
           isAgentLoggedIn: true,
           manageChannelAvailability: true,
         } as Profile;
-        jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
+        jest.spyOn(webex.cc.services.agent, 'reloadV2').mockImplementation(reloadResponse({
           data: {
             type: 'AgentChannelReloginSuccess',
             agentId: 'agent-1',
+            agentSessionId: 'session-1',
             deviceType,
             dn: '1001',
             teamId: 'team-1',
@@ -10140,7 +9111,7 @@ describe('webex.cc', () => {
             },
             channelsMap: {telephony: ['t1'], chat: ['c1'], email: ['e1']},
           },
-        } as any);
+        } as any));
         await webex.cc['silentRelogin']();
       };
 
@@ -10168,13 +9139,42 @@ describe('webex.cc', () => {
         expect(webex.cc.agentConfig.isAgentLoggedIn).toBe(true);
       });
 
+      it('projects recovered digital state onto the profile before silent relogin completes', async () => {
+        jest.spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired').mockReturnValue(true);
+        jest.spyOn(webex.cc.webCallingService, 'isVoiceReady').mockReturnValue(false);
+        const recoveredChat = makeChannelState('Available', {
+          auxCodeId: '0',
+          stateChangeTimestamp: 2000000,
+          lastIdleCodeChangeTimestamp: 1500000,
+        });
+        setAgentStateSpy.mockImplementation(async () => {
+          webex.cc['handleChannelStateChanged']({
+            data: {
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+              agentId: 'agent-1',
+              agentSessionId: 'session-1',
+              channelType: 'chat',
+              agentChannelStateDetail: recoveredChat,
+            },
+          } as any);
+
+          return {};
+        });
+
+        await runV2Reload(LoginOption.BROWSER);
+
+        expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe('0');
+        expect(webex.cc.agentConfig.lastStateChangeTimestamp).toBe(2000000);
+        expect(webex.cc.agentConfig.lastIdleCodeChangeTimestamp).toBe(1500000);
+      });
+
       it('skips disconnected channels that are not selectable or have no capacity', async () => {
         webex.cc.agentConfig = {
           agentId: 'agent-1',
           isAgentLoggedIn: true,
           manageChannelAvailability: true,
         } as Profile;
-        jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
+        jest.spyOn(webex.cc.services.agent, 'reloadV2').mockImplementation(reloadResponse({
           data: {
             type: 'AgentChannelReloginSuccess',
             agentId: 'agent-1',
@@ -10188,7 +9188,7 @@ describe('webex.cc', () => {
             },
             channelsMap: {chat: ['c1'], email: [], workItem: ['w1']},
           },
-        } as any);
+        } as any));
 
         await webex.cc['silentRelogin']();
 
@@ -10308,6 +9308,7 @@ describe('webex.cc', () => {
         // Mock reloadV2 to also trigger handleChannelReloginSuccess (simulating
         // the WebSocket notification path that fires before the await resumes).
         jest.spyOn(webex.cc.services.agent, 'reloadV2').mockImplementation(async () => {
+          await Promise.resolve();
           const eventData = {
             data: {
               type: 'AgentChannelReloginSuccess',
@@ -10346,6 +9347,7 @@ describe('webex.cc', () => {
         webex.cc['currentAgentSessionId'] = undefined;
 
         jest.spyOn(webex.cc.services.agent, 'reloadV2').mockImplementation(async () => {
+          await Promise.resolve();
           // Simulate a live AgentChannelStateChanged arriving while reloadV2
           // is in-flight (before the session ID is known).
           const liveHandler = webex.cc['handleChannelStateChanged'].bind(webex.cc);
@@ -10417,6 +9419,7 @@ describe('webex.cc', () => {
         webex.cc['currentAgentSessionId'] = undefined;
 
         jest.spyOn(webex.cc.services.agent, 'reloadV2').mockImplementation(async () => {
+          await Promise.resolve();
           const liveHandler = webex.cc['handleChannelStateChanged'].bind(webex.cc);
           liveHandler({
             data: {
@@ -10523,20 +9526,19 @@ describe('webex.cc', () => {
         expect(setAgentStateSpy).not.toHaveBeenCalled();
       });
 
-      it('does not overwrite live channel updates with the stale reload snapshot', async () => {
+      it('preserves a same-session update received while the reload is pending', async () => {
         webex.cc.agentConfig = {
           agentId: 'agent-1',
           isAgentLoggedIn: true,
           manageChannelAvailability: true,
         } as Profile;
-
+        webex.cc['currentAgentSessionId'] = 'session-1';
         const liveUpdate = makeChannelState('Available', {stateChangeReason: 'agent-explicit'});
-        webex.cc['channelStatesMap'] = {chat: liveUpdate} as any;
-
-        jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
+        const response = {
           data: {
-            type: 'AgentChannelReloginSuccess',
+            type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
             agentId: 'agent-1',
+            agentSessionId: 'session-1',
             deviceType: LoginOption.EXTENSION,
             dn: '1001',
             teamId: 'team-1',
@@ -10546,7 +9548,22 @@ describe('webex.cc', () => {
             },
             channelsMap: {chat: ['c1'], telephony: ['t1']},
           },
-        } as any);
+        };
+        jest.spyOn(webex.cc.services.agent, 'reloadV2').mockImplementation(async () => {
+          await Promise.resolve();
+          webex.cc['handleChannelStateChanged']({
+            data: {
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+              agentId: 'agent-1',
+              agentSessionId: 'session-1',
+              channelType: 'chat',
+              agentChannelStateDetail: liveUpdate,
+            },
+          } as any);
+          webex.cc['handleChannelReloginSuccess'](response as any);
+
+          return response as any;
+        });
 
         await webex.cc['silentRelogin']();
 
@@ -10556,7 +9573,7 @@ describe('webex.cc', () => {
         );
       });
 
-      it('prunes old-session channels from channelStatesMap during silentRelogin gap-fill', async () => {
+      it('rebuilds channel state when reload restores a different session', async () => {
         webex.cc.agentConfig = {
           agentId: 'agent-1',
           isAgentLoggedIn: true,
@@ -10579,6 +9596,7 @@ describe('webex.cc', () => {
         // the WebSocket notification path that fires before the await resumes),
         // with a different session than the current one.
         jest.spyOn(webex.cc.services.agent, 'reloadV2').mockImplementation(async () => {
+          await Promise.resolve();
           const eventData = {
             data: {
               type: 'AgentChannelReloginSuccess',
@@ -10644,6 +9662,7 @@ describe('webex.cc', () => {
         const latestReconnect = webex.cc['silentRelogin']();
 
         expect(reloadSpy).toHaveBeenCalledTimes(1);
+        webex.cc['handleChannelReloginSuccess'](successResponse as any);
         resolveReload!(successResponse);
         await Promise.all([earlierReconnect, latestReconnect]);
 

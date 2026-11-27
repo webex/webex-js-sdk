@@ -453,51 +453,6 @@ export type AgentProfile = {
   timeoutDesktopInactivityMins?: number;
 
   /**
-   * Show user details in Microsoft enabled or not.
-   */
-  showUserDetailsMS?: boolean;
-
-  /**
-   * State synchronization in Microsoft enabled or not.
-   */
-  stateSynchronizationMS?: boolean;
-
-  /**
-   * Show user details in Webex enabled or not.
-   */
-  showUserDetailsWebex?: boolean;
-
-  /**
-   * State synchronization in Webex enabled or not.
-   */
-  stateSynchronizationWebex?: boolean;
-
-  /**
-   * Threshold rules configured for the agent profile.
-   */
-  thresholdRules?: Array<Record<string, string | number>>;
-
-  /**
-   * Whether the agent profile is currently active.
-   */
-  active?: boolean;
-
-  /**
-   * Whether this profile is the system default.
-   */
-  systemDefault?: boolean;
-
-  /**
-   * Timestamp when the profile was created.
-   */
-  createdTime?: number;
-
-  /**
-   * Timestamp when the profile was last updated.
-   */
-  lastUpdatedTime?: number;
-
-  /**
    * Whether granular per-channel agent state control (V2) is enabled for this agent profile.
    * When true, agents can set availability independently per channel (telephony, chat, email, social).
    */

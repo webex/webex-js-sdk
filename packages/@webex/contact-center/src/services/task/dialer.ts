@@ -2,8 +2,8 @@ import {CC_EVENTS} from '../config/types';
 import {WCC_API_GATEWAY} from '../constants';
 import {HTTP_METHODS} from '../../types';
 import {createErrDetailsObject as err} from '../core/Utils';
-import {ROUTING_MESSAGE_TYPE} from '../core/constants';
 import {
+  TASK_MESSAGE_TYPE,
   TASK_API,
   DIALER_API,
   CAMPAIGN_PREVIEW_ACCEPT,
@@ -44,14 +44,14 @@ export default function aqmDialer(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_OFFER_CONTACT},
         },
         msg: {} as Contact.AgentContact,
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_OUTBOUND_FAILED},
         },
         errId: 'Service.aqm.dialer.startOutdial',
@@ -81,7 +81,7 @@ export default function aqmDialer(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {
             type: [CC_EVENTS.AGENT_CONTACT_ASSIGNED, CC_EVENTS.CONTACT_ENDED],
             __typeMap: {
@@ -99,7 +99,7 @@ export default function aqmDialer(aqm: AqmReqs) {
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.CAMPAIGN_PREVIEW_ACCEPT_FAILED, campaignId: p.data.campaignId},
         },
         errId: 'Service.aqm.dialer.acceptPreviewContact',
@@ -128,7 +128,7 @@ export default function aqmDialer(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {
             type: [CC_EVENTS.CAMPAIGN_CONTACT_UPDATED, CC_EVENTS.CONTACT_ENDED],
             interactionId: p.data.interactionId,
@@ -138,7 +138,7 @@ export default function aqmDialer(aqm: AqmReqs) {
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.CAMPAIGN_PREVIEW_SKIP_FAILED, campaignId: p.data.campaignId},
         },
         errId: 'Service.aqm.dialer.skipPreviewContact',
@@ -167,7 +167,7 @@ export default function aqmDialer(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {
             type: [CC_EVENTS.CAMPAIGN_CONTACT_UPDATED, CC_EVENTS.CONTACT_ENDED],
             interactionId: p.data.interactionId,
@@ -177,7 +177,7 @@ export default function aqmDialer(aqm: AqmReqs) {
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.CAMPAIGN_PREVIEW_REMOVE_FAILED, campaignId: p.data.campaignId},
         },
         errId: 'Service.aqm.dialer.removePreviewContact',

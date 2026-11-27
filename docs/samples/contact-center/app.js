@@ -173,12 +173,6 @@ const dialNumber = document.querySelector('#dialNumber');
 const registerStatus = document.querySelector('#ws-connection-status');
 const idleCodesDropdown = document.querySelector('#idleCodesDropdown')
 const setAgentStatusButton = document.querySelector('#setAgentStatus');
-const userStateDropdownElm = document.getElementById('user-state-dropdown');
-const userStateTriggerElm = document.getElementById('user-state-trigger');
-const userStateIconElm = document.getElementById('user-state-icon');
-const userStateNameElm = document.getElementById('user-state-name');
-const userStateChevronElm = document.getElementById('user-state-chevron');
-const userStateListElm = document.getElementById('user-state-list');
 const logoutAgentElm = document.querySelector('#logoutAgent');
 const buddyAgentsDropdownElm = document.getElementById('buddyAgentsDropdown');
 const updateAgentProfileElm = document.querySelector('#updateAgentProfile');
@@ -394,6 +388,7 @@ const granularRonaAlertsElm = document.getElementById('granular-rona-alerts');
 // Granular Agent State — mutable state
 let isGranularAgentStateActive = false;
 let granularIdleCodes = [];
+let granularAllIdleCodes = [];
 let channelStateListenersClient;
 let isTelephonyRecoveryDeferred = false;
 let isGranularStateErrorShown = false;
@@ -402,12 +397,6 @@ let granularTimerInterval = null;
 let granularPanelView = null; // null = closed, 'menu', 'manage'
 let granularHoverVisible = false;
 
-// V1 state dropdown — the hidden #idleCodesDropdown holds the selectable options;
-// these track the server state, which may be a non-selectable code such as RONA.
-let v1AllIdleCodes = [];
-let v1CurrentAuxCodeId = null;
-let v1LastSelectableAuxCodeId = null;
-let isSettingV1AgentState = false;
 // Manage-panel draft: toggles the agent has changed but not applied yet.
 let granularManageDraft = null;
 let granularManageInitial = null;
@@ -4287,96 +4276,14 @@ function captureWellnessSession(event) {
   }
   wellnessState.agentSessionId = event.agentSessionId;
 
-  // The SDK pre-loads the wellness idle code during registration and
-  // includes it in the relogin payload.  Seed it here so the mixed-channel
-  // detection below works even on the first relogin before
-  // initializeWellnessProfile() runs.
-  if (event.wellbeingBreakIdleCode?.id && !wellnessState.idleCode) {
-    wellnessState.idleCode = event.wellbeingBreakIdleCode;
-  }
-
-  // V2 relogin payloads carry channelStates (per-channel snapshot) plus
-  // bridge-computed scalar fields (auxCodeId, subStatus).  When all channels
-  // are non-bridgeable (Engaged/WrapUp), the bridge returns null and the
-  // scalars fall back to subStatus='Idle', auxCodeId=''.  In that case,
-  // the aggregate is unknown — do NOT mark legacyStateKnown=true or
-  // getRecoveryDecision() will clear the wellness marker prematurely.
-  //
-  // V1 relogin payloads carry auxCodeId directly from the backend and have
-  // no channelStates; treat them as before.
   if (event.channelStates) {
-    // V2: inspect channelStates to decide whether the aggregate is bridgeable.
-    const SELECTABLE_ORDER = ['telephony', 'chat', 'email', 'social'];
-    const BRIDGEABLE = new Set(['Available', 'Idle']);
-    let hasAvailable = false;
-    let hasIdle = false;
-    let hasNonBridgeable = false;
-    for (const ct of SELECTABLE_ORDER) {
-      const ch = event.channelStates[ct];
-      if (!ch) continue;
-      if (!BRIDGEABLE.has(ch.agentState)) { hasNonBridgeable = true; continue; }
-      if (ch.agentState === 'Available') hasAvailable = true;
-      if (ch.agentState === 'Idle') hasIdle = true;
-    }
-    const aggregateStatus = hasAvailable ? 'Available' : (hasIdle && !hasNonBridgeable) ? 'Idle' : null;
-    if (aggregateStatus) {
-      // Partial wellness exit guard (matches handleWellnessLegacyStateChanged):
-      // when the bridge's scalar auxCodeId is non-wellness but some channels
-      // still carry the wellness idle code, promoting legacyStateKnown would
-      // let getRecoveryDecision return 'clear', deleting the marker while
-      // those channels remain in WellbeingBreak without a timer.
-      const bridgeAuxCodeId = event.auxCodeId?.trim() || '0';
-      let hasMixedWellnessChannels = false;
-      if (wellnessState.idleCode?.id && bridgeAuxCodeId !== wellnessState.idleCode.id) {
-        for (const ct of SELECTABLE_ORDER) {
-          const ch = event.channelStates[ct];
-          if (ch && ch.auxCodeId === wellnessState.idleCode.id) {
-            hasMixedWellnessChannels = true;
-            break;
-          }
-        }
-      }
-      if (hasMixedWellnessChannels) {
-        // Don't promote legacyStateKnown — keep recovery marker armed.
-        //
-        // Ownership guard: only restore the remaining wellness channels if
-        // this client owns the break (matching session-scoped recovery
-        // marker).  A fresh tab that rejoins an existing session should not
-        // undo a break started by a different client/tab.  Without a marker,
-        // the channels stay in WellbeingBreak until the owning client's
-        // timer fires or recoverWellnessBreakIfNeeded() runs with a valid
-        // marker.
-        const marker = wellnessState.recoveryMarker;
-        if (marker && marker.agentSessionId === event.agentSessionId) {
-          // Use the normal restore lifecycle so a failed or partial V2
-          // confirmation keeps ownership and enters the bounded retry flow.
-          void restoreWellnessState({
-            completionMessage: 'Agent state restored after browser refresh.',
-          });
-        } else {
-          console.info(
-            '[Wellness] Mixed wellness channels detected but no matching recovery marker — skipping restoration.',
-            {hasMarker: !!marker, markerSession: marker?.agentSessionId, eventSession: event.agentSessionId}
-          );
-        }
-      } else {
-        // Bridgeable with no mixed wellness — the SDK's bridge-computed
-        // auxCodeId is valid for the recovery decision.
-        wellnessState.legacyStateKnown = true;
-        wellnessState.legacyAuxCodeId = bridgeAuxCodeId;
-      }
-    } else {
-      // Non-bridgeable aggregate — explicitly invalidate the cached legacy
-      // projection.  On a same-session reconnect, legacyStateKnown may
-      // already be true with a stale auxCodeId from the pre-break Available
-      // state.  Retaining that stale projection would let
-      // recoverWellnessBreakIfNeeded() clear the recovery marker and cancel
-      // the pending-break lifecycle; when the task finishes, wasDeferred is
-      // false so recovery is never retried, leaving channels in
-      // WellbeingBreak.  handleWellnessLegacyStateChanged will re-promote
-      // legacyStateKnown once the aggregate becomes bridgeable.
-      wellnessState.legacyStateKnown = false;
-    }
+    const wellnessCodeId = wellnessState.idleCode?.id;
+    wellnessState.legacyStateKnown = Boolean(wellnessCodeId);
+    wellnessState.legacyAuxCodeId = wellnessCodeId && (
+      GRANULAR_CHANNEL_ORDER.some(
+        (channelType) => event.channelStates[channelType]?.auxCodeId === wellnessCodeId
+      ) ? wellnessCodeId : '0'
+    );
   } else if (Object.prototype.hasOwnProperty.call(event, 'auxCodeId')) {
     // V1: auxCodeId comes directly from the backend.
     wellnessState.legacyStateKnown = true;
@@ -4436,14 +4343,16 @@ async function initializeWellnessProfile(agentProfile) {
     return;
   }
 
-  // The SDK pre-loads the wellness code during registration and includes
-  // it in the relogin payload; captureWellnessSession may have seeded it
-  // already.  getWellbeingBreakIdleCode() returns the cached value
-  // instantly in that case, but we still call it so the sample works even
-  // when the pre-load was skipped (e.g. wellness enabled after register).
-  wellnessCodeStatusElm.textContent = wellnessState.idleCode ? 'Cached' : 'Loading…';
+  wellnessCodeStatusElm.textContent = 'Loading…';
   try {
     wellnessState.idleCode = await webex.cc.getWellbeingBreakIdleCode();
+    const channelStates = webex.cc.getChannelStates?.() || {};
+    if (Object.keys(channelStates).length > 0) {
+      wellnessState.legacyStateKnown = true;
+      wellnessState.legacyAuxCodeId = GRANULAR_CHANNEL_ORDER.some(
+        (channelType) => channelStates[channelType]?.auxCodeId === wellnessState.idleCode.id
+      ) ? wellnessState.idleCode.id : '0';
+    }
     if (!WELLNESS_OWNED_LIFECYCLES.has(wellnessState.lifecycle)) {
       wellnessState.lifecycle = wellnessState.agentSessionId ? 'Ready' : 'Unavailable';
     }
@@ -4504,59 +4413,16 @@ function handleWellnessBreak(event) {
 }
 
 function handleWellnessLegacyStateChanged(event, nextAuxCodeId) {
-  // When the enriched V2 event carries channelStates, verify that the
-  // aggregate is bridgeable before promoting legacyStateKnown.  A
-  // non-bridgeable aggregate (Engaged/WrapUp/Reserved) produces V1
-  // fallback scalars (subStatus='Idle', auxCodeId='') that normalize to
-  // auxCodeId '0'.  Promoting that would make wasDeferred recovery treat
-  // the unknown aggregate as Available and clear the wellness marker,
-  // leaving channels in WellbeingBreak without recovery.  Same check as
-  // captureWellnessSession() uses for non-bridgeable relogin payloads.
   if (event.channelStates) {
-    // Iterate only selectable channels — the same set captureWellnessSession()
-    // and the SDK's projectAggregate() use.  Internal channels (workItem,
-    // customMessaging) in a non-bridgeable state would otherwise block
-    // promotion even when all selectable channels are bridgeable.
-    const SELECTABLE_ORDER = ['telephony', 'chat', 'email', 'social'];
-    const BRIDGEABLE_STATES = new Set(['Available', 'Idle']);
-    let hasAvailable = false;
-    let hasIdle = false;
-    let hasNonBridgeable = false;
-    for (const ct of SELECTABLE_ORDER) {
-      const ch = event.channelStates[ct];
-      if (!ch) continue;
-      if (!BRIDGEABLE_STATES.has(ch.agentState)) { hasNonBridgeable = true; continue; }
-      if (ch.agentState === 'Available') hasAvailable = true;
-      if (ch.agentState === 'Idle') hasIdle = true;
-    }
-    const aggregateStatus = hasAvailable ? 'Available' : (hasIdle && !hasNonBridgeable) ? 'Idle' : null;
-    if (!aggregateStatus) {
-      // Non-bridgeable — the V1 scalar fields are unreliable.
-      // Keep legacyStateKnown as-is and wait for a fully bridgeable event.
+    if (!wellnessState.idleCode) {
+      wellnessState.legacyStateKnown = false;
       return;
     }
-
-    // Partial wellness exit: the aggregate shows a non-wellness state
-    // (e.g. Voice=Available → auxCodeId '0') but at least one other channel
-    // still carries the wellness idle code (Chat=Idle/WellbeingBreak).
-    // The bridge's primary-channel auxCodeId '0' would fool
-    // getLegacyExternalTransitionDecision into returning 'complete',
-    // clearing the break timer and recovery marker while Chat remains on
-    // break with no scheduled restoration.  Wait until every selectable
-    // channel has left the wellness state before allowing the legacy
-    // decision to proceed.
-    //
-    // When nextAuxCodeId IS the wellness code, all bridgeable channels are
-    // still on break (e.g. task completion → all Idle/WellbeingBreak).
-    // That event must proceed so legacyStateKnown is promoted and deferred
-    // recovery can retry via the wasDeferred path below.
-    if (wellnessState.idleCode?.id && nextAuxCodeId !== wellnessState.idleCode.id) {
-      for (const ct of SELECTABLE_ORDER) {
-        const ch = event.channelStates[ct];
-        if (ch && ch.auxCodeId === wellnessState.idleCode.id) {
-          return;
-        }
-      }
+    // Keep the break owned until every channel has left the wellness code.
+    if (GRANULAR_CHANNEL_ORDER.some(
+      (channelType) => event.channelStates[channelType]?.auxCodeId === wellnessState.idleCode.id
+    )) {
+      nextAuxCodeId = wellnessState.idleCode.id;
     }
   }
   const wasDeferred = !wellnessState.legacyStateKnown;
@@ -4581,17 +4447,7 @@ function handleWellnessLegacyStateChanged(event, nextAuxCodeId) {
     );
     return;
   }
-  // Retry deferred recovery ONLY when legacyStateKnown was just promoted
-  // from false → true.  On a V2 reload with non-bridgeable channels
-  // (e.g. Voice=Engaged), captureWellnessSession leaves legacyStateKnown
-  // false and getRecoveryDecision returns 'wait'. When the task completes
-  // and the aggregate becomes bridgeable, this state-change event promotes
-  // legacyStateKnown — retry recovery so the break timer can start.
-  //
-  // Without the wasDeferred guard, a normal wellness break's own
-  // state-change event (Idle/WellbeingBreak) would reach here via the
-  // 'ignore' decision, call recoverWellnessBreakIfNeeded(), match the
-  // marker, and immediately undo the break before its timer runs.
+  // A refreshed V2 session can arrive before the wellness code is loaded.
   if (wasDeferred) {
     void recoverWellnessBreakIfNeeded();
   }
@@ -4637,96 +4493,85 @@ async function requestWellnessBreak() {
 }
 
 async function setWellnessAgentState(state, options = {}) {
-  const isRestore = state === 'Available';
-  return webex.cc.setAgentState({
-    state,
-    auxCodeId: state === 'Idle' ? options.auxCodeId || wellnessState.idleCode?.id || '0' : '0',
-    lastStateChangeReason:
-      options.reason ||
-      (state === 'Idle' ? 'wellness-break' : 'wellness-break-complete'),
-    agentId,
-    ...(options.channelType ? {channelType: options.channelType} : {}),
-    // When restoring from a wellness break, narrow auto-selected channels
-    // to only those still carrying the WellbeingBreak idle code.  Channels
-    // manually changed (e.g. Voice→Lunch) are excluded so the timer-driven
-    // Available does not undo explicit selections.
-    ...(isRestore ? {wellnessRestoration: true} : {}),
-  });
-}
-
-function createWellnessChannelConfirmation(channelTypes, state, auxCodeId) {
+  const auxCodeId = state === 'Idle' ? options.auxCodeId || wellnessState.idleCode?.id || '0' : '0';
+  const isV2 = webex.cc.getAgentStateControl?.().active === true;
+  const channelTypes = isV2
+    ? options.channelType || getSelectableChannelTypes().filter((channelType) =>
+      state !== 'Available' ||
+      webex.cc.getChannelStates()[channelType]?.auxCodeId === wellnessState.idleCode?.id
+    )
+    : undefined;
+  if (channelTypes?.length === 0) {
+    if (state === 'Available') return;
+    throw new Error('No selectable channels are available for the wellness break.');
+  }
+  const observedRequests = new Map();
   let requestTrackingId;
-  let settled = false;
-  let timeout;
-  const confirmedChannels = new Set();
-  const pendingEvents = [];
-  let resolveConfirmation;
-  let rejectConfirmation;
-  const confirmation = new Promise((resolve, reject) => {
-    resolveConfirmation = resolve;
-    rejectConfirmation = reject;
-  });
-
-  const finish = (error) => {
-    if (settled) return;
-    settled = true;
-    if (timeout) clearTimeout(timeout);
-    webex.cc.off('agent:stateChange', onStateChange);
-    webex.cc.off('agent:stateChangeFailed', onStateChangeFailed);
-    if (error) rejectConfirmation(error);
-    else resolveConfirmation();
-  };
-
-  const checkStateChange = (event) => {
-    if (!requestTrackingId || event?.requestTrackingId !== requestTrackingId) return;
-    const changedChannels =
-      event.changedChannels || (event.changedChannelType ? [event.changedChannelType] : []);
-    const channelStates = event.channelStates || webex.cc.getChannelStates();
+  let checkConfirmation;
+  const onStateChange = (event) => {
+    const changedChannels = event?.changedChannels ||
+      (event?.changedChannelType ? [event.changedChannelType] : []);
     changedChannels.forEach((channelType) => {
-      if (!channelTypes.includes(channelType)) return;
-      if (
-        getUnconfirmedChannelTypes(channelStates, [channelType], state, auxCodeId).length === 0
-      ) {
-        confirmedChannels.add(channelType);
+      if (channelTypes.includes(channelType) &&
+        (!requestTrackingId || event.requestTrackingId === requestTrackingId)) {
+        observedRequests.set(channelType, event.requestTrackingId);
       }
     });
-    if (channelTypes.every((channelType) => confirmedChannels.has(channelType))) finish();
+    checkConfirmation?.();
   };
-
-  const onStateChange = (event) => {
-    if (requestTrackingId) checkStateChange(event);
-    else pendingEvents.push(event);
-  };
-
-  const onStateChangeFailed = (event) => {
-    if (
-      requestTrackingId &&
-      event?.trackingId === requestTrackingId &&
-      channelTypes.includes(event.channelType)
-    ) {
-      finish(new Error(`${event.channelType} state change failed: ${event.reason || 'unknown reason'}`));
-    }
-  };
-
-  webex.cc.on('agent:stateChange', onStateChange);
-  webex.cc.on('agent:stateChangeFailed', onStateChangeFailed);
-
-  return {
-    waitFor: (trackingId) => {
-      if (!trackingId) {
-        finish(new Error('The V2 state change did not include a request tracking ID.'));
-        return confirmation;
+  if (channelTypes) webex.cc.on('agent:stateChange', onStateChange);
+  try {
+    const response = await webex.cc.setAgentState({
+      state,
+      auxCodeId,
+      lastStateChangeReason:
+        options.reason ||
+        (state === 'Idle' ? 'wellness-break' : 'wellness-break-complete'),
+      agentId,
+      ...(channelTypes ? {channelType: channelTypes} : {}),
+    });
+    if (channelTypes) {
+      requestTrackingId = response?.data?.trackingId;
+      if (!requestTrackingId) {
+        throw new Error('The V2 state change did not include a request tracking ID.');
       }
-      requestTrackingId = trackingId;
-      timeout = setTimeout(
-        () => finish(new Error('Timed out waiting for every wellness channel to change state.')),
-        WELLNESS_CHANNEL_CONFIRMATION_TIMEOUT_MS
-      );
-      pendingEvents.splice(0).forEach(checkStateChange);
-      return confirmation;
-    },
-    dispose: () => finish(),
-  };
+      // AQM completes on the first channel. Confirm every target for this request
+      // so a delayed entry notification cannot outlive a successful rollback.
+      await new Promise((resolve, reject) => {
+        const finish = (error) => {
+          clearTimeout(timeout);
+          webex.cc.off('agent:stateChangeFailed', onStateChangeFailed);
+          if (error) reject(error);
+          else resolve();
+        };
+        const onStateChangeFailed = (event) => {
+          if (
+            event?.trackingId === requestTrackingId &&
+            channelTypes.includes(event.channelType)
+          ) {
+            finish(new Error(`${event.channelType} state change failed: ${event.reason || 'unknown reason'}`));
+          }
+        };
+        checkConfirmation = () => {
+          if (
+            channelTypes.every((channelType) => observedRequests.get(channelType) === requestTrackingId) &&
+            getUnconfirmedChannelTypes(
+              webex.cc.getChannelStates(), channelTypes, state, auxCodeId
+            ).length === 0
+          ) finish();
+        };
+        const timeout = setTimeout(
+          () => finish(new Error('Timed out waiting for every wellness channel to change state.')),
+          WELLNESS_CHANNEL_CONFIRMATION_TIMEOUT_MS
+        );
+        webex.cc.on('agent:stateChangeFailed', onStateChangeFailed);
+        checkConfirmation();
+      });
+    }
+    return response;
+  } finally {
+    if (channelTypes) webex.cc.off('agent:stateChange', onStateChange);
+  }
 }
 
 function captureWellnessBreakContext() {
@@ -4828,35 +4673,20 @@ async function enterWellnessBreak(sendAccepted) {
     `${areAllTasksSafe(getWellnessTaskList()) ? WELLNESS_COPY.acceptedNotEngaged : WELLNESS_COPY.acceptedEngaged} Requesting Idle / WellbeingBreak.`
   );
   renderWellnessState();
-  let channelConfirmation;
   let targetChannels;
   try {
-    targetChannels = isGranularAgentStateActive ? getSelectableChannelTypes() : undefined;
-    if (targetChannels) {
-      if (targetChannels.length === 0) {
-        throw new Error('No selectable channels are available for the wellness break.');
-      }
-      channelConfirmation = createWellnessChannelConfirmation(
-        targetChannels,
-        'Idle',
-        wellnessState.idleCode?.id || '0'
-      );
-    }
-    const response = await setWellnessAgentState('Idle', {channelType: targetChannels});
-    if (channelConfirmation) {
-      await channelConfirmation.waitFor(response?.data?.trackingId);
-    }
+    targetChannels = webex.cc.getAgentStateControl?.().active === true
+      ? getSelectableChannelTypes()
+      : undefined;
+    await setWellnessAgentState('Idle', {channelType: targetChannels});
   } catch (error) {
     if (wellnessState.operationGeneration !== operationGeneration) return;
     setWellnessMessage(`${WELLNESS_COPY.startFailure} Starting safe cleanup.`, true);
     await restoreWellnessState({
-      forceAvailableChannels: true,
       channelTypes: targetChannels,
       completionMessage: 'The failed wellness transition was cleaned up.',
     });
     return;
-  } finally {
-    channelConfirmation?.dispose();
   }
 
   if (wellnessState.operationGeneration !== operationGeneration) return;
@@ -4956,21 +4786,10 @@ function waitForWellnessRestoreRetry(delay, operationGeneration) {
 }
 
 async function performSingleWellnessRestore(channelTypes) {
-  let channelConfirmation;
-  try {
-    if (channelTypes?.length > 0) {
-      channelConfirmation = createWellnessChannelConfirmation(channelTypes, 'Available', '0');
-    }
-    const response = await setWellnessAgentState('Available', {
-      reason: 'wellness-break-complete',
-      channelType: channelTypes,
-    });
-    if (channelConfirmation) {
-      await channelConfirmation.waitFor(response?.data?.trackingId);
-    }
-  } finally {
-    channelConfirmation?.dispose();
-  }
+  await setWellnessAgentState('Available', {
+    reason: 'wellness-break-complete',
+    channelType: channelTypes,
+  });
 }
 
 function scheduleLegacyRestoreRecovery(operationGeneration) {
@@ -5014,12 +4833,6 @@ async function restoreWellnessState(options = {}) {
   const operationGeneration = wellnessState.operationGeneration;
   const sessionId = wellnessState.agentSessionId;
   const maxAttempts = options.maxAttempts || WELLNESS_RESTORE_MAX_ATTEMPTS;
-  const wellnessCodeId = wellnessState.idleCode?.id;
-  const selectableChannelOrder = ['telephony', 'chat', 'email', 'social'];
-  const forcedChannelTypes =
-    options.forceAvailableChannels === true && options.channelTypes?.length > 0
-      ? [...options.channelTypes]
-      : undefined;
   clearWellnessBreakTimer();
   clearWellnessSafeStateTimer();
   wellnessState.lifecycle = 'Restoring';
@@ -5036,60 +4849,13 @@ async function restoreWellnessState(options = {}) {
         return false;
       }
 
-      // AQM resolves on the first channel confirmation. Other channels can
-      // report success while this retry waits, so recognize completed
-      // restoration before sending another wellness-scoped request.
-      if (attempt > 1 && wellnessCodeId && !forcedChannelTypes) {
-        const channelStates = webex.cc.getChannelStates?.() || {};
-        const stillOnBreak = selectableChannelOrder.some(
-          (channelType) => channelStates[channelType]?.auxCodeId === wellnessCodeId
-        );
-        if (!stillOnBreak) {
-          clearWellnessLifecycleOwnership();
-          wellnessState.lifecycle = isWellnessReady() ? 'Ready' : 'Unavailable';
-          setWellnessMessage(options.completionMessage || 'Previous agent state restored.');
-          renderWellnessState();
-          return true;
-        }
-      }
-
       try {
-        await performSingleWellnessRestore(forcedChannelTypes);
+        await performSingleWellnessRestore(options.channelTypes);
         if (
           wellnessState.operationGeneration !== operationGeneration ||
           wellnessState.agentSessionId !== sessionId
         ) {
           return false;
-        }
-
-        // V2 resolves on the first channel's success; verify that every
-        // targeted channel has actually left the wellness idle code.
-        // If any channel still carries it (e.g. Chat failed while Voice
-        // succeeded), treat this as a partial failure and retry instead
-        // of releasing recovery ownership.
-        const channelStates = webex.cc.getChannelStates?.() || {};
-        if (forcedChannelTypes) {
-          const unconfirmed = forcedChannelTypes.filter((channelType) => {
-            const state = channelStates[channelType];
-
-            return !state || state.agentState !== 'Available' || state.auxCodeId !== '0';
-          });
-          if (unconfirmed.length > 0) {
-            throw new Error(`Partial restore: ${unconfirmed.join(', ')} are not Available`);
-          }
-        } else if (wellnessCodeId) {
-          const stillOnBreak = selectableChannelOrder.filter(
-            (ct) => channelStates[ct]?.auxCodeId === wellnessCodeId
-          );
-          if (stillOnBreak.length > 0) {
-            console.warn(
-              '[Wellness] Partial restore: channels still on break after SDK resolved:',
-              stillOnBreak
-            );
-            throw new Error(
-              `Partial restore: ${stillOnBreak.join(', ')} still carry the wellness code`
-            );
-          }
         }
 
         clearWellnessLifecycleOwnership();
@@ -5301,10 +5067,7 @@ function register() {
             }
             idleCodesDropdown.add(option);
         });
-        v1AllIdleCodes = idleCodesList;
-        setV1CurrentState(
-          agentProfile.isAgentLoggedIn ? agentProfile.lastStateAuxCodeId?.trim() || '0' : null
-        );
+        granularAllIdleCodes = idleCodesList;
         storeGranularIdleCodes(idleCodesList);
         entryPointId = agentProfile.outDialEp;
         registerChannelStateEventListeners();
@@ -5333,7 +5096,6 @@ function register() {
           idleCodesDropdown.value = nextAuxCodeId;
           auxCodeId = nextAuxCodeId;
           agentStatus = idleCodesDropdown.options[idleCodesDropdown.selectedIndex]?.text;
-          setV1CurrentState(nextAuxCodeId);
         }
         startStateTimer(data.lastStateChangeTimestamp, data.lastIdleCodeChangeTimestamp);
         handleWellnessLegacyStateChanged(data, nextAuxCodeId);
@@ -5354,7 +5116,7 @@ function register() {
           handleGranularStateLogout();
         }
         agentMultiLoginAlert.innerHTML = 'Multiple Agent Login Session Detected!';
-        agentMultiLoginAlert.style.color = 'red';
+        agentMultiLoginAlert.style.color = 'red';``
       }
     });
 
@@ -5398,7 +5160,6 @@ function register() {
       const auxId  = data.auxCodeId?.trim() || '0';
       const idx    = [...idleCodesDropdown.options].findIndex(o => o.value === auxId);
       idleCodesDropdown.selectedIndex = idx >= 0 ? idx : 0;
-      setV1CurrentState(auxId);
       startStateTimer(data.lastStateChangeTimestamp, data.lastIdleCodeChangeTimestamp);
       handleGranularStateLogin();
     });
@@ -5424,7 +5185,6 @@ function resetDeregisteredSampleState() {
     // Clear all dropdowns that are populated during registration
     teamsDropdown.innerHTML = '';
     idleCodesDropdown.innerHTML = '';
-    resetUserStateDropdown();
     agentLogin.innerHTML = '<option value="" selected>Choose Agent Login ...</option>';
 
     // Clear timer display
@@ -5534,7 +5294,6 @@ function doAgentLogin() {
     const lastIdleCodeChangeTimestamp = response.lastIdleCodeChangeTimestamp;
     const index = [...idleCodesDropdown.options].findIndex(option => option.value === auxCodeId);
     idleCodesDropdown.selectedIndex = index !== -1 ? index : 0;
-    setV1CurrentState(auxCodeId);
     startStateTimer(lastStateChangeTimestamp, lastIdleCodeChangeTimestamp);
     handleGranularStateLogin();
 
@@ -5559,139 +5318,20 @@ async function handleAgentStatus(event) {
 function setAgentStatus() {
   let state = "Available";
   if(agentStatus !== 'Available') state = 'Idle';
-  const requestedAuxCodeId = auxCodeId;
-  isSettingV1AgentState = true;
-  renderUserStateDropdown();
-  return webex.cc.setAgentState({state, auxCodeId, lastStateChangeReason: agentStatus, agentId}).then((response) => {
+  webex.cc.setAgentState({state, auxCodeId, lastStateChangeReason: agentStatus, agentId}).then((response) => {
     console.log('Agent status set successfully', response);
-    setV1CurrentState(requestedAuxCodeId);
     updateTaskList();
   }).catch(error => {
     console.error('Agent status set failed', error);
-    if (v1CurrentAuxCodeId !== null) idleCodesDropdown.value = v1CurrentAuxCodeId;
     if (error?.message === 'BROWSER_VOICE_NOT_READY') {
       console.log(
         '[Contact Center] Agent state change was blocked because browser voice is unavailable:',
         webex.cc.getVoiceConnectionState()
       );
     }
-  }).finally(() => {
-    isSettingV1AgentState = false;
-    renderUserStateDropdown();
   });
 }
 
-// --- V1 state dropdown (mirrors the widgets' UserState component) ---
-
-function isV1SelectableAuxCode(id) {
-  return [...idleCodesDropdown.options].some((option) => option.value !== '' && option.value === id);
-}
-
-/**
- * Records the server's current V1 state. Non-selectable codes (RONA, Engaged)
- * are shown in the trigger but never offered as choices.
- */
-function setV1CurrentState(id) {
-  v1CurrentAuxCodeId = id ?? null;
-  if (id != null && isV1SelectableAuxCode(id)) v1LastSelectableAuxCodeId = id;
-  renderUserStateDropdown();
-}
-
-function getV1StateStyle(name) {
-  if (name === GRANULAR_AGENT_STATE_AVAILABLE) return { cls: 'available', icon: 'fa-circle' };
-  if (NON_SELECTABLE_STATE_NAMES.includes(name)) return { cls: 'rona', icon: 'fa-minus-circle' };
-  return { cls: 'idle', icon: 'fa-clock-o' };
-}
-
-/** Available first, then the rest alphabetically (widget sortDropdownItems). */
-function getV1DropdownItems() {
-  const items = [...idleCodesDropdown.options]
-    .filter((option) => option.value !== '')
-    .map((option) => ({ id: option.value, name: option.text }));
-  return [
-    ...items.filter((item) => item.name === GRANULAR_AGENT_STATE_AVAILABLE),
-    ...items
-      .filter((item) => item.name !== GRANULAR_AGENT_STATE_AVAILABLE)
-      .sort((a, b) => a.name.localeCompare(b.name)),
-  ];
-}
-
-function renderUserStateDropdown() {
-  if (!userStateTriggerElm) return;
-  const items = getV1DropdownItems();
-  const currentName =
-    v1CurrentAuxCodeId === null
-      ? null
-      : items.find((item) => item.id === v1CurrentAuxCodeId)?.name ||
-        v1AllIdleCodes.find((code) => code.id === v1CurrentAuxCodeId)?.name ||
-        GRANULAR_AGENT_STATE_IDLE;
-  const style = currentName ? getV1StateStyle(currentName) : { cls: 'none', icon: 'fa-circle-o' };
-
-  userStateTriggerElm.className = `user-state-trigger ${style.cls}`;
-  userStateTriggerElm.disabled = items.length === 0 || isSettingV1AgentState;
-  userStateIconElm.className = `fa ${style.icon} user-state-icon ${style.cls}`;
-  userStateNameElm.className = `user-state-name ${style.cls}`;
-  userStateNameElm.textContent = currentName || 'Select state';
-  timerElm.classList.toggle('user-state-elapsed-disabled', isSettingV1AgentState);
-  if (userStateTriggerElm.disabled) closeUserStateMenu();
-
-  const highlightedId = isV1SelectableAuxCode(v1CurrentAuxCodeId)
-    ? v1CurrentAuxCodeId
-    : v1LastSelectableAuxCodeId;
-  userStateListElm.innerHTML = items.map((item) => {
-    const itemStyle = getV1StateStyle(item.name);
-    const selected = item.id === highlightedId;
-    return `<button type="button" role="option" class="user-state-item${selected ? ' selected' : ''}" aria-selected="${selected}" data-id="${escapeHTML(item.id)}">` +
-      `<i class="fa ${itemStyle.icon} user-state-icon ${itemStyle.cls}" aria-hidden="true"></i>` +
-      `<span class="user-state-name">${escapeHTML(item.name)}</span>` +
-    `</button>`;
-  }).join('');
-}
-
-function openUserStateMenu() {
-  if (userStateTriggerElm.disabled) return;
-  userStateListElm.hidden = false;
-  userStateTriggerElm.setAttribute('aria-expanded', 'true');
-  userStateChevronElm.className = 'fa fa-angle-up user-state-chevron';
-}
-
-function closeUserStateMenu() {
-  if (!userStateListElm || userStateListElm.hidden) return;
-  userStateListElm.hidden = true;
-  userStateTriggerElm.setAttribute('aria-expanded', 'false');
-  userStateChevronElm.className = 'fa fa-angle-down user-state-chevron';
-}
-
-function resetUserStateDropdown() {
-  v1AllIdleCodes = [];
-  v1CurrentAuxCodeId = null;
-  v1LastSelectableAuxCodeId = null;
-  isSettingV1AgentState = false;
-  renderUserStateDropdown();
-}
-
-if (userStateDropdownElm) {
-  userStateTriggerElm.addEventListener('click', () => {
-    if (userStateListElm.hidden) openUserStateMenu();
-    else closeUserStateMenu();
-  });
-  // Selecting a state sets it right away, as the widget does; there is no Set button.
-  userStateListElm.addEventListener('click', (event) => {
-    const itemElm = event.target.closest('.user-state-item');
-    if (!itemElm || isSettingV1AgentState) return;
-    closeUserStateMenu();
-    if (itemElm.dataset.id === v1CurrentAuxCodeId) return;
-    idleCodesDropdown.value = itemElm.dataset.id;
-    handleAgentStatus({ target: idleCodesDropdown });
-    setAgentStatus();
-  });
-  document.addEventListener('click', (event) => {
-    if (!event.composedPath().includes(userStateDropdownElm)) closeUserStateMenu();
-  });
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeUserStateMenu();
-  });
-}
 
 function logoutAgent() {
   webex.cc.stationLogout({logoutReason: 'logout'})
@@ -5713,7 +5353,6 @@ function logoutAgent() {
       logoutAgentElm.classList.add('hidden');
       agentLogin.selectedIndex = 0;
       timerElm.innerHTML = '00:00:00';
-      setV1CurrentState(null);
       
       // Clear outdial ANI select
       outdialAniSelectElm.innerHTML = '<option value="">Select Caller ID...</option>';
@@ -6825,7 +6464,7 @@ function buildChannelStates() {
  */
 function getIdleCodeName(auxCodeId) {
   if (!auxCodeId) return undefined;
-  const code = v1AllIdleCodes.find((c) => c.id === auxCodeId) || granularIdleCodes.find((c) => c.id === auxCodeId);
+  const code = granularAllIdleCodes.find((c) => c.id === auxCodeId) || granularIdleCodes.find((c) => c.id === auxCodeId);
   return code ? code.name : undefined;
 }
 
@@ -7616,10 +7255,6 @@ function registerChannelStateEventListeners() {
 
   // Unified agent:reloginSuccess — V2 enriched with channelStates
   webex.cc.on('agent:reloginSuccess', (data) => {
-    console.log('agent:reloginSuccess (unified)', data);
-    if (data?.channelStates) {
-      handleGranularStateLogin();
-    }
     setAgentSessionStatus('');
   });
 
@@ -7694,7 +7329,6 @@ function showStationLoginAfterSessionLoss() {
     stateTimer = null;
   }
   timerElm.innerHTML = '00:00:00';
-  setV1CurrentState(null);
   loginAgentElm.disabled = false;
   logoutAgentElm.classList.add('hidden');
   updateAgentProfileElm.classList.add('hidden');

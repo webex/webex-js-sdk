@@ -306,7 +306,7 @@ sequenceDiagram
     Util-->>Cfg: Profile including aiFeature
     Cfg-->>CC: Profile
   else any fails
-    Cfg-->>CC: throw, no partial Profile
+    Cfg-->>CC: throw; no partial Profile
   end
 ```
 
@@ -336,7 +336,7 @@ sequenceDiagram
       Cfg->>Cfg: concatenate responses in request order
       Cfg-->>Caller: complete accumulated list
     else any remaining page rejects
-      Cfg-->>Caller: reject, do not return a partial list
+      Cfg-->>Caller: reject; do not return a partial list
     end
   else first page rejects
     Cfg-->>Caller: reject

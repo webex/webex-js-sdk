@@ -208,84 +208,86 @@ export default function routingAgent(routing: AqmReqs) {
      * @param p.data - V2 state change parameters with channelType array
      * @public
      */
-    stateChangeV2: routing.req((p: {data: Agent.ChannelStateChangeRequest}) => ({
-      url: '/v2/agents/session/state',
-      host: WCC_API_GATEWAY,
-      data: p.data,
-      err,
-      method: HTTP_METHODS.PUT,
-      notifSuccess: {
-        bind: {
-          type: [
-            AGENT_REQUEST_EVENT_TYPE,
-            ROUTING_MESSAGE_TYPE,
-            CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE,
-          ],
-          data: {
-            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
-            channelType: p.data.channelType,
-            // Idle bind: __typeMap on agentState accepts immediate Idle + queued (pendingIdle: true).
-            //   auxCodeId prevents cross-resolution between different idle codes.
-            // Non-Idle bind: array filters reject completed Idle and queued-Idle-pending
-            //   notifications from a prior request. pendingIdle: [false] uses the array
-            //   path in bindCheck (line ~247), which correctly handles boolean false —
-            //   the primitive path (!msgValue) would treat false as absent.
-            agentChannelStateDetail:
-              p.data.state === 'Idle'
-                ? {
-                    __typeMap: {
-                      typeField: 'agentState',
-                      conditions: {
-                        Idle: {},
-                        Available: {pendingIdle: true},
-                        Engaged: {pendingIdle: true},
-                        EngagedOther: {pendingIdle: true},
-                        WrapUp: {pendingIdle: true},
-                        Reserved: {pendingIdle: true},
-                        RONA: {pendingIdle: true},
+    stateChangeV2: routing.req(
+      (p: {data: Agent.ChannelStateChangeRequest; agentSessionId?: string}) => ({
+        url: '/v2/agents/session/state',
+        host: WCC_API_GATEWAY,
+        data: p.data,
+        err,
+        method: HTTP_METHODS.PUT,
+        notifSuccess: {
+          bind: {
+            type: [
+              AGENT_REQUEST_EVENT_TYPE,
+              ROUTING_MESSAGE_TYPE,
+              CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE,
+            ],
+            data: {
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+              channelType: p.data.channelType,
+              // Idle bind: __typeMap on agentState accepts immediate Idle + queued (pendingIdle: true).
+              //   auxCodeId prevents cross-resolution between different idle codes.
+              // Non-Idle bind: array filters reject completed Idle and queued-Idle-pending
+              //   notifications from a prior request. pendingIdle: [false] uses the array
+              //   path in bindCheck (line ~247), which correctly handles boolean false —
+              //   the primitive path (!msgValue) would treat false as absent.
+              agentChannelStateDetail:
+                p.data.state === 'Idle'
+                  ? {
+                      __typeMap: {
+                        typeField: 'agentState',
+                        conditions: {
+                          Idle: {},
+                          Available: {pendingIdle: true},
+                          Engaged: {pendingIdle: true},
+                          EngagedOther: {pendingIdle: true},
+                          WrapUp: {pendingIdle: true},
+                          Reserved: {pendingIdle: true},
+                          RONA: {pendingIdle: true},
+                        },
                       },
+                      auxCodeId: p.data.auxCodeId,
+                    }
+                  : {
+                      agentState: [
+                        p.data.state,
+                        'Engaged',
+                        'EngagedOther',
+                        'WrapUp',
+                        'Reserved',
+                        'RONA',
+                      ],
+                      pendingIdle: [false],
                     },
-                    auxCodeId: p.data.auxCodeId,
-                  }
-                : {
-                    agentState: [
-                      p.data.state,
-                      'Engaged',
-                      'EngagedOther',
-                      'WrapUp',
-                      'Reserved',
-                      'RONA',
-                    ],
-                    pendingIdle: [false],
-                  },
-            isClientInitiated: true, // Skip supervisor/system pushes
-            ...(p.data.agentId ? {agentId: p.data.agentId} : {}), // Match this agent only
-            ...(p.data.agentSessionId ? {agentSessionId: p.data.agentSessionId} : {}), // Match this session only
+              isClientInitiated: true, // Skip supervisor/system pushes
+              ...(p.data.agentId ? {agentId: p.data.agentId} : {}), // Match this agent only
+              ...(p.agentSessionId ? {agentSessionId: p.agentSessionId} : {}), // Match this session only
+            },
           },
+          msg: {} as Agent.AgentChannelStateChanged,
         },
-        msg: {} as Agent.AgentChannelStateChanged,
-      },
-      notifFail: {
-        bind: {
-          type: [
-            AGENT_REQUEST_EVENT_TYPE,
-            ROUTING_MESSAGE_TYPE,
-            CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE,
-          ],
-          data: {
-            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED,
-            channelType: p.data.channelType,
-            // Correlate: only match client-initiated failures to prevent a
-            // supervisor-visible failure for another agent (same channelType)
-            // from settling this request.  Failures that omit the field won't
-            // match, falling through to the AQM timeout — safer than falsely
-            // settling with another agent's error.
-            isClientInitiated: true,
+        notifFail: {
+          bind: {
+            type: [
+              AGENT_REQUEST_EVENT_TYPE,
+              ROUTING_MESSAGE_TYPE,
+              CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE,
+            ],
+            data: {
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED,
+              channelType: p.data.channelType,
+              // Correlate: only match client-initiated failures to prevent a
+              // supervisor-visible failure for another agent (same channelType)
+              // from settling this request.  Failures that omit the field won't
+              // match, falling through to the AQM timeout — safer than falsely
+              // settling with another agent's error.
+              isClientInitiated: true,
+            },
           },
+          errId: 'Service.aqm.agent.stateChangeV2',
         },
-        errId: 'Service.aqm.agent.stateChangeV2',
-      },
-    })),
+      })
+    ),
 
     /** @public */
     logoutV2: logoutConfig('/v2/agents/logout', 'Service.aqm.agent.logoutV2'),

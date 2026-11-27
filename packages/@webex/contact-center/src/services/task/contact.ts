@@ -2,7 +2,7 @@ import {CC_EVENTS} from '../config/types';
 import {createErrDetailsObject as err} from '../core/Utils';
 import {WCC_API_GATEWAY} from '../constants';
 import AqmReqs from '../core/aqm-reqs';
-import {ROUTING_MESSAGE_TYPE, TIMEOUT_REQ} from '../core/constants';
+import {TIMEOUT_REQ} from '../core/constants';
 import {
   CONSULT,
   CONSULT_ACCEPT,
@@ -13,6 +13,7 @@ import {
   PAUSE,
   RESUME,
   TASK_API,
+  TASK_MESSAGE_TYPE,
   TRANSFER,
   UNHOLD,
   WRAPUP,
@@ -35,14 +36,14 @@ export default function routingContact(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_CONTACT_ASSIGNED, interactionId: p.interactionId},
         },
         msg: {} as Contact.AgentContact,
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED, interactionId: p.interactionId},
         },
         errId: 'Service.aqm.task.accept',
@@ -59,14 +60,14 @@ export default function routingContact(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_CONTACT_HELD, interactionId: p.interactionId},
         },
         msg: {} as Contact.AgentContact,
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_CONTACT_HOLD_FAILED},
         },
         errId: 'Service.aqm.task.hold',
@@ -83,14 +84,14 @@ export default function routingContact(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_CONTACT_UNHELD, interactionId: p.interactionId},
         },
         msg: {} as Contact.AgentContact,
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_CONTACT_UNHOLD_FAILED},
         },
         errId: 'Service.aqm.task.unHold',
@@ -107,14 +108,14 @@ export default function routingContact(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.CONTACT_RECORDING_PAUSED, interactionId: p.interactionId},
         },
         msg: {} as Contact.AgentContact,
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.CONTACT_RECORDING_PAUSE_FAILED},
         },
         errId: 'Service.aqm.task.pauseRecording',
@@ -132,14 +133,14 @@ export default function routingContact(aqm: AqmReqs) {
         err,
         notifSuccess: {
           bind: {
-            type: ROUTING_MESSAGE_TYPE,
+            type: TASK_MESSAGE_TYPE,
             data: {type: CC_EVENTS.CONTACT_RECORDING_RESUMED, interactionId: p.interactionId},
           },
           msg: {} as Contact.AgentContact,
         },
         notifFail: {
           bind: {
-            type: ROUTING_MESSAGE_TYPE,
+            type: TASK_MESSAGE_TYPE,
             data: {type: CC_EVENTS.CONTACT_RECORDING_RESUME_FAILED},
           },
           errId: 'Service.aqm.task.resumeRecording',
@@ -159,14 +160,14 @@ export default function routingContact(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_CONSULT_CREATED, interactionId: p.interactionId},
         },
         msg: {} as Contact.AgentContact,
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {
             type:
               p.data && p.data.destinationType === DESTINATION_TYPE.QUEUE
@@ -178,7 +179,7 @@ export default function routingContact(aqm: AqmReqs) {
       },
       notifCancel: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: 'AgentCtqCancelled', interactionId: p.interactionId},
         },
         msg: {} as Contact.AgentContact,
@@ -203,7 +204,7 @@ export default function routingContact(aqm: AqmReqs) {
         err,
         notifSuccess: {
           bind: {
-            type: ROUTING_MESSAGE_TYPE,
+            type: 'RoutingMessage',
             data: {
               type: (() => {
                 if (queueId) return CC_EVENTS.AGENT_CTQ_CANCELLED;
@@ -219,7 +220,7 @@ export default function routingContact(aqm: AqmReqs) {
         },
         notifFail: {
           bind: {
-            type: ROUTING_MESSAGE_TYPE,
+            type: 'RoutingMessage',
             data: {
               type: p.data.queueId
                 ? CC_EVENTS.AGENT_CTQ_CANCEL_FAILED
@@ -241,14 +242,14 @@ export default function routingContact(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_CONSULTING, interactionId: p.interactionId},
         },
         msg: {} as Contact.AgentContact,
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED},
         },
         errId: 'Service.aqm.task.consultAccept',
@@ -265,14 +266,14 @@ export default function routingContact(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_BLIND_TRANSFERRED, interactionId: p.interactionId},
         },
         msg: {} as Contact.AgentContact,
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_BLIND_TRANSFER_FAILED},
         },
         errId: 'Service.aqm.task.AgentBlindTransferFailedEvent',
@@ -289,14 +290,14 @@ export default function routingContact(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_VTEAM_TRANSFERRED, interactionId: p.interactionId},
         },
         msg: {} as Contact.AgentContact,
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_VTEAM_TRANSFER_FAILED},
         },
         errId: 'Service.aqm.task.AgentVteamTransferFailed',
@@ -314,7 +315,7 @@ export default function routingContact(aqm: AqmReqs) {
         err,
         notifSuccess: {
           bind: {
-            type: ROUTING_MESSAGE_TYPE,
+            type: TASK_MESSAGE_TYPE,
             data: {
               type: [CC_EVENTS.AGENT_CONSULT_TRANSFERRED, CC_EVENTS.AGENT_CONSULT_TRANSFERRING],
               interactionId: p.interactionId,
@@ -324,7 +325,7 @@ export default function routingContact(aqm: AqmReqs) {
         },
         notifFail: {
           bind: {
-            type: ROUTING_MESSAGE_TYPE,
+            type: TASK_MESSAGE_TYPE,
             data: {type: CC_EVENTS.AGENT_CONSULT_TRANSFER_FAILED},
           },
           errId: 'Service.aqm.task.AgentConsultTransferFailed',
@@ -342,14 +343,14 @@ export default function routingContact(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_WRAPUP, interactionId: p.interactionId},
         },
         msg: {} as Contact.AgentContact,
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_CONTACT_END_FAILED},
         },
         errId: 'Service.aqm.task.end',
@@ -366,14 +367,14 @@ export default function routingContact(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_WRAPPEDUP, interactionId: p.interactionId},
         },
         msg: {} as Contact.AgentContact,
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_WRAPUP_FAILED},
         },
         errId: 'Service.aqm.task.wrapup',
@@ -390,14 +391,14 @@ export default function routingContact(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.CONTACT_ENDED, interactionId: p.interactionId},
         },
         msg: {} as Contact.AgentContact,
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_CONTACT_END_FAILED},
         },
         errId: 'Service.aqm.task.end',
@@ -414,14 +415,14 @@ export default function routingContact(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: 'AgentCtqCancelled', interactionId: p.interactionId},
         },
         msg: {} as Contact.AgentContact,
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: 'AgentCtqCancelFailed'},
         },
         errId: 'Service.aqm.task.cancelCtq',
@@ -439,7 +440,7 @@ export default function routingContact(aqm: AqmReqs) {
         err,
         notifSuccess: {
           bind: {
-            type: ROUTING_MESSAGE_TYPE,
+            type: TASK_MESSAGE_TYPE,
             data: {
               type: [CC_EVENTS.AGENT_CONSULT_CONFERENCED, CC_EVENTS.AGENT_CONSULT_CONFERENCING],
               interactionId: p.interactionId,
@@ -449,7 +450,7 @@ export default function routingContact(aqm: AqmReqs) {
         },
         notifFail: {
           bind: {
-            type: ROUTING_MESSAGE_TYPE,
+            type: TASK_MESSAGE_TYPE,
             data: {type: CC_EVENTS.AGENT_CONSULT_CONFERENCE_FAILED},
           },
           errId: 'Service.aqm.task.consultConference',
@@ -470,7 +471,7 @@ export default function routingContact(aqm: AqmReqs) {
       redactSensitiveLogs: true,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {
             type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
             interactionId: p.interactionId,
@@ -480,7 +481,7 @@ export default function routingContact(aqm: AqmReqs) {
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.PARTICIPANT_DROP_CONFERENCE_FAILED},
         },
         errId: 'Service.aqm.task.dropConferenceParticipant',
@@ -497,14 +498,14 @@ export default function routingContact(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE, interactionId: p.interactionId},
         },
         msg: {} as Contact.AgentContact,
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE_FAILED}, // to be finalized
         },
         errId: 'Service.aqm.task.consultConference',
@@ -521,14 +522,14 @@ export default function routingContact(aqm: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE, interactionId: p.interactionId},
         },
         msg: {} as Contact.AgentContact,
       },
       notifFail: {
         bind: {
-          type: ROUTING_MESSAGE_TYPE,
+          type: TASK_MESSAGE_TYPE,
           data: {type: CC_EVENTS.AGENT_CONFERENCE_TRANSFER_FAILED},
         },
         errId: 'Service.aqm.task.consultConference',

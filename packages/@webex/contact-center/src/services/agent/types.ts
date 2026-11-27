@@ -298,16 +298,6 @@ export type StateChange = {
    * to a single-element array internally, but the canonical form is an array.
    */
   channelType?: ChannelType | ChannelType[];
-  /**
-   * When true the auto-selected channels (no explicit `channelType`) are
-   * narrowed to only those whose current `auxCodeId` matches the cached
-   * system WellbeingBreak idle code.  Channels that were manually changed
-   * (e.g. Voice moved to Idle/Lunch while Chat stays in WellbeingBreak)
-   * are excluded so the restoration does not undo explicit selections.
-   * Has no effect when `channelType` is explicitly provided, the session
-   * is V1, or the wellness idle code has not been loaded.
-   */
-  wellnessRestoration?: boolean;
 };
 
 /**
@@ -506,8 +496,6 @@ export type ChannelStateChangeRequest = {
   reason?: string;
   /** Agent ID (defaults to current agent) */
   agentId?: string;
-  /** Session ID for AQM bind correlation (not sent to server) */
-  agentSessionId?: string;
 };
 
 /**

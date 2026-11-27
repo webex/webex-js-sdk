@@ -70,7 +70,6 @@ import {
   getErrorDetails,
   isRecord,
   isValidDialNumber,
-  normalizeChannelType,
   sanitizeForObservability,
 } from './services/core/Utils';
 import {
@@ -393,15 +392,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /** Channel updates buffered by session ID until an initial reload identifies the active session. @private */
   private initialReloadChannelEvents = new Map<string, AgentChannelStateChanged[]>();
 
-  /** Request-local V2 flag for in-flight stationLogin; prevents flipping the live-session guard. @private */
-  private pendingLoginV2?: boolean;
-
-  /** Serial chain — each V2 setAgentState awaits the previous to prevent cross-resolution. @private */
-  private v2StateChangeChain: Promise<unknown> = Promise.resolve();
-
-  /** Monotonic counter; invalidates queued V2 closures across deregister/re-register. @private */
-  private v2ChainGeneration = 0;
-
   /**
    * Stored channelsMap from login for channel selection validation.
    * @private
@@ -426,44 +416,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       isClientInitiated?: boolean;
     }
   >();
-
-  /** Shares one in-flight V2 reload across overlapping reconnect handlers. @private */
-  private reloadV2Once(): ReturnType<Services['agent']['reloadV2']> {
-    if (this.v2ReloadPromise) {
-      // A session cleanup invalidates the existing reload. Do not let a later
-      // session adopt its response; wait for AQM to release the bind first.
-      if (this.v2ReloadGeneration === undefined) {
-        return this.v2ReloadPromise.catch(() => undefined as never).then(() => this.reloadV2Once());
-      }
-
-      // Reconnects within the same session may share the pending response.
-      this.v2ReloadGeneration = this.reloadGeneration;
-
-      return this.v2ReloadPromise;
-    }
-
-    this.v2ReloadGeneration = this.reloadGeneration;
-    if (!this.v2ReloadPromise) {
-      const reloadPromise = this.services.agent.reloadV2();
-      this.v2ReloadPromise = reloadPromise;
-      reloadPromise.then(
-        () => {
-          if (this.v2ReloadPromise === reloadPromise) {
-            this.v2ReloadPromise = undefined;
-            this.v2ReloadGeneration = undefined;
-          }
-        },
-        () => {
-          if (this.v2ReloadPromise === reloadPromise) {
-            this.v2ReloadPromise = undefined;
-            this.v2ReloadGeneration = undefined;
-          }
-        }
-      );
-    }
-
-    return this.v2ReloadPromise;
-  }
 
   /**
    * API instance for managing Webex Contact Center entry points
@@ -989,10 +941,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         clearInitFlag: true,
       });
 
-      // Cancel any background voice registration (e.g. fire-and-forget
-      // handleDeviceType from silentRelogin). deregisterWebCallingLine()
-      // increments registrationGeneration, causing the in-flight
-      // registerWebCallingLine() to bail at its next generation check.
+      // Release browser voice resources started during V2 reconnect recovery.
       await this.webCallingService.deregisterWebCallingLine();
 
       if (
@@ -1265,26 +1214,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         );
       }
 
-      // Pre-load the wellness idle code before silentRelogin can fire scalar
-      // projections.  Without this, a mixed-state recovery (Voice Idle/Lunch +
-      // Chat Idle/WellbeingBreak) promotes the telephony scalar (Lunch) to
-      // agentConfig before the consumer can evaluate the wellness marker.
-      // Once the code loads later, recoverWellnessBreakIfNeeded() clears the
-      // marker without sending restoration because the committed scalar is
-      // Lunch rather than the WellbeingBreak idle code.  Pre-loading ensures
-      // the code is cached and included in the relogin payload so the consumer
-      // can evaluate correctly.
-      if (this.agentConfig.isWellnessBreakEnabled) {
-        try {
-          await this.getWellbeingBreakIdleCode();
-        } catch (error) {
-          LoggerProxy.warn(`Could not pre-load wellness idle code during registration: ${error}`, {
-            module: CC_FILE,
-            method: METHODS.CONNECT_WEBSOCKET,
-          });
-        }
-      }
-
       if (this.$config && this.$config.allowAutomatedRelogin) {
         await this.silentRelogin();
       } else {
@@ -1336,17 +1265,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
     const loggerContext = {module: CC_FILE, method: METHODS.STATION_LOGIN};
-    const registrationGeneration = this.wellnessRegistrationGeneration;
-    // Capture the calling context so a failed login attempt against a
-    // different device type (e.g. EXTENSION while BROWSER is active) does
-    // not leave the still-active session with the wrong loginOption /
-    // browserVoiceRequired.  Lines 1344-1345 set these eagerly before the
-    // routing request so the voice-ready guard is active when the success
-    // handler fires; on pre-acceptance failure they must be restored.
-    const previousLoginOption = this.webCallingService.loginOption;
-    const previousBrowserVoiceRequired = this.webCallingService.isBrowserVoiceRequired();
-    let loginAccepted = false;
-    let ownsRequest = false;
 
     try {
       LoggerProxy.log(
@@ -1396,79 +1314,39 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
       };
 
-      // Refresh V1/V2 flag from profile. Kept request-local until login accepted;
-      // live flag unchanged so active V2 notifications keep flowing.
-      let requestManageChannelAvailability = this.agentConfig?.manageChannelAvailability ?? false;
+      let manageChannelAvailability = this.agentConfig?.manageChannelAvailability ?? false;
       if (this.agentConfig?.agentId) {
         try {
           const {agentProfile} = await this.services.config.getUserDesktopLoginConfig(
             this.$webex.credentials.getOrgId(),
             this.agentConfig.agentId
           );
-          requestManageChannelAvailability = agentProfile?.manageChannelAvailability === true;
+          manageChannelAvailability = agentProfile?.manageChannelAvailability === true;
         } catch (error) {
           LoggerProxy.warn(
-            `Could not refresh manageChannelAvailability (${error}), using cached value: ${requestManageChannelAvailability}`,
-            {module: CC_FILE, method: METHODS.STATION_LOGIN}
+            `Could not refresh manageChannelAvailability (${error}), using cached value: ${manageChannelAvailability}`,
+            loggerContext
           );
         }
       }
 
-      if (registrationGeneration !== this.wellnessRegistrationGeneration) {
-        const registrationEndedError = new Error('REGISTRATION_ENDED') as GenericError;
-        registrationEndedError.details = {
-          type: 'SDK_VALIDATION_ERROR',
-          orgId: this.$webex.credentials.getOrgId(),
-          trackingId: EMPTY_STRING,
-          data: {reason: 'REGISTRATION_ENDED'},
-        };
-        throw registrationEndedError;
-      }
+      const previousManageChannelAvailability = this.agentConfig.manageChannelAvailability;
+      const previousLoginOption = this.webCallingService.loginOption;
+      const previousBrowserVoiceRequired = this.webCallingService.isBrowserVoiceRequired();
+      this.agentConfig.manageChannelAvailability = manageChannelAvailability;
+      this.webCallingService.setLoginOption(data.loginOption);
+      this.webCallingService.setBrowserVoiceRequired(this.isBrowserVoiceRequired(data.loginOption));
 
-      // Signal WS handler: true→V2, false→V1, undefined→no login in-flight.
-      // Guard: if another login attempt already set this hint (its AQM bind
-      // is the one the server will respond to), do not overwrite — that
-      // attempt's value is authoritative.
-      // ownsRequest tracks whether *this* call is the first to claim the AQM
-      // bind. When false, a prior attempt's bind is still live and its
-      // calling-context (loginOption / browserVoiceRequired) must not be
-      // touched — neither eagerly nor during rollback.
-      ownsRequest = this.pendingLoginV2 === undefined;
-      if (ownsRequest) {
-        this.pendingLoginV2 = requestManageChannelAvailability === true;
-      }
-
-      LoggerProxy.log(
-        `Resolved routing version for login | manageChannelAvailability: ${requestManageChannelAvailability} => ${
-          requestManageChannelAvailability === true
-            ? 'V2 (/v2/agents/login)'
-            : 'V1 (/v1/agents/login)'
-        } | ownsRequest: ${ownsRequest}`,
-        loggerContext
-      );
-
-      // Set voice guard BEFORE await so WS-handler listeners can't bypass it.
-      // Only when this attempt owns the AQM bind — a duplicate must not
-      // overwrite the first attempt's eagerly applied calling context.
-      if (ownsRequest) {
-        this.webCallingService.setLoginOption(data.loginOption);
-        this.webCallingService.setBrowserVoiceRequired(
-          this.isBrowserVoiceRequired(data.loginOption)
-        );
-      }
-
-      const loginResponse =
-        requestManageChannelAvailability === true
+      let resp: Awaited<ReturnType<Services['agent']['stationLogin']>>;
+      try {
+        resp = await (manageChannelAvailability
           ? this.services.agent.stationLoginV2(loginPayload)
-          : this.services.agent.stationLogin(loginPayload);
-
-      const resp = await loginResponse;
-      loginAccepted = true; // Server accepted — no rollback from here.
-      this.pendingLoginV2 = undefined;
-
-      // Commit V1/V2 mode after acceptance.
-      if (this.agentConfig) {
-        this.agentConfig.manageChannelAvailability = requestManageChannelAvailability;
+          : this.services.agent.stationLogin(loginPayload));
+      } catch (error) {
+        this.agentConfig.manageChannelAvailability = previousManageChannelAvailability;
+        this.webCallingService.setLoginOption(previousLoginOption);
+        this.webCallingService.setBrowserVoiceRequired(previousBrowserVoiceRequired);
+        throw error;
       }
 
       if (this.isBrowserVoiceRequired(data.loginOption)) {
@@ -1500,13 +1378,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         notifsTrackingId: resp.trackingId,
       };
 
-      // The WebSocket handler for AGENT_STATION_LOGIN_SUCCESS already seeds
-      // channelStatesMap and loginChannelsMap before this promise resolves.
-      // Seed the V1 bridge dedup baseline from the login response so that
-      // intermediate aggregate snapshots (e.g. one channel updated but others
-      // still at the login idle code) are suppressed. Only genuine projection
-      // changes will emit, consistent with CONTACT_CENTER-R-014.
-      // Desktop equivalent: updateSubStatus(subStatus, ...) in updateAgentProfileLogin.
       if (this.agentConfig) {
         this.agentConfig.deviceType = data.loginOption;
         if (
@@ -1542,23 +1413,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return response;
     } catch (error) {
-      // Only clear the V2 hint when this invocation owns it.  A second
-      // login attempt that fails validation before reaching AQM (e.g.
-      // INVALID_DIAL_NUMBER) or is rejected as a pending duplicate must
-      // not erase the first attempt's hint — the WS handler needs it to
-      // choose the correct V1/V2 branch when the first attempt's
-      // acceptance notification arrives.
-      if (ownsRequest) {
-        this.pendingLoginV2 = undefined;
-      }
-
-      // Only rollback calling context if this attempt owned the request
-      // AND login itself failed (not post-login steps).
-      if (!loginAccepted && ownsRequest) {
-        this.webCallingService.setLoginOption(previousLoginOption);
-        this.webCallingService.setBrowserVoiceRequired(previousBrowserVoiceRequired);
-      }
-
       const failure = error.details as Failure;
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
@@ -1680,6 +1534,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * V2 sessions: targets specific channels via `/v2/agents/session/state`.
    * Return is always bridged to `StateChangeSuccess` (same shape as V1).
    * Per-channel detail is on the `agent:stateChange` event or `getChannelStates()`.
+   * Wait for the current operation or recovery to finish before starting an incompatible action.
    *
    * @param {StateChange} data - `channelType?: ChannelType[]` selects channels (V2 only; omit for all).
    * @returns {Promise<SetStateResponse>} Normalized StateChangeSuccess.
@@ -1708,34 +1563,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       let channels: ChannelType[] | undefined;
 
       if (this.agentConfig?.manageChannelAvailability === true) {
-        // Normalize channelType: the TypeScript type is ChannelType[] but
-        // JavaScript consumers following the docs may pass a scalar string.
-        // Wrap it in an array so .filter() / .includes() work correctly.
-        const normalizedChannelType = normalizeChannelType(data.channelType);
+        const selectable = SELECTABLE_CHANNEL_TYPES.filter(
+          (ct) => this.loginChannelsMap[ct]?.length > 0
+        );
+        // Accept either a single channel or an array of channels.
+        const normalizedChannelType =
+          typeof data.channelType === 'string' ? [data.channelType] : data.channelType;
 
         // V2 per-channel state change — auto-select all selectable channels if none specified
         channels =
           normalizedChannelType && normalizedChannelType.length > 0
             ? normalizedChannelType
-            : SELECTABLE_CHANNEL_TYPES.filter((ct) => this.loginChannelsMap[ct]?.length > 0);
-
-        // Wellness-scoped restoration: narrow auto-selected channels to only
-        // those whose current auxCodeId matches the cached WellbeingBreak idle
-        // code.  Channels manually changed (e.g. Voice→Lunch while Chat stays
-        // in WellbeingBreak) are excluded so the timer-driven Available does
-        // not undo explicit selections.
-        if (
-          data.wellnessRestoration &&
-          this.wellbeingBreakIdleCode &&
-          !(normalizedChannelType && normalizedChannelType.length > 0)
-        ) {
-          const wellnessCodeId = this.wellbeingBreakIdleCode.id;
-          channels = channels.filter((ct) => {
-            const channelState = this.channelStatesMap[ct];
-
-            return channelState?.auxCodeId === wellnessCodeId;
-          });
-        }
+            : selectable;
 
         // Validate: at least one eligible channel after selection.
         // When loginChannelsMap is empty (no capacity), auto-select produces []
@@ -1757,10 +1596,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           throw error;
         }
 
-        // Validate requested channels are selectable
-        const selectable = SELECTABLE_CHANNEL_TYPES.filter(
-          (ct) => this.loginChannelsMap[ct]?.length > 0
-        );
+        // Validate requested channels are selectable.
         const invalid = channels.filter((ct) => !selectable.includes(ct));
         if (invalid.length > 0) {
           const error = new Error(
@@ -1807,150 +1643,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           auxCodeId: data.auxCodeId,
           reason: data.lastStateChangeReason,
           agentId: data.agentId || this.agentConfig.agentId,
-          agentSessionId: this.currentAgentSessionId,
         };
 
-        // True when channels were auto-selected via wellnessRestoration (no
-        // explicit channelType).  Used at dequeue to know whether the dequeue
-        // refilter should run.
-        const explicitChannels = normalizeChannelType(data.channelType);
-        const wellnessAutoSelected =
-          data.wellnessRestoration === true &&
-          !!this.wellbeingBreakIdleCode &&
-          !(explicitChannels && explicitChannels.length > 0);
-
-        // Capture session+generation at enqueue; dequeue guard rejects stale closures.
-        const capturedSessionId = this.currentAgentSessionId;
-        const capturedChainGeneration = this.v2ChainGeneration;
-        const capturedReloadGeneration = this.reloadGeneration;
-        const previousChain = this.v2StateChangeChain;
-        const thisRequest = previousChain
-          .catch(() => {})
-          .then(() => {
-            // Dequeue guard: reject if V2 mode off, session ended, or generation changed.
-            if (
-              this.agentConfig?.manageChannelAvailability !== true ||
-              !this.currentAgentSessionId ||
-              this.currentAgentSessionId !== capturedSessionId ||
-              this.v2ChainGeneration !== capturedChainGeneration
-            ) {
-              throw Object.assign(new Error('V2 session ended while request was queued'), {
-                details: {
-                  type: 'SDK_VALIDATION_ERROR',
-                  trackingId: '',
-                  data: {reason: 'V2 session ended while request was queued'},
-                },
-              });
-            }
-
-            // Re-check browser voice readiness at dequeue time.  The
-            // initial check ran at queue entry; the browser line may have
-            // become unavailable while this request waited behind another.
-            const reqAffectsTelephony =
-              channelStateChangeData.channelType.length === 0 ||
-              channelStateChangeData.channelType.includes('telephony');
-            if (
-              channelStateChangeData.state === AGENT_STATE_AVAILABLE &&
-              reqAffectsTelephony &&
-              this.webCallingService?.isBrowserVoiceRequired() &&
-              !this.webCallingService.isVoiceReady()
-            ) {
-              throw Object.assign(new Error(VOICE_CONNECTION_ERROR.NOT_READY), {
-                details: {
-                  type: 'SDK_VALIDATION_ERROR',
-                  trackingId: '',
-                  data: {reason: VOICE_CONNECTION_ERROR.NOT_READY},
-                },
-              });
-            }
-
-            // Revalidate wellness restoration eligibility at dispatch.
-            // The initial wellness filter ran at queue entry, but a manual
-            // state change (e.g. Voice→Idle/Lunch) may have resolved while
-            // this request was queued.  Re-check channelStatesMap so only
-            // channels still carrying the WellbeingBreak idle code are
-            // targeted; channels whose auxCodeId changed are excluded.
-            // Only refilter when channels were auto-selected via wellness
-            // scoping; explicit channelType is dispatched as-is.
-            if (wellnessAutoSelected && this.wellbeingBreakIdleCode) {
-              const wellnessCodeId = this.wellbeingBreakIdleCode.id;
-              const stillWellness = channelStateChangeData.channelType.filter(
-                (ct) => this.channelStatesMap[ct]?.auxCodeId === wellnessCodeId
-              );
-              if (stillWellness.length === 0) {
-                throw Object.assign(
-                  new Error(
-                    'Wellness restoration superseded: no channels still carry the WellbeingBreak idle code'
-                  ),
-                  {
-                    details: {
-                      type: 'SDK_VALIDATION_ERROR',
-                      trackingId: '',
-                      data: {reason: 'wellness_restoration_superseded'},
-                    },
-                  }
-                );
-              }
-              channelStateChangeData.channelType = stillWellness;
-            }
-
-            // Revalidate disconnect-idle eligibility at actual dispatch.
-            // A recovery request (reason = WSS_DISCONNECT_REASON) may have been
-            // queued while a manual Idle/Lunch was in-flight. By the time this
-            // closure dequeues, the confirmation has updated channelStatesMap
-            // and the agent's deliberate choice must not be overridden.
-            //
-            // Additionally, a second socket loss changes reloadGeneration but
-            // does NOT invalidate v2ChainGeneration. If the generation moved
-            // or the socket is currently closed, this recovery was for a prior
-            // disconnect — a new reload will schedule its own recovery.
-            if (channelStateChangeData.reason === WSS_DISCONNECT_REASON) {
-              if (
-                this.reloadGeneration !== capturedReloadGeneration ||
-                this.services.webSocketManager.isSocketClosed
-              ) {
-                throw Object.assign(
-                  new Error('Disconnect recovery invalidated by subsequent socket loss'),
-                  {
-                    details: {
-                      type: 'SDK_VALIDATION_ERROR',
-                      trackingId: '',
-                      data: {reason: 'recovery_invalidated_by_socket_loss'},
-                    },
-                  }
-                );
-              }
-
-              const targetChannels =
-                channelStateChangeData.channelType.length > 0
-                  ? channelStateChangeData.channelType
-                  : SELECTABLE_CHANNEL_TYPES;
-              // Filter — not some() — so channels whose agent manually changed
-              // state (e.g. Chat→Idle/Lunch) are excluded from the recovery PUT
-              // while channels still at disconnect-idle (e.g. Email) proceed.
-              const stillDisconnected = targetChannels.filter(
-                (ct) => this.channelStatesMap[ct]?.stateChangeReason === WSS_DISCONNECT_REASON
-              );
-              if (stillDisconnected.length === 0) {
-                throw Object.assign(
-                  new Error('Disconnect-idle recovery superseded by manual state change'),
-                  {
-                    details: {
-                      type: 'SDK_VALIDATION_ERROR',
-                      trackingId: '',
-                      data: {reason: 'disconnect_recovery_superseded'},
-                    },
-                  }
-                );
-              }
-              // Narrow the request to only channels still eligible.
-              channelStateChangeData.channelType = stillDisconnected;
-            }
-
-            return this.services.agent.stateChangeV2({data: channelStateChangeData});
-          });
-        this.v2StateChangeChain = thisRequest; // Link into serial chain
-        agentStatusResponse = await thisRequest;
+        agentStatusResponse = await this.services.agent.stateChangeV2({
+          data: channelStateChangeData,
+          agentSessionId: this.currentAgentSessionId,
+        });
       } else {
         // V1 agent-wide state change (default path). channelType is V2-only.
         const v1Data: StateChange = {
@@ -2139,17 +1837,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @param {string} event The raw websocket event message
    */
   private handleWebsocketMessage = (event: string) => {
-    let eventData: any;
-    try {
-      eventData = JSON.parse(event);
-    } catch (error) {
-      LoggerProxy.error(`Failed to parse WebSocket message: ${error}`, {
-        module: CC_FILE,
-        method: METHODS.HANDLE_WEBSOCKET_MESSAGE,
-      });
-
-      return;
-    }
+    const eventData = JSON.parse(event);
     // Re-emit all the events related to agent except keep-alives. Only event names present in
     // the typed CC_EVENTS allow-list are emitted; unknown/server-injected types are ignored.
     if (
@@ -2223,19 +1911,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         const {channelsMap, ...loginData} = eventData.data;
         this.updateWellnessSession(loginData.agentSessionId);
 
-        // V2 eligibility: pendingLoginV2 is authoritative when set; else fall back to live flag.
-        const earlyV2 =
-          this.pendingLoginV2 !== undefined
-            ? this.pendingLoginV2
-            : this.agentConfig?.manageChannelAvailability === true;
+        const isV2 = this.agentConfig?.manageChannelAvailability === true;
 
-        // Commit before emit so listeners see the correct mode.
-        if (this.pendingLoginV2 !== undefined && this.agentConfig) {
-          this.agentConfig.manageChannelAvailability = this.pendingLoginV2;
-          this.pendingLoginV2 = undefined;
-        }
-
-        if (earlyV2) {
+        if (isV2) {
           if (channelsMap) {
             this.loginChannelsMap = channelsMap;
             this.channelStatesMap = this.seedChannelStates(
@@ -2263,7 +1941,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             telephony: channelsMap.telephony?.length,
           },
           notifsTrackingId: eventData.trackingId,
-          ...(earlyV2
+          ...(isV2
             ? {
                 channelStates: {...this.channelStatesMap} as Record<
                   ChannelType,
@@ -3172,8 +2850,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /** V2 AgentChannelReloginSuccess handler: restores channel states + emits enriched reloginSuccess. @private */
   private handleChannelReloginSuccess(eventData: AgentChannelReloginSuccess): void {
     const data = eventData.data;
-    if (this.v2ReloadPromise && this.v2ReloadGeneration !== this.reloadGeneration) {
-      return; // Ignore a delayed reload result after a newer session lifecycle event
+    if (!this.v2ReloadPromise || this.v2ReloadGeneration !== this.reloadGeneration) {
+      return;
     }
     if (!this.currentAgentSessionId && this.initialReloadGeneration !== this.reloadGeneration) {
       return; // A sessionless relogin is valid only during its tracked initial reload
@@ -3212,7 +2890,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           this.channelStatesMap[ct as ChannelType] = detail as AgentChannelTypeStates;
         }
       } else {
-        // Same session — merge only; skip channels already live-updated.
+        for (const ct of Object.keys(this.channelStatesMap) as ChannelType[]) {
+          if (!(ct in data.agentChannelStateDetailMap) && !this.liveUpdatedChannels.has(ct)) {
+            delete this.channelStatesMap[ct];
+          }
+        }
+        // Same session — preserve channels already live-updated.
         for (const [ct, detail] of Object.entries(data.agentChannelStateDetailMap)) {
           if (!this.liveUpdatedChannels.has(ct as ChannelType)) {
             this.channelStatesMap[ct as ChannelType] = detail as AgentChannelTypeStates;
@@ -3225,9 +2908,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.loginChannelsMap = data.channelsMap;
     }
 
-    this.restoreV2AgentConfigFromChannels(data.agentId, data.agentSessionId, data.orgId);
     this.updateWellnessSession(data.agentSessionId);
     initialReloadEvents.forEach((bufferedEvent) => this.handleChannelStateChanged(bufferedEvent));
+    this.restoreV2AgentConfigFromChannels(data.agentId, data.agentSessionId, data.orgId);
     if (isInitialReload) this.initialReloadGeneration = undefined;
 
     // Set voice guard before emit so listeners can't bypass it.
@@ -3263,7 +2946,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       },
       notifsTrackingId: eventData.trackingId,
       channelStates: {...this.channelStatesMap} as Record<ChannelType, AgentChannelTypeStates>,
-      ...(this.wellbeingBreakIdleCode ? {wellbeingBreakIdleCode: this.wellbeingBreakIdleCode} : {}),
     };
     // @ts-ignore
     this.trigger(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, reloginPayload);
@@ -3351,56 +3033,28 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
 
     try {
-      // Share a pending reload across reconnect handlers. A fixed delay can
-      // expire before AqmReqs' request timeout, leaving the new generation
-      // without a reload while the older generation is already superseded.
-      const reLoginResponse = await this.reloadV2Once();
+      this.v2ReloadGeneration = myGeneration;
+      const reloadPromise = this.v2ReloadPromise ?? this.services.agent.reloadV2();
+      this.v2ReloadPromise = reloadPromise;
+      let reLoginResponse: Awaited<ReturnType<Services['agent']['reloadV2']>>;
+      try {
+        reLoginResponse = await reloadPromise;
+      } finally {
+        if (this.v2ReloadPromise === reloadPromise) {
+          this.v2ReloadPromise = undefined;
+          this.v2ReloadGeneration = undefined;
+        }
+      }
       if (this.reloadGeneration !== myGeneration) return;
-      this.updateWellnessSession(reLoginResponse.data.agentSessionId);
-
       const responseType = reLoginResponse.data?.type;
 
       if (responseType === CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS) {
         // ─── V2 path ─────────────────────────────────────────────
 
-        // Mismatch: server is V2 but flag is false → upgrade for this session.
-        if (this.agentConfig?.manageChannelAvailability !== true) {
-          LoggerProxy.warn(
-            'event=sessionModeMismatch | Server returned V2 session but manageChannelAvailability is false; upgrading to V2 for this session',
-            {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
-          );
-          if (this.agentConfig) {
-            this.agentConfig.manageChannelAvailability = true;
-          }
-        }
-
-        const {agentId, deviceType, dn, teamId, agentChannelStateDetailMap, channelsMap} =
+        const {agentId, deviceType, dn, teamId} =
           reLoginResponse.data as AgentChannelReloginSuccess['data'];
 
         this.agentConfig.currentTeamId = teamId;
-
-        // Gap-fill: seed only channels not already updated by live WS notifications.
-        if (agentChannelStateDetailMap) {
-          const snapshot = agentChannelStateDetailMap as Record<
-            ChannelType,
-            AgentChannelTypeStates
-          >;
-          for (const [ct, detail] of Object.entries(snapshot)) {
-            if (!this.channelStatesMap[ct as ChannelType]) {
-              this.channelStatesMap[ct as ChannelType] = detail;
-            }
-          }
-
-          // Defensive prune: drop channels absent from the restored session.
-          for (const ct of Object.keys(this.channelStatesMap) as ChannelType[]) {
-            if (!(ct in snapshot)) {
-              delete this.channelStatesMap[ct];
-            }
-          }
-        }
-        if (channelsMap) {
-          this.loginChannelsMap = channelsMap;
-        }
 
         // Fire-and-forget voice registration; telephony deferred separately.
         this.handleDeviceType(deviceType as LoginOption, dn).catch((error) => {
@@ -3492,19 +3146,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       } else {
         // ─── V1 path ─────────────────────────────────────────────
 
-        // Re-check: a new session may have been established between await
-        // points in the V2 path (which fell through) or during coalescing.
         if (this.reloadGeneration !== myGeneration) return;
-
-        // Mismatch: server is V1 but flag is true → downgrade for this session.
-        if (this.agentConfig?.manageChannelAvailability === true) {
-          LoggerProxy.warn(
-            'event=sessionModeMismatch | Server returned V1 session but manageChannelAvailability is true; downgrading to V1 for this session',
-            {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
-          );
-          this.agentConfig.manageChannelAvailability = false;
-          this.clearV2LocalState();
-        }
 
         const {
           agentId,
@@ -3715,8 +3357,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.loginChannelsMap = {}; // Drop channel capacity snapshot
     this.pendingBatches.forEach((batch) => clearTimeout(batch.timer));
     this.pendingBatches.clear(); // Discard unsent batched events
-    this.v2StateChangeChain = Promise.resolve(); // Reset serialization chain
-    this.v2ChainGeneration += 1; // Invalidate queued closures
     this.initialReloadGeneration = undefined;
     this.initialReloadChannelEvents.clear();
   }

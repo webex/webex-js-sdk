@@ -89,7 +89,6 @@ const EXPECTED_ROOT_EXPORTS = Object.freeze([
   'ReloginSuccess',
   'RespondToWellnessBreakParams',
   'ResumeRecordingPayload',
-  'SELECTABLE_CHANNEL_TYPES',
   'SetStateResponse',
   'SiteInfo',
   'StateChange',

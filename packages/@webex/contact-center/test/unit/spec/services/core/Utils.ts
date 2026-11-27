@@ -1085,15 +1085,4 @@ describe('Utils', () => {
       expect(Utils.sanitizeForObservability('x'.repeat(500))).toHaveLength(200);
     });
   });
-
-  describe('normalizeChannelType', () => {
-    it.each([
-      ['wraps a scalar string in an array', 'chat', ['chat']],
-      ['returns an array unchanged', ['telephony', 'chat'], ['telephony', 'chat']],
-      ['returns undefined when absent', undefined, undefined],
-      ['wraps an empty string in an array', '', ['']],
-    ])('%s', (_label, input, expected) => {
-      expect(Utils.normalizeChannelType(input as any)).toEqual(expected);
-    });
-  });
 });

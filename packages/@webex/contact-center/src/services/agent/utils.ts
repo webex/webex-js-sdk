@@ -1,5 +1,6 @@
-import {AgentChannelTypeStates, ChannelType} from './types';
-import {CC_AGENT_EVENTS, Entity} from '../config/types';
+import {AgentChannelTypeStates, ChannelType, SELECTABLE_CHANNEL_TYPES} from './types';
+import {CC_AGENT_EVENTS} from '../config/types';
+import {AGENT_STATE_AVAILABLE} from '../config/constants';
 
 // ─── V1 Bridge Types ─────────────────────────────────────────────────────────
 
@@ -105,12 +106,6 @@ export interface AgentReloginSuccessEvent {
   notifsTrackingId?: string;
   /** Full snapshot of ALL channel states after relogin (V2 sessions only). */
   channelStates?: Record<ChannelType, AgentChannelTypeStates>;
-  /**
-   * System WellbeingBreak idle code, included when the code was pre-loaded
-   * before the relogin emit.  Consumers can compare channel auxCodeIds against
-   * this to identify wellness-break channels without an independent fetch.
-   */
-  wellbeingBreakIdleCode?: Entity;
 }
 
 /**
@@ -138,21 +133,10 @@ export interface BridgeAttributionContext {
 // ─── V1 Bridge Functions ─────────────────────────────────────────────────────
 
 /**
- * Primary channel order for scalar field resolution in V1 bridging.
- * When projecting per-channel states to agent-wide V1 state,
- * scalar fields are taken from the first available channel in this order.
- *
- * `workItem` and `customMessaging` are intentionally excluded: they are
- * internal channel types that do not participate in the customer-facing
- * V1 agent-wide state projection or in the user-selectable channel set.
- */
-const PRIMARY_CHANNEL_ORDER: ChannelType[] = ['telephony', 'chat', 'email', 'social'];
-
-/**
  * Channel states that are bridgeable to V1 agent-wide state.
  * States like Engaged, EngagedOther, Reserved, WrapUp, LoggedOut are V2-only.
  */
-const BRIDGEABLE_STATES = new Set(['Available', 'Idle']);
+const BRIDGEABLE_STATES = new Set([AGENT_STATE_AVAILABLE, 'Idle']);
 
 /**
  * Determines whether a channel state should be bridged to V1 events.
@@ -164,7 +148,7 @@ export function shouldBridgeChannelState(agentState: string): boolean {
 /**
  * Collapses per-channel V2 states into one agent-wide V1 aggregate.
  * Any Available → Available; all Idle → Idle. Scalar fields come from
- * the first matching channel in PRIMARY_CHANNEL_ORDER.
+ * the first matching channel in SELECTABLE_CHANNEL_TYPES order.
  * Returns null when no channels have bridgeable states, or when only Idle
  * channels remain while other channels are in non-bridgeable states
  * (Engaged, Reserved, WrapUp) — a task transition must not make V1
@@ -177,7 +161,7 @@ export function projectAggregate(
   let hasIdle = false;
   let hasNonBridgeable = false;
 
-  for (const ct of PRIMARY_CHANNEL_ORDER) {
+  for (const ct of SELECTABLE_CHANNEL_TYPES) {
     const state = channelStates[ct];
     if (!state) {
       // eslint-disable-next-line no-continue
@@ -188,7 +172,7 @@ export function projectAggregate(
       // eslint-disable-next-line no-continue
       continue;
     }
-    if (state.agentState === 'Available') hasAvailable = true;
+    if (state.agentState === AGENT_STATE_AVAILABLE) hasAvailable = true;
     if (state.agentState === 'Idle') hasIdle = true;
   }
 
@@ -199,8 +183,8 @@ export function projectAggregate(
   // aggregate is not "all Idle" and must not be bridged.
   if (!hasAvailable && hasNonBridgeable) return null;
 
-  const subStatus: 'Available' | 'Idle' = hasAvailable ? 'Available' : 'Idle';
-  const primaryChannel = PRIMARY_CHANNEL_ORDER.find(
+  const subStatus: 'Available' | 'Idle' = hasAvailable ? AGENT_STATE_AVAILABLE : 'Idle';
+  const primaryChannel = SELECTABLE_CHANNEL_TYPES.find(
     (ct) => channelStates[ct]?.agentState === subStatus
   );
 
@@ -261,8 +245,8 @@ export interface V2EnrichmentContext {
  *
  * When the aggregate is bridgeable (Available/Idle), the V1 base fields come from the
  * projected aggregate. When the aggregate is NOT bridgeable (e.g. a channel is Engaged,
- * Reserved, or WrapUp during task handling), the V1 base fields are omitted and the
- * enrichment still carries the full per-channel detail so V2 clients can update.
+ * Reserved, or WrapUp during task handling), the scalar subStatus falls back to Idle.
+ * The enrichment still carries the actual per-channel state so V2 clients can update.
  *
  * Always returns a payload — never drops V2 channel state changes.
  */
@@ -289,10 +273,8 @@ export function buildAgentStateChangeEvent(
   }
 
   // Non-bridgeable aggregate (Engaged, Reserved, WrapUp) — the V1 projection
-  // cannot produce a valid Available/Idle, but V2 clients still need the
-  // per-channel update. Emit with V1 base fields set to 'Idle' (safe default
-  // for V1 clients that check subStatus) + full V2 enrichment. V2-aware clients
-  // should read channelDetail.agentState for the actual per-channel state.
+  // cannot produce a valid Available/Idle. Preserve the scalar Idle fallback;
+  // V2 clients read channelDetail.agentState for the actual per-channel state.
   const detail = enrichment.channelDetail;
 
   return {

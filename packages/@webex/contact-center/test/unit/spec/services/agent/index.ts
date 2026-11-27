@@ -86,7 +86,7 @@ describe('AQM routing agent', () => {
   });
 
   it('stateChangeV2', () => {
-    const data = {state: 'Available', auxCodeIdArray: '0', channelType: ['chat']} as any;
+    const data = {state: 'Available', auxCodeId: '0', channelType: ['chat']} as any;
     const req = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({data});
     expect(req.url).toBe('/v2/agents/session/state');
     expect(req.method).toBe('PUT');
@@ -106,10 +106,10 @@ describe('AQM routing agent', () => {
   });
 
   it('stateChangeV2 correlates notifications to the requested channels', () => {
-    const data = {state: 'Available', auxCodeId: '0', channelType: ['chat', 'voice']} as any;
+    const data = {state: 'Available', auxCodeId: '0', channelType: ['chat', 'telephony']} as any;
     const req = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({data});
-    expect(req.notifSuccess.bind.data.channelType).toEqual(['chat', 'voice']);
-    expect(req.notifFail.bind.data.channelType).toEqual(['chat', 'voice']);
+    expect(req.notifSuccess.bind.data.channelType).toEqual(['chat', 'telephony']);
+    expect(req.notifFail.bind.data.channelType).toEqual(['chat', 'telephony']);
   });
 
   it('stateChangeV2 success bind includes isClientInitiated and agentId for correlation', () => {
@@ -133,11 +133,16 @@ describe('AQM routing agent', () => {
     expect(req.notifSuccess.bind.data.agentId).toBeUndefined();
   });
 
-  it('stateChangeV2 success bind includes agentSessionId when provided', () => {
-    const data = {state: 'Available', auxCodeId: '0', channelType: ['chat'], agentId: 'agent-1', agentSessionId: 'sess-1'} as any;
-    const req = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({data});
+  it('stateChangeV2 correlates the session without sending it in the request body', () => {
+    const data = {state: 'Available', auxCodeId: '0', channelType: ['chat'], agentId: 'agent-1'} as any;
+    const req = (agent.stateChangeV2 as unknown as (p: {
+      data: object;
+      agentSessionId?: string;
+    }) => any)({data, agentSessionId: 'sess-1'});
 
     expect(req.notifSuccess.bind.data.agentSessionId).toBe('sess-1');
+    expect(req.data).toBe(data);
+    expect(req.data).not.toHaveProperty('agentSessionId');
   });
 
   it('stateChangeV2 omits agentSessionId from bind when not provided', () => {
@@ -249,7 +254,7 @@ describe('AQM routing agent', () => {
     // Scenario: Available cancels a queued Idle on an Engaged channel.
     // Server confirms with agentState='Engaged', pendingIdle=false.
     const availReq = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({
-      data: {state: 'Available', auxCodeId: '0', channelType: ['chat'], agentId: 'a1', agentSessionId: 's1'},
+      data: {state: 'Available', auxCodeId: '0', channelType: ['chat'], agentId: 'a1'},
     });
     const detail = availReq.notifSuccess.bind.data.agentChannelStateDetail;
     // Engaged is in the accepted agentState array

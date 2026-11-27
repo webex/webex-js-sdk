@@ -12,30 +12,21 @@ const {
 } = require('../../../../../../docs/samples/contact-center/wellness-utils');
 const {readFileSync} = require('fs');
 const {resolve} = require('path');
+const {EventEmitter} = require('events');
 
-function loadSampleRestoreWellnessState(dependencies) {
-  return loadSampleFunction(
-    'async function restoreWellnessState(options = {}) {',
-    '\nasync function recoverWellnessBreakIfNeeded()',
-    dependencies
-  );
-}
-
-function loadSampleFunction(startMarker, endMarker, dependencies) {
-  const appSource = readFileSync(
+function loadSampleFunction(name, nextFunction, dependencies) {
+  const source = readFileSync(
     resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
     'utf8'
   );
-  const start = appSource.indexOf(startMarker);
-  const end = appSource.indexOf(endMarker, start);
-  if (start < 0 || end < 0) throw new Error(`Could not locate ${startMarker} in sample app`);
-  const dependencyNames = Object.keys(dependencies);
-  const functionFactory = new Function(
-    ...dependencyNames,
-    `${appSource.slice(start, end)}\nreturn ${startMarker.split('(')[0].split(' ').pop()};`
-  );
+  const start = source.indexOf(name);
+  const end = source.indexOf(nextFunction, start);
+  if (start < 0 || end < 0) throw new Error(`Could not locate ${name} in sample app`);
 
-  return functionFactory(...Object.values(dependencies));
+  return new Function(
+    ...Object.keys(dependencies),
+    `${source.slice(start, end)}\nreturn ${name.split('(')[0].split(' ').pop()};`
+  )(...Object.values(dependencies));
 }
 
 describe('Contact Center wellness sample utilities', () => {
@@ -87,31 +78,19 @@ describe('Contact Center wellness sample utilities', () => {
       ['OnBreak', 'rona-code', 'ignore'],
       ['WaitingForSafeState', 'rona-code', 'cancel'],
       ['Ready', '0', 'ignore'],
-    ])('returns %s / %s as %s', (lifecycle, nextAuxCodeId, expected) => {
-      expect(
-        getLegacyExternalTransitionDecision({
-          lifecycle,
-          nextAuxCodeId,
-          wellnessAuxCodeId: 'wellness',
-          validIdleCodeIds: ['user-idle'],
-        })
-      ).toBe(expected);
-    });
-
-    it('returns complete for OnBreak with aggregate Available (auxCodeId 0)', () => {
-      // This is the scalar decision that the sample's handleWellnessLegacyStateChanged
-      // must guard against when V2 channelStates show some channels still on break.
-      // The utility itself correctly returns 'complete' — the caller must check
-      // per-channel states before invoking.
-      expect(
-        getLegacyExternalTransitionDecision({
-          lifecycle: 'OnBreak',
-          nextAuxCodeId: '0',
-          wellnessAuxCodeId: 'wellness',
-          validIdleCodeIds: ['user-idle'],
-        })
-      ).toBe('complete');
-    });
+    ])(
+      'returns %s / %s as %s',
+      (lifecycle, nextAuxCodeId, expected) => {
+        expect(
+          getLegacyExternalTransitionDecision({
+            lifecycle,
+            nextAuxCodeId,
+            wellnessAuxCodeId: 'wellness',
+            validIdleCodeIds: ['user-idle'],
+          })
+        ).toBe(expected);
+      }
+    );
   });
 
   describe('ordinary status selector', () => {
@@ -130,426 +109,23 @@ describe('Contact Center wellness sample utilities', () => {
     });
   });
 
-  describe('granular wellness channel confirmation', () => {
-    it.each([
-      [
-        'leaves every channel unconfirmed when no states are available',
-        {},
-        ['telephony', 'chat'],
-        ['telephony', 'chat'],
-      ],
-      [
-        'keeps an Available channel unconfirmed when entering Idle',
-        {telephony: {agentState: 'Idle', auxCodeId: 'wellness'}, chat: {agentState: 'Available'}},
-        ['telephony', 'chat'],
-        ['chat'],
-      ],
-      [
-        'requires the requested idle code on every channel',
-        {
-          telephony: {agentState: 'Idle', auxCodeId: 'wellness'},
-          chat: {agentState: 'Idle', auxCodeId: 'lunch'},
-        },
-        ['telephony', 'chat'],
-        ['chat'],
-      ],
-      [
-        'confirms the complete state when every targeted channel matches',
-        {
-          telephony: {agentState: 'Idle', auxCodeId: 'wellness'},
-          chat: {agentState: 'Idle', auxCodeId: 'wellness'},
-        },
-        ['telephony', 'chat'],
-        [],
-      ],
-      [
-        'requires Available restoration to use the Available auxiliary code',
-        {telephony: {agentState: 'Available', auxCodeId: 'wellness'}},
-        ['telephony'],
-        ['telephony'],
-        'Available',
-        '0',
-      ],
-    ])(
-      '%s',
-      (_label, channelStates, channelTypes, expected, state = 'Idle', auxCodeId = 'wellness') => {
-        expect(getUnconfirmedChannelTypes(channelStates, channelTypes, state, auxCodeId)).toEqual(
-          expected
-        );
-      }
-    );
-
-    it('waits for a matching state-change event from every target channel', async () => {
-      const listeners = {};
-      const webex = {
-        cc: {
-          on: jest.fn((event, listener) => {
-            listeners[event] = listener;
-          }),
-          off: jest.fn((event) => {
-            delete listeners[event];
-          }),
-          getChannelStates: jest.fn(),
-        },
-      };
-      const createConfirmation = loadSampleFunction(
-        'function createWellnessChannelConfirmation(',
-        '\nfunction captureWellnessBreakContext(',
-        {getUnconfirmedChannelTypes, WELLNESS_CHANNEL_CONFIRMATION_TIMEOUT_MS: 1000, webex}
-      );
-      const targets = ['telephony', 'chat', 'email'];
-      const channelStates = Object.fromEntries(
-        targets.map((channelType) => [channelType, {agentState: 'Available', auxCodeId: '0'}])
-      );
-      const confirmation = createConfirmation(targets, 'Available', '0');
-      const pending = confirmation.waitFor('rollback-request');
-      let settled = false;
-      pending.then(() => {
-        settled = true;
-      });
-
-      listeners['agent:stateChange']({
-        requestTrackingId: 'entry-request',
-        changedChannels: ['email'],
-        channelStates: {
-          ...channelStates,
-          email: {agentState: 'Idle', auxCodeId: 'wellness'},
-        },
-      });
-      await Promise.resolve();
-      expect(settled).toBe(false);
-
-      ['telephony', 'chat'].forEach((channelType) => {
-        listeners['agent:stateChange']({
-          requestTrackingId: 'rollback-request',
-          changedChannels: [channelType],
-          channelStates,
-        });
-      });
-      await Promise.resolve();
-      expect(settled).toBe(false);
-
-      listeners['agent:stateChange']({
-        requestTrackingId: 'rollback-request',
-        changedChannels: ['email'],
-        channelStates,
-      });
-      await expect(pending).resolves.toBeUndefined();
-      expect(webex.cc.off).toHaveBeenCalledTimes(2);
-    });
-
-    it('sends explicit restore targets and awaits their per-channel confirmation', async () => {
-      let resolveConfirmation;
-      const waitFor = jest.fn(
-        () =>
-          new Promise((resolve) => {
-            resolveConfirmation = resolve;
-          })
-      );
-      const confirmation = {waitFor, dispose: jest.fn()};
-      const setWellnessAgentState = jest
-        .fn()
-        .mockResolvedValue({data: {trackingId: 'rollback-request'}});
-      const createConfirmation = jest.fn(() => confirmation);
-      const performRestore = loadSampleFunction(
-        'async function performSingleWellnessRestore(',
-        '\nfunction scheduleLegacyRestoreRecovery(',
-        {setWellnessAgentState, createWellnessChannelConfirmation: createConfirmation}
-      );
-      const targets = ['telephony', 'chat', 'email'];
-      const restorePromise = performRestore(targets);
-      await new Promise((resolvePromise) => setImmediate(resolvePromise));
-
-      expect(setWellnessAgentState).toHaveBeenCalledWith('Available', {
-        reason: 'wellness-break-complete',
-        channelType: targets,
-      });
-      expect(createConfirmation).toHaveBeenCalledWith(targets, 'Available', '0');
-      expect(waitFor).toHaveBeenCalledWith('rollback-request');
-
-      resolveConfirmation();
-      await expect(restorePromise).resolves.toBeUndefined();
-      expect(confirmation.dispose).toHaveBeenCalledTimes(1);
-    });
-  });
-
   describe('sample public surface guard', () => {
-    it('passes every entry target to cleanup when granular wellness entry fails', async () => {
-      const targets = ['telephony', 'chat', 'email'];
-      const confirmation = {
-        waitFor: jest.fn().mockRejectedValue(new Error('Chat entry failed')),
-        dispose: jest.fn(),
-      };
-      const restoreWellnessState = jest.fn().mockResolvedValue(true);
-      const wellnessState = {operationGeneration: 0, idleCode: {id: 'wellness'}};
-      const enterWellnessBreak = loadSampleFunction(
-        'async function enterWellnessBreak(',
-        '\nasync function respondToWellnessOffer(',
-        {
-          clearWellnessOffer: jest.fn(),
-          cancelWellnessRestoreRetry: jest.fn(),
-          wellnessState,
-          captureWellnessBreakContext: jest.fn(),
-          isWellnessReady: () => true,
-          WELLNESS_COPY: {
-            acceptedNotEngaged: 'Accepted.',
-            acceptedEngaged: 'Accepted while engaged.',
-            startFailure: 'Start failed.',
-          },
-          setWellnessMessage: jest.fn(),
-          areAllTasksSafe: () => true,
-          getWellnessTaskList: jest.fn(),
-          renderWellnessState: jest.fn(),
-          isGranularAgentStateActive: true,
-          getSelectableChannelTypes: () => targets,
-          createWellnessChannelConfirmation: jest.fn(() => confirmation),
-          setWellnessAgentState: jest.fn().mockResolvedValue({data: {trackingId: 'entry-request'}}),
-          restoreWellnessState,
-          WELLNESS_BREAK_USER_ACTIONS: {ACCEPTED: 'ACCEPTED'},
-          webex: {cc: {apiAIAssistant: {respondToWellnessBreak: jest.fn()}}},
-          scheduleWellnessSafeStateCheck: jest.fn(),
+    it('attaches the wellness constants consumed by the standalone browser sample', () => {
+      const webexSource = readFileSync(
+        resolve(__dirname, '../../../src/webex.js'),
+        'utf8'
+      );
+      const appSource = readFileSync(
+        resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
+        'utf8'
+      );
+
+      ['WELLNESS_BREAK_NOTIFICATION_ACTIONS', 'WELLNESS_BREAK_USER_ACTIONS'].forEach(
+        (surface) => {
+          expect(webexSource).toContain(`Webex.${surface} = ${surface};`);
+          expect(appSource).toContain(surface);
         }
       );
-
-      await enterWellnessBreak(false);
-
-      expect(restoreWellnessState).toHaveBeenCalledWith({
-        forceAvailableChannels: true,
-        channelTypes: targets,
-        completionMessage: 'The failed wellness transition was cleaned up.',
-      });
-      expect(confirmation.dispose).toHaveBeenCalledTimes(1);
-    });
-
-    it('routes owned mixed-snapshot recovery through the retry lifecycle', () => {
-      const appSource = readFileSync(
-        resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
-        'utf8'
-      );
-
-      expect(appSource).toMatch(
-        /if \(marker && marker\.agentSessionId === event\.agentSessionId\) \{\s*\/\/ Use the normal restore lifecycle[\s\S]*?void restoreWellnessState\(/m
-      );
-    });
-
-    it('retries a failed owned mixed-snapshot restore and keeps the recovery marker until success', async () => {
-      const wellnessState = {
-        operationGeneration: 1,
-        agentSessionId: 'session-1',
-        lifecycle: 'Ready',
-        idleCode: {id: 'wellness'},
-        recoveryMarker: {agentSessionId: 'session-1'},
-      };
-      const channelStates = {
-        telephony: {agentState: 'Idle', auxCodeId: 'lunch'},
-        chat: {agentState: 'Idle', auxCodeId: 'wellness'},
-      };
-      const restoreCall = jest
-        .fn()
-        .mockRejectedValueOnce(new Error('Chat state change failed'))
-        .mockImplementationOnce(async () => {
-          channelStates.chat.auxCodeId = '0';
-        });
-      const clearOwnership = jest.fn(() => {
-        wellnessState.recoveryMarker = undefined;
-      });
-      const waitForRetry = jest.fn().mockImplementation(async () => {
-        expect(wellnessState.recoveryMarker).toEqual({agentSessionId: 'session-1'});
-        return true;
-      });
-      const restoreWellnessState = loadSampleRestoreWellnessState({
-        wellnessState,
-        WELLNESS_RESTORE_MAX_ATTEMPTS: 3,
-        WELLNESS_RESTORE_RETRY_MS: 10000,
-        WELLNESS_COPY: {restoreFailure: 'Restoration failed.'},
-        clearWellnessBreakTimer: jest.fn(),
-        clearWellnessSafeStateTimer: jest.fn(),
-        setWellnessMessage: jest.fn(),
-        renderWellnessState: jest.fn(),
-        performSingleWellnessRestore: restoreCall,
-        waitForWellnessRestoreRetry: waitForRetry,
-        clearWellnessLifecycleOwnership: clearOwnership,
-        scheduleLegacyRestoreRecovery: jest.fn(),
-        isWellnessReady: () => true,
-        webex: {cc: {getChannelStates: () => channelStates}},
-      });
-
-      await expect(restoreWellnessState()).resolves.toBe(true);
-
-      expect(restoreCall).toHaveBeenCalledTimes(2);
-      expect(waitForRetry).toHaveBeenCalledWith(10000, 1);
-      expect(clearOwnership).toHaveBeenCalledTimes(1);
-      expect(wellnessState.recoveryMarker).toBeUndefined();
-      expect(wellnessState.lifecycle).toBe('Ready');
-    });
-
-    it('retries when the SDK resolves before every wellness channel confirms restoration', async () => {
-      const wellnessState = {
-        operationGeneration: 1,
-        agentSessionId: 'session-1',
-        lifecycle: 'Ready',
-        idleCode: {id: 'wellness'},
-        recoveryMarker: {agentSessionId: 'session-1'},
-      };
-      const channelStates = {
-        telephony: {agentState: 'Idle', auxCodeId: 'lunch'},
-        chat: {agentState: 'Idle', auxCodeId: 'wellness'},
-      };
-      const restoreCall = jest
-        .fn()
-        .mockImplementationOnce(async () => {})
-        .mockImplementationOnce(async () => {
-          channelStates.chat.auxCodeId = '0';
-        });
-      const clearOwnership = jest.fn(() => {
-        wellnessState.recoveryMarker = undefined;
-      });
-      const waitForRetry = jest.fn().mockImplementation(async () => {
-        expect(wellnessState.recoveryMarker).toEqual({agentSessionId: 'session-1'});
-        return true;
-      });
-      const restoreWellnessState = loadSampleRestoreWellnessState({
-        wellnessState,
-        WELLNESS_RESTORE_MAX_ATTEMPTS: 3,
-        WELLNESS_RESTORE_RETRY_MS: 10000,
-        WELLNESS_COPY: {restoreFailure: 'Restoration failed.'},
-        clearWellnessBreakTimer: jest.fn(),
-        clearWellnessSafeStateTimer: jest.fn(),
-        setWellnessMessage: jest.fn(),
-        renderWellnessState: jest.fn(),
-        performSingleWellnessRestore: restoreCall,
-        waitForWellnessRestoreRetry: waitForRetry,
-        clearWellnessLifecycleOwnership: clearOwnership,
-        scheduleLegacyRestoreRecovery: jest.fn(),
-        isWellnessReady: () => true,
-        webex: {cc: {getChannelStates: () => channelStates}},
-      });
-
-      await expect(restoreWellnessState()).resolves.toBe(true);
-
-      expect(restoreCall).toHaveBeenCalledTimes(2);
-      expect(waitForRetry).toHaveBeenCalledWith(10000, 1);
-      expect(clearOwnership).toHaveBeenCalledTimes(1);
-      expect(wellnessState.recoveryMarker).toBeUndefined();
-    });
-
-    it('recognizes delayed all-channel confirmation before issuing a retry', async () => {
-      const wellnessState = {
-        operationGeneration: 1,
-        agentSessionId: 'session-1',
-        lifecycle: 'Ready',
-        idleCode: {id: 'wellness'},
-        recoveryMarker: {agentSessionId: 'session-1'},
-      };
-      const channelStates = {
-        telephony: {agentState: 'Idle', auxCodeId: 'lunch'},
-        chat: {agentState: 'Idle', auxCodeId: 'wellness'},
-      };
-      const performRestore = jest
-        .fn()
-        .mockRejectedValueOnce(new Error('Chat confirmation is delayed'));
-      const clearOwnership = jest.fn(() => {
-        wellnessState.recoveryMarker = undefined;
-      });
-      const restoreWellnessState = loadSampleRestoreWellnessState({
-        wellnessState,
-        WELLNESS_RESTORE_MAX_ATTEMPTS: 3,
-        WELLNESS_RESTORE_RETRY_MS: 10000,
-        WELLNESS_COPY: {restoreFailure: 'Restoration failed.'},
-        clearWellnessBreakTimer: jest.fn(),
-        clearWellnessSafeStateTimer: jest.fn(),
-        setWellnessMessage: jest.fn(),
-        renderWellnessState: jest.fn(),
-        performSingleWellnessRestore: performRestore,
-        waitForWellnessRestoreRetry: jest.fn().mockImplementation(async () => {
-          channelStates.chat.auxCodeId = '0';
-          return true;
-        }),
-        clearWellnessLifecycleOwnership: clearOwnership,
-        scheduleLegacyRestoreRecovery: jest.fn(),
-        isWellnessReady: () => true,
-        webex: {cc: {getChannelStates: () => channelStates}},
-      });
-
-      await expect(restoreWellnessState()).resolves.toBe(true);
-
-      expect(performRestore).toHaveBeenCalledTimes(1);
-      expect(clearOwnership).toHaveBeenCalledTimes(1);
-      expect(wellnessState.recoveryMarker).toBeUndefined();
-      expect(wellnessState.lifecycle).toBe('Ready');
-    });
-
-    it('retries failed-entry cleanup with every original channel target', async () => {
-      const targets = ['telephony', 'chat', 'email'];
-      const wellnessState = {
-        operationGeneration: 1,
-        agentSessionId: 'session-1',
-        lifecycle: 'ChangingToBreak',
-        idleCode: {id: 'wellness'},
-        recoveryMarker: {agentSessionId: 'session-1'},
-      };
-      const channelStates = {
-        telephony: {agentState: 'Idle', auxCodeId: 'wellness'},
-        chat: {agentState: 'Available', auxCodeId: '0'},
-        email: {agentState: 'Idle', auxCodeId: 'wellness'},
-      };
-      const restoreCall = jest
-        .fn()
-        .mockImplementationOnce(async (channelTypes) => {
-          expect(channelTypes).toEqual(targets);
-          channelStates.telephony = {agentState: 'Available', auxCodeId: '0'};
-          channelStates.chat = {agentState: 'Available', auxCodeId: '0'};
-        })
-        .mockImplementationOnce(async (channelTypes) => {
-          expect(channelTypes).toEqual(targets);
-          channelStates.email = {agentState: 'Available', auxCodeId: '0'};
-        });
-      const waitForRetry = jest.fn().mockImplementation(async () => {
-        expect(wellnessState.recoveryMarker).toEqual({agentSessionId: 'session-1'});
-        return true;
-      });
-      const clearOwnership = jest.fn(() => {
-        wellnessState.recoveryMarker = undefined;
-      });
-      const restoreWellnessState = loadSampleRestoreWellnessState({
-        wellnessState,
-        WELLNESS_RESTORE_MAX_ATTEMPTS: 3,
-        WELLNESS_RESTORE_RETRY_MS: 10000,
-        WELLNESS_COPY: {restoreFailure: 'Restoration failed.'},
-        clearWellnessBreakTimer: jest.fn(),
-        clearWellnessSafeStateTimer: jest.fn(),
-        setWellnessMessage: jest.fn(),
-        renderWellnessState: jest.fn(),
-        performSingleWellnessRestore: restoreCall,
-        waitForWellnessRestoreRetry: waitForRetry,
-        clearWellnessLifecycleOwnership: clearOwnership,
-        scheduleLegacyRestoreRecovery: jest.fn(),
-        isWellnessReady: () => true,
-        webex: {cc: {getChannelStates: () => channelStates}},
-      });
-
-      await expect(
-        restoreWellnessState({forceAvailableChannels: true, channelTypes: targets})
-      ).resolves.toBe(true);
-
-      expect(restoreCall).toHaveBeenCalledTimes(2);
-      expect(waitForRetry).toHaveBeenCalledWith(10000, 1);
-      expect(clearOwnership).toHaveBeenCalledTimes(1);
-      expect(wellnessState.recoveryMarker).toBeUndefined();
-      expect(wellnessState.lifecycle).toBe('Ready');
-    });
-
-    it('attaches the wellness constants consumed by the standalone browser sample', () => {
-      const webexSource = readFileSync(resolve(__dirname, '../../../src/webex.js'), 'utf8');
-      const appSource = readFileSync(
-        resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
-        'utf8'
-      );
-
-      ['WELLNESS_BREAK_NOTIFICATION_ACTIONS', 'WELLNESS_BREAK_USER_ACTIONS'].forEach((surface) => {
-        expect(webexSource).toContain(`Webex.${surface} = ${surface};`);
-        expect(appSource).toContain(surface);
-      });
     });
 
     it('keeps the intake v0.4 US English wellness copy in the sample surfaces', () => {
@@ -586,6 +162,7 @@ describe('Contact Center wellness sample utilities', () => {
         "We couldn't start your well-being break due to a system issue.",
       ].forEach((copy) => expect(sampleSource).toContain(copy));
     });
+
   });
 
   describe('lifecycle transitions', () => {
@@ -720,13 +297,336 @@ describe('Contact Center wellness sample utilities', () => {
       expect(parseRecoveryMarker(JSON.stringify({version: 2}))).toBeUndefined();
       expect(
         parseRecoveryMarker(
-          JSON.stringify({
-            version: 1,
-            agentSessionId: 'session-1',
-            stateModel: 'agent-state-control',
-          })
+          JSON.stringify({version: 1, agentSessionId: 'session-1', stateModel: 'agent-state-control'})
         )
       ).toBeUndefined();
     });
   });
+  describe('granular wellness state changes', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    function setup(channelStates, active = true) {
+      const cc = new EventEmitter();
+      cc.getChannelStates = () => channelStates;
+      cc.getAgentStateControl = () => ({active});
+      cc.setAgentState = jest.fn().mockResolvedValue({data: {trackingId: 'request'}});
+      const setState = loadSampleFunction(
+        'async function setWellnessAgentState(',
+        '\nfunction captureWellnessBreakContext(',
+        {
+          webex: {cc},
+          agentId: 'agent',
+          wellnessState: {idleCode: {id: 'wellness'}},
+          getSelectableChannelTypes: () => Object.keys(channelStates),
+          getUnconfirmedChannelTypes,
+          WELLNESS_CHANNEL_CONFIRMATION_TIMEOUT_MS: 1000,
+        }
+      );
+
+      return {cc, setState};
+    }
+
+    it.each([
+      [{}, ['chat']],
+      [{chat: {agentState: 'Available', auxCodeId: '0'}}, ['chat']],
+      [{chat: {agentState: 'Idle', auxCodeId: 'lunch'}}, ['chat']],
+      [{chat: {agentState: 'Idle', auxCodeId: 'wellness'}}, []],
+      [{chat: {agentState: 'Engaged', auxCodeId: 'wellness', pendingIdle: true}}, []],
+      [{chat: {agentState: 'Engaged', auxCodeId: 'lunch', pendingIdle: true}}, ['chat']],
+    ])('checks matching Idle or pending Idle in %j', (states, expected) => {
+      expect(getUnconfirmedChannelTypes(states, ['chat'], 'Idle', 'wellness')).toEqual(expected);
+    });
+
+    it.each(['Engaged', 'EngagedOther', 'WrapUp', 'Reserved', 'RONA'])(
+      'confirms Available when pending Idle is cancelled during %s',
+      (agentState) => {
+        expect(getUnconfirmedChannelTypes(
+          {chat: {agentState, auxCodeId: 'wellness', pendingIdle: false}},
+          ['chat'], 'Available', '0'
+        )).toEqual([]);
+        expect(getUnconfirmedChannelTypes(
+          {chat: {agentState, auxCodeId: 'wellness', pendingIdle: true}},
+          ['chat'], 'Available', '0'
+        )).toEqual(['chat']);
+      }
+    );
+
+    it('waits until every target matches the latest snapshot', async () => {
+      const states = {
+        telephony: {agentState: 'Idle', auxCodeId: 'wellness'},
+        chat: {agentState: 'Available', auxCodeId: '0'},
+      };
+      const {cc, setState} = setup(states);
+      const pending = setState('Idle');
+      const completed = jest.fn();
+      pending.then(completed);
+      await Promise.resolve();
+
+      states.telephony = {agentState: 'Available', auxCodeId: '0'};
+      cc.emit('agent:stateChange', {changedChannels: ['telephony'], requestTrackingId: 'request'});
+      states.chat = {agentState: 'Idle', auxCodeId: 'wellness'};
+      cc.emit('agent:stateChange', {changedChannels: ['chat'], requestTrackingId: 'request'});
+      await Promise.resolve();
+      expect(completed).not.toHaveBeenCalled();
+
+      states.telephony = {agentState: 'Idle', auxCodeId: 'wellness'};
+      cc.emit('agent:stateChange', {changedChannels: ['telephony'], requestTrackingId: 'request'});
+      await expect(pending).resolves.toEqual({data: {trackingId: 'request'}});
+      expect(cc.listenerCount('agent:stateChange')).toBe(0);
+      expect(cc.listenerCount('agent:stateChangeFailed')).toBe(0);
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
+    it('accepts channel notifications received before the SDK promise resolves', async () => {
+      const states = {chat: {agentState: 'Available', auxCodeId: '0'}};
+      const {cc, setState} = setup(states);
+      cc.setAgentState.mockImplementation(async () => {
+        states.chat = {agentState: 'Idle', auxCodeId: 'wellness'};
+        cc.emit('agent:stateChange', {changedChannels: ['chat'], requestTrackingId: 'request'});
+        return {data: {trackingId: 'request'}};
+      });
+
+      await expect(setState('Idle')).resolves.toEqual({data: {trackingId: 'request'}});
+      expect(cc.listenerCount('agent:stateChange')).toBe(0);
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
+    it('rejects a matching channel failure and removes its listeners', async () => {
+      const {cc, setState} = setup({chat: {agentState: 'Available', auxCodeId: '0'}});
+      const pending = setState('Idle');
+      await cc.setAgentState.mock.results[0].value;
+      await Promise.resolve();
+      cc.emit('agent:stateChangeFailed', {trackingId: 'other', channelType: 'chat'});
+      expect(cc.listenerCount('agent:stateChange')).toBe(1);
+      cc.emit('agent:stateChangeFailed', {
+        trackingId: 'request', channelType: 'chat', reason: 'unavailable',
+      });
+
+      await expect(pending).rejects.toThrow('chat state change failed: unavailable');
+      expect(cc.listenerCount('agent:stateChange')).toBe(0);
+      expect(cc.listenerCount('agent:stateChangeFailed')).toBe(0);
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
+    it('times out incomplete channel confirmation and removes its listeners', async () => {
+      const {cc, setState} = setup({chat: {agentState: 'Available', auxCodeId: '0'}});
+      const pending = setState('Idle');
+      await cc.setAgentState.mock.results[0].value;
+      await Promise.resolve();
+      const rejected = expect(pending).rejects.toThrow('Timed out waiting for every wellness channel');
+      jest.advanceTimersByTime(1000);
+      await rejected;
+      expect(cc.listenerCount('agent:stateChange')).toBe(0);
+      expect(cc.listenerCount('agent:stateChangeFailed')).toBe(0);
+    });
+
+    it('restores only wellness channels using the ordinary channelType API', async () => {
+      const states = {
+        telephony: {agentState: 'Idle', auxCodeId: 'lunch'},
+        chat: {agentState: 'Idle', auxCodeId: 'wellness'},
+      };
+      const {cc, setState} = setup(states);
+      cc.setAgentState.mockImplementation(async () => {
+        states.chat = {agentState: 'Available', auxCodeId: '0'};
+        cc.emit('agent:stateChange', {changedChannels: ['chat'], requestTrackingId: 'request'});
+        return {data: {trackingId: 'request'}};
+      });
+      await setState('Available');
+      expect(cc.setAgentState).toHaveBeenCalledWith({
+        state: 'Available', auxCodeId: '0', agentId: 'agent',
+        lastStateChangeReason: 'wellness-break-complete', channelType: ['chat'],
+      });
+    });
+
+    it('confirms rollback when pending Idle is cancelled during active work', async () => {
+      const states = {
+        telephony: {agentState: 'Engaged', auxCodeId: 'wellness', pendingIdle: true},
+        chat: {agentState: 'EngagedOther', auxCodeId: '0', pendingIdle: false},
+      };
+      const {cc, setState} = setup(states);
+      cc.setAgentState.mockImplementation(async () => {
+        states.telephony.pendingIdle = false;
+        cc.emit('agent:stateChange', {
+          changedChannels: ['telephony', 'chat'], requestTrackingId: 'request',
+        });
+        return {data: {trackingId: 'request'}};
+      });
+      await setState('Available', {channelType: ['telephony', 'chat']});
+      expect(cc.setAgentState.mock.calls[0][0].channelType).toEqual(['telephony', 'chat']);
+    });
+
+    it('waits for rollback confirmations from targets that were already Available', async () => {
+      const states = {
+        telephony: {agentState: 'Idle', auxCodeId: 'wellness'},
+        chat: {agentState: 'Available', auxCodeId: '0'},
+        email: {agentState: 'Available', auxCodeId: '0'},
+      };
+      const {cc, setState} = setup(states);
+      cc.setAgentState.mockImplementation(async () => {
+        states.telephony = {agentState: 'Available', auxCodeId: '0'};
+        cc.emit('agent:stateChange', {changedChannels: ['telephony'], requestTrackingId: 'request'});
+        return {data: {trackingId: 'request'}};
+      });
+      const pending = setState('Available', {channelType: ['telephony', 'chat', 'email']});
+      const completed = jest.fn();
+      pending.then(completed);
+      await cc.setAgentState.mock.results[0].value;
+      await Promise.resolve();
+      expect(completed).not.toHaveBeenCalled();
+      expect(cc.listenerCount('agent:stateChange')).toBe(1);
+
+      states.email = {agentState: 'Idle', auxCodeId: 'wellness'};
+      cc.emit('agent:stateChange', {changedChannels: ['email'], requestTrackingId: 'old-entry'});
+      cc.emit('agent:stateChange', {changedChannels: ['chat'], requestTrackingId: 'request'});
+      await Promise.resolve();
+      expect(completed).not.toHaveBeenCalled();
+
+      states.email = {agentState: 'Available', auxCodeId: '0'};
+      cc.emit('agent:stateChange', {changedChannels: ['email'], requestTrackingId: 'request'});
+      await expect(pending).resolves.toEqual({data: {trackingId: 'request'}});
+      expect(cc.listenerCount('agent:stateChange')).toBe(0);
+      expect(cc.listenerCount('agent:stateChangeFailed')).toBe(0);
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
+    it('removes the early state listener when the SDK request rejects', async () => {
+      const {cc, setState} = setup({chat: {agentState: 'Available', auxCodeId: '0'}});
+      cc.setAgentState.mockRejectedValue(new Error('HTTP request failed'));
+      await expect(setState('Idle')).rejects.toThrow('HTTP request failed');
+      expect(cc.listenerCount('agent:stateChange')).toBe(0);
+      expect(cc.listenerCount('agent:stateChangeFailed')).toBe(0);
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
+    it('preserves V1 request behavior without waiting for channel state', async () => {
+      const {cc, setState} = setup({}, false);
+      await expect(setState('Available')).resolves.toEqual({data: {trackingId: 'request'}});
+      expect(cc.setAgentState).toHaveBeenCalledWith({
+        state: 'Available', auxCodeId: '0', agentId: 'agent',
+        lastStateChangeReason: 'wellness-break-complete',
+      });
+      expect(jest.getTimerCount()).toBe(0);
+    });
+  });
+
+  describe('granular wellness recovery', () => {
+    it('passes every original entry target to failed-entry cleanup', async () => {
+      const targets = ['telephony', 'chat', 'email'];
+      const cleanup = jest.fn().mockResolvedValue(true);
+      const enter = loadSampleFunction(
+        'async function enterWellnessBreak(', '\nasync function respondToWellnessOffer(',
+        {
+          clearWellnessOffer: jest.fn(), cancelWellnessRestoreRetry: jest.fn(),
+          wellnessState: {operationGeneration: 0, idleCode: {id: 'wellness'}},
+          captureWellnessBreakContext: jest.fn(), isWellnessReady: () => true,
+          WELLNESS_COPY: {acceptedNotEngaged: 'Accepted.', startFailure: 'Failed.'},
+          setWellnessMessage: jest.fn(), areAllTasksSafe: () => true,
+          getWellnessTaskList: jest.fn(), renderWellnessState: jest.fn(),
+          getSelectableChannelTypes: () => targets,
+          setWellnessAgentState: jest.fn().mockRejectedValue(new Error('Chat failed')),
+          restoreWellnessState: cleanup,
+          webex: {cc: {getAgentStateControl: () => ({active: true})}},
+        }
+      );
+      await enter(false);
+      expect(cleanup).toHaveBeenCalledWith({
+        channelTypes: targets,
+        completionMessage: 'The failed wellness transition was cleaned up.',
+      });
+    });
+
+    function setupRestore(restoreCall) {
+      const wellnessState = {
+        operationGeneration: 1, agentSessionId: 'session', lifecycle: 'Ready',
+        idleCode: {id: 'wellness'}, recoveryMarker: {agentSessionId: 'session'},
+      };
+      const clearOwnership = jest.fn(() => { wellnessState.recoveryMarker = undefined; });
+      const waitForRetry = jest.fn().mockResolvedValue(true);
+      const scheduleRecovery = jest.fn();
+      const restore = loadSampleFunction(
+        'async function restoreWellnessState(', '\nasync function recoverWellnessBreakIfNeeded()',
+        {
+          wellnessState,
+          WELLNESS_RESTORE_MAX_ATTEMPTS: 3,
+          WELLNESS_RESTORE_RETRY_MS: 10000,
+          WELLNESS_COPY: {restoreFailure: 'Failed.'},
+          clearWellnessBreakTimer: jest.fn(), clearWellnessSafeStateTimer: jest.fn(),
+          setWellnessMessage: jest.fn(), renderWellnessState: jest.fn(),
+          performSingleWellnessRestore: restoreCall,
+          waitForWellnessRestoreRetry: waitForRetry,
+          clearWellnessLifecycleOwnership: clearOwnership,
+          scheduleLegacyRestoreRecovery: scheduleRecovery,
+          isWellnessReady: () => true,
+        }
+      );
+
+      return {restore, wellnessState, clearOwnership, waitForRetry, scheduleRecovery};
+    }
+
+    it('keeps V1 bounded retries when its channel snapshot is empty', async () => {
+      const restoreCall = jest.fn().mockRejectedValue(new Error('backend failure'));
+      const {restore, clearOwnership, scheduleRecovery} = setupRestore(restoreCall);
+      await expect(restore()).resolves.toBe(false);
+      expect(restoreCall).toHaveBeenCalledTimes(3);
+      expect(clearOwnership).not.toHaveBeenCalled();
+      expect(scheduleRecovery).toHaveBeenCalledWith(1);
+    });
+
+    it('retains original rollback targets and ownership after partial success', async () => {
+      const states = {
+        telephony: {agentState: 'Idle', auxCodeId: 'wellness'},
+        chat: {agentState: 'Idle', auxCodeId: 'wellness'},
+      };
+      const restoreCall = jest.fn()
+        .mockImplementationOnce(async () => {
+          states.telephony = {agentState: 'Available', auxCodeId: '0'};
+          throw new Error('Chat restoration failed');
+        })
+        .mockImplementationOnce(async () => { states.chat = {agentState: 'Available', auxCodeId: '0'}; });
+      const {restore, clearOwnership, waitForRetry} = setupRestore(restoreCall);
+      await expect(restore({channelTypes: ['telephony', 'chat']}))
+        .resolves.toBe(true);
+      expect(restoreCall.mock.calls).toEqual([[['telephony', 'chat']], [['telephony', 'chat']]]);
+      expect(waitForRetry).toHaveBeenCalledWith(10000, 1);
+      expect(clearOwnership).toHaveBeenCalledTimes(1);
+    });
+
+    it('rechecks the latest mixed-channel snapshot after the wellness code loads', async () => {
+      const wellnessState = {
+        enabled: true, agentSessionId: 'session', lifecycle: 'Ready',
+        legacyStateKnown: false, recoveryMarker: {agentSessionId: 'session'},
+      };
+      const recover = jest.fn();
+      const states = {
+        telephony: {agentState: 'Idle', auxCodeId: 'lunch'},
+        chat: {agentState: 'Idle', auxCodeId: 'wellness'},
+      };
+      const initialize = loadSampleFunction(
+        'async function initializeWellnessProfile(', '\nfunction startWellnessOfferTimer(',
+        {
+          wellnessState, WELLNESS_OWNED_LIFECYCLES: new Set(),
+          setWellnessMessage: jest.fn(), renderWellnessState: jest.fn(),
+          getSelectableIdleCodes, wellnessCodeStatusElm: {},
+          GRANULAR_CHANNEL_ORDER: ['telephony', 'chat', 'email', 'social'],
+          recoverWellnessBreakIfNeeded: recover,
+          webex: {cc: {
+            getWellbeingBreakIdleCode: jest.fn()
+              .mockRejectedValueOnce(new Error('lookup failed'))
+              .mockResolvedValueOnce({id: 'wellness'}),
+            getChannelStates: () => states,
+          }},
+        }
+      );
+      const profile = {isWellnessBreakEnabled: true, idleCodes: []};
+      await initialize(profile);
+      expect(wellnessState.legacyStateKnown).toBe(false);
+      await initialize(profile);
+      expect(wellnessState.legacyStateKnown).toBe(true);
+      expect(wellnessState.legacyAuxCodeId).toBe('wellness');
+      expect(wellnessState.recoveryMarker).toEqual({agentSessionId: 'session'});
+      expect(recover).toHaveBeenCalledTimes(2);
+    });
+  });
+
 });

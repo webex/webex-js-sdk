@@ -117,10 +117,15 @@
         state === 'Idle' &&
         channelState?.pendingIdle === true &&
         channelState.auxCodeId === auxCodeId;
+      const pendingIdleCancelled =
+        state === 'Available' &&
+        channelState?.pendingIdle === false &&
+        ['Engaged', 'EngagedOther', 'WrapUp', 'Reserved', 'RONA'].includes(channelState.agentState);
       return (
         !channelState ||
-        (channelState.agentState !== state && !idleRequestConfirmed) ||
-        ((state === 'Idle' || auxCodeId !== undefined) && channelState.auxCodeId !== auxCodeId)
+        (channelState.agentState !== state && !idleRequestConfirmed && !pendingIdleCancelled) ||
+        (state === 'Idle' && channelState.auxCodeId !== auxCodeId) ||
+        (state === 'Available' && channelState.pendingIdle === true)
       );
     });
   }
