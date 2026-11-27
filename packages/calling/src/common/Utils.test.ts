@@ -63,6 +63,7 @@ import {
   getDescVoicemailListJsonWXC,
 } from '../Voicemail/voicemailFixture';
 import {
+  DEVICES,
   IDENTITY_ENDPOINT_RESOURCE,
   INFER_ID_CONSTANT,
   SCIM_ENDPOINT_RESOURCE,
@@ -1944,6 +1945,16 @@ describe('Get endpoint by CALLING_BACKEND tests', () => {
   it('verify invalid calling backend wxc for vg endpoint', async () => {
     expect(await getVgActionEndpoint(webex, CALLING_BACKEND.WXC)).toBeInstanceOf(Error);
   });
+
+  it('uses services.get for the ucm vg endpoint when _serviceUrls is absent (services v2)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Remove the shared v1 fixture's required _serviceUrls field to model services v2.
+    const v2Webex: any = getTestUtilsWebex();
+    delete v2Webex.internal.services._serviceUrls;
+    v2Webex.internal.services.get = jest.fn().mockReturnValue('https://ucmgmt.example.com');
+
+    expect(getVgActionEndpoint(v2Webex, CALLING_BACKEND.UCM)).toBe('https://ucmgmt.example.com');
+    expect(v2Webex.internal.services.get).toHaveBeenCalledWith('ucmgmt-gateway');
+  });
 });
 
 describe('Get XSI Action Endpoint tests', () => {
@@ -2088,6 +2099,26 @@ describe('Get XSI Action Endpoint tests', () => {
     const xsiEndpoint = await getXsiActionEndpoint(mockWebex, loggerContext, CALLING_BACKEND.BWRKS);
 
     expect(mockWebex.request).toHaveBeenCalledTimes(1);
+    expect(xsiEndpoint).toBe('https://fake-broadworks-url.com');
+  });
+
+  it('should use services.get("wdm") for BWRKS backend when _serviceUrls is absent (services v2)', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Remove the shared v1 fixture's required _serviceUrls field to model services v2.
+    const v2Webex: any = getTestUtilsWebex();
+    delete v2Webex.internal.services._serviceUrls;
+    v2Webex.internal.services.get = jest.fn().mockReturnValue('https://wdm-v2.example.com');
+    v2Webex.request.mockResolvedValue({
+      body: {
+        devices: [{settings: {broadworksXsiActionsUrl: 'https://fake-broadworks-url.com'}}],
+      },
+    });
+
+    const xsiEndpoint = await getXsiActionEndpoint(v2Webex, loggerContext, CALLING_BACKEND.BWRKS);
+
+    expect(v2Webex.internal.services.get).toHaveBeenCalledWith('wdm');
+    expect(v2Webex.request).toHaveBeenCalledWith(
+      expect.objectContaining({uri: `https://wdm-v2.example.com/${DEVICES}`})
+    );
     expect(xsiEndpoint).toBe('https://fake-broadworks-url.com');
   });
 });

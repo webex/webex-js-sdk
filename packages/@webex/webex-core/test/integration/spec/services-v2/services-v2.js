@@ -11,7 +11,6 @@ import WebexCore, {
   ServiceDetail,
   serviceConstants,
   registerInternalPlugin,
-  Services,
   ServiceInterceptor,
   ServerErrorInterceptor,
   ServicesV2,
@@ -26,6 +25,7 @@ import {
   serviceHostmapV2,
 } from '../../../fixtures/host-catalog-v2';
 import {createActivationEmail} from '../../../fixtures/activation-email';
+import describeServicesContract from '../../../fixtures/services-contract';
 
 // /* eslint-disable no-underscore-dangle */
 describe('webex-core', () => {
@@ -86,19 +86,7 @@ describe('webex-core', () => {
       );
     });
 
-    afterEach(() => {
-      registerInternalPlugin('services', Services, {
-        interceptors: {
-          ServiceInterceptor: ServiceInterceptor.create,
-          ServerErrorInterceptor: ServerErrorInterceptor.create,
-        },
-        replace: true,
-      });
-      services = webex.internal.services;
-      servicesEU = webexEU.internal.services;
-      catalog = services._getCatalog();
-      catalogEU = servicesEU._getCatalog();
-    });
+    describeServicesContract(() => services);
 
     describe('#_getCatalog()', () => {
       it('returns a catalog', () => {

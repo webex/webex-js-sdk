@@ -45,7 +45,9 @@ describe('WebexNode', () => {
             expect(webex.config.fedramp).toBe(false);
         });
 
-        it('sets correct services when fedramp is true', () => {
+        it('preserves the merged U2C seed when fedramp is true', () => {
+            const u2c = WebexNode.init().config.services.discovery.u2c;
+
             webex = WebexNode.init({
                 config: {
                     fedramp: true,
@@ -59,7 +61,19 @@ describe('WebexNode', () => {
             expect(webex.config.fedramp).toBe(true);
             expect(webex.config.services).toHaveProperty('discovery');
             expect(webex.config.services.discovery.hydra).toBe(fedramp.hydra);
-            expect(webex.config.services.discovery.u2c).toBe(fedramp.u2c);
+            expect(webex.config.services.discovery.u2c).toBe(u2c);
+            expect(webex.internal.services.get('u2c', 'discovery')).toBe(u2c);
+        });
+
+        it.each([
+            fedramp.u2c,
+            'https://u2c.svc.webexgov.us/u2c/api/v1',
+        ])('preserves the configured FedRAMP U2C URL %s', (u2c) => {
+            webex = WebexNode.init({config: {fedramp: true, services: {discovery: {u2c}}}});
+
+            expect(webex.config.services.discovery.hydra).toBe(fedramp.hydra);
+            expect(webex.config.services.discovery.u2c).toBe(u2c);
+            expect(webex.internal.services.get('u2c', 'discovery')).toBe(u2c);
         });
     });
 });

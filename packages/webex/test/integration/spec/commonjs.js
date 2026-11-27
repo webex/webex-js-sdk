@@ -4,12 +4,14 @@
 
 import {assert} from '@webex/test-helper-chai';
 
+import withoutClientMetrics from '../lib/without-client-metrics';
+
 describe('webex', () => {
   describe('commonjs', () => {
     it('loads correctly when required in the commonjs style', () => {
       // eslint-disable-next-line global-require
       const Webex = require('webex');
-      const webex = new Webex();
+      const webex = withoutClientMetrics(new Webex());
 
       assert.property(webex, 'canAuthorize');
       assert.property(webex, 'credentials');

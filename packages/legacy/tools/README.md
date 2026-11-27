@@ -41,6 +41,8 @@ This package was intended to be used with [@webex/jest-config-legacy](https://gi
 
 This package is expected to be used as a CLI or Module within a consuming package.
 
+The Mocha runner transforms workspace JavaScript and TypeScript using `@babel/register` with `only: ['../../**/*.js', '../../**/*.ts']`. Supplying `only` disables the installed register version's default `node_modules` filtering. When invoked from `packages/webex`, this broad pattern also matches hoisted dependencies in the repository's root `node_modules`. The legacy Babel config enables `@babel/plugin-transform-runtime` with `corejs: 2`; transforming `@babel/runtime-corejs2` and its nested `core-js` dependencies can inject runtime imports back into that dependency chain during module loading. The resulting circular initialization fails with `TypeError: $export is not a function` in `core-js/library/modules/_object-sap.js`. The runner therefore explicitly ignores **all** `node_modules` directories, including hoisted ones. This prevents dependency transformation; it does not imply that Babel compiles its own compiler. The standalone Mocha runtime smoke test reproduces the failure when the exclusion is removed and passes with it. The `test:integration` command runs the Jasmine suite followed by a standalone subprocess smoke check from the top-level `webex` workspace. The smoke check runs outside NYC: changing Babel transforms between the parent and child processes produces incompatible coverage maps for the same tooling files. `test:coverage` retains the full instrumented Jasmine suite and the existing per-file thresholds.
+
 ### General Consumption
 
 In order to consume this package, it is recommended that the following files exist within the consuming package:

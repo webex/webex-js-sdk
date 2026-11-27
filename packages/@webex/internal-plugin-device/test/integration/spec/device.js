@@ -286,7 +286,7 @@ describe('plugin-device', () => {
           it('should resolve the promise with the websocket url', () =>
             device.getWebSocketUrl(wait).then((url) => {
               assert.isDefined(url);
-              assert.isTrue(services.isServiceUrl(url));
+              assert.isDefined(services.getServiceFromUrl(url));
               assert.include(url, 'mercury');
             }));
         });
@@ -295,7 +295,7 @@ describe('plugin-device', () => {
           describe('when the device successfully registers', () => {
             it('should resolve the promise with the websocket url', () =>
               Promise.all([device.getWebSocketUrl(wait), device.register()]).then(([url]) => {
-                assert.isTrue(services.isServiceUrl(url));
+                assert.isDefined(services.getServiceFromUrl(url));
                 assert.include(services.getServiceFromUrl(url).name, 'mercury');
               }));
           });
@@ -319,15 +319,20 @@ describe('plugin-device', () => {
             it('should resolve the promise with the websocket url', () =>
               device.getWebSocketUrl(wait).then((url) => {
                 assert.isDefined(url);
-                assert.isTrue(services.isServiceUrl(url));
+                assert.isDefined(services.getServiceFromUrl(url));
                 assert.include(url, 'mercury');
               }));
           });
 
           describe('when the priority host cannot be mapped', () => {
             beforeEach('stub priority host url converting', () => {
-              services.convertUrlToPriorityHostUrl = sinon.stub();
-              services.convertUrlToPriorityHostUrl.returns(undefined);
+              sinon.stub(services, 'convertUrlToPriorityHostUrl').returns(undefined);
+            });
+
+            // Services v2 also uses this for every request (replaceHostFromHostmap), so restore
+            // it before the outer afterEach unregisters the device.
+            afterEach('restore priority host url converting', () => {
+              services.convertUrlToPriorityHostUrl.restore();
             });
 
             it('should return a rejected promise', () =>
