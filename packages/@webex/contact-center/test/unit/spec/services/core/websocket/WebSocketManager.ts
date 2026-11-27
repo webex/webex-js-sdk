@@ -166,8 +166,10 @@ describe('WebSocketManager subscription and connection', () => {
   it.each([
     {integration: false, orgId: 'org'},
     {integration: true, orgId: undefined},
+    {integration: undefined, orgId: 'org'},
   ])('omits the org header for integration=$integration org=$orgId', async ({integration, orgId}) => {
-    (webex.internal.services.isIntegrationEnvironment as jest.Mock).mockReturnValue(integration);
+    if (integration === undefined) Reflect.deleteProperty(webex, 'internal');
+    else (webex.internal.services.isIntegrationEnvironment as jest.Mock).mockReturnValue(integration);
     (webex.credentials.getOrgId as jest.Mock).mockReturnValue(orgId);
     await admit();
     expect(request).toHaveBeenCalledWith({

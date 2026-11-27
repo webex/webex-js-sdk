@@ -670,14 +670,14 @@
         "publication": "internal",
         "source_kind": "repository-path",
         "source": "src/services/core/aqm-reqs.ts",
-        "summary": "AqmReqs request/notification correlation, WebexRequest HTTP calls, WebSocketManager and ConnectionService socket lifecycle, and the shared error and utility helpers. Specified in src/services/core/docs/README.md. Owns AQM event matching and timeout, WebSocket subscription/connect and cleanup, Welcome deadlines, and ordinary reconnect timing. ContactCenter owns regional recovery policy."
+        "summary": "AqmReqs request/notification correlation, WebexRequest HTTP calls, WebSocketManager socket lifecycle, ConnectionService ordinary and regional recovery, and shared error and utility helpers. Specified in src/services/core/docs/README.md. ConnectionService owns regional pacing, primary subscription mismatch/U2C recovery, station retry policy, snapshots, and diagnostics; ContactCenter applies profile/device and task/RTD effects."
       },
       "contact-center-metrics": {
         "kind": "event",
         "publication": "internal",
         "source_kind": "repository-path",
         "source": "src/metrics/constants.ts",
-        "summary": "METRIC_EVENT_NAMES and the MetricsManager behavioral, operational, and business event submission API. Specified in src/metrics/docs/README.md. Adds REGION_RECOVERY_SUCCESS ('Region Recovery Success') and REGION_RECOVERY_FAILED ('Region Recovery Failed') with generation-owned elapsedMs; the region pair never uses shared timers or duration_ms."
+        "summary": "METRIC_EVENT_NAMES and the MetricsManager behavioral, operational, and business event submission API. Specified in src/metrics/docs/README.md. Adds REGION_RECOVERY_SUCCESS ('Region Recovery Success') and REGION_RECOVERY_FAILED ('Region Recovery Failed') with elapsedMs measured for each attempt; the region pair never uses shared timers or duration_ms."
       },
       "contact-center-page-cache": {
         "kind": "sdk",

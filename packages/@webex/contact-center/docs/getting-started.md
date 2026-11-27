@@ -197,7 +197,7 @@ Authentication failures use `authentication-failed`. An unrelated `409` keeps it
 behavior.
 
 The [Contact Center sample](../../../../docs/samples/contact-center/app.js) displays recovery in a
-loading dialog and enables its existing Register button when recovery stops.
+loading dialog and enables its existing Register button after `unavailable`.
 
 ## Recovery accessibility guidance
 

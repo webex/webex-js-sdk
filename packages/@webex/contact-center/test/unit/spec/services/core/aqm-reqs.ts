@@ -61,7 +61,9 @@ describe('AqmReqs', () => {
 
     global.Worker = jest.fn(() => mockWorker) as any;
 
-    webSocketManagerInstance = new WebSocketManager() as jest.Mocked<WebSocketManager>;
+    webSocketManagerInstance = new WebSocketManager({
+      webex: {} as any,
+    }) as jest.Mocked<WebSocketManager>;
 
     // Mock the on method to handle event listeners
     const eventListeners: { [key: string]: Function[] } = {};

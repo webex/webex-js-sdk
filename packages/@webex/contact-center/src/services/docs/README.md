@@ -211,7 +211,7 @@ Use [`constants.ts`](../constants.ts) as the canonical source for service-level 
 | SERVICES-R-014 | `WxAppTelephonyMercurySync.subscribe(agentId, onMuteChange)` replaces any earlier subscription, listens to `event:telephony_calls.muted` and `event:telephony_calls.unmuted`, base64-decodes `actorId` and `callId`, and calls back only when all fields are present and the decoded actor id ends with the agent id; without Mercury it tracks a failure metric and does not subscribe. | Mute state changed in Webex App must be mirrored to the Contact Center task for Agent Desktop parity, without reacting to another user's calls. | `src/services/WxAppTelephonyMercurySync.ts` | `test/unit/spec/services/WxAppTelephonyMercurySync.ts` | None. | PRESENT |
 | SERVICES-R-015 | `UserPreference.getUserPreference(params?)` defaults the user id to the agent id from the agent configuration; create requires `data.userId`, update (PUT) and delete require a `userId`, and each method throws an `Error` before any request when the id is missing. | User preferences are per-user records; a request without a user id would target the wrong resource. | `src/services/UserPreference.ts`, `src/cc.ts` | `test/unit/spec/services/UserPreference.ts` | None. | PRESENT |
 | SERVICES-R-016 | `AddressBook.getEntries(params?)` uses `params.addressBookId` or the agent profile address book, sorts by `name,ASC` by default, and throws `AddressBook: addressBookId is not available for the current agent.` before any request when neither exists. | The code validates the address book id early to avoid bad requests, and agents normally browse their own address book. | `src/services/AddressBook.ts`, `src/cc.ts` | `test/unit/spec/services/AddressBook.ts` | None. | PRESENT |
-| SERVICES-R-017 | Regional RTD interruption settles pending RTD requests for the current subscription. | Station and RTD recovery use their own transport lifecycles. | `src/services/ApiAiAssistant.ts`, `src/cc.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/ApiAiAssistant.ts` | The façade owns the region policy. | PRESENT |
+| SERVICES-R-017 | Regional RTD interruption settles pending RTD requests for the current subscription. | Station and RTD recovery use their own transport lifecycles. | `src/services/ApiAiAssistant.ts`, `src/cc.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/ApiAiAssistant.ts` | ContactCenter applies RTD effects for ConnectionService's recovery policy. | PRESENT |
 
 ## Design overview
 
@@ -243,7 +243,11 @@ Understanding the instantiation order is essential — getting it wrong causes r
 
 Each WebSocketManager uses its existing subscribe-and-connect path for primary or RTD transport.
 The subscription has a 20-second HTTP timeout and adds the organization header required in INT.
-ContactCenter owns regional mismatch handling and U2C refresh.
+After composing the READY graph, ContactCenter calls `connectionService.configureRecovery` with
+the host, agent service, metrics, and four hooks: `getSession`, `onConnectionChange`, `applySession`,
+and `makeAvailable`. ConnectionService owns regional timing, primary mismatch/U2C recovery,
+station retries, auto-Available, snapshots, and diagnostics. ContactCenter retains profile/device
+updates, task/RTD effects, and forwarding `regionStateChange` as the public recovery event.
 
 AQM factory shape (`routingAgent`, `routingContact`, `aqmDialer`): agent and task operations use a
 factory pattern where each method is defined as a `routing.req()` call. Each entry returns a
@@ -336,10 +340,11 @@ sequenceDiagram
   participant TM as TaskManager
   Host-->>CC: READY
   CC->>CC: initialize WebexRequest
-  CC->>S: getInstance(webex)
+  CC->>S: getInstance(webex, connectionConfig)
   S->>S: primary WS + RTD WS + AqmReqs + config/agent/contact/dialer + ConnectionService
   CC->>CC: create calling + wxApp services + AI assistant + metrics
   CC->>TM: getTaskManager(AI, contact, calling, primary WS, RTD WS)
+  CC->>S: connectionService.configureRecovery(dependencies and session hooks)
   CC->>CC: create data services + UserPreference
 ```
 

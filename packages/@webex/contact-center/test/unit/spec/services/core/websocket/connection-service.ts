@@ -212,12 +212,14 @@ describe('ConnectionService', () => {
     expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
   });
 
-  it('closes a pending reconnect after fifty seconds', async () => {
+  it.each([50000, 30000])('closes a pending reconnect after the %s ms watchdog', async (timeout) => {
+    service.setConnectionProp({lostConnectionRecoveryTimeout: timeout});
+    reset();
     const pending = createDeferred<any>();
     manager.initWebSocket.mockReturnValueOnce(pending.promise);
     lose();
     await tick(5000);
-    await tick(45000);
+    await tick(timeout - 5000);
     expect(manager.close).toHaveBeenCalledWith(false, 'Restore watchdog expired');
     expect(events).toHaveBeenLastCalledWith({...lost, isRestoreFailed: true});
     pending.resolve({});

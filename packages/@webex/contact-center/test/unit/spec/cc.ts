@@ -59,6 +59,7 @@ import MetricsManager from '../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../src/metrics/constants';
 import Mercury from '@webex/internal-plugin-mercury';
 import WebexRequest from '../../../src/services/core/WebexRequest';
+import {ConnectionService as MockConnectionService} from '../../../src/services/core/websocket/connection-service';
 import {
   createDeferred,
   flushEventLoopTurn,
@@ -106,12 +107,7 @@ jest.mock('../../../src/services', () => ({
         close: jest.fn(),
         isSocketClosed: false,
       },
-      connectionService: {
-        on: jest.fn(),
-        off: jest.fn(),
-        reset: jest.fn(),
-        stop: jest.fn(),
-      },
+      connectionService: new MockConnectionService({} as any),
       contact: {},
       dialer: {
         startOutdial: jest.fn(),
@@ -476,12 +472,7 @@ describe('webex.cc', () => {
         close: jest.fn(),
         isSocketClosed: false,
       },
-      connectionService: {
-        on: jest.fn(),
-        off: jest.fn(),
-        reset: jest.fn(),
-        stop: jest.fn(),
-      },
+      connectionService: new MockConnectionService({} as any),
       contact: mockContact,
 
       dialer: {
@@ -694,7 +685,7 @@ describe('webex.cc', () => {
       const configSpy = jest
         .spyOn(webex.cc.services.config, 'getAgentConfig')
         .mockResolvedValue(mockAgentProfile);
-      mockWebSocketManager.initWebSocket.mockResolvedValue({
+      webex.cc.services.connectionService.connect.mockResolvedValue({
         agentId: 'agent123',
       });
 
@@ -716,15 +707,10 @@ describe('webex.cc', () => {
       expect(mercuryConnect).toHaveBeenCalled();
       expect(connectWebsocketSpy).toHaveBeenCalled();
       expect(setupEventListenersSpy).toHaveBeenCalled();
-      expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        body: {
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: false,
-        },
-        resource: SUBSCRIBE_API,
-      });
+      expect(webex.cc.services.connectionService.connect).toHaveBeenCalledWith(
+        false,
+        expect.any(AbortSignal)
+      );
 
       // SPARK-626777 tracks moving listener cleanup into the future de-register API.
       expect(mockTaskManager.on).toHaveBeenCalledWith(
@@ -800,22 +786,17 @@ describe('webex.cc', () => {
         .spyOn(webex.cc.services.config, 'getAgentConfig')
         .mockResolvedValue(mockAgentProfile);
 
-      mockWebSocketManager.initWebSocket.mockResolvedValue({
+      webex.cc.services.connectionService.connect.mockResolvedValue({
         agentId: 'agent123',
       });
 
       const result = await webex.cc.register();
 
       expect(connectWebsocketSpy).toHaveBeenCalled();
-      expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        body: {
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: true,
-        },
-        resource: SUBSCRIBE_API,
-      });
+      expect(webex.cc.services.connectionService.connect).toHaveBeenCalledWith(
+        false,
+        expect.any(AbortSignal)
+      );
       expect(configSpy).toHaveBeenCalled();
       expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
         module: CC_FILE,
@@ -832,7 +813,7 @@ describe('webex.cc', () => {
     it('should log error and reject if registration fails', async () => {
       jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
       const mockError = new Error('Error while performing register');
-      mockWebSocketManager.initWebSocket.mockRejectedValue(mockError);
+      webex.cc.services.connectionService.connect.mockRejectedValue(mockError);
 
       await expect(webex.cc.register()).rejects.toThrow('Error while performing register');
 
@@ -863,7 +844,7 @@ describe('webex.cc', () => {
         webRtcEnabled: false,
         aiFeature: undefined,
       } as Profile);
-      mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
+      webex.cc.services.connectionService.connect.mockResolvedValue({agentId: 'agent123'});
       jest.spyOn(webex.cc as any, 'silentRelogin').mockImplementation(async () => {
         webex.cc['updateWellnessSession']('partial-session');
         throw mockError;
@@ -891,7 +872,7 @@ describe('webex.cc', () => {
       const configSpy = jest
         .spyOn(webex.cc.services.config, 'getAgentConfig')
         .mockResolvedValue(mockAgentProfile);
-      mockWebSocketManager.initWebSocket.mockResolvedValue({
+      webex.cc.services.connectionService.connect.mockResolvedValue({
         agentId: 'agent123',
       });
 
@@ -906,15 +887,10 @@ describe('webex.cc', () => {
       );
       expect(connectWebsocketSpy).toHaveBeenCalled();
       expect(setupEventListenersSpy).toHaveBeenCalled();
-      expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        body: {
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: false,
-        },
-        resource: SUBSCRIBE_API,
-      });
+      expect(webex.cc.services.connectionService.connect).toHaveBeenCalledWith(
+        false,
+        expect.any(AbortSignal)
+      );
 
       expect(mockTaskManager.on).toHaveBeenCalledWith(
         TASK_EVENTS.TASK_INCOMING,
@@ -950,7 +926,7 @@ describe('webex.cc', () => {
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
       const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
       jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(mockAgentProfile);
-      mockWebSocketManager.initWebSocket.mockResolvedValue({
+      webex.cc.services.connectionService.connect.mockResolvedValue({
         agentId: 'agent123',
       });
 
@@ -986,7 +962,7 @@ describe('webex.cc', () => {
       const configSpy = jest
         .spyOn(webex.cc.services.config, 'getAgentConfig')
         .mockResolvedValue(mockAgentProfile);
-      mockWebSocketManager.initWebSocket.mockResolvedValue({
+      webex.cc.services.connectionService.connect.mockResolvedValue({
         agentId: 'agent123',
       });
 
@@ -994,15 +970,10 @@ describe('webex.cc', () => {
 
       expect(connectWebsocketSpy).toHaveBeenCalled();
       expect(setupEventListenersSpy).toHaveBeenCalled();
-      expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        body: {
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: false,
-        },
-        resource: SUBSCRIBE_API,
-      });
+      expect(webex.cc.services.connectionService.connect).toHaveBeenCalledWith(
+        false,
+        expect.any(AbortSignal)
+      );
 
       expect(configSpy).toHaveBeenCalled();
       expect(mercurySpy).not.toHaveBeenCalled();
@@ -1026,7 +997,7 @@ describe('webex.cc', () => {
         },
       });
       jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(mockAgentProfile);
-      mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
+      webex.cc.services.connectionService.connect.mockResolvedValue({agentId: 'agent123'});
 
       await webex.cc.register();
 
@@ -1061,7 +1032,7 @@ describe('webex.cc', () => {
         },
       });
       jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(mockAgentProfile);
-      mockWebSocketManager.initWebSocket.mockResolvedValue({
+      webex.cc.services.connectionService.connect.mockResolvedValue({
         agentId: 'agent123',
       });
 
@@ -1084,7 +1055,7 @@ describe('webex.cc', () => {
           dn: '12345',
         },
       });
-      mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
+      webex.cc.services.connectionService.connect.mockResolvedValue({agentId: 'agent123'});
 
       for (const generatedSummaries of [
         {wrapUpSummariesEnabled: true, consultTransferSummariesEnabled: false},
@@ -1138,7 +1109,7 @@ describe('webex.cc', () => {
         const configSpy = jest
           .spyOn(webex.cc.services.config, 'getAgentConfig')
           .mockResolvedValue(configuredProfile);
-        mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: welcomeAgentId});
+        webex.cc.services.connectionService.connect.mockResolvedValue({agentId: welcomeAgentId});
 
         await expect(webex.cc.register()).resolves.toEqual(expectedProfile);
 
@@ -1179,19 +1150,14 @@ describe('webex.cc', () => {
         const configSpy = jest
           .spyOn(webex.cc.services.config, 'getAgentConfig')
           .mockResolvedValue(configuredProfile);
-        mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: welcomeAgentId});
+        webex.cc.services.connectionService.connect.mockResolvedValue({agentId: welcomeAgentId});
 
         const result = await webex.cc.register();
 
-        expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-          body: {
-            force: true,
-            isKeepAliveEnabled: false,
-            clientType: 'WebexCCSDK',
-            allowMultiLogin: false,
-          },
-          resource: SUBSCRIBE_API,
-        });
+        expect(webex.cc.services.connectionService.connect).toHaveBeenCalledWith(
+          false,
+          expect.any(AbortSignal)
+        );
         expect(configSpy).toHaveBeenCalledWith('mockOrgId', welcomeAgentId);
         expect(setupEventListenersSpy).toHaveBeenCalled();
         expect(mockTaskManager.on).toHaveBeenCalledWith(
@@ -1247,7 +1213,7 @@ describe('webex.cc', () => {
         .default as typeof TaskManager;
       const webSocketManager = new EventEmitterDouble();
       const rtdWebSocketManager = new EventEmitterDouble();
-      const connectionService = new EventEmitterDouble();
+      const connectionService = new MockConnectionService({} as any);
       const webCallingService = new EventEmitterDouble();
       const transportDeferreds: Deferred<void>[] = [];
       const pendingRequests = new Map<string, any>();
@@ -1598,7 +1564,7 @@ describe('webex.cc', () => {
       } as any;
 
       webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
-      harness.webSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent-1'});
+      jest.spyOn(harness.connectionService, 'connect').mockResolvedValue({agentId: 'agent-1'});
       jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(profile);
 
       await webex.cc.register();
@@ -6339,7 +6305,6 @@ describe('regional recovery wiring', () => {
 
   type RoutingOptions = {
     autoRegister?: boolean;
-    integrationEnvironment?: boolean;
     initialSubscribeFailure?: SubscribeFailure;
     resolveSubscribeFailure?: boolean;
     multiRegionEnabled?: boolean | null;
@@ -6352,7 +6317,6 @@ describe('regional recovery wiring', () => {
     test: (context: any) => Promise<void>,
     {
       autoRegister = true,
-      integrationEnvironment = true,
       initialSubscribeFailure,
       resolveSubscribeFailure = false,
       multiRegionEnabled = true,
@@ -6366,7 +6330,6 @@ describe('regional recovery wiring', () => {
       socket: global.WebSocket,
       worker: global.Worker,
       create: URL.createObjectURL,
-      revoke: URL.revokeObjectURL,
       crypto: Object.getOwnPropertyDescriptor(global, 'crypto'),
     };
     let cc;
@@ -6392,9 +6355,8 @@ describe('regional recovery wiring', () => {
         configurable: true,
       });
       global.WebSocket = NativeSocket as any;
-      global.Worker = jest.fn(() => ({postMessage: jest.fn(), terminate: jest.fn()})) as any;
+      global.Worker = jest.fn(() => ({postMessage: jest.fn()})) as any;
       URL.createObjectURL = jest.fn(() => 'blob:controlled-worker');
-      URL.revokeObjectURL = jest.fn();
 
       const webex = MockWebex({
         children: {cc: graph.ContactCenter},
@@ -6417,7 +6379,7 @@ describe('regional recovery wiring', () => {
         submitBusinessEvent: jest.fn(),
       };
       webex.internal.services = {
-        isIntegrationEnvironment: () => integrationEnvironment,
+        isIntegrationEnvironment: () => true,
         waitForCatalog: jest.fn().mockResolvedValue(undefined),
         get: jest.fn(),
       };
@@ -6578,7 +6540,6 @@ describe('regional recovery wiring', () => {
       global.WebSocket = original.socket;
       global.Worker = original.worker;
       URL.createObjectURL = original.create;
-      URL.revokeObjectURL = original.revoke;
       if (original.crypto) Object.defineProperty(global, 'crypto', original.crypto);
       else Reflect.deleteProperty(global, 'crypto');
       jest.restoreAllMocks();
@@ -6586,46 +6547,6 @@ describe('regional recovery wiring', () => {
       jest.useRealTimers();
     }
   };
-
-  it.each([
-    {environment: 'INT', integrationEnvironment: true, orgId: 'org'},
-    {environment: 'production', integrationEnvironment: false, orgId: 'org'},
-    {environment: 'INT without an org ID', integrationEnvironment: true, orgId: undefined},
-  ])(
-    'uses the expected subscription headers in $environment',
-    async ({integrationEnvironment, orgId}) => {
-      await withRouting(async ({cc, requests, currentRouting}) => {
-        cc.$webex.credentials.getOrgId = () => orgId;
-        const body = {
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: false,
-        };
-
-        const registered = cc.services.webSocketManager.initWebSocket({
-          body,
-          resource: SUBSCRIBE_API,
-        });
-        await flush();
-        currentRouting().welcome();
-        await expect(registered).resolves.toEqual({agentId: 'agent'});
-
-        expect(requests).toEqual([
-          {
-            service: WCC_API_GATEWAY,
-            resource: SUBSCRIBE_API,
-            method: 'POST',
-            body,
-            headers: integrationEnvironment && orgId ? {'X-ORGANIZATION-ID': orgId} : undefined,
-            timeout: 20000,
-          },
-        ]);
-        expect(cc.services.webSocketManager.getUrl())
-          .toBe('wss://routing.produs1.cisco.com/?signature=private');
-      }, {autoRegister: false, integrationEnvironment});
-    }
-  );
 
   it.each([
     {title: 'an extension station after page refresh', browserVoice: false},
@@ -6789,8 +6710,39 @@ describe('regional recovery wiring', () => {
     });
   });
 
-  it.each(['succeeded', 'failed', 'cancelled', 'socket-closed'])(
-    'retains the browser line while automatic Available is %s',
+  it('resumes ordinary reconnect after regional station recovery completes', async () => {
+    await withRouting(async ({cc, requests, currentRouting, connectBackup, login}) => {
+      await login();
+      const state = jest.fn();
+      cc.on('region:stateChange', state);
+      const backup = await connectBackup();
+      backup.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS));
+      await flush();
+      expect(state).toHaveBeenLastCalledWith(expect.objectContaining({status: 'ready'}));
+      expect(state.mock.calls.at(-1)[0]).not.toHaveProperty('retryAfterMs');
+      const start = requests.length;
+
+      backup.lose();
+      jest.advanceTimersByTime(5000);
+      await flush();
+      const reconnected = currentRouting();
+      expect(reconnected).not.toBe(backup);
+      reconnected.welcome();
+      await flush();
+      reconnected.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS));
+      await flush();
+
+      expect(requests.slice(start).map(({resource}) => resource)).toEqual([
+        SUBSCRIBE_API,
+        '/v1/agents/reload',
+      ]);
+      expect(state).toHaveBeenLastCalledWith(expect.objectContaining({status: 'ready'}));
+      expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
+    });
+  });
+
+  it.each(['succeeded', 'failed', 'cancelled', 'socket-closed', 'logout-in-flight'])(
+    'handles automatic Available outcome %s after browser-station recovery',
     async (outcome) => {
       await withRouting(
         async ({cc, requests, connectBackup, login}) => {
@@ -6839,6 +6791,31 @@ describe('regional recovery wiring', () => {
           await flush();
           expect(stateRequests()).toHaveLength(1);
           expect(stateRequests()[0].body).toMatchObject({state: manual ? 'Idle' : 'Available'});
+          if (outcome === 'logout-in-flight') {
+            expect(state).toHaveBeenLastCalledWith(
+              expect.objectContaining({status: 'ready', autoAvailable: 'requesting'})
+            );
+            const logout = cc.stationLogout({logoutReason: 'User requested'});
+            await flush();
+            backup.message({
+              ...agentFrame(CC_EVENTS.AGENT_LOGOUT_SUCCESS),
+              type: CC_EVENTS.AGENT_LOGOUT,
+            });
+            await logout;
+            await flush();
+            backup.message({
+              ...agentFrame(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS),
+              type: CC_EVENTS.AGENT_STATE_CHANGE,
+            });
+            await flush();
+            expect(state).toHaveBeenLastCalledWith(
+              expect.objectContaining({autoAvailable: 'cancelled'})
+            );
+            expect(stateRequests()).toHaveLength(1);
+            expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
+
+            return;
+          }
           backup.message({
             ...agentFrame(
               outcome === 'failed'
@@ -7393,6 +7370,7 @@ describe('regional recovery wiring', () => {
       failure: subscribeConflict('REGION_MISMATCH_NO_OVERRIDE'),
     },
     {title: 'rejects expired credentials', failure: {statusCode: 401}},
+    {title: 'retries a transient subscribe failure', failure: {statusCode: 503}},
     {title: 'ends when deregistered while waiting', deregister: true},
   ])('registration uses ordinary reconnect and $title', async ({failure, deregister}) => {
     await withRouting(
@@ -7408,7 +7386,8 @@ describe('regional recovery wiring', () => {
         });
         cc.$config.allowAutomatedRelogin = true;
         const registration = cc.register();
-        registration.catch(() => undefined);
+        const onRegistrationSettled = jest.fn();
+        registration.then(onRegistrationSettled, onRegistrationSettled);
         await flush();
         currentRouting().welcome();
         await flush();
@@ -7431,6 +7410,13 @@ describe('regional recovery wiring', () => {
         setSubscribeFailure(failure);
         jest.advanceTimersByTime(5000);
         await flush();
+        if (failure?.statusCode === 503) {
+          expect(onRegistrationSettled).not.toHaveBeenCalled();
+          expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(2);
+          setSubscribeFailure();
+          jest.advanceTimersByTime(5000);
+          await flush();
+        }
         const authFailure = failure?.statusCode === 401;
         if (!authFailure) {
           currentRouting().welcome();
@@ -7444,7 +7430,7 @@ describe('regional recovery wiring', () => {
         }
         expect(updateServices).toHaveBeenCalledTimes(failure?.statusCode === 409 ? 1 : 0);
         expect(requests.filter(({resource}) => resource === SUBSCRIBE_API))
-          .toHaveLength(failure?.statusCode === 409 ? 3 : 2);
+          .toHaveLength([409, 503].includes(failure?.statusCode) ? 3 : 2);
       },
       {autoRegister: false}
     );
