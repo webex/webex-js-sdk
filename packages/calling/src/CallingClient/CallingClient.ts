@@ -473,7 +473,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
       const clientRegionInfo = response.body as ClientRegionInfo;
 
-      regionInfo.clientRegion = clientRegionInfo?.clientRegion || '';
+      /* Region discovery can report the region as regionCode instead of clientRegion, so
+       * fall back to it and let the rest of discovery treat it as the client region.
+       */
+      regionInfo.clientRegion =
+        clientRegionInfo?.clientRegion || clientRegionInfo?.regionCode || '';
 
       regionInfo.countryCode = clientRegionInfo?.countryCode || '';
 
@@ -492,7 +496,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         this.mobiusHost,
         clientRegionInfo.clientRegion,
         clientRegionInfo.countryCode,
-        response?.headers?.trackingid ?? ''
+        response?.headers?.trackingid ?? '',
+        clientRegionInfo.regionCode
       );
     } catch (err: unknown) {
       log.error(`Failed to get client region info: ${JSON.stringify(err)}`, {
