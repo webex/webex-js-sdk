@@ -29,12 +29,11 @@ root, not the package directory.
 
 ## Install
 
-Switch to Node 22.14 first (`nvm use 22.14`, as the repository root `AGENTS.md` instructs), then
-run every command below from the root of the cloned repository:
+Use Node 22.14 (as the repository root `AGENTS.md` instructs), then
+run every command below from the root of the repository:
 
 ```bash
-git clone https://github.com/webex/webex-js-sdk.git
-yarn install
+yarn
 ```
 
 ## Build

@@ -14,7 +14,7 @@ export type E2eeLocusInfo = Pick<LocusDTO, 'url' | 'info'>;
 
 /** Per-meeting context supplied by Meetings without exposing its Meeting class to E2EE. */
 export interface E2eeMeetingContext {
-  correlationId: string;
+  getCorrelationId(): string;
   getLocusInfo(): E2eeLocusInfo | undefined;
   getLlmChannel(): LLMChannel | undefined;
   members: Members;
@@ -54,6 +54,7 @@ export type E2eeControllerEvent = keyof E2eeControllerEventMap;
 /** The meeting's overall E2EE trust state, surfaced to the app for its UI indicator. */
 export const TrustState = {
   Calculating: 'calculating',
+  Failed: 'failed',
   Strong: 'strong',
   ZeroTrust: 'zeroTrust',
   AdaptiveStrong: 'adaptiveStrong',
@@ -139,7 +140,7 @@ export interface E2eeIdentityResult {
 
 /** A member of the MLS roster and its overall libe2ee credential validation result. */
 export interface E2eeRosterMember {
-  url: string;
+  deviceUrl: string;
   displayName: string;
   deviceType: string;
   validationResult: E2eeValidationResult;
@@ -155,6 +156,15 @@ export interface E2eeDeviceVerification {
   deviceType?: string;
   identityResults?: E2eeIdentityResult[];
 }
+
+/** E2EE verification state of a single device, derived from its X.509 identity result. */
+export const E2eeDeviceVerificationState = {
+  Unknown: 'unknown',
+  Verified: 'verified',
+  Unverified: 'unverified',
+} as const;
+
+export type E2eeDeviceVerificationState = Enum<typeof E2eeDeviceVerificationState>;
 
 /** A member's aggregate E2EE verification state across all of their devices. */
 export const E2eeMemberVerificationState = {

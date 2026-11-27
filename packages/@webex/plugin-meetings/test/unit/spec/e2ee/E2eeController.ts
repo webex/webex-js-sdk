@@ -8,12 +8,13 @@ import E2eeController from '@webex/plugin-meetings/src/e2ee/E2eeController';
 import MLS from '@webex/plugin-meetings/src/e2ee/mls';
 import * as MLSModule from '@webex/plugin-meetings/src/e2ee/mls';
 import E2eeSignaling from '@webex/plugin-meetings/src/e2ee/E2eeSignaling';
+import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
 import * as MemberMLSReconcilerModule from '@webex/plugin-meetings/src/e2ee/MemberMLSReconciler';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
 import Metrics from '@webex/plugin-meetings/src/metrics';
-import {E2eeValidationResult} from '@webex/plugin-meetings/src/e2ee/types';
+import {E2eeState, E2eeValidationResult} from '@webex/plugin-meetings/src/e2ee/types';
 
 describe('plugin-meetings', () => {
   describe('E2eeController', () => {
@@ -34,6 +35,7 @@ describe('plugin-meetings', () => {
     let offStub;
     let joinStub;
     let leaveStub;
+    let cleanUpStub;
     let signalingStartStub;
     let signalingStopStub;
     let sendBehavioralMetricStub;
@@ -47,15 +49,15 @@ describe('plugin-meetings', () => {
 
     const emitSession = (event, payload?) => sessionHandlers[event]?.(payload);
 
-    const makeRosterEntry = ({url, deviceType = 'WEB'}) => ({
-      url,
+    const makeRosterEntry = ({deviceUrl, deviceType = 'WEB'}) => ({
+      deviceUrl,
       deviceType,
       displayName: '',
       validationResult: E2eeValidationResult.Success,
     });
 
     const MEDIA_SERVICE = makeRosterEntry({
-      url: 'https://ms.webex.com/1',
+      deviceUrl: 'https://ms.webex.com/1',
       deviceType: 'MEDIA_SERVICE',
     });
 
@@ -69,6 +71,7 @@ describe('plugin-meetings', () => {
     const assertSessionTornDown = () => {
       assert.calledOnce(signalingStopStub);
       assert.calledOnce(leaveStub);
+      assert.calledOnce(cleanUpStub);
       assert.deepEqual(sessionHandlers, {});
     };
 
@@ -87,9 +90,10 @@ describe('plugin-meetings', () => {
       sessionHandlers = {};
       reconciler = sinon.createStubInstance(MemberMLSReconcilerModule.default);
       reconcilerCtorStub = sinon.stub(MemberMLSReconcilerModule, 'default').returns(reconciler);
-      initializeStub = sinon.stub(MLS.prototype, 'initialize').resolves();
+      initializeStub = sinon.stub(MLS.prototype, 'initialize');
       joinStub = sinon.stub(MLS.prototype, 'join');
       leaveStub = sinon.stub(MLS.prototype, 'leave');
+      cleanUpStub = sinon.stub(MLS.prototype, 'cleanUp');
       rosterStub = sinon.stub(MLS.prototype, 'getRoster').returns([]);
       onStub = sinon.stub(MLS.prototype, 'on').callsFake((event, handler) => {
         sessionHandlers[event] = handler;
@@ -134,7 +138,7 @@ describe('plugin-meetings', () => {
       createController = () =>
         new E2eeController({
           context: {
-            correlationId: meeting.correlationId,
+            getCorrelationId: () => meeting.correlationId,
             getLocusInfo: () => meeting.locusInfo,
             getLlmChannel,
             members: meeting.members,
@@ -205,8 +209,8 @@ describe('plugin-meetings', () => {
     describe('start', () => {
       [
         {
-          when: 'E2EE is disabled in config',
-          setup: () => (webex.config.meetings.enableE2ee = false),
+          when: 'WebAssembly is unsupported or disabled',
+          setup: () => sinon.stub(MeetingsUtil, 'isE2eeEnabledAndSupported').returns(false),
         },
         {
           when: 'the meeting is not V2 E2E encrypted',
@@ -223,7 +227,7 @@ describe('plugin-meetings', () => {
 
           await e2ee.start();
 
-          assert.equal(e2ee.state, 'disabled');
+          assert.equal(e2ee.state, E2eeState.Disabled);
           assert.notCalled(identityProvider.getCredentials);
           assert.notCalled(initializeStub);
           assert.notCalled(events.state);
@@ -246,8 +250,8 @@ describe('plugin-meetings', () => {
           trustAnchors: TRUST_ANCHORS,
         });
         sinon.assert.callOrder(initializeStub, signalingStartStub, joinStub);
-        assert.deepEqual(events.state.args, [[{state: 'initializing'}], [{state: 'joining'}]]);
-        assert.equal(e2ee.state, 'joining');
+        assert.deepEqual(events.state.args, [[{state: E2eeState.Initializing}], [{state: E2eeState.Joining}]]);
+        assert.equal(e2ee.state, E2eeState.Joining);
       });
 
       it('uses an empty display name when the self member is unknown', async () => {
@@ -258,20 +262,21 @@ describe('plugin-meetings', () => {
         assert.equal(initializeStub.firstCall.args[0].displayName, '');
       });
 
-      it('gives MLS the WASM loader and a media-encryption service bound to webex.request', async () => {
+      it('gives MLS the loaded WASM module and a media-encryption service bound to webex.request', async () => {
+        const module = {WebE2EE: sinon.stub()};
+
+        wasmLoader.get.resolves(module);
         const mlsCtorSpy = sinon.spy(MLSModule, 'default');
 
         await e2ee.start();
 
         assert.calledOnceWithExactly(mlsCtorSpy, {
           httpClient: sinon.match.object,
-          loadModule: sinon.match.func,
+          module,
         });
         assert.isTrue(mlsCtorSpy.calledWithNew());
-        const [{httpClient, loadModule}] = mlsCtorSpy.firstCall.args;
+        const [{httpClient}] = mlsCtorSpy.firstCall.args;
 
-        wasmLoader.get.resetHistory();
-        await loadModule();
         assert.calledOnceWithExactly(wasmLoader.get, WASM_URL);
 
         webex.request.resolves({body: {ok: true}});
@@ -330,7 +335,7 @@ describe('plugin-meetings', () => {
 
         assert.calledOnce(initializeStub);
         assert.calledOnce(joinStub);
-        assert.equal(e2ee.state, 'joining');
+        assert.equal(e2ee.state, E2eeState.Joining);
       });
 
       it('can start again after stop', async () => {
@@ -341,7 +346,7 @@ describe('plugin-meetings', () => {
 
         assert.calledTwice(initializeStub);
         assert.calledTwice(joinStub);
-        assert.equal(e2ee.state, 'joining');
+        assert.equal(e2ee.state, E2eeState.Joining);
       });
 
       describe('when stopped during startup', () => {
@@ -358,45 +363,21 @@ describe('plugin-meetings', () => {
           assert.notCalled(initializeStub);
           assert.notCalled(signalingStartStub);
           assert.notCalled(joinStub);
-          assert.equal(e2ee.state, 'left');
-          assert.deepEqual(events.state.args, [[{state: 'initializing'}], [{state: 'left'}]]);
+          assert.equal(e2ee.state, E2eeState.Left);
+          assert.deepEqual(events.state.args, [[{state: E2eeState.Initializing}], [{state: E2eeState.Left}]]);
         });
 
-        it('leaves the session and does not join if stopped while MLS initializes', async () => {
-          const initialized = createDeferred();
-
-          initializeStub.returns(initialized.promise);
-          const starting = e2ee.start();
-
-          await new Promise((resolve) => setImmediate(resolve));
-          assert.calledOnce(initializeStub);
+        it('cleans up the initialized session when stopped', async () => {
+          await e2ee.start();
           await e2ee.stop();
-          initialized.resolve();
-          await starting;
 
           assert.calledOnce(initializeStub);
           assert.calledOnce(leaveStub);
+          assert.calledOnce(cleanUpStub);
           assert.deepEqual(sessionHandlers, {});
-          assert.notCalled(signalingStartStub);
-          assert.notCalled(joinStub);
-          assert.equal(e2ee.state, 'left');
-        });
-
-        it('does not report a failure when the cancelled startup step then rejects', async () => {
-          const initialized = createDeferred();
-
-          initializeStub.returns(initialized.promise);
-          const starting = e2ee.start();
-
-          await new Promise((resolve) => setImmediate(resolve));
-          assert.calledOnce(initializeStub);
-          await e2ee.stop();
-          initialized.reject(new Error('session left'));
-          await starting;
-
-          assert.equal(e2ee.state, 'left');
-          assert.notCalled(events.failure);
-          assert.notCalled(sendBehavioralMetricStub);
+          assert.calledOnce(signalingStartStub);
+          assert.calledOnce(joinStub);
+          assert.equal(e2ee.state, E2eeState.Left);
         });
 
         it('lets a new start proceed while the cancelled one is still pending', async () => {
@@ -412,8 +393,23 @@ describe('plugin-meetings', () => {
 
           assert.calledOnce(initializeStub);
           assert.calledOnce(joinStub);
-          assert.equal(e2ee.state, 'joining');
+          assert.equal(e2ee.state, E2eeState.Joining);
         });
+      });
+
+      it('defers fatal event cleanup until an MLS callback returns during join', async () => {
+        joinStub.callsFake(() => {
+          emitSession('joinFailure', {reason: 'join_failure'});
+          assert.notCalled(leaveStub);
+          assert.notCalled(events.failure);
+        });
+
+        await e2ee.start();
+
+        assert.calledOnce(leaveStub);
+        assert.calledOnce(joinStub);
+        assert.equal(e2ee.state, E2eeState.Failed);
+        assert.calledOnceWithExactly(events.failure, {reason: 'join_failure'});
       });
 
       [
@@ -442,7 +438,7 @@ describe('plugin-meetings', () => {
         },
         {
           when: 'the MLS session fails to initialize',
-          fail: () => initializeStub.rejects(new Error('MLS init failed')),
+          fail: () => initializeStub.throws(new Error('MLS init failed')),
           errorMessage: 'MLS init failed',
           sessionCreated: true,
         },
@@ -452,12 +448,12 @@ describe('plugin-meetings', () => {
 
           await e2ee.start();
 
-          assert.equal(e2ee.state, 'failed');
-          assert.deepEqual(events.state.args, [[{state: 'initializing'}], [{state: 'failed'}]]);
+          assert.equal(e2ee.state, E2eeState.Failed);
+          assert.deepEqual(events.state.args, [[{state: E2eeState.Initializing}], [{state: E2eeState.Failed}]]);
           assert.calledOnceWithExactly(events.failure, {reason: 'startFailed', errorMessage});
           assert.calledOnceWithExactly(sendBehavioralMetricStub, 'js_sdk_e2ee_failure', {
             correlation_id: 'corr-1',
-            state: 'failed',
+            state: E2eeState.Failed,
             reason: 'startFailed',
             errorMessage,
           });
@@ -502,14 +498,13 @@ describe('plugin-meetings', () => {
         resetEventSpies();
       });
 
-      it('records the security code on joinSuccess and refreshes the join state', () => {
-        rosterStub.returns([makeRosterEntry({url: OWN_DEVICE_URL})]);
-
+      it('records the security code on joinSuccess without changing the join state', () => {
         emitSession('joinSuccess', {securityCode: 'SEC-1'});
 
         assert.equal(e2ee.getSecurityCode(), 'SEC-1');
         assert.calledOnceWithExactly(events.securityCode, {securityCode: 'SEC-1'});
-        assert.equal(e2ee.state, 'joined');
+        assert.equal(e2ee.state, E2eeState.Joining);
+        assert.notCalled(rosterStub);
       });
 
       it('updates the security code on securityCodeChanged', () => {
@@ -520,26 +515,41 @@ describe('plugin-meetings', () => {
       });
 
       it('marks joined only once our own device url is in the roster', () => {
-        rosterStub.returns([makeRosterEntry({url: 'https://wdm.webex.com/other'})]);
-        emitSession('rosterAdded', []);
-        assert.equal(e2ee.state, 'joining');
+        emitSession('rosterAdded', [makeRosterEntry({deviceUrl: 'https://wdm.webex.com/other'})]);
+        assert.equal(e2ee.state, E2eeState.Joining);
 
-        rosterStub.returns([makeRosterEntry({url: OWN_DEVICE_URL})]);
-        emitSession('rosterAdded', []);
-        assert.equal(e2ee.state, 'joined');
-        assert.calledOnceWithExactly(events.state, {state: 'joined'});
+        emitSession('rosterAdded', [makeRosterEntry({deviceUrl: OWN_DEVICE_URL})]);
+        assert.equal(e2ee.state, E2eeState.Joined);
+        assert.calledOnceWithExactly(events.state, {state: E2eeState.Joined});
+      });
+
+      it('uses roster changes without reading the full roster', async () => {
+        await e2ee.start();
+        emitSession('rosterAdded', [
+          MEDIA_SERVICE,
+          makeRosterEntry({deviceUrl: OWN_DEVICE_URL}),
+        ]);
+
+        assert.equal(e2ee.state, E2eeState.Joined);
+        assert.isTrue(e2ee.hasUntrustedMediaServices);
+        assert.notCalled(rosterStub);
       });
 
       it('emits a media-services change only when their presence in the roster changes', () => {
         assert.isFalse(e2ee.hasUntrustedMediaServices);
 
-        addMediaServiceToRoster();
+        const anotherMediaService = makeRosterEntry({
+          deviceUrl: 'https://ms.webex.com/2',
+          deviceType: 'MEDIA_SERVICE',
+        });
+
+        emitSession('rosterAdded', [MEDIA_SERVICE, anotherMediaService]);
         assert.isTrue(e2ee.hasUntrustedMediaServices);
 
-        emitSession('rosterAdded', []);
+        emitSession('rosterRemoved', {urls: [MEDIA_SERVICE.deviceUrl]});
+        assert.isTrue(e2ee.hasUntrustedMediaServices);
 
-        rosterStub.returns([]);
-        emitSession('rosterRemoved', {urls: [MEDIA_SERVICE.url]});
+        emitSession('rosterRemoved', {urls: [anotherMediaService.deviceUrl]});
         assert.isFalse(e2ee.hasUntrustedMediaServices);
 
         assert.deepEqual(events.mediaServices.args, [
@@ -552,24 +562,25 @@ describe('plugin-meetings', () => {
         {
           event: 'joinFailure',
           payload: {reason: 'join_failure'},
-          state: 'failed',
+          state: E2eeState.Failed,
           reason: 'join_failure',
           details: {},
         },
         {
           event: 'mediaEncryptionServiceFailure',
           payload: {errorCode: 78400011, message: 'not leader'},
-          state: 'failed',
+          state: E2eeState.Failed,
           reason: 'mediaEncryptionServiceFailure',
           details: {errorCode: 78400011, errorMessage: 'not leader'},
         },
-        {event: 'evicted', payload: undefined, state: 'evicted', reason: 'evicted', details: {}},
+        {event: 'evicted', payload: undefined, state: E2eeState.Evicted, reason: 'evicted', details: {}},
       ].forEach(({event, payload, state, reason, details}) => {
-        it(`tears down the session, moves to ${state} and reports a failure on ${event}`, () => {
+        it(`tears down the session, moves to ${state} and reports a failure on ${event}`, async () => {
           emitSession('joinSuccess', {securityCode: 'SEC-1'});
           resetEventSpies();
 
           emitSession(event, payload);
+          await Promise.resolve();
 
           assertSessionTornDown();
           assert.calledOnce(reconciler.reset);
@@ -590,6 +601,7 @@ describe('plugin-meetings', () => {
           const failedSession = initializeStub.firstCall.thisValue;
 
           emitSession(event, payload);
+          await Promise.resolve();
           resetEventSpies();
 
           await e2ee.start();
@@ -597,25 +609,25 @@ describe('plugin-meetings', () => {
           assert.calledTwice(initializeStub);
           assert.notStrictEqual(initializeStub.secondCall.thisValue, failedSession);
           assert.calledTwice(joinStub);
-          assert.equal(e2ee.state, 'joining');
-          assert.deepEqual(events.state.args, [[{state: 'initializing'}], [{state: 'joining'}]]);
+          assert.equal(e2ee.state, E2eeState.Joining);
+          assert.deepEqual(events.state.args, [[{state: E2eeState.Initializing}], [{state: E2eeState.Joining}]]);
           assert.notCalled(events.failure);
         });
       });
 
       it('ignores start once joined', async () => {
-        rosterStub.returns([makeRosterEntry({url: OWN_DEVICE_URL})]);
-        emitSession('joinSuccess', {securityCode: 'SEC-1'});
+        await e2ee.start();
+        emitSession('rosterAdded', [makeRosterEntry({deviceUrl: OWN_DEVICE_URL})]);
 
         await e2ee.start();
 
         assert.calledOnce(initializeStub);
-        assert.equal(e2ee.state, 'joined');
+        assert.equal(e2ee.state, E2eeState.Joined);
       });
     });
 
     describe('roster reconciliation', () => {
-      const entry = makeRosterEntry({url: OWN_DEVICE_URL});
+      const entry = makeRosterEntry({deviceUrl: OWN_DEVICE_URL});
 
       beforeEach(async () => {
         await e2ee.start();
@@ -662,7 +674,7 @@ describe('plugin-meetings', () => {
 
         await e2ee.stop();
 
-        assert.equal(e2ee.state, 'disabled');
+        assert.equal(e2ee.state, E2eeState.Disabled);
         assert.notCalled(signalingStopStub);
         assert.notCalled(leaveStub);
         assert.notCalled(reconciler.reset);
@@ -678,10 +690,10 @@ describe('plugin-meetings', () => {
         await e2ee.stop();
 
         assertSessionTornDown();
-        assert.equal(e2ee.state, 'left');
+        assert.equal(e2ee.state, E2eeState.Left);
         assert.isUndefined(e2ee.getSecurityCode());
         assert.calledOnceWithExactly(events.securityCode, {securityCode: undefined});
-        assert.calledOnceWithExactly(events.state, {state: 'left'});
+        assert.calledOnceWithExactly(events.state, {state: E2eeState.Left});
         assert.notCalled(events.failure);
         assert.notCalled(sendBehavioralMetricStub);
       });
@@ -706,7 +718,7 @@ describe('plugin-meetings', () => {
 
         await e2ee.stop();
 
-        assert.equal(e2ee.state, 'left');
+        assert.equal(e2ee.state, E2eeState.Left);
         assert.notCalled(signalingStopStub);
         assert.notCalled(leaveStub);
         assert.notCalled(events.state);
@@ -733,7 +745,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(leaveStub);
           assert.equal(offStub.callCount, onStub.callCount);
           assert.calledOnceWithExactly(events.mediaServices, {hasMediaServices: false});
-          assert.equal(e2ee.state, 'left');
+          assert.equal(e2ee.state, E2eeState.Left);
         });
       });
     });

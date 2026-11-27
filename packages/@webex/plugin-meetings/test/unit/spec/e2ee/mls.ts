@@ -12,7 +12,7 @@ describe('plugin-meetings', () => {
   describe('MLS', () => {
     let fakeE2ee;
     let callbacks;
-    let loadModule;
+    let module;
     let webE2eeConstructor;
     let httpClient;
     let session;
@@ -52,6 +52,7 @@ describe('plugin-meetings', () => {
 
       return {
         initialize: sinon.stub(),
+        delete: sinon.stub(),
         addX509Credential: sinon.stub(),
         setTrustAnchors: sinon.stub(),
         setJoinTimeout: sinon.stub(),
@@ -86,11 +87,10 @@ describe('plugin-meetings', () => {
     beforeEach(() => {
       fakeE2ee = buildFakeE2ee();
       webE2eeConstructor = sinon.stub().returns(fakeE2ee);
-      const module = {WebE2EE: webE2eeConstructor};
+      module = {WebE2EE: webE2eeConstructor};
 
-      loadModule = sinon.stub().resolves(module);
       httpClient = {request: sinon.stub().resolves({result: 'ok', n: 1})};
-      session = new MLS({httpClient, loadModule});
+      session = new MLS({httpClient, module});
     });
 
     afterEach(() => {
@@ -98,10 +98,9 @@ describe('plugin-meetings', () => {
     });
 
     describe('initialize', () => {
-      it('loads the module, wires callbacks and initializes without optional timeouts', async () => {
-        await session.initialize(config);
+      it('wires callbacks and initializes without optional timeouts', () => {
+        session.initialize(config);
 
-        assert.calledOnce(loadModule);
         assert.calledOnceWithExactly(
           fakeE2ee.initialize,
           'user-1',
@@ -117,12 +116,10 @@ describe('plugin-meetings', () => {
         assert.notCalled(fakeE2ee.setTrustAnchors);
       });
 
-      it('does not initialize a second engine when called again', async () => {
-        await session.initialize(config);
-        await session.initialize({...config, participantId: 'user-2'});
+      it('does not initialize a second engine when called again', () => {
+        session.initialize(config);
+        session.initialize({...config, participantId: 'user-2'});
 
-        // The loader may be called again, but returns the cached WASM module.
-        assert.calledTwice(loadModule);
         assert.calledOnce(webE2eeConstructor);
         assert.calledOnceWithExactly(
           fakeE2ee.initialize,
@@ -135,11 +132,11 @@ describe('plugin-meetings', () => {
         );
       });
 
-      it('applies credentials, trust anchors, device type and custom timeouts', async () => {
+      it('applies credentials, trust anchors, device type and custom timeouts', () => {
         const privateKey = new Uint8Array([9]);
         const certChain = [new Uint8Array([1]), new Uint8Array([2])];
 
-        await session.initialize({
+        session.initialize({
           ...config,
           deviceType: 'MAC',
           credentials: {privateKey, certChain},
@@ -166,9 +163,63 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('cleanUp', () => {
+      it('unsets engine callbacks, clears pending waits and releases listeners and the engine', () => {
+        const clock = sinon.useFakeTimers();
+
+        try {
+          session.initialize(config);
+
+          const newKeyListener = sinon.stub();
+          const gotKeyCallback = callbacks.gotKey;
+
+          session.on('newKey', newKeyListener);
+          callbacks.wait(1000, 1);
+          session.cleanUp();
+
+          [
+            'setOnNewTransaction',
+            'setOnCompleteTransaction',
+            'setOnHttpRequest',
+            'setOnWait',
+            'setOnGotKey',
+            'setOnUseKey',
+            'setOnLeader',
+            'setOnPurgeBefore',
+            'setOnEvicted',
+            'setOnAddRoster',
+            'setOnRemoveRoster',
+            'setOnE2eeVersion',
+            'setOnMissingCommit',
+            'setOnLog',
+          ].forEach((setter) => {
+            assert.calledTwice(fakeE2ee[setter]);
+            assert.calledWithExactly(fakeE2ee[setter], null);
+          });
+
+          assert.calledOnce(fakeE2ee.delete);
+          assert.equal(session.getSecurityCode(), '');
+
+          gotKeyCallback({
+            epoch: 1,
+            base_key: new Uint8Array([1]),
+            index: 0,
+            index_bits: 1,
+            sec_code: 'CODE-1',
+          });
+          clock.tick(1000);
+
+          assert.notCalled(newKeyListener);
+          assert.notCalled(fakeE2ee.completeWait);
+        } finally {
+          clock.restore();
+        }
+      });
+    });
+
     describe('engine events', () => {
-      beforeEach(async () => {
-        await session.initialize(config);
+      beforeEach(() => {
+        session.initialize(config);
       });
 
       it('emits joinSuccess on a successful join transaction', () => {
@@ -360,7 +411,7 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(addedSpy, [
           {
-            url: 'd1',
+            deviceUrl: 'd1',
             displayName: 'Bob',
             deviceType: 'WEB',
             validationResult: 0,
@@ -440,8 +491,8 @@ describe('plugin-meetings', () => {
     });
 
     describe('http and wait routing', () => {
-      beforeEach(async () => {
-        await session.initialize(config);
+      beforeEach(() => {
+        session.initialize(config);
       });
 
       const encodeJson = (value) => new TextEncoder().encode(JSON.stringify(value));
@@ -693,8 +744,8 @@ describe('plugin-meetings', () => {
     });
 
     describe('log routing', () => {
-      beforeEach(async () => {
-        await session.initialize(config);
+      beforeEach(() => {
+        session.initialize(config);
       });
 
       it('maps WASM log levels to the plugin logger', () => {
@@ -716,8 +767,8 @@ describe('plugin-meetings', () => {
     });
 
     describe('delegating methods', () => {
-      beforeEach(async () => {
-        await session.initialize(config);
+      beforeEach(() => {
+        session.initialize(config);
       });
 
       it('forwards lifecycle calls to the engine', () => {
@@ -747,7 +798,7 @@ describe('plugin-meetings', () => {
         assert.equal(session.getSecurityCode(), 'SEC');
         assert.isTrue(session.isLeader());
         assert.deepEqual(session.getRoster(), [
-          {url: 'd1', displayName: 'Bob', deviceType: 'WEB', validationResult: 1},
+          {deviceUrl: 'd1', displayName: 'Bob', deviceType: 'WEB', validationResult: 1},
         ]);
       });
     });

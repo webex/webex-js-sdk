@@ -33,11 +33,12 @@ yarn install
 
 ## Configuration & Secrets
 
-- Unit tests use mocks/fixtures. Jest resolves selected `@webex/*` workspace dependencies to local stub mocks under `test/mocks/` (`internal-plugin-metrics`, `internal-plugin-device`, and `internal-plugin-feature`) and maps others (`media-helpers`, `common`, `common-timers`, and `test-helper-*`) to their workspace source so specs run without the real plugins. Playwright journeys require approved runtime accounts/tokens and environment configuration; obtain them through the team mechanism and never store them in source or logs.
+- Unit tests use mocks/fixtures. Playwright journeys require approved runtime accounts/tokens and environment configuration; obtain them through the team mechanism and never store them in source or logs.
 
 ## Dev Environment
 
 - The package runs inside the parent Yarn workspace; use workspace commands from the repository root. Browser journeys use `packages/calling/playwright.config.ts`.
+- E2E browser journeys reach a self-signed local dev server, so the Playwright config and OAuth setup deliberately relax transport and web-security checks (`--ignore-certificate-errors`, `--disable-web-security`, and `ignoreHTTPSErrors`). These bypasses are confined to Playwright launch/context/`webServer` options and never apply to `src/` runtime code or the published package.
 
 ## Where to Go Next
 

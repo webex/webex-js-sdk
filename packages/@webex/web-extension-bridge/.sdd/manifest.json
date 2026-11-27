@@ -8,11 +8,11 @@
       "typescript"
     ]
   },
-  "topology": "Single-repo",
+  "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
       "command": "yarn",
-      "source_file": "package.json",
+      "source_file": "../../../.github/workflows/deploy.yml",
       "role": "install"
     },
     "compile": {
@@ -373,7 +373,12 @@
       "canonical": ".sdd/templates/repo-standards"
     },
     "repo_skills_root": ".sdd/skills",
-    "contract_index_path": "docs/architecture.md"
+    "contract_index_path": "docs/architecture.md",
+    "monorepo_package": {
+      "package_path": "packages/@webex/web-extension-bridge",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
   },
   "substrate": {
     "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
@@ -404,5 +409,10 @@
     },
     "resolved_by": "cursor (SPARK-853132 Stage 0 plan plus package source)",
     "resolved_at": "2026-09-16T10:06:00Z"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
   }
 }

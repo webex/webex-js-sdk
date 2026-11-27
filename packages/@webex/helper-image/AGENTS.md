@@ -51,7 +51,7 @@ Use only documented commands. Do not invent alternatives when a command is missi
 
 | Task                   | Command                                             |
 | ---------------------- | --------------------------------------------------- |
-| Install dependencies   | `yarn install`                                      |
+| Install dependencies   | `yarn`                                              |
 | Start dev environment  | Not applicable — this package is a library with no runnable entry point |
 | Run tests              | `yarn workspace @webex/helper-image test:unit`      |
 | Run linters            | `yarn workspace @webex/helper-image test:style`     |

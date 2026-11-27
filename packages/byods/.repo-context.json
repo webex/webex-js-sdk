@@ -7,18 +7,16 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild": "yarn prebuild:modules",
-    "compile": "yarn build",
-    "build": "yarn build:src",
-    "unit-test": "yarn test:unit",
-    "lint": "yarn test:style",
-    "test": "yarn test",
-    "docs-check": "yarn docs",
-    "docs-build": "yarn build:docs",
-    "clean": "yarn prebuild",
-    "fix-lint": "yarn fix:lint",
-    "format": "yarn fix:prettier",
-    "deploy": "yarn deploy:npm"
+    "compile": "yarn workspace @webex/byods build",
+    "build": "yarn workspace @webex/byods build:src",
+    "unit-test": "yarn workspace @webex/byods test:unit",
+    "lint": "yarn workspace @webex/byods test:style",
+    "test": "yarn workspace @webex/byods test",
+    "docs-check": "yarn workspace @webex/byods docs",
+    "docs-build": "yarn workspace @webex/byods build:docs",
+    "fix-lint": "yarn workspace @webex/byods fix:lint",
+    "format": "yarn workspace @webex/byods fix:prettier",
+    "deploy": "yarn workspace @webex/byods deploy:npm"
   },
   "public_interfaces": [
     {
@@ -112,11 +110,11 @@
         "dist"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/byods build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/byods test:unit",
+        "yarn workspace @webex/byods test:style"
       ]
     },
     {
@@ -137,7 +135,7 @@
     {
       "path": "dist",
       "generated_from": "src",
-      "refresh_with": "yarn build:src"
+      "refresh_with": "yarn workspace @webex/byods build:src"
     },
     {
       "path": "../../.sdd/templates/repo-standards/template-map.json",
@@ -151,11 +149,11 @@
         "src/**"
       ],
       "minimum": [
-        "yarn test:unit"
+        "yarn workspace @webex/byods test:unit"
       ],
       "recommended": [
-        "yarn test:style",
-        "yarn build:src"
+        "yarn workspace @webex/byods test:style",
+        "yarn workspace @webex/byods build:src"
       ]
     },
     {
@@ -163,7 +161,7 @@
         "src/data-source-client/index.ts"
       ],
       "minimum": [
-        "yarn test:unit"
+        "yarn workspace @webex/byods test:unit"
       ],
       "recommended": [
         "add a characterization case for a failing renewal tick and the default nonce generator before changing the timer"
@@ -176,10 +174,10 @@
         "tsconfig.json"
       ],
       "minimum": [
-        "yarn build:src"
+        "yarn workspace @webex/byods build:src"
       ],
       "recommended": [
-        "yarn docs"
+        "yarn workspace @webex/byods docs"
       ]
     }
   ],
@@ -195,10 +193,10 @@
         "custom TokenStorageAdapter implementations"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/byods build:src"
       ],
       "validate_with": [
-        "yarn test:unit"
+        "yarn workspace @webex/byods test:unit"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -214,10 +212,10 @@
         "JWS renewal timing, payload, and failure handling"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/byods build:src"
       ],
       "validate_with": [
-        "yarn test:unit"
+        "yarn workspace @webex/byods test:unit"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -235,10 +233,10 @@
         "JWS verification"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/byods build:src"
       ],
       "validate_with": [
-        "yarn test:unit"
+        "yarn workspace @webex/byods test:unit"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -254,11 +252,11 @@
         "the package entry, exports, and published files"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/byods build:src"
       ],
       "validate_with": [
-        "yarn build:src",
-        "yarn docs"
+        "yarn workspace @webex/byods build:src",
+        "yarn workspace @webex/byods docs"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -273,7 +271,7 @@
         "package.json"
       ],
       "requirement": "The script must exist in package.json scripts.",
-      "notes": "Workspace-root commands (yarn, yarn prebuild:modules) come from the root CONTRIBUTING.md and the deploy workflow."
+      "notes": "Workspace-root commands (yarn) come from the root CONTRIBUTING.md and the deploy workflow."
     },
     {
       "claim_category": "import_path",
@@ -372,7 +370,7 @@
           "dist"
         ],
         "generated_from": "src",
-        "refresh_with": "yarn build:src",
+        "refresh_with": "yarn workspace @webex/byods build:src",
         "notes": "Produced by webex-legacy-tools and tsc. Do not edit by hand."
       },
       {
@@ -388,13 +386,13 @@
     "validation_entrypoints": [
       {
         "name": "unit tests",
-        "command": "yarn test:unit",
+        "command": "yarn workspace @webex/byods test:unit",
         "scope": "test/unit/spec",
         "notes": "Jest via webex-legacy-tools --runner jest, with the jest.config.js coverage threshold."
       },
       {
         "name": "lint",
-        "command": "yarn test:style",
+        "command": "yarn workspace @webex/byods test:style",
         "scope": "src",
         "notes": "eslint over src/**/*.ts with the workspace root .eslintrc.js."
       }

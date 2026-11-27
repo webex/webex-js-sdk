@@ -6,7 +6,7 @@
     "purpose": "Internal Webex JS SDK plugin registered as webex.internal.flag. Importing it imports @webex/internal-plugin-conversation and @webex/internal-plugin-device for their side effects and registers the Flag plugin with an empty config under the flag key. Flag creates and lists activity flags through catalog service userApps (resource /flags), archives, unflags, or deletes a flag through its url, and maps flags to activities with one bulk_activities_fetch request per conversation URL whose prefix the service catalog names as service conversation."
   },
   "commands": {
-    "install": "yarn install",
+    "install": "yarn",
     "compile": "yarn workspace @webex/internal-plugin-flag build:src",
     "build": "yarn workspace @webex/internal-plugin-flag build",
     "unit-test": "yarn workspace @webex/internal-plugin-flag test:unit",

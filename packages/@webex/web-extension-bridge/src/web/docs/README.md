@@ -42,14 +42,14 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `module.has_ui`                      | N/A         | No renderer | UI use-case flow |
 | `module.crosses_service_boundaries`  | N/A         | Same-window postMessage, not HTTP | Cross-boundary use-case flow |
 | `module.holds_client_state`          | Applicable  | connection flag, handlers, listeners | Client state model |
-| `module.enforces_domain_rules`       | Applicable  | `resolveWebConfig` fail-closed | Business rules and invariants |
+| `module.enforces_domain_rules`       | Applicable  | resolveWebConfig fail-closed | Business rules and invariants |
 | `module.is_concurrent_async`         | Applicable  | async handlers, handshake | Concurrency and reactive flow |
 | `module.owns_persistence`            | N/A         | In-memory only | Data, schema, and migration |
 | `module.stateful_transitions`        | Applicable  | connected / disconnected | State machine |
 | `module.exposes_wire_protocol`       | Applicable  | Posts Envelope to the relay | Protocol and wire format |
 | `module.ui_multi_screen`             | N/A         | No UI | UI flow |
 | `module.large_data_model`            | N/A         | WebBridge options/types only | Data model |
-| `module.returns_caller_errors`       | Applicable  | throws `BridgeError` | Caller-visible failure modes |
+| `module.returns_caller_errors`       | Applicable  | throws BridgeError | Caller-visible failure modes |
 | `module.module_specific_conventions` | Applicable  | Same-window + documentOrigin | Module-specific rules |
 | `module.published_package`           | Applicable  | Root npm specifier | Export stability |
 | `module.embedded_in_host`            | Applicable  | Runs in host page | Host integration and theming |
@@ -230,7 +230,7 @@ Rejected: treating a message from another window or a non-allow-listed origin as
 
 | Export or entry point | Consumer | Stability | Versioning and deprecation rule | Declaration or API report |
 | --------------------- | -------- | --------- | ------------------------------- | ------------------------- |
-| `@webex/web-extension-bridge` | Host page | public | Package semver | `package.json` `.` |
+| `@webex/web-extension-bridge` | Host page | public | Package semver | `package.json` "." |
 | `createWebBridge` | Host page | public | Same | `src/index.ts` |
 
 ## Host integration and theming
@@ -254,4 +254,4 @@ Rejected: treating a message from another window or a non-allow-listed origin as
 | `WEB-002` | Unit | `test/unit/spec/web/config.ts` | wildcard / missing document origin | none |
 | `WEB-003` | Unit | `test/unit/spec/web/webBridge.ts` | eslint-security-rules.js | none |
 | `WEB-004` | Unit / Security | `test/unit/spec/web/webBridge.ts` | `test/unit/spec/security/threats.ts` | none |
-| `WEB-007` | Unit | `test/unit/spec/core/logger.ts` | unrecognised `logLevel` does not throw | none |
+| `WEB-007` | Unit | `test/unit/spec/core/logger.ts` | unrecognised logLevel does not throw | none |

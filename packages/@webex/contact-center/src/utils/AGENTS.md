@@ -1,6 +1,6 @@
 # Utils
 
-> **Legacy/reference-only.** Canonical SDD: [`ai-docs/utils-spec.md`](ai-docs/utils-spec.md). Use the package [manifest](../../.sdd/manifest.json) and [`SPEC_INDEX.md`](../../ai-docs/SPEC_INDEX.md) for routing; code and tests remain the behavioral referee.
+> **Legacy/reference-only.** Canonical SDD: [`docs/README.md`](docs/README.md). Use the package [manifest](../../.sdd/manifest.json) and [module registry](../../docs/specs/README.md) for routing; code and tests remain the behavioral referee.
 >
 > **Legacy scope:** This guide covers shared pagination/cache contracts used by data services. For repository rules and cross-service conventions, see the [root orchestrator AGENTS.md](../../AGENTS.md).
 
@@ -29,7 +29,9 @@ The utils scope currently provides shared pagination and cache behavior for cont
 ```
 src/utils/
 ├── AGENTS.md          # This file: utils scope guide
-└── PageCache.ts       # Generic cache + pagination contracts/defaults
+├── PageCache.ts       # Generic cache + pagination contracts/defaults
+└── docs/
+    └── README.md      # Canonical utils module spec
 ```
 
 ---
@@ -240,7 +242,7 @@ Current consumers of `PageCache` and defaults:
 
 Cross-scope mention:
 
-- Services-layer docs reference utils caching contracts at [`../services/ai-docs/AGENTS.md`](../services/ai-docs/AGENTS.md).
+- Services-layer docs reference utils caching contracts at [`../services/docs/README.md`](../services/docs/README.md).
 
 ---
 
@@ -259,7 +261,7 @@ flowchart TD
   B -->|Contract change| C[Document expected API/type behavior]
   B -->|Runtime behavior change| D[Document cache behavior and TTL impact]
   B -->|Both| C
-  C --> E[Update utils AGENTS.md contracts and consumer map]
+  C --> E[Update the utils spec docs/README.md contracts and consumer map]
   D --> F[Validate cache key schema and bypass conditions]
   E --> G[Run drift check against PageCache.ts and consumer services]
   F --> G

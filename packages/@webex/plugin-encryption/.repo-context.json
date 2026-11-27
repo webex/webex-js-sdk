@@ -7,14 +7,13 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild": "yarn prebuild:modules",
-    "compile": "yarn build",
-    "build": "yarn build:src",
-    "unit-test": "yarn test:unit",
-    "lint": "yarn test:style",
-    "browser-test": "yarn test:browser",
-    "docs-build": "yarn build:docs",
-    "deploy": "yarn deploy:npm"
+    "compile": "yarn workspace @webex/plugin-encryption build",
+    "build": "yarn workspace @webex/plugin-encryption build:src",
+    "unit-test": "yarn workspace @webex/plugin-encryption test:unit",
+    "lint": "yarn workspace @webex/plugin-encryption test:style",
+    "browser-test": "yarn workspace @webex/plugin-encryption test:browser",
+    "docs-build": "yarn workspace @webex/plugin-encryption build:docs",
+    "deploy": "yarn workspace @webex/plugin-encryption deploy:npm"
   },
   "public_interfaces": [
     {
@@ -87,11 +86,11 @@
         "dist"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-encryption build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-encryption test:unit",
+        "yarn workspace @webex/plugin-encryption test:style"
       ]
     },
     {
@@ -112,7 +111,7 @@
     {
       "path": "dist",
       "generated_from": "src",
-      "refresh_with": "yarn build:src"
+      "refresh_with": "yarn workspace @webex/plugin-encryption build:src"
     },
     {
       "path": "../../../.sdd/templates/repo-standards/template-map.json",
@@ -126,9 +125,9 @@
         "src/**"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-encryption build:src",
+        "yarn workspace @webex/plugin-encryption test:unit",
+        "yarn workspace @webex/plugin-encryption test:style"
       ],
       "recommended": [
         "add a test/unit/spec/cypher case for the changed behavior; keep the 85% coverage threshold met"
@@ -141,8 +140,8 @@
         "src/index.ts"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-encryption build:src",
+        "yarn workspace @webex/plugin-encryption test:style"
       ],
       "recommended": [
         "no unit case loads these files and the coverage threshold does not measure them; check the built dist/webex.js by hand and the webex and webex-node packages that require this one"
@@ -158,11 +157,11 @@
         "the three webex.cypher methods, their errors, and the registered flag"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-encryption build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-encryption test:unit",
+        "yarn workspace @webex/plugin-encryption test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -179,10 +178,10 @@
         "the UMD encryption bundle built by the workspace"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-encryption build:src"
       ],
       "validate_with": [
-        "yarn test:style"
+        "yarn workspace @webex/plugin-encryption test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -200,11 +199,11 @@
         "the published types"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-encryption build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-encryption test:unit",
+        "yarn workspace @webex/plugin-encryption test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -325,7 +324,7 @@
           "dist"
         ],
         "generated_from": "src",
-        "refresh_with": "yarn build:src",
+        "refresh_with": "yarn workspace @webex/plugin-encryption build:src",
         "notes": "JavaScript, source maps, and dist/types declarations. Do not edit by hand."
       },
       {
@@ -341,19 +340,19 @@
     "validation_entrypoints": [
       {
         "name": "compile",
-        "command": "yarn build",
+        "command": "yarn workspace @webex/plugin-encryption build",
         "scope": "src",
         "notes": "tsc emitting declarations only to dist/types."
       },
       {
         "name": "unit-test",
-        "command": "yarn test:unit",
+        "command": "yarn workspace @webex/plugin-encryption test:unit",
         "scope": "test/unit/spec",
         "notes": "Jest through webex-legacy-tools with the 85% global coverage threshold over the files the spec loads."
       },
       {
         "name": "lint",
-        "command": "yarn test:style",
+        "command": "yarn workspace @webex/plugin-encryption test:style",
         "scope": "src",
         "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
       }

@@ -7,13 +7,12 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild": "yarn prebuild:modules",
-    "compile": "yarn build",
-    "build": "yarn build:src",
-    "unit-test": "yarn test:unit",
-    "lint": "yarn test:style",
-    "browser-test": "yarn test:browser:broken",
-    "deploy": "yarn deploy:npm"
+    "compile": "yarn workspace @webex/plugin-people build",
+    "build": "yarn workspace @webex/plugin-people build:src",
+    "unit-test": "yarn workspace @webex/plugin-people test:unit",
+    "lint": "yarn workspace @webex/plugin-people test:style",
+    "browser-test": "yarn workspace @webex/plugin-people test:browser:broken",
+    "deploy": "yarn workspace @webex/plugin-people deploy:npm"
   },
   "public_interfaces": [
     {
@@ -69,11 +68,11 @@
         "dist"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-people build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-people test:unit",
+        "yarn workspace @webex/plugin-people test:style"
       ]
     },
     {
@@ -94,7 +93,7 @@
     {
       "path": "dist",
       "generated_from": "src",
-      "refresh_with": "yarn build:src"
+      "refresh_with": "yarn workspace @webex/plugin-people build:src"
     },
     {
       "path": "../../../.sdd/templates/repo-standards/template-map.json",
@@ -108,9 +107,9 @@
         "src/**"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-people build:src",
+        "yarn workspace @webex/plugin-people test:unit",
+        "yarn workspace @webex/plugin-people test:style"
       ],
       "recommended": [
         "add or update cases in test/unit/spec/people.js or test/unit/spec/people-batcher.js for the changed behavior"
@@ -122,9 +121,9 @@
         "src/config.js"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-people build:src",
+        "yarn workspace @webex/plugin-people test:unit",
+        "yarn workspace @webex/plugin-people test:style"
       ],
       "recommended": [
         "keep a uuid and its hydra id on one fingerprint (INV-002) and add a unit case that a burst of get calls sends one request (INV-001); the only cases asserting batching today are in the integration spec, which no script runs"
@@ -135,9 +134,9 @@
         "src/people.js"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-people build:src",
+        "yarn workspace @webex/plugin-people test:unit",
+        "yarn workspace @webex/plugin-people test:style"
       ],
       "recommended": [
         "add unit cases for get('me'), both list paths, and inferPersonIdFromUuid before changing them; check @webex/common event-envelope, @webex/plugin-meetings meeting-info/utilv2, and @webex/calling src/common/Utils.ts, which read list results and get('me')"
@@ -148,9 +147,9 @@
         "src/index.js"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-people build:src",
+        "yarn workspace @webex/plugin-people test:unit",
+        "yarn workspace @webex/plugin-people test:style"
       ],
       "recommended": [
         "check the bundles that register the plugin (webex, webex-node, recipe-private-web-client) when the registered name or the config changes"
@@ -168,11 +167,11 @@
         "the uuid to hydra id inference"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-people build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-people test:unit",
+        "yarn workspace @webex/plugin-people test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -189,11 +188,11 @@
         "item success and notFoundIds handling"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-people build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-people test:unit",
+        "yarn workspace @webex/plugin-people test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -210,11 +209,11 @@
         "the batcher timings and showAllTypes default"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-people build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-people test:unit",
+        "yarn workspace @webex/plugin-people test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -332,7 +331,7 @@
           "dist"
         ],
         "generated_from": "src",
-        "refresh_with": "yarn build:src",
+        "refresh_with": "yarn workspace @webex/plugin-people build:src",
         "notes": "JavaScript and source maps from webex-legacy-tools; no type declarations. Do not edit by hand."
       },
       {
@@ -348,19 +347,19 @@
     "validation_entrypoints": [
       {
         "name": "compile",
-        "command": "yarn build",
+        "command": "yarn workspace @webex/plugin-people build",
         "scope": "src",
         "notes": "Runs build:src."
       },
       {
         "name": "unit-test",
-        "command": "yarn test:unit",
+        "command": "yarn workspace @webex/plugin-people test:unit",
         "scope": "test/unit/spec",
         "notes": "Run build:src first; the specs test dist."
       },
       {
         "name": "lint",
-        "command": "yarn test:style",
+        "command": "yarn workspace @webex/plugin-people test:style",
         "scope": "src",
         "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
       }

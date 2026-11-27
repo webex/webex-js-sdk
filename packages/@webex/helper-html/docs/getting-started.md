@@ -33,7 +33,7 @@ The unit spec lives in `test/unit/spec/html.js` and is skipped in Node. The comm
 Dependencies are resolved for the whole workspace, not per package:
 
 ```bash
-yarn install
+yarn
 ```
 
 Run it from the workspace root.
@@ -75,7 +75,7 @@ Do not use `package.json` `scripts.test` as a verification command. It chains `t
 
 ## First-run verification
 
-1. `yarn install` from the workspace root.
+1. `yarn` from the workspace root.
 2. `yarn workspace @webex/helper-html build:src`
 3. `yarn workspace @webex/helper-html test:style`
 4. `yarn workspace @webex/helper-html test:browser` when a karma browser is available.

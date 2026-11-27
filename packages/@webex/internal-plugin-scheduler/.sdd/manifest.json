@@ -11,8 +11,8 @@
   "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
-      "command": "yarn install",
-      "source_file": "package.json",
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
       "role": "install"
     },
     "compile": {

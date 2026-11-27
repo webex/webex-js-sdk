@@ -15,70 +15,53 @@
       "source_file": "../../.github/workflows/deploy.yml",
       "role": "install"
     },
-    "prebuild": {
-      "command": "yarn prebuild:modules",
-      "source_file": "../../CONTRIBUTING.md",
-      "role": "other"
-    },
     "compile": {
-      "command": "yarn build",
+      "command": "yarn workspace @webex/byods build",
       "source_file": "package.json",
-      "role": "compile",
-      "verified_at": "2026-11-13T13:33:26Z"
+      "role": "compile"
     },
     "build": {
-      "command": "yarn build:src",
+      "command": "yarn workspace @webex/byods build:src",
       "source_file": "package.json",
-      "role": "package",
-      "verified_at": "2026-11-13T13:33:22Z"
+      "role": "package"
     },
     "unit-test": {
-      "command": "yarn test:unit",
+      "command": "yarn workspace @webex/byods test:unit",
       "source_file": "package.json",
-      "role": "unit-test",
-      "verified_at": "2026-11-13T13:33:27Z"
+      "role": "unit-test"
     },
     "lint": {
-      "command": "yarn test:style",
+      "command": "yarn workspace @webex/byods test:style",
       "source_file": "package.json",
-      "role": "lint",
-      "verified_at": "2026-11-13T13:33:32Z"
+      "role": "lint"
     },
     "test": {
-      "command": "yarn test",
-      "source_file": "package.json",
-      "role": "other",
-      "verified_at": "2026-11-13T13:33:36Z"
-    },
-    "docs-check": {
-      "command": "yarn docs",
-      "source_file": "package.json",
-      "role": "other",
-      "verified_at": "2026-11-13T13:33:34Z"
-    },
-    "docs-build": {
-      "command": "yarn build:docs",
+      "command": "yarn workspace @webex/byods test",
       "source_file": "package.json",
       "role": "other"
     },
-    "clean": {
-      "command": "yarn prebuild",
+    "docs-check": {
+      "command": "yarn workspace @webex/byods docs",
       "source_file": "package.json",
-      "role": "other",
-      "verified_at": "2026-11-13T13:33:21Z"
+      "role": "other"
+    },
+    "docs-build": {
+      "command": "yarn workspace @webex/byods build:docs",
+      "source_file": "package.json",
+      "role": "other"
     },
     "fix-lint": {
-      "command": "yarn fix:lint",
+      "command": "yarn workspace @webex/byods fix:lint",
       "source_file": "package.json",
       "role": "other"
     },
     "format": {
-      "command": "yarn fix:prettier",
+      "command": "yarn workspace @webex/byods fix:prettier",
       "source_file": "package.json",
       "role": "other"
     },
     "deploy": {
-      "command": "yarn deploy:npm",
+      "command": "yarn workspace @webex/byods deploy:npm",
       "source_file": "package.json",
       "role": "deploy"
     }

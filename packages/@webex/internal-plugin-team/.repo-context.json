@@ -7,7 +7,6 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild": "yarn prebuild:modules",
     "compile": "yarn workspace @webex/internal-plugin-team build",
     "build": "yarn workspace @webex/internal-plugin-team build:src",
     "unit-test": "yarn workspace @webex/internal-plugin-team test:unit",

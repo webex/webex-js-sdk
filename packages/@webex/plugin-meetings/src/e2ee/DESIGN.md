@@ -191,10 +191,10 @@ breakout moves. `setLlmChannel()` swaps the channel when `Meeting` replaces it o
 
 ### `internal-plugin-identity`
 
-- `getCredentials(contactId)` — returns configured customer credentials first, followed by
-  Webex-issued credentials when available. Webex credentials are generated from an EC P-256 CSR,
-  requested from `webex-certificate-authority`, and cached per contact. Cached credentials are
-  renewed when the leaf certificate expires within a day; concurrent callers share one renewal.
+- `getCredentials(contactId)` — generates an EC P-256 CSR, requests a certificate from
+  `webex-certificate-authority` (including the root), and caches the in-flight promise per contact.
+  Cached credentials are renewed when the leaf certificate expires within a day; concurrent callers
+  share one renewal.
 - `getTrustAnchors()` — `{webexCaRoots, userIdentityRoots}`. Integration roots when
   `services.isIntegrationEnvironment()` is true, otherwise production + FedRAMP roots.
   `userIdentityRoots` is currently empty.
@@ -203,7 +203,7 @@ breakout moves. `setLlmChannel()` swaps the channel when `Meeting` replaces it o
 
 Holds only the MLS roster (`Map<deviceUrl, E2eeRosterMember>`). The `deviceUrl → Member` index
 lives in `MembersCollection.getMemberByDeviceUrl()`, and verification is stored on each `Member`.
-Matching is per device: `rosterMember.url === member.participant.devices[i].url`.
+Matching is per device: `rosterMember.deviceUrl === member.participant.devices[i].url`.
 
 Verification is surfaced through the existing `members:update` event; there is no dedicated event:
 
@@ -284,9 +284,9 @@ It also cancels a `start()` still awaiting the WASM module, credentials or MLS i
 - Lifecycle (`updateE2eeOnSelfChange`, on `LOCUS_INFO_UPDATE_SELF`):
   - **start** when this device's `joinedWith` transitions to `JOINED`. Gating on this device, not the
     aggregate self state, avoids starting when another of the user's devices joins.
-  - **stop** when the device is moved back into the lobby (`isUserUnadmitted` becomes true); a later
-    re-admit starts again.
-  - **stop** in `clearMeetingData()`.
+  - **stop** when this device leaves `JOINED` or is moved back into the lobby
+    (`isUserUnadmitted` becomes true); a later re-admit starts again.
+  - **stop** in `MeetingUtil.cleanUp()` for meeting teardown.
 - `llmChannelChanged()` is called whenever `Meeting` replaces its LLM channel.
 - `trustState` getter:
 
@@ -294,7 +294,7 @@ It also cancels a `start()` still awaiting the WASM module, credentials or MLS i
   if (!this.isJoined()) return undefined;
   const adaptive = !!info?.isBestEffortE2EEncryption;
   const isEncrypted = !!info?.isV2E2EEncrypted;
-  if (isEncrypted && this.e2ee?.state !== 'joined') return 'calculating';
+  if (isEncrypted && this.e2ee?.state !== E2eeState.Joined) return 'calculating';
   const zeroTrust = isEncrypted && !this.e2ee?.hasUntrustedMediaServices;
   if (adaptive) return zeroTrust ? 'adaptiveZeroTrust' : 'adaptiveStrong';
   return zeroTrust ? 'zeroTrust' : 'strong';

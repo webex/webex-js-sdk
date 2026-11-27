@@ -6,7 +6,7 @@
     "purpose": "Internal Webex JS SDK plugin for the Raindrop task service. It registers webex.internal.task, wraps the task REST operations (list, get, create, update, delete, accept, and reject) on catalog service raindrop, encrypts task title and notes with a KMS key before create and update and decrypts them in responses through webex.internal.encryption, and offers register and unregister calls that register the device, connect Mercury, and emit task:registered and task:unregistered without subscribing to any task event."
   },
   "commands": {
-    "install": "yarn install",
+    "install": "yarn",
     "compile": "yarn workspace @webex/internal-plugin-task build:src",
     "build": "yarn workspace @webex/internal-plugin-task build",
     "unit-test": "yarn workspace @webex/internal-plugin-task test:unit",

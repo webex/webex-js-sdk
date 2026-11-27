@@ -18,6 +18,13 @@ import {IContacts, Contact, ContactGroup} from './Contacts/types';
 import {Voicemail, createVoicemailClient} from './Voicemail/Voicemail';
 import {IVoicemail, VoicemailResponseEvent} from './Voicemail/types';
 import {CallRecording, createCallRecordingClient} from './CallRecording/CallRecording';
+import {CallQueueClient, createCallQueueClient} from './CallQueue/CallQueue';
+import {ACD_STATE} from './CallQueue/constants';
+import {
+  ICallQueue,
+  CallQueueClientOptions,
+  UpdateCallQueueSettingsRequest,
+} from './CallQueue/types';
 import {
   ICallRecording,
   Recording,
@@ -38,10 +45,19 @@ export {
   IContacts,
   IVoicemail,
   ICallRecording,
+  ICallQueue,
 };
 
 // Classes
-export {CallHistory, CallSettings, CallingClient, ContactsClient, Voicemail, CallRecording};
+export {
+  CallHistory,
+  CallSettings,
+  CallingClient,
+  ContactsClient,
+  Voicemail,
+  CallRecording,
+  CallQueueClient,
+};
 
 // Types
 export {
@@ -57,7 +73,12 @@ export {
   RecordingMetadataResponse,
   RecordingResponse,
   GetRecordingsOptions,
+  CallQueueClientOptions,
+  UpdateCallQueueSettingsRequest,
 };
+
+// Constants
+export {ACD_STATE};
 
 // Methods
 export {
@@ -67,4 +88,5 @@ export {
   createContactsClient,
   createVoicemailClient,
   createCallRecordingClient,
+  createCallQueueClient,
 };

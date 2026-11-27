@@ -2,13 +2,19 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 import {MEETINGS, _IN_LOBBY_, _NOT_IN_MEETING_, _IN_MEETING_, _OBSERVE_} from '../constants';
-import {E2eeIdentityType, E2eeValidationResult} from '../e2ee/types';
-import type {E2eeDeviceVerification, E2eeMemberVerificationState} from '../e2ee/types';
+import {
+  E2eeDeviceVerificationState,
+  E2eeIdentityType,
+  E2eeMemberVerificationState,
+  E2eeValidationResult,
+} from '../e2ee/types';
+import type {E2eeDeviceVerification} from '../e2ee/types';
 import {IExternalRoles, IMediaStatus, Participant, ParticipantUrl} from './types';
 
 import MemberUtil from './util';
 
 export type MemberId = string;
+
 /**
  * @class Member
  */
@@ -336,7 +342,7 @@ export default class Member {
       memberId: undefined,
     };
     this.e2eeDeviceVerifications = new Map();
-    this.e2eeVerificationState = 'unknown';
+    this.e2eeVerificationState = E2eeMemberVerificationState.Unknown;
     /**
      * @instance
      * @type {IMediaStatus}
@@ -600,7 +606,7 @@ export default class Member {
     const verifications = this.getE2eeDeviceVerifications();
 
     if (verifications.length === 0) {
-      this.e2eeVerificationState = 'unknown';
+      this.e2eeVerificationState = E2eeMemberVerificationState.Unknown;
 
       return;
     }
@@ -608,16 +614,20 @@ export default class Member {
     const deviceStates = verifications.map((verification) =>
       this.getE2eeDeviceVerificationState(verification)
     );
-    const verifiedCount = deviceStates.filter((state) => state === 'verified').length;
+    const verifiedCount = deviceStates.filter(
+      (state) => state === E2eeDeviceVerificationState.Verified
+    ).length;
 
     if (verifiedCount === deviceStates.length) {
-      this.e2eeVerificationState = 'verified';
+      this.e2eeVerificationState = E2eeMemberVerificationState.Verified;
     } else if (verifiedCount === 0) {
-      this.e2eeVerificationState = deviceStates.every((state) => state === 'unknown')
-        ? 'unknown'
-        : 'unverified';
+      this.e2eeVerificationState = deviceStates.every(
+        (state) => state === E2eeDeviceVerificationState.Unknown
+      )
+        ? E2eeMemberVerificationState.Unknown
+        : E2eeMemberVerificationState.Unverified;
     } else {
-      this.e2eeVerificationState = 'partiallyVerified';
+      this.e2eeVerificationState = E2eeMemberVerificationState.PartiallyVerified;
     }
   }
 
@@ -626,17 +636,17 @@ export default class Member {
    * type rules as UCF. `validationResult` is the aggregate credential result, so it is not enough
    * to classify MultiCredential identities on its own.
    * @param {E2eeDeviceVerification} verification
-   * @returns {'verified' | 'unverified' | 'unknown'}
+   * @returns {E2eeDeviceVerificationState}
    * @private
    * @memberof Member
    */
   private getE2eeDeviceVerificationState(
     verification: E2eeDeviceVerification
-  ): 'verified' | 'unverified' | 'unknown' {
+  ): E2eeDeviceVerificationState {
     const identityResults = verification.identityResults ?? [];
 
     if (identityResults.length === 0) {
-      return 'unknown';
+      return E2eeDeviceVerificationState.Unknown;
     }
 
     const identityResult =
@@ -644,22 +654,22 @@ export default class Member {
       identityResults[0];
 
     if (!identityResult) {
-      return 'unknown';
+      return E2eeDeviceVerificationState.Unknown;
     }
 
     if (identityResult.result !== E2eeValidationResult.Success) {
-      return 'unverified';
+      return E2eeDeviceVerificationState.Unverified;
     }
 
     switch (identityResult.certificateChain[0]?.identityType) {
       case E2eeIdentityType.WebexMachineIdentity:
       case E2eeIdentityType.WebexUserIdentity:
       case E2eeIdentityType.ExternalVerifiedIdentity:
-        return 'verified';
+        return E2eeDeviceVerificationState.Verified;
       case E2eeIdentityType.WebexAnonymousIdentity:
-        return 'unverified';
+        return E2eeDeviceVerificationState.Unverified;
       default:
-        return 'unknown';
+        return E2eeDeviceVerificationState.Unknown;
     }
   }
 

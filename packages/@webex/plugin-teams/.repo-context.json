@@ -7,13 +7,11 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild": "yarn prebuild:modules",
-    "compile": "yarn build",
-    "build": "yarn build:src",
-    "unit-test": "[NEEDS HUMAN INPUT] -- package.json defines no test:unit script and the package has no test/unit directory; its only spec, test/integration/spec/teams.js, runs only under test:browser:broken, which currently bundles nothing. Add a unit suite and script before recording a command here.",
-    "lint": "yarn test:style",
-    "browser-test": "yarn test:browser:broken",
-    "deploy": "yarn deploy:npm"
+    "compile": "yarn workspace @webex/plugin-teams build",
+    "build": "yarn workspace @webex/plugin-teams build:src",
+    "lint": "yarn workspace @webex/plugin-teams test:style",
+    "browser-test": "yarn workspace @webex/plugin-teams test:browser:broken",
+    "deploy": "yarn workspace @webex/plugin-teams deploy:npm"
   },
   "public_interfaces": [
     {
@@ -67,10 +65,10 @@
         "dist"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-teams build:src"
       ],
       "validate_with": [
-        "yarn test:style"
+        "yarn workspace @webex/plugin-teams test:style"
       ]
     },
     {
@@ -91,7 +89,7 @@
     {
       "path": "dist",
       "generated_from": "src",
-      "refresh_with": "yarn build:src"
+      "refresh_with": "yarn workspace @webex/plugin-teams build:src"
     },
     {
       "path": "../../../.sdd/templates/repo-standards/template-map.json",
@@ -105,8 +103,8 @@
         "src/**"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-teams build:src",
+        "yarn workspace @webex/plugin-teams test:style"
       ],
       "recommended": [
         "add a test/unit/spec case and a test:unit script for the changed behavior; the package has no unit tests"
@@ -117,8 +115,8 @@
         "src/teams.js"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-teams build:src",
+        "yarn workspace @webex/plugin-teams test:style"
       ],
       "recommended": [
         "pin the four request options and the resolved values, including get resolving body.items and list resolving a Page, with unit cases before changing them"
@@ -129,8 +127,8 @@
         "src/index.js"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-teams build:src",
+        "yarn workspace @webex/plugin-teams test:style"
       ],
       "recommended": [
         "check the bundles that register the plugin (webex, webex-node) when the registered name changes"
@@ -148,10 +146,10 @@
         "callers that page through list"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-teams build:src"
       ],
       "validate_with": [
-        "yarn test:style"
+        "yarn workspace @webex/plugin-teams test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -166,10 +164,10 @@
         "the registered plugin name"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-teams build:src"
       ],
       "validate_with": [
-        "yarn test:style"
+        "yarn workspace @webex/plugin-teams test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -281,7 +279,7 @@
           "dist"
         ],
         "generated_from": "src",
-        "refresh_with": "yarn build:src",
+        "refresh_with": "yarn workspace @webex/plugin-teams build:src",
         "notes": "JavaScript and source maps from webex-legacy-tools; no type declarations. Do not edit by hand."
       },
       {
@@ -297,13 +295,13 @@
     "validation_entrypoints": [
       {
         "name": "compile",
-        "command": "yarn build",
+        "command": "yarn workspace @webex/plugin-teams build",
         "scope": "src",
         "notes": "Runs build:src."
       },
       {
         "name": "lint",
-        "command": "yarn test:style",
+        "command": "yarn workspace @webex/plugin-teams test:style",
         "scope": "src",
         "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
       }

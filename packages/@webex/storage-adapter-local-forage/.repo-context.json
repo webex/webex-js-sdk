@@ -6,12 +6,11 @@
     "purpose": "A localforage-backed (IndexedDB first) implementation of the Webex storage-adapter interface, published to npm so a browser host can persist Webex JS SDK storage namespaces across page reloads and browser restarts."
   },
   "commands": {
-    "install": "yarn install",
+    "install": "yarn",
     "build": "yarn workspace @webex/storage-adapter-local-forage build",
     "lint": "yarn workspace @webex/storage-adapter-local-forage test:style",
     "browser-test": "yarn workspace @webex/storage-adapter-local-forage test:browser",
-    "deploy": "yarn workspace @webex/storage-adapter-local-forage deploy:npm",
-    "consumer-install": "npm install --save @webex/storage-adapter-local-forage"
+    "deploy": "yarn workspace @webex/storage-adapter-local-forage deploy:npm"
   },
   "public_interfaces": [
     {

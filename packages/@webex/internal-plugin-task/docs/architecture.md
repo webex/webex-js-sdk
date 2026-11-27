@@ -202,7 +202,7 @@ Owner details, guards, and event timing are in the module spec
 
 | Command or artifact | Owner | Inputs | Output or side effect | Compatibility boundary |
 | ------------------- | ----- | ------ | --------------------- | ---------------------- |
-| `yarn install` | workspace | root `package.json` and lockfile | workspace `node_modules` | Run from the workspace root |
+| `yarn` | workspace | root `package.json` and lockfile | workspace `node_modules` | Run from the workspace root |
 | `yarn workspace @webex/internal-plugin-task build` | package | `src/` | build output through `build:src` | Build output is never edited by hand |
 | `yarn workspace @webex/internal-plugin-task build:src` | package | `src/` (`.js` and `.ts`) | build output with source maps | Markdown under `src/` is not processed |
 | `yarn workspace @webex/internal-plugin-task test:unit` | package | `test/unit/spec/` | Jest result | Imports this package by name, so it needs the build output |

@@ -6,7 +6,7 @@
     "purpose": "Internal Webex JS SDK plugin scaffold registered as webex.internal.scheduler. Importing it imports @webex/internal-plugin-encryption and registers the Scheduler plugin with a placeholder config under the scheduler key and three example payload predicates and transforms; webex-core tests the predicates in each webex.transform call of webex instances built after the import. Scheduler has no scheduling behavior; its methods (exampleRequestUsage, exampleEventUsage, exampleMercuryConnection) are examples."
   },
   "commands": {
-    "install": "yarn install",
+    "install": "yarn",
     "compile": "yarn workspace @webex/internal-plugin-scheduler build:src",
     "build": "yarn workspace @webex/internal-plugin-scheduler build",
     "unit-test": "yarn workspace @webex/internal-plugin-scheduler test:unit",

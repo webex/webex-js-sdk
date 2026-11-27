@@ -3,6 +3,7 @@
  */
 
 import LoggerProxy from '../common/logs/logger-proxy';
+import type Member from '../member';
 import type MembersCollection from '../members/collection';
 import type {MembersUpdatePayload} from '../members';
 import type {E2eeDeviceVerification, E2eeRosterMember} from './types';
@@ -22,7 +23,7 @@ import type {E2eeDeviceVerification, E2eeRosterMember} from './types';
 export default class MemberMLSReconciler {
   private readonly membersCollection: MembersCollection;
 
-  private readonly reportMembersUpdated: (updatedMembers: any[]) => void;
+  private readonly reportMembersUpdated: (updatedMembers: Member[]) => void;
 
   private readonly rosterByDeviceUrl = new Map<string, E2eeRosterMember>();
 
@@ -37,7 +38,7 @@ export default class MemberMLSReconciler {
     reportMembersUpdated,
   }: {
     membersCollection: MembersCollection;
-    reportMembersUpdated: (updatedMembers: any[]) => void;
+    reportMembersUpdated: (updatedMembers: Member[]) => void;
   }) {
     this.membersCollection = membersCollection;
     this.reportMembersUpdated = reportMembersUpdated;
@@ -65,13 +66,13 @@ export default class MemberMLSReconciler {
     const changed = new Set<any>();
 
     added.forEach((entry) => {
-      this.rosterByDeviceUrl.set(entry.url, entry);
+      this.rosterByDeviceUrl.set(entry.deviceUrl, entry);
 
-      const member = this.membersCollection.getMemberByDeviceUrl(entry.url);
+      const member = this.membersCollection.getMemberByDeviceUrl(entry.deviceUrl);
 
       if (
         member?.setE2eeDeviceVerification?.(
-          entry.url,
+          entry.deviceUrl,
           MemberMLSReconciler.toDeviceVerification(entry)
         )
       ) {
@@ -108,16 +109,6 @@ export default class MemberMLSReconciler {
       `e2ee: MemberMLSReconciler#applyRosterRemoved --> ${urls.length} removed (roster size ${this.rosterByDeviceUrl.size})`
     );
     this.report(changed);
-  }
-
-  /**
-   * @param {string} deviceUrl
-   * @returns {E2eeDeviceVerification | undefined} the verification for a single device URL.
-   */
-  getDeviceVerification(deviceUrl: string): E2eeDeviceVerification | undefined {
-    const rosterEntry = this.rosterByDeviceUrl.get(deviceUrl);
-
-    return rosterEntry ? MemberMLSReconciler.toDeviceVerification(rosterEntry) : undefined;
   }
 
   /**
@@ -174,7 +165,7 @@ export default class MemberMLSReconciler {
    */
   private static toDeviceVerification(rosterEntry: E2eeRosterMember): E2eeDeviceVerification {
     return {
-      deviceUrl: rosterEntry.url,
+      deviceUrl: rosterEntry.deviceUrl,
       validationResult: rosterEntry.validationResult,
       displayName: rosterEntry.displayName,
       deviceType: rosterEntry.deviceType,

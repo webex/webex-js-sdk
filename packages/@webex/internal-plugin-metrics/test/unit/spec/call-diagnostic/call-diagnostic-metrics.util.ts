@@ -474,6 +474,36 @@ describe('internal-plugin-metrics', () => {
       sinon.restore();
     });
 
+    it('logs raw timestamps once while keeping the event and milestone in each log pair', () => {
+      const cdl = webex.internal.newMetrics.callDiagnosticLatencies;
+      cdl.saveTimestamp({key: 'client.lobby.entered', value: 10});
+      cdl.saveTimestamp({key: 'client.lobby.exited', value: 28});
+      const log = sinon.stub(webex.logger, 'log');
+      const name = 'client.lobby.exited';
+      const item = {eventPayload: {event: {name}}, type: ['diagnostic-event']};
+      const prefix = 'CallDiagnosticLatencies,prepareDiagnosticMetricItem: ';
+
+      assert.strictEqual(prepareDiagnosticMetricItem(webex, item), item);
+      assert.strictEqual(prepareDiagnosticMetricItem(webex, item), item);
+
+      assert.deepEqual(item, {
+        eventPayload: {
+          event: {name, joinTimes: {stayLobbyTime: 18}},
+          origin: {buildType: 'prod', networkType: 'unknown', upgradeChannel: 'gold'},
+        },
+        type: ['diagnostic-event'],
+      });
+      assert.equal(log.callCount, 4);
+      assert.deepEqual(log.args[0], ['Milestone,CallDiagnostic', name]);
+      assert.deepEqual(log.args[2], ['Milestone,CallDiagnostic', name]);
+      assert.deepEqual(JSON.parse(log.args[1][0].slice(prefix.length)), {
+        latencies: {'client.lobby.entered': 10, 'client.lobby.exited': 28},
+        event: item,
+      });
+      assert.deepEqual(JSON.parse(log.args[3][0].slice(prefix.length)), {event: item});
+      log.restore();
+    });
+
     it('does not log a Milestone entry when event name is absent', () => {
       const logSpy = sinon.spy(webex.logger, 'log');
       const eventPayload = {event: {}};

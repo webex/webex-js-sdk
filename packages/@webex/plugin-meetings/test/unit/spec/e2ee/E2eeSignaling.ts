@@ -77,6 +77,16 @@ describe('plugin-meetings', () => {
       assert.equal(source, 'mercury');
     });
 
+    it('handles an error thrown while forwarding an event to the session', () => {
+      signaling.start();
+      session.handleEvent.throws(new Error('MLS event handling failed'));
+
+      const handler = mercury.on.getCall(0).args[1];
+
+      assert.doesNotThrow(() => handler({data: {foo: 'bar'}}));
+      assert.calledOnce(session.handleEvent);
+    });
+
     it('tells the engine the channel is already connected when online for this meeting', () => {
       llm.isConnected.returns(true);
       llm.getLocusUrl.returns('locus-1');

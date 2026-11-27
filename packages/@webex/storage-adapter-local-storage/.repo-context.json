@@ -6,14 +6,13 @@
     "purpose": "Browser localStorage-backed bounded storage adapter for the Webex SDK webex-core storage layer."
   },
   "commands": {
+    "install": "yarn",
     "build": "yarn workspace @webex/storage-adapter-local-storage build:src",
     "lint": "yarn workspace @webex/storage-adapter-local-storage test:style",
     "unit-test": "yarn workspace @webex/storage-adapter-local-storage test:unit",
     "browser-test": "yarn workspace @webex/storage-adapter-local-storage test:browser",
     "publish": "yarn workspace @webex/storage-adapter-local-storage deploy:npm",
-    "test": "yarn workspace @webex/storage-adapter-local-storage test",
-    "install": "yarn install",
-    "clone": "git clone https://github.com/webex/webex-js-sdk.git"
+    "test": "yarn workspace @webex/storage-adapter-local-storage test"
   },
   "task_playbooks": [
     {
