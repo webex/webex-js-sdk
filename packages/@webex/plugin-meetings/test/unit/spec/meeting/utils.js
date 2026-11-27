@@ -1,9 +1,23 @@
 import 'jsdom-global/register';
+import {EventEmitter} from 'events';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
+import {
+  ConnectionState,
+  NetworkQualityMonitor,
+  StatsAnalyzer,
+  StatsMonitor,
+} from '@webex/internal-media-core';
 import Meetings from '@webex/plugin-meetings';
+import Meeting from '@webex/plugin-meetings/src/meeting';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
-import {LOCAL_SHARE_ERRORS, PASSWORD_STATUS} from '@webex/plugin-meetings/src/constants';
+import LocusInfo from '@webex/plugin-meetings/src/locus-info';
+import {
+  EVENTS,
+  LOCAL_SHARE_ERRORS,
+  MEETING_REMOVED_REASON,
+  PASSWORD_STATUS,
+} from '@webex/plugin-meetings/src/constants';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import {SELF_POLICY, IP_VERSION} from '@webex/plugin-meetings/src/constants';
@@ -1516,6 +1530,182 @@ describe('plugin-meetings', () => {
     });
 
     describe('leaveMeeting', () => {
+      ['leave-first', 'self-removed-first'].forEach((order) => {
+        ['resolve', 'stall', 'resolve-on-close'].forEach((statsMode) => {
+          it(`${order}: finishes cleanup when final stats ${statsMode}`, async () => {
+            const emptyStats = {
+              audio: {senders: [], receivers: []},
+              video: {senders: [], receivers: []},
+              screenShareAudio: {senders: [], receivers: []},
+              screenShareVideo: {senders: [], receivers: []},
+            };
+            const lateStats = {
+              ...emptyStats,
+              audio: {
+                senders: [],
+                receivers: [
+                  {
+                    currentDirection: 'recvonly',
+                    report: new Map([['audio', {type: 'inbound-rtp'}]]),
+                  },
+                ],
+              },
+            };
+            let resolveStats;
+            const finalStats = new Promise((resolve) => {
+              resolveStats = resolve;
+            });
+            let resolveServerLeave;
+            const serverLeave = new Promise((resolve) => {
+              resolveServerLeave = resolve;
+            });
+            const connection = {
+              getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+              getTransceiverStats: sinon.stub(),
+              close: sinon.stub().callsFake(() => {
+                if (statsMode === 'resolve-on-close') {
+                  resolveStats(lateStats);
+                }
+              }),
+            };
+
+            connection.getTransceiverStats.onFirstCall().resolves(emptyStats);
+            connection.getTransceiverStats.onSecondCall().returns(finalStats);
+            meeting.statsAnalyzer = new StatsAnalyzer({
+              config: {analyzerInterval: 60000},
+              networkQualityMonitor: new NetworkQualityMonitor({}),
+              statsMonitor: new StatsMonitor(),
+            });
+            const analyzerEmit = sinon.spy(meeting.statsAnalyzer, 'emit');
+            const cleanup = sinon.spy(MeetingUtil, 'cleanUp');
+
+            meeting.id = 'leave-race-meeting';
+            meeting.locusInfo = new LocusInfo({updateMeeting: sinon.stub()}, webex, meeting.id);
+            const meetingEvents = new EventEmitter();
+            meeting.on = meetingEvents.on.bind(meetingEvents);
+            meeting.trigger = meetingEvents.emit.bind(meetingEvents);
+            meeting.config = {enableAutomaticLLM: false};
+            meeting.meetingRequest = {leaveMeeting: sinon.stub().returns(serverLeave)};
+            meeting.mediaProperties = {
+              webrtcMediaConnection: connection,
+              unsetPeerConnection: sinon.stub().callsFake(() => {
+                meeting.mediaProperties.webrtcMediaConnection = null;
+              }),
+            };
+            meeting.mediaRequestManagers = {};
+            meeting.receiveSlotManager = {reset: sinon.stub()};
+            meeting.sendSlotManager = {reset: sinon.stub()};
+            meeting.setNetworkStatus = sinon.stub();
+            meeting.closePeerConnections = () => Meeting.prototype.closePeerConnections.call(meeting);
+            Meeting.prototype.setUpLocusInfoMeetingListener.call(meeting);
+            webex.meetings.meetingInfo = {fetchInfoOptions: sinon.stub().resolves({})};
+            sinon.stub(webex.meetings, 'createMeeting').resolves(meeting);
+            await webex.meetings.create('leave-race');
+            webex.meetings.meetingCollection.set(meeting);
+            const destroy = sinon.spy(webex.meetings, 'destroy');
+            const clock = sinon.useFakeTimers();
+
+            let leave;
+            let leaveResolved = false;
+            let closedWhileStatsPending;
+            let closedWithinBudget;
+            let resolvedWithinBudget;
+            let telemetryBeforeLateStats;
+            let telemetryAfterLateStats;
+            let closeCount;
+            let cleanupSettled = false;
+            let cleanupError;
+
+            try {
+              await meeting.statsAnalyzer.startAnalyzer(connection);
+              analyzerEmit.resetHistory();
+              leave = MeetingUtil.leaveMeeting(meeting).then(() => {
+                leaveResolved = true;
+              });
+
+              if (order === 'leave-first') {
+                resolveServerLeave();
+                await clock.tickAsync(0);
+              }
+
+              meeting.locusInfo.onFullLocus('leave race test', {
+                sequence: {rangeStart: 0, rangeEnd: 1, entries: [1]},
+                fullState: {type: 'MEETING', state: 'ACTIVE'},
+                self: {state: 'JOINED', removed: true, devices: [], status: {}},
+                participants: [],
+              });
+              if (order === 'self-removed-first') {
+                resolveServerLeave();
+              }
+              await clock.tickAsync(0);
+              assert.calledTwice(connection.getTransceiverStats);
+              closedWhileStatsPending = connection.close.callCount;
+
+              if (statsMode === 'resolve') {
+                resolveStats(lateStats);
+                await clock.tickAsync(0);
+              }
+
+              await clock.tickAsync(9999);
+              if (statsMode !== 'resolve') {
+                assert.isFalse(leaveResolved);
+                assert.notCalled(connection.close);
+              }
+              await clock.tickAsync(1);
+              resolvedWithinBudget = leaveResolved;
+              closedWithinBudget = connection.close.callCount;
+              telemetryBeforeLateStats = analyzerEmit.callCount;
+              if (statsMode !== 'resolve') {
+                assert.equal(telemetryBeforeLateStats, 0);
+              }
+            } finally {
+              resolveServerLeave();
+              resolveStats(lateStats);
+              try {
+                if (leave) {
+                  Promise.all([leave, ...cleanup.returnValues]).then(
+                    () => {
+                      cleanupSettled = true;
+                    },
+                    (error) => {
+                      cleanupError = error;
+                      cleanupSettled = true;
+                    }
+                  );
+                }
+                await clock.tickAsync(0);
+                telemetryAfterLateStats = analyzerEmit.callCount;
+                closeCount = connection.close.callCount;
+              } finally {
+                delete meeting.statsAnalyzer;
+                clock.restore();
+              }
+            }
+
+            assert.ifError(cleanupError);
+            assert.isTrue(cleanupSettled, 'cleanup did not settle after final stats were released');
+            assert.calledOnceWithExactly(destroy, meeting, MEETING_REMOVED_REASON.SELF_REMOVED);
+            assert.isNull(webex.meetings.meetingCollection.get(meeting.id));
+            assert.deepEqual(
+              {
+                closedWhileStatsPending,
+                resolvedWithinBudget,
+                closedWithinBudget,
+                closeCount,
+                lateTelemetry: statsMode !== 'resolve' ? telemetryAfterLateStats - telemetryBeforeLateStats : 0,
+              },
+              {
+                closedWhileStatsPending: 0,
+                resolvedWithinBudget: true,
+                closedWithinBudget: 1,
+                closeCount: 1,
+                lateTelemetry: 0,
+              }
+            );
+          });
+        });
+      });
+
       it('calls prepareLeaveMeetingOptions as expected', () => {
         const meeting = {
           locusUrl: 'locusUrl',
