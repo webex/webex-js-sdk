@@ -19,6 +19,28 @@ export interface UserIdentityRoots {
   userIdentityRootsPem: string;
 }
 
+export interface UserIdentity {
+  email: string;
+}
+
+export interface IssueCertificateRequest {
+  /** SDK ID used to look up and cache credentials. */
+  contactId: string;
+  /** User identity for the certificate. */
+  identity: UserIdentity;
+  /** PEM-encoded PKCS#10 certificate signing request. */
+  csrPem: string;
+}
+
+export interface IssueCertificateResult {
+  /** PEM chain with the leaf first, then intermediates. Omit the root. */
+  certificateChainPem: string;
+}
+
+export interface UserIdentityCertificateProvider {
+  issueCertificate(request: IssueCertificateRequest): Promise<IssueCertificateResult>;
+}
+
 export interface IdentityTrustAnchors {
   webexCaRoots?: string;
   /** PEM-encoded domain-name trust anchors. */
@@ -38,4 +60,5 @@ export interface IdentityProvider {
 export interface CertSigningRequest {
   privKeyDer: Uint8Array;
   csr: string;
+  csrPem: string;
 }

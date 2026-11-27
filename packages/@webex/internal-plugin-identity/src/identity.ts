@@ -13,6 +13,7 @@ import {
 import type {
   IdentityCredentials,
   IdentityTrustAnchors,
+  UserIdentityCertificateProvider,
   UserIdentityCredentialsInput,
   UserIdentityRoots,
 } from './types';
@@ -33,6 +34,8 @@ class Identity extends WebexPlugin {
   credentialsCache: Map<string, Promise<IdentityCredentials>>;
   private userIdentityRoots = '';
   private userIdentityCredentials = new Map<string, Promise<IdentityCredentials>>();
+  private userIdentityProviderCredentials = new Map<string, Promise<IdentityCredentials>>();
+  private userIdentityCertificateProvider?: UserIdentityCertificateProvider;
 
   constructor(attrs = {}, options = {}) {
     super(attrs, options);
@@ -74,6 +77,19 @@ class Identity extends WebexPlugin {
    */
   public setUserIdentityRoots(roots: UserIdentityRoots): void {
     this.userIdentityRoots = roots.userIdentityRootsPem;
+  }
+
+  /**
+   * Registers the provider that issues certificates for SDK-generated identity keys.
+   * @param {UserIdentityCertificateProvider} provider - Customer certificate provider.
+   */
+  public setUserIdentityCertificateProvider(provider: UserIdentityCertificateProvider): void {
+    if (typeof provider?.issueCertificate !== 'function') {
+      throw new Error('A user identity certificate provider with issueCertificate is required');
+    }
+
+    this.userIdentityCertificateProvider = provider;
+    this.userIdentityProviderCredentials.clear();
   }
 
   /**
@@ -121,7 +137,11 @@ class Identity extends WebexPlugin {
    * @returns {Promise<IdentityCredentials[]>}
    */
   getCredentials(contactId: string): Promise<IdentityCredentials[]> {
-    const userIdentityCredentials = this.userIdentityCredentials.get(contactId);
+    const userIdentityCredentials =
+      this.userIdentityCredentials.get(contactId) ??
+      (this.userIdentityCertificateProvider
+        ? this.getUserIdentityProviderCredentials(contactId)
+        : undefined);
 
     if (userIdentityCredentials) {
       // The SDK's Core-JS 2 Promise shim does not implement allSettled().
@@ -158,6 +178,99 @@ class Identity extends WebexPlugin {
     }
 
     return this.getWebexCredentials(contactId).then((credentials) => [credentials]);
+  }
+
+  /**
+   * Returns customer-issued credentials for the given contact, generating and caching them on
+   * first use.
+   * @param {string} contactId
+   * @returns {Promise<IdentityCredentials>}
+   */
+  private getUserIdentityProviderCredentials(contactId: string): Promise<IdentityCredentials> {
+    const cachedCredentials = this.userIdentityProviderCredentials.get(contactId);
+
+    if (cachedCredentials) {
+      return cachedCredentials.then((credentials) => {
+        const leafCertificate = credentials.certChain[0];
+
+        if (leafCertificate && !isCertificateExpiringSoon(leafCertificate)) {
+          return credentials;
+        }
+
+        return this.cacheUserIdentityProviderCredentials(contactId, cachedCredentials);
+      });
+    }
+
+    return this.cacheUserIdentityProviderCredentials(contactId);
+  }
+
+  /**
+   * Requests customer-issued credentials and caches the in-flight promise per contact.
+   * @param {string} contactId
+   * @param {Promise<IdentityCredentials>} [cachedCredentials]
+   * @returns {Promise<IdentityCredentials>}
+   */
+  private cacheUserIdentityProviderCredentials(
+    contactId: string,
+    cachedCredentials?: Promise<IdentityCredentials>
+  ): Promise<IdentityCredentials> {
+    if (
+      cachedCredentials &&
+      this.userIdentityProviderCredentials.get(contactId) !== cachedCredentials
+    ) {
+      return (
+        this.userIdentityProviderCredentials.get(contactId) ??
+        this.cacheUserIdentityProviderCredentials(contactId)
+      );
+    }
+
+    const provider = this.userIdentityCertificateProvider;
+
+    if (!provider) {
+      return Promise.reject(new Error('No user identity certificate provider is configured'));
+    }
+
+    const credentials = this.requestUserIdentityProviderCredentials(contactId, provider);
+
+    this.userIdentityProviderCredentials.set(contactId, credentials);
+    credentials.catch(() => {
+      if (this.userIdentityProviderCredentials.get(contactId) === credentials) {
+        this.userIdentityProviderCredentials.delete(contactId);
+      }
+    });
+
+    return credentials;
+  }
+
+  /**
+   * Requests a customer-signed certificate for an SDK-generated identity key.
+   * @param {string} contactId
+   * @param {UserIdentityCertificateProvider} provider
+   * @returns {Promise<IdentityCredentials>}
+   */
+  private async requestUserIdentityProviderCredentials(
+    contactId: string,
+    provider: UserIdentityCertificateProvider
+  ): Promise<IdentityCredentials> {
+    const user = await this.webex.internal.user.get();
+    const email = user?.email || user?.emailAddress || user?.entryEmail;
+
+    if (!email) {
+      throw new Error('Current user email is required for customer identity certificate issuance');
+    }
+
+    const {privKeyDer, csrPem} = await generateCsr(contactId);
+    const {certificateChainPem} = await provider.issueCertificate({
+      contactId,
+      identity: {email},
+      csrPem,
+    });
+    const privateKeyPkcs8Pem = `-----BEGIN PRIVATE KEY-----\n${Buffer.from(privKeyDer)
+      .toString('base64')
+      .match(/.{1,64}/g)
+      ?.join('\n')}\n-----END PRIVATE KEY-----`;
+
+    return parseUserIdentityCredentials(privateKeyPkcs8Pem, certificateChainPem);
   }
 
   /**

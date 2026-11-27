@@ -57,9 +57,12 @@ export async function generateCsr(contactId: string): Promise<CertSigningRequest
   await pkcs10.sign(keyPair.privateKey, 'SHA-256');
 
   const csrDer = pkcs10.toSchema().toBER(false);
-  const csr = Buffer.from(csrDer).toString('base64');
+  const csrBase64 = Buffer.from(csrDer).toString('base64');
+  const csrPem = `-----BEGIN CERTIFICATE REQUEST-----\n${csrBase64
+    .match(/.{1,64}/g)
+    ?.join('\n')}\n-----END CERTIFICATE REQUEST-----`;
 
-  return {privKeyDer: new Uint8Array(privKeyDer), csr};
+  return {privKeyDer: new Uint8Array(privKeyDer), csr: csrBase64, csrPem};
 }
 
 /**
