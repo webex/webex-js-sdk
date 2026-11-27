@@ -1,7 +1,6 @@
 /** Plain lifecycle-error reasons shared by recovery consumers. */
 export const REGION_RECOVERY_ERROR_CODES = {
   RECOVERY_INTERRUPTED: 'RECOVERY_INTERRUPTED',
-  RECOVERY_IN_PROGRESS: 'RECOVERY_IN_PROGRESS',
   STALE_TASK: 'STALE_TASK',
 } as const;
 
@@ -144,6 +143,7 @@ export const METHODS = {
   CLOSE: 'close',
   HANDLE_CONNECTION_LOST: 'handleConnectionLost',
   REGISTER: 'register',
+  CONNECT: 'connect',
   WEB_SOCKET_ON_CLOSE_HANDLER: 'webSocketOnCloseHandler',
 
   // ConnectionService methods

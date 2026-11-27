@@ -1,5 +1,10 @@
 import {WebSocketManager} from '../../../../../../src/services/core/websocket/WebSocketManager';
-import {METHODS, WELCOME_TIMEOUT} from '../../../../../../src/services/core/constants';
+import {
+  CLOSE_SOCKET_TIMEOUT,
+  KEEPALIVE_WORKER_INTERVAL,
+  METHODS,
+  WELCOME_TIMEOUT,
+} from '../../../../../../src/services/core/constants';
 import {WEB_SOCKET_MANAGER_FILE} from '../../../../../../src/constants';
 import LoggerProxy from '../../../../../../src/logger-proxy';
 
@@ -35,28 +40,27 @@ describe('WebSocketManager URL transport', () => {
   let workers: Array<{
     onmessage: ((event: any) => void) | null;
     postMessage: jest.Mock;
-    terminate: jest.Mock;
   }>;
   const originalSocket = global.WebSocket;
   const originalWorker = global.Worker;
   const originalBlob = global.Blob;
+  const originalNavigator = global.navigator;
   const createUrl = URL.createObjectURL;
-  const revokeUrl = URL.revokeObjectURL;
 
   beforeEach(() => {
     jest.useFakeTimers('modern');
     jest.clearAllMocks();
     SocketDouble.instances = [];
     workers = [];
+    Object.defineProperty(global, 'navigator', {value: {onLine: true}, configurable: true});
     global.WebSocket = SocketDouble as any;
     global.Blob = class BlobDouble {} as any;
     global.Worker = jest.fn(() => {
-      const worker = {onmessage: null, postMessage: jest.fn(), terminate: jest.fn()};
+      const worker = {onmessage: null, postMessage: jest.fn()};
       workers.push(worker);
       return worker;
     }) as any;
     URL.createObjectURL = jest.fn(() => 'blob:socket-' + workers.length);
-    URL.revokeObjectURL = jest.fn();
     manager = new WebSocketManager();
   });
 
@@ -68,8 +72,8 @@ describe('WebSocketManager URL transport', () => {
     global.WebSocket = originalSocket;
     global.Worker = originalWorker;
     global.Blob = originalBlob;
+    Object.defineProperty(global, 'navigator', {value: originalNavigator, configurable: true});
     URL.createObjectURL = createUrl;
-    URL.revokeObjectURL = revokeUrl;
   });
 
   const start = (signal?: AbortSignal, connectionUrl = url) => {
@@ -94,19 +98,28 @@ describe('WebSocketManager URL transport', () => {
     expect(socket.onclose).toBeNull();
     expect(manager.hasUsableSocket()).toBe(false);
     expect(jest.getTimerCount()).toBe(0);
+    expect(workers[0].onmessage).toBeNull();
+    expect(workers[0].postMessage).toHaveBeenLastCalledWith({type: 'terminate'});
   };
 
   it('connects the supplied URL and waits for Welcome before admitting messages', async () => {
     const message = jest.fn();
     manager.on('message', message);
-    expect(global.Worker).not.toHaveBeenCalled();
+    expect(global.Worker).toHaveBeenCalledTimes(1);
+    expect(workers[0].postMessage).not.toHaveBeenCalled();
     const {promise, socket} = start();
     expect(socket.url).toBe(url);
     expect(manager.hasUsableSocket()).toBe(false);
-    expect(global.Worker).not.toHaveBeenCalled();
+    expect(global.Worker).toHaveBeenCalledTimes(1);
     socket.open();
     expect(socket.send).toHaveBeenCalledWith(JSON.stringify({keepalive: 'true'}));
     expect(global.Worker).toHaveBeenCalledTimes(1);
+    expect(workers[0].postMessage).toHaveBeenLastCalledWith({
+      type: 'start',
+      intervalDuration: KEEPALIVE_WORKER_INTERVAL,
+      isSocketClosed: false,
+      closeSocketTimeout: CLOSE_SOCKET_TIMEOUT,
+    });
     socket.message({type: 'server-event', data: {value: 1}});
     expect(message).not.toHaveBeenCalled();
 
@@ -130,7 +143,8 @@ describe('WebSocketManager URL transport', () => {
   ])('rejects an insecure or untrusted socket URL %s', async (connectionUrl) => {
     await expect(manager.initWebSocket({url: connectionUrl})).rejects.toThrow('not allow-listed');
     expect(SocketDouble.instances).toHaveLength(0);
-    expect(global.Worker).not.toHaveBeenCalled();
+    expect(global.Worker).toHaveBeenCalledTimes(1);
+    expect(workers[0].postMessage).not.toHaveBeenCalled();
     expect(jest.getTimerCount()).toBe(0);
   });
 
@@ -144,8 +158,6 @@ describe('WebSocketManager URL transport', () => {
     jest.advanceTimersByTime(1);
     await expect(promise).rejects.toThrow('Welcome deadline');
     expectReleased(socket);
-    expect(workers[0].terminate).toHaveBeenCalledTimes(1);
-    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
   });
 
   it.each([false, true])('bounds Welcome from connect even when native open is delayed (%s)', async (opened) => {
@@ -160,7 +172,7 @@ describe('WebSocketManager URL transport', () => {
     await expect(promise).rejects.toThrow('Welcome deadline');
     oldMessage({data: JSON.stringify({type: 'Welcome', data: {agentId: 'late'}})});
     expectReleased(socket);
-    expect(workers).toHaveLength(opened ? 1 : 0);
+    expect(workers).toHaveLength(1);
   });
 
   it.each(['close', 'error'])('settles %s before Welcome and releases callbacks', async (event) => {
@@ -175,11 +187,14 @@ describe('WebSocketManager URL transport', () => {
     );
     expectReleased(socket, 0);
     expect(closed).not.toHaveBeenCalled();
-    expect(workers[0].terminate).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['close', 'error'])('reports an admitted socket %s for the reconnect scheduler', async (event) => {
+  it.each([
+    {event: 'close', online: false},
+    {event: 'error', online: true},
+  ])('reports an admitted socket $event for the reconnect scheduler', async ({event, online}) => {
     const socket = await admit();
+    Object.assign(navigator, {onLine: online});
     const closed = jest.fn();
     manager.on('socketClose', closed);
     if (event === 'close') socket.nativeClose();
@@ -187,6 +202,11 @@ describe('WebSocketManager URL transport', () => {
     expect(closed).toHaveBeenCalledTimes(1);
     expect(closed).toHaveBeenCalledWith({shouldReconnect: true});
     expectReleased(socket, 0);
+    expect(LoggerProxy.error).toHaveBeenCalledWith(
+      `[WebSocketStatus] | event=webSocketClose | WebSocket connection closed REASON: ${online
+        ? 'missing keepalive from either desktop or notif service' : 'network issue'}`,
+      {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.WEB_SOCKET_ON_CLOSE_HANDLER}
+    );
   });
 
   it('supersedes pending and accepted sockets without admitting stale callbacks', async () => {
@@ -204,9 +224,17 @@ describe('WebSocketManager URL transport', () => {
     expect(second.close).not.toHaveBeenCalled();
     expect(manager.hasUsableSocket()).toBe(true);
 
+    const previousWorkerMessage = workers[0].onmessage;
+    workers[0].postMessage.mockClear();
     await admit();
     expect(second.close).toHaveBeenCalledTimes(1);
-    expect(workers[0].terminate).toHaveBeenCalledTimes(1);
+    expect(global.Worker).toHaveBeenCalledTimes(1);
+    expect(workers[0].onmessage).not.toBe(previousWorkerMessage);
+    expect(workers[0].postMessage.mock.calls).toEqual([
+      [{type: 'terminate'}],
+      [{type: 'start', intervalDuration: KEEPALIVE_WORKER_INTERVAL,
+        isSocketClosed: false, closeSocketTimeout: CLOSE_SOCKET_TIMEOUT}],
+    ]);
   });
 
   it('rejects a pre-aborted signal without disturbing an accepted socket', async () => {
@@ -231,8 +259,6 @@ describe('WebSocketManager URL transport', () => {
     oldWorkerMessage({data: {type: 'keepalive'}});
     expect(socket.send).toHaveBeenCalledTimes(1);
     expectReleased(socket);
-    expect(workers[0].onmessage).toBeNull();
-    expect(workers[0].terminate).toHaveBeenCalledTimes(1);
   });
 
   it.each([true, false])('closes once with reconnect choice %s', async (reconnect) => {
@@ -244,8 +270,6 @@ describe('WebSocketManager URL transport', () => {
     expect(closed.mock.calls).toEqual([[{shouldReconnect: reconnect}]]);
     expect(manager.shouldReconnect).toBe(reconnect);
     expectReleased(socket);
-    expect(workers[0].terminate).toHaveBeenCalledTimes(1);
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:socket-0');
   });
 
   it.each([false, true])('forces a worker close only after connection loss (%s)', async (isConnectionLost) => {
@@ -307,23 +331,11 @@ describe('WebSocketManager URL transport', () => {
     expect(jest.getTimerCount()).toBe(0);
   });
 
-  it('releases the socket when its keepalive worker cannot start', async () => {
-    const failure = new Error('Worker blocked');
-    (global.Worker as jest.Mock).mockImplementationOnce(() => { throw failure; });
-    const {promise, socket} = start();
-    socket.open();
-    await expect(promise).rejects.toBe(failure);
-    expectReleased(socket);
-    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
-  });
-
   it('keeps signed URLs out of socket-close diagnostics', async () => {
     const socket = await admit();
 
     manager.close(false, url);
     expectReleased(socket);
-    expect(workers[0].terminate).toHaveBeenCalledTimes(1);
-    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
     const calls = (LoggerProxy.log as jest.Mock).mock.calls;
     expect(calls).toContainEqual(['WebSocket connection closed', {
       module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CLOSE,

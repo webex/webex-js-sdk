@@ -13,7 +13,7 @@ jest.mock('../../../../../src/services/core/Utils', () => ({
 
 jest.mock('../../../../../src/services/core/aqm-reqs');
 
-describe('station login', () => {
+describe('station recovery failures', () => {
   it.each([
     [{reasonCode: 9999, status: 429}, 'transient'],
     [{reasonCode: 9999, status: 502}, 'transient'],
@@ -34,7 +34,7 @@ describe('station login', () => {
     [{reasonCode: 1037, status: 401}, 'auth'],
     [{reasonCode: 1035, status: 403}, 'auth'],
     [{reasonCode: 1037, reason: 'RECOVERY_INTERRUPTED', status: 403}, 'cancelled'],
-  ])('T-007 recoveryFailureCategoryPrecedence %j', (failure, category) => {
+  ])('classifies a recovery failure using the matching priority: %j', (failure, category) => {
     expect(getStationRecoveryFailureCategory(failure)).toBe(category);
   });
 });

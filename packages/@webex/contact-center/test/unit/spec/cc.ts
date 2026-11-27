@@ -588,6 +588,31 @@ describe('webex.cc', () => {
     );
   });
 
+  describe('cc.getDeviceId', () => {
+    it('should return dialNumber when loginOption is EXTENSION', () => {
+      const loginOption = LoginOption.EXTENSION;
+      const dialNumber = '12345';
+      const result = webex.cc['getDeviceId'](loginOption, dialNumber);
+      expect(result).toBe(dialNumber);
+    });
+
+    it('should return dialNumber when loginOption is AGENT_DN', () => {
+      const loginOption = LoginOption.AGENT_DN;
+      const dialNumber = '12345';
+      const result = webex.cc['getDeviceId'](loginOption, dialNumber);
+      expect(result).toBe(dialNumber);
+    });
+
+    it('should return prefix + agentId for other loginOptions', () => {
+      const loginOption = 'OTHER_OPTION';
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+      };
+      const result = webex.cc['getDeviceId'](loginOption, '');
+      expect(result).toBe(WEB_RTC_PREFIX + 'agentId');
+    });
+  });
+
   describe('register', () => {
     const createFreshAgentProfile = (overrides: Partial<Profile> = {}): Profile => ({
       agentId: 'agent123',
@@ -6321,6 +6346,7 @@ describe('regional recovery wiring', () => {
 
   type RoutingOptions = {
     autoRegister?: boolean;
+    integrationEnvironment?: boolean;
     initialSubscribeFailure?: SubscribeFailure;
     resolveSubscribeFailure?: boolean;
     multiRegionEnabled?: boolean | null;
@@ -6333,6 +6359,7 @@ describe('regional recovery wiring', () => {
     test: (context: any) => Promise<void>,
     {
       autoRegister = true,
+      integrationEnvironment = true,
       initialSubscribeFailure,
       resolveSubscribeFailure = false,
       multiRegionEnabled = true,
@@ -6397,7 +6424,7 @@ describe('regional recovery wiring', () => {
         submitBusinessEvent: jest.fn(),
       };
       webex.internal.services = {
-        isIntegrationEnvironment: () => true,
+        isIntegrationEnvironment: () => integrationEnvironment,
         waitForCatalog: jest.fn().mockResolvedValue(undefined),
         get: jest.fn(),
       };
@@ -6566,6 +6593,39 @@ describe('regional recovery wiring', () => {
       jest.useRealTimers();
     }
   };
+
+  it.each([
+    {environment: 'INT', integrationEnvironment: true, orgId: 'org'},
+    {environment: 'production', integrationEnvironment: false, orgId: 'org'},
+    {environment: 'INT without an org ID', integrationEnvironment: true, orgId: undefined},
+  ])(
+    'uses the expected subscription headers in $environment',
+    async ({integrationEnvironment, orgId}) => {
+      await withRouting(async ({cc, requests}) => {
+        cc.$webex.credentials.getOrgId = () => orgId;
+        const body = {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: false,
+        };
+
+        const url = await cc.services.subscribe(body, SUBSCRIBE_API);
+
+        expect(requests).toEqual([
+          {
+            service: WCC_API_GATEWAY,
+            resource: SUBSCRIBE_API,
+            method: 'POST',
+            body,
+            headers: integrationEnvironment && orgId ? {'X-ORGANIZATION-ID': orgId} : undefined,
+            timeout: 20000,
+          },
+        ]);
+        expect(url).toBe('wss://routing.produs1.cisco.com/?signature=private');
+      }, {autoRegister: false, integrationEnvironment});
+    }
+  );
 
   it('uses newly subscribed routing sockets for failover, failback, and ordinary AQM requests', async () => {
     await withRouting(async ({cc, requests, currentRouting, startSwitch, advanceSwitch, login}) => {
@@ -7265,7 +7325,8 @@ describe('regional recovery wiring', () => {
       failure: subscribeConflict('REGION_MISMATCH_NO_OVERRIDE'),
     },
     {title: 'rejects expired credentials', failure: {statusCode: 401}},
-  ])('registration uses ordinary reconnect and $title', async ({failure}) => {
+    {title: 'ends when deregistered while waiting', deregister: true},
+  ])('registration uses ordinary reconnect and $title', async ({failure, deregister}) => {
     await withRouting(
       async ({cc, requests, currentRouting, setSubscribeFailure, updateServices}) => {
         const configService = cc.services.config;
@@ -7286,6 +7347,18 @@ describe('regional recovery wiring', () => {
         currentRouting().lose();
         profileAvailable.resolve();
         await flush();
+
+        if (deregister) {
+          await cc.deregister();
+          await expect(registration).rejects.toMatchObject({
+            data: {reason: 'RECOVERY_INTERRUPTED'},
+          });
+          jest.advanceTimersByTime(60000);
+          await flush();
+          expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(1);
+
+          return;
+        }
 
         setSubscribeFailure(failure);
         jest.advanceTimersByTime(5000);

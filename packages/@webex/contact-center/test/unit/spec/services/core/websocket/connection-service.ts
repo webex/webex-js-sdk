@@ -230,14 +230,18 @@ describe('ConnectionService', () => {
     expect(jest.getTimerCount()).toBe(2);
   });
 
-  it('resets liveness timers after a keepalive', async () => {
+  it.each([true, false])('resets liveness timers after a valid message (keepalive %s)', async (keepalive) => {
     await tick(7000);
-    manager.emit('message', JSON.stringify({keepalive: 'true'}));
-    expect(events).toHaveBeenLastCalledWith({...lost, isConnectionLost: false, isKeepAlive: true});
+    manager.emit('message', JSON.stringify(keepalive ? {keepalive: 'true'} : {type: 'AgentStateChange'}));
+    if (keepalive) {
+      expect(events).toHaveBeenLastCalledWith({...lost, isConnectionLost: false, isKeepAlive: true});
+    } else {
+      expect(events).not.toHaveBeenCalled();
+    }
     await tick(7000);
-    expect(events).toHaveBeenCalledTimes(1);
+    expect(events).toHaveBeenCalledTimes(keepalive ? 1 : 0);
     await tick(1000);
-    expect(events).toHaveBeenLastCalledWith({...lost, isKeepAlive: true});
+    expect(events).toHaveBeenLastCalledWith({...lost, isKeepAlive: keepalive});
   });
 
   it.each(['not json', 'null', '[]', '7'])('ignores malformed liveness payload %s', (message) => {

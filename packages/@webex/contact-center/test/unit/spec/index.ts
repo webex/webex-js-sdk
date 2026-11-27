@@ -805,11 +805,6 @@ describe('contact-center root public contract', () => {
           if (state.status === 'unavailable') return interrupted;
           return retryAfterMs;
         });
-
-        registration.then((profile) => {
-          const enabled: boolean | undefined = profile.multiRegionSettings?.multiRegionEnabled;
-          return enabled;
-        });
       `,
     });
 

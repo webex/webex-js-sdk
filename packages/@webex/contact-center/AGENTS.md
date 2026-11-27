@@ -654,7 +654,7 @@ listener-cleanup defects are recorded in
 
 `register()` attaches the task, WebSocket `message`, and `connectionLost` listeners. Pair each
 `on()` with an `off()` using the same callback. On deregistration, close both socket managers with
-`shouldReconnect: false` to clear pending subscriptions. See [Deregister](src/docs/README.md#deregister).
+`shouldReconnect: false` to end socket connections. See [Deregister](src/docs/README.md#deregister).
 
 Applications subscribe on the `cc` object or on task instances. Always use named callbacks so `.off()`
 can reference the same function:

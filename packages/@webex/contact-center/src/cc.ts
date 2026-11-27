@@ -61,7 +61,6 @@ import {
   isRecord,
   isValidDialNumber,
   sanitizeForObservability,
-  awaitRecoveryWork,
   createRegionRecoveryError,
   normalizeRecoveryFailure,
   normalizeRecoveryDiagnosticId,
@@ -698,8 +697,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (manager.hasUsableSocket()) return;
     if (manager.shouldReconnect === false) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
 
+    const {signal} = attempt.controller;
     let onConnection: (details: ConnectionLostDetails) => void;
     let onClose: (event: {shouldReconnect: boolean}) => void;
+    let onAbort: () => void;
     const connected = new Promise<void>((resolve, reject) => {
       attempt.rejectConnectionWait = reject;
       onConnection = (details) => {
@@ -709,15 +710,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       onClose = ({shouldReconnect}) => {
         if (!shouldReconnect) reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
       };
+      onAbort = () => reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
       this.services.connectionService.on('connectionLost', onConnection);
       manager.on('socketClose', onClose);
+      signal.addEventListener('abort', onAbort, {once: true});
+      if (signal.aborted) onAbort();
     });
     try {
-      await awaitRecoveryWork(connected, attempt.controller.signal);
+      await connected;
     } finally {
       attempt.rejectConnectionWait = undefined;
       this.services.connectionService.off('connectionLost', onConnection);
       manager.off('socketClose', onClose);
+      signal.removeEventListener('abort', onAbort);
     }
   }
 

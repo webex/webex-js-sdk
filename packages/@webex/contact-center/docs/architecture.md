@@ -135,7 +135,7 @@ The collaborators in the composition tree are built once, on the Webex READY eve
 | `ContactCenter` | Services agent and dialer factories | AqmReqs: HTTP request, then a matched WebSocket notification | Station login, logout, state change, buddy agents, outdial, campaign preview | Settles on a matching notification, HTTP rejection, or the default 20-second timeout. |
 | `ContactCenter` data services | Contact Center API gateway | WebexRequest HTTP | Address book, entry points, queues, user preferences, AI assistant | HTTP errors propagate after metrics and logging |
 | ConnectionService | `ContactCenter` | `connectionLost` event | Socket loss and reconnect | Ordinary reconnect attempts `silentRelogin()` when configuration allows, automatic relogin is unsuppressed, and the recovery phase is idle or ready |
-| WebSocketManager (primary and RTD) | ContactCenter, TaskManager, AqmReqs | `message` events | Realtime routing and AQM request completion | Unknown message types are ignored |
+| WebSocketManager (primary and RTD) | ContactCenter, TaskManager, AqmReqs | `message` events | Realtime routing and AQM request completion | The manager forwards frames after Welcome; ContactCenter ignores unknown event types |
 | TaskManager | Task instances and `ContactCenter` | Task events | Task offer, hydrate, merge, and lifecycle | Malformed or unknown messages are ignored |
 
 ## Dependency topology
@@ -284,7 +284,7 @@ Cache eligibility rules are in the [Utils spec](../src/utils/docs/README.md) and
 
 | Signal  | Convention or required fields | Propagation or naming rule | Primary evidence |
 | ------- | ----------------------------- | -------------------------- | ---------------- |
-| Logs    | `LoggerProxy.log`, `info`, `warn`, `error`, `trace` with a `{module, method}` context, optional `interactionId`, `trackingId`, `data`, `error` | Formatted as `module:… - method:… - interactionId:… - trackingId:…` after the package log prefix; AQM diagnostics always select safe scalar fields and omit URLs, headers, and routing payloads | `src/logger-proxy.ts` |
+| Logs    | `LoggerProxy.log`, `info`, `warn`, `error`, `trace` with a `{module, method}` context, optional `interactionId`, `trackingId`, `data`, `error` | Formatted as `module:… - method:… - interactionId:… - trackingId:…` after the package log prefix; `redactSensitiveLogs` on an AQM request suppresses URLs and routing payloads | `src/logger-proxy.ts` |
 | Metrics | `trackEvent(name, payload, ['behavioral' / 'operational' / 'business'])`; `timeEvent` adds durations | Operational and business names are submitted as `WXCC_SDK_` followed by the event name; behavioral names map through the taxonomy | `src/metrics/MetricsManager.ts` |
 | Traces  | None | Backend `trackingId` values are carried into logs and metrics | `src/metrics/MetricsManager.ts` |
 | Audit   | None | Remote services own operational records | `src/cc.ts` |
@@ -409,7 +409,7 @@ flowchart LR
 |---|---|---|---|
 | Log upload | Runtime context could contain sensitive values | Shared error helpers upload only approved diagnostic context; never add credentials/payload dumps | Contact Center maintainers |
 | WebSocket event parsing | Malformed/unexpected remote data | Parse defensively, map known event constants, ignore/reject invalid transitions | Core/Task maintainers |
-| Public dial/contact/participant-drop inputs | PII, external numbers, and participant identifiers | Validate and avoid logging raw values; AQM diagnostics always omit dynamic URLs and raw routing failures | Contact Center maintainers |
+| Public dial/contact/participant-drop inputs | PII, external numbers, and participant identifiers | Validate and avoid logging raw values; sensitive AQM operations redact dynamic URLs and raw routing failures | Contact Center maintainers |
 
 - Security-sensitive changes require package-owner review and independent SDD validation. Report vulnerabilities through the repository's documented Cisco security/support process.
 

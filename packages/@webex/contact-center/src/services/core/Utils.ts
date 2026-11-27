@@ -177,28 +177,6 @@ export const createRegionRecoveryError = (
   return Object.assign(new Error(reason), {data: {reason}});
 };
 
-/** Observes abandoned work while promptly releasing its local cancellation continuation. */
-export const awaitRecoveryWork = <T>(work: Promise<T>, signal: AbortSignal): Promise<T> => {
-  return new Promise<T>((resolve, reject) => {
-    const onAbort = () => {
-      signal.removeEventListener('abort', onAbort);
-      reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-    };
-    signal.addEventListener('abort', onAbort, {once: true});
-    work.then(
-      (value) => {
-        signal.removeEventListener('abort', onAbort);
-        resolve(value);
-      },
-      (error) => {
-        signal.removeEventListener('abort', onAbort);
-        reject(error);
-      }
-    );
-    if (signal.aborted) onAbort();
-  });
-};
-
 /** Waits for the recovery delay or releases the wait when ownership ends. */
 export const waitForRecoveryDelay = (delay: number, signal: AbortSignal): Promise<void> => {
   if (delay <= 0 || signal.aborted) return Promise.resolve();
@@ -215,18 +193,11 @@ export const waitForRecoveryDelay = (delay: number, signal: AbortSignal): Promis
   });
 };
 
-/** Recognizes cross-realm lifecycle errors structurally and narrows their required reason. */
+/** Recognizes SDK lifecycle errors and narrows their required reason. */
 export const isRegionRecoveryError = (
   error: unknown
 ): error is AugmentedError & {data: {reason: RegionRecoveryErrorCode}} => {
-  if (
-    !isRecord(error) ||
-    typeof error.name !== 'string' ||
-    typeof error.message !== 'string' ||
-    (error.stack !== undefined && typeof error.stack !== 'string') ||
-    !isRecord(error.data)
-  )
-    return false;
+  if (!(error instanceof Error) || !('data' in error) || !isRecord(error.data)) return false;
   const {reason} = error.data;
 
   return Object.values(REGION_RECOVERY_ERROR_CODES).some((code) => code === reason);

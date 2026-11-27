@@ -172,7 +172,7 @@ Use [`constants.ts`](../constants.ts) as the canonical source for service-level 
 - `WCC_API_GATEWAY` — service identifier used by `WebexRequest` calls
 - `SUBSCRIBE_API`, `RTD_SUBSCRIBE_API` — notification and realtime subscription paths passed by `cc.ts` to `Services.subscribe`
 - `LOGIN_API`, `STATE_CHANGE_API` — API path constants that nothing imports today; the agent factory writes its URLs inline
-- `WEB_RTC_PREFIX` — `webrtc-` prefix the agent service puts before the agent ID to form the browser device ID
+- `WEB_RTC_PREFIX` — `webrtc-` prefix that `cc.ts` puts before the agent id to form the browser device id
 - `WEBSOCKET_EVENT_TIMEOUT` — defined as `20000` ms in `src/services/constants.ts` but not used by AqmReqs; active AQM correlation defaults to Core's `TIMEOUT_REQ = 20000`
 - `DEFAULT_RTMS_DOMAIN`, `WCC_CALLING_RTMS_DOMAIN` — RTMS/WebRTC domain constants
 - `ALLOWED_RTMS_DOMAIN` — trusted RTMS domain suffix (`rtmsprod.net`); a catalog-provided RTMS host is used only when its hostname equals or is a subdomain of this value, otherwise `DEFAULT_RTMS_DOMAIN` is used
@@ -282,8 +282,8 @@ default filter makes every default call a search request. Reference files:
 ApiAIAssistant wellness reporting is also direct REST, but it reads live context through a read-only provider supplied by ContactCenter at construction rather than a separate factory or context setter. It fails closed unless wellness is effectively enabled and the SDK owns a current organization, agent, and session; public action calls do not accept identity fields.
 
 Direct AI event requests, wellness actions, and historic transcript reads retain their HTTP
-settlement during recovery. Pending summary requests that wait for RTD settle when their RTD
-connection or task is interrupted.
+settlement during recovery. ContactCenter clears pending summary requests when it pauses the
+current RTD subscription.
 
 ApiAIAssistant resolves its base URL by looking up the `WCC_API_GATEWAY` host in
 `AI_ASSISTANT_ENV_MAP` and filling `AI_ASSISTANT_BASE_URL_TEMPLATE`; an unknown host fails with
@@ -309,7 +309,7 @@ for AQM; in-process events from `@webex/calling` and Mercury.
 | Direct REST | A data, config, or user-preference call through `WebexRequest`; resolves the response body | Direct REST request diagram; `src/services/AddressBook.ts` | HTTP/service rejection is returned directly to the caller. |
 | AQM | An agent, contact, or dialer factory call; resolves the correlated notification | Correlated AQM operation diagram; `src/services/core/aqm-reqs.ts` | HTTP rejection, matching failure notification, and timeout reject the operation. |
 | Wellness action | `requestWellnessBreak()` or `respondToWellnessBreak({action})`; resolves on HTTP 202 | Wellness action diagram; `src/services/ApiAiAssistant.ts` | Invalid action, disabled flag, or missing org, agent, or session rejects before HTTP; a non-202 status or network error rejects with a structured error |
-| RTD-correlated request | `requestAndWaitForRtd(options)` from a task AI summary; resolves the matching RTD payload | RTD-correlated request diagram; `src/services/ApiAiAssistant.ts` | HTTP failure removes the pending entry and rejects; the timer rejects with the caller's timeout error; a newer request with the same key rejects the previous request and releases its timer and abort listener; clearing rejects every pending request |
+| RTD-correlated request | `requestAndWaitForRtd(options)` from a task AI summary; resolves the matching RTD payload | RTD-correlated request diagram; `src/services/ApiAiAssistant.ts` | HTTP failure removes the pending entry and rejects; the timer rejects with the caller's timeout error; a newer request with the same key replaces the timer; clearing rejects every pending request |
 | Browser line registration | `registerWebCallingLine()`; resolves on line `REGISTERED` | Browser line registration diagram; `src/services/WebCallingService.ts` | Timeout, line error, superseded registration |
 | usersub publish and refresh | `setManageWebexCallingInWxcc(enable)`; resolves after the publish | usersub publish and refresh diagram; `src/services/WebexCrossClientService.ts` | Missing user id or device URL throws; publish failure rejects; a failed refresh retries after 30 s up to 3 times; teardown during a publish discards its result |
 | Hydra telephony call | Answer, reject, mute, unmute, DTMF, or call details for a wxApp call; resolves the response | Hydra telephony call diagram; `src/services/AnswerCallOnWebexService.ts` | Missing Hydra URL rejects; failures reject marked `isWxAppTelephonyError`; an expected call-not-found from call details rejects without an error log |
@@ -421,7 +421,7 @@ sequenceDiagram
   participant SVC as AI Assistant event API
   participant TM as TaskManager
   T->>AI: requestAndWaitForRtd(eventType, correlationId, timeoutMs)
-  AI->>AI: reject the prior request for this key, then store the new request and start its timer
+  AI->>AI: clear the timer of an earlier request with the same key, store request, start timer
   AI->>SVC: sendEvent, POST /event
   alt HTTP failure
     AI->>AI: remove pending request
@@ -433,7 +433,7 @@ sequenceDiagram
     AI-->>T: reject createTimeoutError()
   else RTD lifecycle ends
     TM->>AI: clearAllRtdRequests()
-    AI-->>T: reject pending request
+    AI-->>T: reject RTD request cleared
   end
 ```
 
@@ -717,7 +717,7 @@ Request, response, and event payload ownership for the composed transports is an
 | No user id for a preference call | `Error` starting `UserPreference: userId` | Log in or pass the id | None | `src/services/UserPreference.ts` |
 | Wellness disabled, missing org, agent, or session, invalid action, or non-202 status | Structured error with reasons such as `WELLNESS_BREAK_NOT_ENABLED` or `WELLNESS_BREAK_ACTION_UNEXPECTED_STATUS_` followed by the status code | Do not retry until the session or flag changes | None | `src/services/ApiAiAssistant.ts` |
 | AI feature off, bad ids, or unknown gateway host | `REAL_TIME_TRANSCRIPTION_NOT_ENABLED`, `SUGGESTED_RESPONSES_NOT_ENABLED`, `INVALID_AGENT_ID_OR_INTERACTION_ID`, `AI_ASSISTANT_BASE_URL_NOT_AVAILABLE` | Check flags and inputs | None | `src/services/ApiAiAssistant.ts` |
-| RTD-correlated request times out, is cleared, or loses regional ownership | The caller’s timeout error, `Error('RTD request cleared')` on ordinary cleanup, or `error.data.reason = RECOVERY_INTERRUPTED` on regional interruption. | Treat the request as incomplete. | A fresh request may run when RTD admission resumes. | `src/services/ApiAiAssistant.ts`, `src/cc.ts`, `test/unit/spec/services/ApiAiAssistant.ts` |
+| RTD-correlated request times out or is cleared | The caller's `createTimeoutError()` result, or `Error('RTD request cleared')`, including when ContactCenter pauses RTD during regional recovery | The task reports the summary failure | A new request may be sent when RTD resumes | `src/services/ApiAiAssistant.ts`, `src/cc.ts` |
 | Calling line registration timeout | `Error('WebCallingService Registration timed out')`, state `error` with `retryable: true` | Retry station login or registration | Caller-owned | `src/services/WebCallingService.ts` |
 | wxApp telephony failure | Structured error with `isWxAppTelephonyError`, `trackingId`, `status` | Task layer decides | None | `src/services/AnswerCallOnWebexService.ts` |
 | usersub publish preflight failure | `Error('User ID is unavailable for cross-client publish')` or the device URL variant | ContactCenter rolls back the flag | Refresh retries only after a successful enable | `src/services/WebexCrossClientService.ts` |
@@ -752,7 +752,7 @@ Unit tests mirror module paths under `test/unit/spec/services`. Preserve positiv
 
 | Requirement or invariant | Test level | Positive evidence | Negative or boundary evidence | Gap |
 | --- | --- | --- | --- | --- |
-| `SERVICES-R-001`, `INV-001` | Unit (incidental) | `test/unit/spec/cc.ts` READY calls the mocked Services.getInstance | None found | Add a focused Services singleton composition test if constructor wiring changes; no test calls `Services.getInstance` twice. |
+| `SERVICES-R-001`, `INV-001` | Unit | `test/unit/spec/cc.ts` creates the real service graph for recovery and checks subscription requests | Primary and RTD subscription failure cases | Singleton reuse is not directly asserted. |
 | `SERVICES-R-002` | Unit | `test/unit/spec/services/config/index.ts`, `test/unit/spec/services/UserPreference.ts`, `test/unit/spec/services/core/aqm-reqs.ts` | `test/unit/spec/services/core/aqm-reqs.ts` failure and timeout cases | Coverage is split across direct and AQM owners. |
 | `SERVICES-R-003` | Unit | `test/unit/spec/cc.ts`, `test/unit/spec/services/UserPreference.ts` | None found | None. |
 | `SERVICES-R-004`, `INV-002` | Unit | `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/cc.ts` | None found | None. |
@@ -768,7 +768,7 @@ Unit tests mirror module paths under `test/unit/spec/services`. Preserve positiv
 | `SERVICES-R-014` | Unit | `test/unit/spec/services/WxAppTelephonyMercurySync.ts` subscribe and callback cases | `test/unit/spec/services/WxAppTelephonyMercurySync.ts` mismatch, missing fields, no Mercury | None |
 | `SERVICES-R-015` | Unit | `test/unit/spec/services/UserPreference.ts` CRUD success cases | `test/unit/spec/services/UserPreference.ts` missing user id and API error cases | None |
 | `SERVICES-R-016` | Unit | `test/unit/spec/services/AddressBook.ts` default and custom parameter cases | `test/unit/spec/services/AddressBook.ts` API error case | The missing-address-book-id error has no direct case |
-| `SERVICES-R-017` | Unit | `test/unit/spec/cc.ts` covers regional station and RTD recovery. | `test/unit/spec/services/ApiAiAssistant.ts` covers RTD interruption and normal completion of direct AI HTTP, including wellness, while RTD is paused. | None |
+| `SERVICES-R-017` | Unit | `test/unit/spec/cc.ts` covers RTD pause and resubscription independently of primary recovery. | `test/unit/spec/services/ApiAiAssistant.ts` covers HTTP/RTD completion, timeout, and clearing a pending RTD request. | Live RTD recovery remains release verification. |
 
 A module specification is complete only when its public surface, invariants, failure modes, and
 test evidence agree with the implementation.

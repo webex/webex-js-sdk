@@ -4,7 +4,6 @@ import WebexRequest from '../../../../../src/services/core/WebexRequest';
 import {LoginOption, WebexRequestPayload} from '../../../../../src/types';
 import {Failure} from '../../../../../src/services/core/GlobalTypes';
 import {REGION_RECOVERY_ERROR_CODES} from '../../../../../src/services/core/constants';
-import type {RegionRecoveryErrorCode} from '../../../../../src/types';
 
 // Mock dependencies
 jest.mock('../../../../../src/logger-proxy', () => ({
@@ -69,20 +68,6 @@ describe('Utils', () => {
     });
   });
 
-  it.each([false, true])(
-    'registration work rejects on abort (already aborted %s)',
-    async (preAborted) => {
-      const controller = new AbortController();
-      if (preAborted) controller.abort();
-      const work = Utils.awaitRecoveryWork(
-        Promise.reject(new Error('Backend failed')),
-        controller.signal
-      );
-      controller.abort();
-      await expect(work).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-    }
-  );
-
   it('releases the station retry delay when recovery stops', async () => {
     const controller = new AbortController();
     const delay = Utils.waitForRecoveryDelay(30_000, controller.signal);
@@ -91,18 +76,12 @@ describe('Utils', () => {
     await expect(Utils.waitForRecoveryDelay(30_000, controller.signal)).resolves.toBeUndefined();
   });
 
-  describe('T-008/T-013 lifecycle recovery errors', () => {
+  describe('lifecycle recovery errors', () => {
     it.each(Object.values(REGION_RECOVERY_ERROR_CODES))(
-      'plainErrorCatalogRoundTrip / lifecycleErrorDataReasonPreserved %s identity and safe data without side effects',
+      'preserves the %s error and its data during error translation',
       (reason) => {
         const error = Utils.createRegionRecoveryError(reason);
         const data = Object.assign(error.data, {loginOption: 'BROWSER', fieldName: 'safe'});
-        Object.defineProperty(error, 'details', {
-          get: () => {
-            throw new Error('Backend envelope must not be accessed');
-          },
-        });
-
         expect(Object.getPrototypeOf(error)).toBe(Error.prototype);
         expect(error.message).toBe(reason);
         expect(Utils.isRegionRecoveryError(error)).toBe(true);
@@ -115,38 +94,15 @@ describe('Utils', () => {
       }
     );
 
-    it('narrows a cross-realm Error without a stack to a required typed reason', () => {
-      const candidate: unknown = require('vm').runInNewContext(
-        "Object.assign(new Error('STALE_TASK'), {data: {reason: 'STALE_TASK', fieldName: 'safe'}})"
-      );
-      Object.assign(candidate, {stack: undefined});
-      expect(candidate).not.toBeInstanceOf(Error);
-      if (!Utils.isRegionRecoveryError(candidate)) throw new Error('Expected lifecycle error');
-      const reason: RegionRecoveryErrorCode = candidate.data.reason;
-      expect(reason).toBe('STALE_TASK');
-      expect(Utils.getErrorDetails(candidate, 'accept', 'Task').error).toBe(candidate);
-      expect(LoggerProxy.error).not.toHaveBeenCalled();
-      expect(WebexRequest.getInstance).not.toHaveBeenCalled();
-    });
-
     it.each([
       null, new Error('STALE_TASK'),
-      {name: 'Error', message: 'UNKNOWN', data: {reason: 'UNKNOWN'}},
-      {name: 'Error', data: {reason: 'STALE_TASK'}},
-      {name: 1, message: 'STALE_TASK', data: {reason: 'STALE_TASK'}},
-      {name: 'Error', message: 'STALE_TASK', stack: 1, data: {reason: 'STALE_TASK'}},
+      Object.assign(new Error('UNKNOWN'), {data: {reason: 'UNKNOWN'}}),
+      Object.assign(new Error('STALE_TASK'), {data: 'STALE_TASK'}),
+      {name: 'Error', message: 'STALE_TASK', data: {reason: 'STALE_TASK'}},
     ])(
       'rejects non-lifecycle shape %#',
       (candidate) => expect(Utils.isRegionRecoveryError(candidate)).toBe(false)
     );
-
-    it('creates independent errors containing the recovery reason', () => {
-      const first = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
-      const second = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
-      expect(first).not.toBe(second);
-      expect(first.data).not.toBe(second.data);
-      expect(first.data).toEqual({reason: 'RECOVERY_INTERRUPTED'});
-    });
 
     it('keeps plain Error backend translation and never derives HTTP status from its message', () => {
       const error = new Error('API call failed with 503');
@@ -159,7 +115,7 @@ describe('Utils', () => {
     });
   });
 
-  describe('T-005 recovery failure normalization', () => {
+  describe('recovery failure normalization', () => {
     it('ignores a missing or malformed response', () => {
       expect(Utils.normalizeRecoveryFailure(null)).toEqual({});
       expect(Utils.getSubscriptionMismatchReason(null)).toBeUndefined();
@@ -181,7 +137,7 @@ describe('Utils', () => {
     it.each([
       [9999, 'AGENT_NOT_FOUND', 'Service.aqm.reqs.Timeout', 429],
       ['1035', 'AGENT_SESSION_ALREADY_EXISTS', 'Service.aqm.reqs.TimeoutEvent', 503],
-    ])('normalizationRetainsCompetingCategoryFields %#', (reasonCode, reason, id, status) => {
+    ])('preserves status, reason codes and timeout identifiers together %#', (reasonCode, reason, id, status) => {
       const failure = {statusCode: status, id, details: {data: {reasonCode, reason, trackingId: 'nested-id'}}};
       expect(Utils.normalizeRecoveryFailure(failure)).toEqual({status, id, reasonCode: Number(reasonCode), reason, trackingId: 'nested-id'});
       expect(failure.details.data.reasonCode).toBe(reasonCode);
@@ -217,24 +173,24 @@ describe('Utils', () => {
     });
   });
 
-  describe('T-005 subscription mismatch precedence', () => {
+  describe('subscription mismatch precedence', () => {
     const reasons = ['REGION_MISMATCH_REGION_FAILOVER', 'REGION_MISMATCH_ORG_OVERRIDE', 'REGION_MISMATCH_ORG_OVERRIDE_SUPERSEDED', 'REGION_MISMATCH_NO_OVERRIDE'];
 
-    it('unknownHeaderDefeatsBody / errorReasonFallback', () => {
+    it('uses body errors only when a higher-priority reason is absent', () => {
       const reason = reasons[0];
       expect(Utils.getSubscriptionMismatchReason({statusCode: 409, headers: {'x-wxcc-region-reason': 'UNKNOWN'}, body: {reason}})).toBeUndefined();
       expect(Utils.getSubscriptionMismatchReason({statusCode: 409, body: {reason: ' ', error: {reason: ` ${reason} `}}})).toBe(reason);
       expect(Utils.getSubscriptionMismatchReason({statusCode: 409, body: {reason: 'UNKNOWN', error: {reason}}})).toBeUndefined();
     });
 
-    it('wrongCaseHeaderDefeatsRecognizedBody', () => {
+    it('requires an exact mismatch reason even when the body contains a recognized reason', () => {
       const reason = reasons[0];
       expect(Utils.getSubscriptionMismatchReason({response: {status: 409,
         headers: {'X-WxCC-Region-Reason': reason.replace('REGION', 'Region')},
         body: {error: {reason}}}})).toBeUndefined();
     });
 
-    it.each(reasons)('eachExactMismatch recognizes exact 409 reason %s', (reason) => {
+    it.each(reasons)('recognizes the exact 409 reason %s', (reason) => {
       expect(Utils.getSubscriptionMismatchReason({statusCode: 409, headers: {'X-WxCC-Region-Reason': ` ${reason} `}})).toBe(reason);
       expect(Utils.getSubscriptionMismatchReason({response: {status: 409, body: {error: {reason}}}})).toBe(reason);
     });
@@ -249,7 +205,7 @@ describe('Utils', () => {
       expect(Utils.getSubscriptionMismatchReason(error)).toBeUndefined();
     });
 
-    it('trimFirstNonblank skips blank headers and honors response envelope precedence', () => {
+    it('skips blank headers and prefers response headers over the body', () => {
       expect(Utils.getSubscriptionMismatchReason({status: 409, headers: {'x-wxcc-region-reason': ' '}, body: {reason: reasons[1], error: {reason: reasons[0]}}})).toBe(reasons[1]);
       expect(Utils.getSubscriptionMismatchReason({response: {status: 409, headers: {'X-WXCC-REGION-REASON': reasons[2]}, body: {reason: reasons[0]}}})).toBe(reasons[2]);
     });

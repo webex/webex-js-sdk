@@ -197,7 +197,7 @@ contracts are owned by the services modules that declare them; this module re-ex
 | CONTACT_CENTER-R-001 | Construct the service graph once after the host Webex SDK emits READY, before `register()` is invoked. | Collaborators require initialized host request, logger, and plugin configuration state. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; the READY handler and its construction assertions were rechecked at 0b8c34db7f. | PRESENT |
 | CONTACT_CENTER-R-002 | `register()` must attach connection/message listeners, connect the primary WebSocket, and return the fetched Profile or rethrow a logged failure. A failure also tracks the register-failed metric and starts a log upload correlated with the error tracking id. | Applications need an explicit readiness boundary and must never observe a synthetic successful registration. | `src/cc.ts` | `test/unit/spec/cc.ts` | The log upload is started without being awaited. | PRESENT |
 | CONTACT_CENTER-R-003 | Delegate agent, task, data, user-preference, preview-campaign, AI-assistant, calling, and telemetry behavior to their owning collaborators while preserving typed package methods and events. Existing `getQueues` and `getEntryPoints` delegate to their services with unchanged signatures and full-record responses; the services own consult/transfer telephony filter, profile-view, ordering, and cache defaults while honoring explicit existing-parameter overrides. Before preview delegation, reject disabled skip/remove actions from task campaign flags. | A thin stable façade avoids parallel consumer APIs while service-owned defaults keep ordinary widget calls consistent and preserve an override path for other consumers. | `src/cc.ts`, `src/types.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/services/UserPreference.ts`, `src/services/task/dialer.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/services/UserPreference.ts`, `test/unit/spec/services/task/dialer.ts` | Public preview delegation is covered; the `campaignPreviewSkipDisabled` and `campaignPreviewRemoveDisabled` early-exit guards still lack direct unit coverage (the skip and remove cases cover success and failure only). | PRESENT |
-| CONTACT_CENTER-R-004 | `deregister()` ends registration ownership, stops retry and closes both sockets before downstream cleanup. It removes owned listeners and clears the profile on successful teardown. It surfaces cleanup failures, including a wxApp usersub publish failure after local cleanup. | Listener or connection leaks create duplicate events and stale authenticated sessions in long-lived hosts. | `src/cc.ts` | `test/unit/spec/cc.ts` | The `TASK_MERGED` listener is not removed here. A missing agentConfig can still fail later cleanup after sockets close. | WEAK |
+| CONTACT_CENTER-R-004 | `deregister()` ends registration ownership, stops retry and closes both sockets before downstream cleanup. It removes owned listeners and clears the profile on successful teardown. It surfaces cleanup failures, including a wxApp usersub publish failure after local cleanup. | Listener or connection leaks create duplicate events and stale authenticated sessions in long-lived hosts. | `src/cc.ts` | `test/unit/spec/cc.ts` | The `TASK_MERGED` listener is not removed here. | WEAK |
 | CONTACT_CENTER-R-005 | On a `connectionLost` event that reports `isSocketReconnected`, ContactCenter must own recovery policy and invoke private `silentRelogin()` only when configuration allows it, automatic relogin is unsuppressed, and the recovery phase is idle or ready. A regional switch supersedes an ordinary relogin before it can reopen admission, apply a delayed result, or request Available in the replacement generation. A lost-connection event is logged. | ConnectionService reports transport state; only ContactCenter has agent profile and policy context for authentication recovery. | `src/cc.ts` | `test/unit/spec/cc.ts` | Tests cover ordinary reconnect policy and distinguish it from eligible region recovery. | PRESENT |
 | CONTACT_CENTER-R-006 | Expose Agent Wellness Break actions through `cc.apiAIAssistant` (`requestWellnessBreak`, `respondToWellnessBreak`), the lookup `cc.getWellbeingBreakIdleCode()`, and the action-value objects and types through the package exports. Derive the public action unions from those `as const` value objects. Action calls accept no identity or context-mutating API; ApiAIAssistant reads effective enablement and agent/session identity from a read-only provider supplied by ContactCenter at construction, reads the organization from the Webex credentials, and rejects when that context is incomplete. Logout, deregistration entry, a current-session multi-login close, and relogin update the provider's source state. The exact system idle-code cache and its in-flight lookup are owned by one registration generation; a newer registration or deregistration rejects a late result instead of caching it. | Wellness actions and cached configuration are registration-scoped and must not leak across agents, relogins, multi-login closures, organizations, or registrations; one public value/type source prevents wire-value drift. | `src/cc.ts`, `src/types.ts`, `src/services/ApiAiAssistant.ts`, `src/index.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/ApiAiAssistant.ts` | The backend-delivered `agentWellbeing.enable` value is treated as the server rollout decision because no distinct rollout field exists in the supported SDK response contracts. | PRESENT |
 | CONTACT_CENTER-R-007 | When wellness is effectively enabled, connect the RTD WebSocket even if transcripts and suggested responses are disabled. Route valid `Wellness_Break_Handler` messages from the primary or RTD data-notification socket to `CC_AGENT_EVENTS.WELLNESS_BREAK`. Notification eligibility is scoped to the current agent and organization and deliberately does not compare the notification-provided `agentSessionId` with the active session; outbound wellness APIs remain active-session validated. Ignore malformed or foreign-identity messages without logging the full payload. | A long-lived host needs parity with Desktop notification routing without dropping legitimate nudges whose backend session metadata differs, while actions must still be sent only for the active local session. | `src/cc.ts`, `src/constants.ts`, `src/services/config/types.ts`, `src/services/ApiAiAssistant.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/ApiAiAssistant.ts` | Notification delivery remains best-effort; the backend owns offer generation and ordering. | PRESENT |
@@ -307,15 +307,15 @@ sequenceDiagram
   alt profile fetched
     Cfg-->>CC: Profile with optional internal recovery settings
     CC->>CC: consume recovery settings and set Profile, TaskManager and AI flags
-    opt applicable AI feature or wellness enabled
-      CC->>CC: start RTD WebSocket; log but contain RTD failure
-    end
     opt browser calling applicable
       CC->>CC: mercury.connect(); log but contain failure
     end
     opt allowAutomatedRelogin
       CC->>Agent: reload()
       Agent-->>CC: relogin result, AGENT_NOT_FOUND, or error
+    end
+    opt applicable AI feature or wellness enabled
+      CC->>CC: start RTD WebSocket; log but contain RTD failure
     end
     CC->>Metrics: track registration success
     CC-->>App: Profile (with agentSessionId when a logged-in session was restored)
@@ -347,7 +347,7 @@ sequenceDiagram
     CC-->>App: void
   else wxApp usersub publish failed
     CC-->>App: throw publish error after local cleanup
-  else cleanup error (missing agentConfig, Mercury or device failure)
+  else cleanup error (Mercury or device failure)
     CC-->>App: throw error after ordinary and RTD transports close
   end
 ```
@@ -615,7 +615,7 @@ ContactCenter retains in-memory `agentConfig`, collaborator references, event li
 READY initialization, REST promises, AQM WebSocket correlation, TaskManager events, calling events, and connection timers execute asynchronously. Listener cleanup must use the registered function identity. Message listeners are independent: AqmReqs correlates pending requests, ContactCenter maps package events, TaskManager owns task lifecycle, and ConnectionService tracks liveness/reconnect state.
 
 - Execution model: one JavaScript event loop; public methods are `async` except `getVoiceConnectionState()` and `isWxBetterTogetherEnabled()`.
-- Ordering guarantees: within `register()`, the profile is fetched before RTD start, Mercury connect, and silent relogin; the RTD socket start is not awaited. Within a WebSocket message, wellness handling runs before agent event mapping.
+- Ordering guarantees: within `register()`, the profile is fetched before Mercury connect and optional silent relogin. RTD starts afterward and is not awaited. Within a WebSocket message, wellness handling runs before agent event mapping.
 - Each registration generation applies only its own config result and owns its recovery retries. Repeated registration uses the same `connectionLost` callback identity. A failed wxApp usersub false publish retains its separate retry policy.
 - Shared-state protection: the shared registration generation and the captured organization reject a stale idle-code lookup; there is no lock.
 - `handleConnectionLost` catches ordinary relogin failures. It returns for aborted registration and routes current 401/403 failures to terminal recovery.
@@ -660,11 +660,9 @@ Authenticated REST initiates direct data/config operations and AQM agent/task op
 
 ## Caller-visible failure modes
 
-Recovery failures expose a code in `error.data.reason`. See
-[Core error handling](../services/core/docs/README.md#caller-visible-failure-modes) for error identity
-and projection. Ownership failures before an operation's `try` bypass its diagnostics. An error
-caught later can still reach the operation's failure logging and metrics. `register()` propagates
-lifecycle errors before its ordinary failure diagnostics.
+Recovery failures expose a code in `error.data.reason`. The shared error helper preserves these
+errors. See [Core error handling](../services/core/docs/README.md#caller-visible-failure-modes) for
+the ordinary backend-error handling.
 
 | Condition | Signal or result | Caller behavior | Retry or recovery | Evidence |
 | --------- | ---------------- | --------------- | ----------------- | -------- |
@@ -689,7 +687,6 @@ lifecycle errors before its ordinary failure diagnostics.
 
 - READY-time construction and `register()` are different lifecycle boundaries; moving collaborator creation into `register()` can duplicate listeners and use uninitialized host services.
 - `setupEventListeners()` and `deregister()` use the same `handleConnectionLost` property for replacement and removal. `deregister()` does not remove the façade's `TASK_MERGED` listener.
-- A missing profile can fail the later `agentConfig.webRtcEnabled` check on deregister. Registration termination has already closed the primary and RTD sockets.
 - `types` resolves to the declarations of `src/index.ts`, whose default export is `ContactCenter`, while `main` loads the built `src/webex.js`, whose default export is the `Webex` constructor; the named exports agree because `src/webex.js` re-exports the barrel.
 - The `startOutdial` JSDoc in `src/cc.ts` lists errors (agent not configured for outbound, invalid E.164 number, agent not Available) and an example that calls `task.on` on the result; the method performs none of those checks and resolves with the offer notification, not a `Task`.
 - `IContactCenter` in `src/types.ts` declares only `register`, `getWellbeingBreakIdleCode`, and `getVoiceConnectionState`; the rest of the public API is declared by the class alone.
@@ -750,7 +747,7 @@ All rows are unit level (Jest through `yarn workspace @webex/contact-center test
 | CONTACT_CENTER-R-001, `INV-001` | Unit | `test/unit/spec/cc.ts` | `test/unit/spec/cc.ts` | READY-time ownership and initialization order are asserted; none |
 | CONTACT_CENTER-R-002 | Unit | `test/unit/spec/cc.ts` | `test/unit/spec/cc.ts` | register success/failure and log-upload path are covered; none |
 | CONTACT_CENTER-R-003, `INV-003` | Unit | `test/unit/spec/cc.ts`, `test/unit/spec/services/UserPreference.ts`, `test/unit/spec/services/task/dialer.ts`, `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts` | `test/unit/spec/cc.ts` | Add direct tests proving disabled skip/remove flags throw before dialer invocation |
-| CONTACT_CENTER-R-004 | Unit | `test/unit/spec/cc.ts` | `test/unit/spec/cc.ts` | Resource cleanup, current callback handling and cancellation are tested. Missing-profile teardown remains a gap. |
+| CONTACT_CENTER-R-004 | Unit | `test/unit/spec/cc.ts` | `test/unit/spec/cc.ts` | Resource cleanup and callback handling are tested. Teardown without a profile has no dedicated test. |
 | CONTACT_CENTER-R-005, `INV-005` | Unit | `test/unit/spec/cc.ts` covers restored registration and ordinary reconnect without another initial `ready` event. | The silent relogin suite covers `AGENT_NOT_FOUND` and other errors. | Live reconnect behavior remains separate. |
 | CONTACT_CENTER-R-006, `INV-008`, `INV-009` | Unit | `test/unit/spec/cc.ts`, `test/unit/spec/services/ApiAiAssistant.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/ApiAiAssistant.ts` | Effective-gate and organization/agent/session validation, current-session multi-login invalidation, registration-generation idle-code cache ownership, identity-free public input, exact request body, action validation, and direct-HTTP failure paths are covered; none |
 | CONTACT_CENTER-R-007, `INV-010` | Unit | `test/unit/spec/cc.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/ApiAiAssistant.ts` | Wellness normalization on primary and RTD notification sockets, notification-session mismatch acceptance, invalid agent/org filtering, and active-session outbound validation are covered; none |

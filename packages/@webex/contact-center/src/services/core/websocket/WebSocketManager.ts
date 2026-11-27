@@ -37,8 +37,7 @@ export class WebSocketManager extends EventEmitter {
   private welcomeTimer?: ReturnType<typeof setTimeout>;
   private connectionSignal?: AbortSignal;
   private onConnectionAbort?: () => void;
-  private keepaliveWorker?: Worker;
-  private workerUrl?: string;
+  private keepaliveWorker: Worker;
 
   constructor() {
     super();
@@ -46,6 +45,9 @@ export class WebSocketManager extends EventEmitter {
     this.isSocketClosed = false;
     this.isWelcomeReceived = false;
     this.isConnectionLost = false;
+
+    const workerScriptBlob = new Blob([workerScript], {type: 'application/javascript'});
+    this.keepaliveWorker = new Worker(URL.createObjectURL(workerScriptBlob));
   }
 
   async initWebSocket(options: {url: string; signal?: AbortSignal}): Promise<WelcomeResponse> {
@@ -58,7 +60,9 @@ export class WebSocketManager extends EventEmitter {
       isWssUrl = false;
     }
     if (!isWssUrl || !isAllowedUrlHost(webSocketUrl, ALLOWED_ROUTING_NOTIFS_DOMAINS)) {
-      throw new Error('Rejected WebSocket URL: scheme or host not allow-listed');
+      throw new Error(
+        'Rejected webSocketUrl from RoutingNotifs registration: scheme or host not allow-listed'
+      );
     }
 
     this.cleanupWebSocket(interrupted());
@@ -104,20 +108,21 @@ export class WebSocketManager extends EventEmitter {
   }
 
   private connect() {
-    const websocket = new WebSocket(this.url);
-    this.websocket = websocket;
-    websocket.onopen = () => {
-      if (this.websocket !== websocket || this.keepaliveWorker) return;
+    LoggerProxy.log('[WebSocketStatus] | event=webSocketConnecting | Connecting to WebSocket', {
+      module: WEB_SOCKET_MANAGER_FILE,
+      method: METHODS.CONNECT,
+    });
+    this.websocket = new WebSocket(this.url);
+    const websocket = this.websocket;
+    this.websocket.onopen = () => {
+      if (this.websocket !== websocket) return;
       this.isSocketClosed = false;
       try {
-        websocket.send(JSON.stringify({keepalive: 'true'}));
-        const workerScriptBlob = new Blob([workerScript], {type: 'application/javascript'});
-        this.workerUrl = URL.createObjectURL(workerScriptBlob);
-        this.keepaliveWorker = new Worker(this.workerUrl);
+        this.websocket.send(JSON.stringify({keepalive: 'true'}));
         this.keepaliveWorker.onmessage = (keepAliveEvent: MessageEvent) => {
           if (this.websocket !== websocket) return;
-          if (keepAliveEvent?.data?.type === 'keepalive' && websocket.readyState === 1) {
-            websocket.send(JSON.stringify({keepalive: 'true'}));
+          if (keepAliveEvent?.data?.type === 'keepalive' && this.websocket.readyState === 1) {
+            this.websocket.send(JSON.stringify({keepalive: 'true'}));
           }
           if (
             keepAliveEvent?.data?.type === 'closeSocket' &&
@@ -125,6 +130,10 @@ export class WebSocketManager extends EventEmitter {
             this.shouldReconnect
           ) {
             this.close(true, 'WebSocket did not auto close within 16 secs');
+            LoggerProxy.error(
+              '[webSocketTimeout] | event=webSocketTimeout | WebSocket connection closed forcefully',
+              {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
+            );
           }
         };
         this.keepaliveWorker.postMessage({
@@ -138,11 +147,17 @@ export class WebSocketManager extends EventEmitter {
       }
     };
 
-    websocket.onerror = () =>
+    this.websocket.onerror = () => {
+      LoggerProxy.error(
+        '[WebSocketStatus] | event=socketConnectionFailed | WebSocket connection failed',
+        {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
+      );
       this.webSocketOnCloseHandler(websocket, new Error('WebSocket connection failed'));
-    websocket.onclose = () =>
+    };
+    this.websocket.onclose = () => {
       this.webSocketOnCloseHandler(websocket, new Error('WebSocket closed'));
-    websocket.onmessage = (e: MessageEvent) => {
+    };
+    this.websocket.onmessage = (e: MessageEvent) => {
       if (this.websocket !== websocket) return;
       let eventData;
       try {
@@ -166,6 +181,10 @@ export class WebSocketManager extends EventEmitter {
       }
       if (eventData?.type === 'AGENT_MULTI_LOGIN') {
         this.close(false, 'multiLogin');
+        LoggerProxy.error(
+          '[WebSocketStatus] | event=agentMultiLogin | WebSocket connection closed by agent multiLogin',
+          {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
+        );
       } else if (!this.isWelcomeReceived) {
         return;
       }
@@ -175,19 +194,24 @@ export class WebSocketManager extends EventEmitter {
 
   private webSocketOnCloseHandler(websocket: WebSocket, error: Error) {
     if (this.websocket !== websocket) return;
-    const shouldReconnect = this.shouldReconnect;
     const isWelcomeReceived = this.isWelcomeReceived;
     this.cleanupWebSocket(error, false);
-    if (isWelcomeReceived) this.emit('socketClose', {shouldReconnect});
+    if (isWelcomeReceived) this.emit('socketClose', {shouldReconnect: this.shouldReconnect});
+    if (this.shouldReconnect) {
+      const onlineStatus = navigator.onLine;
+      const issueReason = !onlineStatus
+        ? 'network issue'
+        : 'missing keepalive from either desktop or notif service';
+      LoggerProxy.error(
+        `[WebSocketStatus] | event=webSocketClose | WebSocket connection closed REASON: ${issueReason}`,
+        {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.WEB_SOCKET_ON_CLOSE_HANDLER}
+      );
+    }
   }
 
   private cleanupWebSocket(error: unknown, closeSocket = true): void {
     const websocket = this.websocket;
-    const keepaliveWorker = this.keepaliveWorker;
-    const workerUrl = this.workerUrl;
     this.websocket = undefined;
-    this.keepaliveWorker = undefined;
-    this.workerUrl = undefined;
     this.isSocketClosed = true;
     this.isWelcomeReceived = false;
     clearTimeout(this.welcomeTimer);
@@ -204,11 +228,8 @@ export class WebSocketManager extends EventEmitter {
       websocket.onclose = null;
       if (closeSocket) websocket.close();
     }
-    if (keepaliveWorker) {
-      keepaliveWorker.onmessage = null;
-      keepaliveWorker.terminate();
-    }
-    if (workerUrl) URL.revokeObjectURL(workerUrl);
+    this.keepaliveWorker.onmessage = null;
+    this.keepaliveWorker.postMessage({type: 'terminate'});
   }
 }
 
