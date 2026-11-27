@@ -165,7 +165,7 @@ All import sources below are given as package files; external packages are named
 | `Eventing` | `src/Events/impl/index.ts` |
 | `CallError`, `createCallError` | `src/Errors/catalog/CallError.ts` |
 | `ERROR_LAYER`, `ERROR_TYPE`, `ErrorContext` | `src/Errors/types.ts` |
-| `handleCallErrors`, `parseMediaQualityStatistics`, `serviceErrorCodeHandler`, `uploadLogs` | `src/common/Utils.ts` |
+| `handleCallErrors`, `parseMediaQualityStatistics`, `sanitizeLogValue`, `serviceErrorCodeHandler`, `uploadLogs` | `src/common/Utils.ts` |
 | `getHostIpsFromSdp`, `modifySdpForIPv4` | `src/common/callUtils.ts` |
 | `CallDetails`, `CallDirection`, `CallId`, `CorrelationId`, `DisplayInformation`, `HTTP_METHODS`, `ServiceIndicator`, `WebexRequestPayload`, `ALLOWED_SERVICES` | `src/common/types.ts` |
 | `SDKConnector` | `src/SDKConnector/index.ts` |
@@ -356,7 +356,7 @@ arguments; `CallManager.createCall` is its only production caller.
 | ---------- | ------------------ | ---------------- |
 | Mobius REST (`mobius-http`) through `APIRequest.makeRequest` | Call setup, state PATCH, ROAP media, keepalive status, supplementary services, and DELETE | Rejections are mapped by `handleCallErrors` to typed error events (Caller-visible failure modes) |
 | Mercury `event:mobius` (`mercury-events`) or the Mobius socket forwarded by `CallingClient` | Inbound call, progress, connect, media, info, and disconnect events | No timeout at the source; missing events surface as signaling-state timeouts (`MOD-011`) |
-| `@webex/internal-media-core` (`internal-media-core`) | `RoapMediaConnection`: offer and answer generation, ROAP processing, DTMF, track updates, stats | `ROAP_FAILURE` and ICE candidate errors become media error metrics; `insertDTMF` and `updateLocalTracks` failures are logged; `getStats` failure falls back to dummy stats |
+| `@webex/internal-media-core` (`internal-media-core`) | `RoapMediaConnection`: offer and answer generation, ROAP processing, DTMF, track updates, stats | `ROAP_FAILURE` and ICE candidate errors become media error metrics (ICE candidate error fields are sanitized and length-bounded before being logged or placed in the `CallError`); `insertDTMF` and `updateLocalTracks` failures are logged; `getStats` failure falls back to dummy stats |
 | `@webex/media-helpers` (`media-helpers`) | `LocalMicrophoneStream` mute and output-track events, noise-reduction effect events | Missing audio track stops `dial`, `answer`, or `updateMedia` (`MOD-008`, `MOD-009`, `MOD-019`) |
 | `CallerId` child module (`caller-id-internal`) | Caller display information | Asynchronous SCIM failures are handled inside the child; the call keeps the header-derived value |
 | `MetricManager` (`metrics-internal`) and `RtcMetrics` from `@webex/internal-plugin-metrics` | Call, media, error, BNR, ICE, and transfer metrics; WebRTC metric upload | Fire-and-forget; failures do not change call state |
@@ -430,7 +430,7 @@ These are internal methods on the `Call` class. They are not exposed via `ICall`
 | `initMediaConnection` | `private initMediaConnection(localAudioTrack: MediaStreamTrack, debugId?: string): void` | Creates `RoapMediaConnection` with local audio track (send-receive audio, inactive video), empty ICE servers, `skipInactiveTransceivers`, SDP munging options, the ICE candidates timeout, and `RtcMetrics` callbacks; listeners are registered separately by `dial` and `answer` |
 | `mediaRoapEventsListener` | `private mediaRoapEventsListener(): void` | Listens for `ROAP_MESSAGE_TO_SEND` from media SDK, stores local ROAP message and drives the state machines; also listens for `ROAP_FAILURE` |
 | `mediaTrackListener` | `private mediaTrackListener(): void` | Listens for `REMOTE_TRACK_ADDED` and emits `CALL_EVENT_KEYS.REMOTE_MEDIA` for audio tracks |
-| `mediaIceEventsListener` | `private mediaIceEventsListener(): void` | Listens for ICE gathering, peer connection, and ICE connection state changes and ICE candidate errors, and submits media metrics |
+| `mediaIceEventsListener` | `private mediaIceEventsListener(): void` | Listens for ICE gathering, peer connection, and ICE connection state changes and ICE candidate errors, and submits media metrics. On an ICE candidate error, the caller/network-controlled fields (`url`, `errorText`, and the stringified `address`) are passed through `sanitizeLogValue` (escaped and length-bounded) and `port` is normalized to a number or `null` before the payload is written to `log.warn` and embedded in the `CallError` message, so malformed values cannot forge log lines or leak unbounded content while the error stays diagnosable |
 | `unregisterMediaConnectionListeners` | `private unregisterMediaConnectionListeners(): void` | Removes every media connection listener with the same stable handler references; no-op when the connection has no `off` |
 | `getIceCandidatesTimeout` | `private getIceCandidatesTimeout(): number` | Returns `ICE_CANDIDATES_TIMEOUT`, or the ICE-lite timeout when configured and the remote SDP is ICE-lite (`MOD-025`) |
 | `registerListeners` | `private registerListeners(localAudioStream: LocalMicrophoneStream): void` | Registers effect and track change listeners on local audio stream; submits a BNR-enabled metric when noise reduction is already on |
