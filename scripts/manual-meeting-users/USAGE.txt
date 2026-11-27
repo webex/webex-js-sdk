@@ -1,0 +1,39 @@
+Manual meeting test users
+
+See INVESTIGATION.txt for the findings, validation status, and remaining work.
+
+From the SDK repository root, with Node 22.14 and workspace dependencies built:
+
+  node scripts/manual-meeting-users/create-user-basic.cjs
+  node scripts/manual-meeting-users/create-user.cjs
+
+Both scripts read the SDK root .env. WEBEX_SDK_ROOT can select another checkout.
+An optional first argument selects an output directory. By default, the basic
+script writes basic/user.json and the full script writes user.json beside itself.
+Each writes a matching authorization.header, prints granted scopes, and leaves
+the user available remotely. Repeated successful creation replaces local files.
+
+Basic creation uses the SDK's default entitlements and ignores WEBEX_SITE.
+Full creation adds basicMeeting, requests site synchronization, sets the preferred
+site, then obtains a fresh token. CIG creates its initial token before site sync.
+If a later step fails, the full script retains the created user's credentials
+and provisioning status in user.json.
+
+Configure the full flow in the SDK root .env:
+  WEBEX_SITE=your-int-site.webex.com
+  WEBEX_TEST_USERS_ORG_ADMIN_USER=your-org-admin
+  WEBEX_TEST_USERS_ORG_ADMIN_PASSWORD=your-org-admin-password
+
+Alternatively use WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION with a Bearer token.
+The site and admin must belong to WEBEX_CONVERGED_ORG_ID. IDENTITY_BASE_URL and
+the standard SDK OAuth/CIG settings are also required. Optional separate creator
+credentials use WEBEX_TEST_USERS_CLIENT_ID and WEBEX_TEST_USERS_CLIENT_SECRET.
+
+Request meeting preferences directly, with a unique tracking ID per request:
+  scripts/manual-meeting-users/request.sh
+  scripts/manual-meeting-users/request.sh '' scripts/manual-meeting-users/basic
+
+An optional first argument selects another URL, for example:
+  scripts/manual-meeting-users/request.sh https://hydra-intb.ciscospark.com/v1/meetingPreferences
+
+Generated credential files are ignored by Git. Keep them local.

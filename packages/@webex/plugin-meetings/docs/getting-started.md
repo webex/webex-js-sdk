@@ -92,6 +92,17 @@ What each command covers:
 
 Run all of them from the workspace root.
 
+For non-Whistler integration users, set `WEBEX_SITE` (or pass `config.webexSite` to
+`generateTestUsers`) to provision meeting-ready accounts. The helper adds the `basicMeeting`
+entitlement, requests synchronous creation on that site, and saves each user's preferred site
+before SDK registration. This requires `WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION`, an org admin
+bearer token for the configured test org, and `IDENTITY_BASE_URL`. The org and site must belong
+together. Without a configured site, the existing provisioning path is used.
+
+`WEBEX_TEST_USERS_CLIENT_ID` and `WEBEX_TEST_USERS_CLIENT_SECRET` optionally select a separate
+user creator application; otherwise the helper uses `WEBEX_CLIENT_ID` and `WEBEX_CLIENT_SECRET`.
+Supply credentials through the local environment and keep them out of logs and source control.
+
 Run `build:src` before `test:unit`. Twelve unit spec files import the package by name
 (`@webex/plugin-meetings`, whose `main` is `dist/index.js`), so a stale or missing `dist/` skews unit
 results.

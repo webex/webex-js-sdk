@@ -34,8 +34,10 @@ skipInNode(describe)('plugin-meetings', () => {
   describe('space-meeting', () => {
     let space = null;
 
-    before(() =>
-      webexTestUsers
+    before(function setupUsers() {
+      this.timeout(180000);
+
+      return webexTestUsers
         .generateTestUsers({
           count: 4,
           whistler: process.env.WHISTLER || process.env.JENKINS,
@@ -56,8 +58,8 @@ skipInNode(describe)('plugin-meetings', () => {
         )
         .catch((error) => {
           console.log(error);
-        })
-    );
+        });
+    });
 
     it('Alice starts a space meeting', () =>
       alice.webex.internal.conversation
