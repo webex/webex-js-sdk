@@ -194,7 +194,13 @@ either completes or classifies the failure and calls back into the backoff call.
 
 Inbound traffic flows `Socket` → `_onmessage()` → autowired handlers → events. Close events flow
 `Socket` → `_onclose()` → close-code policy → reconnect through `connect()`. Shutdown messages run
-the same connect path with a separate backoff map so the old socket stays up.
+the same connect path with a separate backoff call so the old socket stays up until a replacement
+authorizes. The base implementation uses the device Mercury URL and reports device Mercury status.
+LLM overrides shutdown address selection, replacement notification, and device status reporting.
+
+Explicit disconnect cancels the normal and shutdown backoff calls, closes their transports and
+prevents late setup completions from activating a socket. LLM can use transport cleanup when
+switching registrations without emitting the channel-level `disconnected` event.
 
 The constructor (`initialize`) subscribes the plugin to three of its own events. No timers are kept
 in this module; timers live in `src/socket` and in the `backoff` library.

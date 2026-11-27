@@ -50,8 +50,10 @@ export const config = {
 export default class LLMChannel extends (Mercury as any) implements ILLMChannel {
   namespace = LLM;
 
-  private webSocketUrl?: string;
+  protected _reportsDeviceConnectionStatus = false;
+
   private binding?: string;
+  private pendingBinding?: string;
   private locusUrl?: string;
   private datachannelUrl?: string;
   private datachannelToken?: string;
@@ -67,7 +69,30 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @returns {boolean} True if connecting
    */
   public isConnecting(): boolean {
-    return !!this.connectingPromise;
+    return !!this.connectingPromise || this.connecting;
+  }
+
+  /** @returns {string} The assigned, catalog-valid URL for the replacement socket. */
+  protected _getShutdownSwitchoverUrl(): string {
+    if (!this.isConnected() || !this.resolvedWebSocketUrl) {
+      throw new Error('Cannot replace an LLM socket without an active LLM URL');
+    }
+
+    return this.resolvedWebSocketUrl;
+  }
+
+  /**
+   * Retire the previous LLM socket and notify consumers after authorization.
+   * @param {string} webSocketUrl
+   * @param {object} oldSocket
+   * @returns {void}
+   */
+  protected _onShutdownSwitchoverComplete(webSocketUrl: string, oldSocket: unknown): void {
+    this.resolvedWebSocketUrl = webSocketUrl;
+    this._closeRetiredSocket(oldSocket).catch((error: unknown) => {
+      this.logger.warn(`${this.namespace}: failed to close replaced LLM socket`, error);
+    });
+    this._emit('online');
   }
 
   /**
@@ -117,33 +142,49 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       return this.connectingPromise;
     }
 
-    // If already connected to the exact same datachannel URL, avoid triggering
-    // a reconnect that would cause the server to replace with 4000 Replaced
-    if (
-      this.isConnected() &&
-      this.datachannelUrl === datachannelUrl &&
-      this.locusUrl === locusUrl
-    ) {
-      return Promise.resolve();
+    if (this.datachannelUrl === datachannelUrl && this.locusUrl === locusUrl) {
+      if (this.isConnected()) {
+        return Promise.resolve();
+      }
+      if (this._connectPromise) {
+        return this._connectPromise;
+      }
     }
 
+    const replaceTransport = this.isConnected() || this.connecting || this.getSocket();
+
+    this.binding = undefined;
     this.locusUrl = locusUrl;
     this.datachannelUrl = datachannelUrl;
     const registerStart = performance.now();
 
-    const connectionPromise: Promise<RegisterAndConnectTiming | void> = this.register(
-      datachannelUrl,
-      datachannelToken
+    const connectionPromise: Promise<RegisterAndConnectTiming | void> = (
+      replaceTransport
+        ? Promise.resolve().then(async () => {
+            if (this.connectingPromise !== connectionPromise) {
+              return undefined;
+            }
+            // Keep the channel and its refresh handler registered during transport replacement.
+            await this._disconnectTransport();
+
+            if (this.connectingPromise !== connectionPromise) {
+              return undefined;
+            }
+            this.resolvedWebSocketUrl = undefined;
+
+            return this.register(datachannelUrl, datachannelToken);
+          })
+        : this.register(datachannelUrl, datachannelToken)
     )
-      .then(async ({webSocketUrl, binding}) => {
-        // Check if this operation was invalidated by a disconnect
-        if (this.connectingPromise !== connectionPromise) {
+      .then(async (assignment) => {
+        if (!assignment || this.connectingPromise !== connectionPromise) {
           return;
         }
 
-        this.webSocketUrl = webSocketUrl;
-        this.binding = binding;
-
+        const {webSocketUrl, binding} = assignment;
+        if (!webSocketUrl) {
+          throw new Error('Data Channel registration did not return an LLM WebSocket URL');
+        }
         const clientLLMDatachannelResponseTime = Math.round(performance.now() - registerStart);
         const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
 
@@ -152,11 +193,11 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
           return;
         }
 
-        const connectUrl =
-          isDataChannelTokenEnabled && this.webSocketUrl
-            ? LLMChannel.buildUrlWithAwareSubchannels(this.webSocketUrl, AWARE_DATA_CHANNEL)
-            : this.webSocketUrl;
+        const connectUrl = isDataChannelTokenEnabled
+          ? LLMChannel.buildUrlWithAwareSubchannels(webSocketUrl, AWARE_DATA_CHANNEL)
+          : webSocketUrl;
 
+        this.pendingBinding = binding;
         const connectStart = performance.now();
 
         try {
@@ -169,14 +210,31 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
           throw error;
         }
 
+        if (this.connectingPromise !== connectionPromise) {
+          return;
+        }
+        this.binding = binding;
+
         const clientLLMWebSocketConnectTime = Math.round(performance.now() - connectStart);
 
         return {clientLLMDatachannelResponseTime, clientLLMWebSocketConnectTime};
+      })
+      .catch(async (error) => {
+        if (this.connectingPromise === connectionPromise) {
+          this.pendingBinding = undefined;
+          this.resolvedWebSocketUrl = undefined;
+          if (this.getSocket()) {
+            await this._disconnectTransport();
+          }
+        }
+
+        throw error;
       })
       .finally(() => {
         // Only clear if this operation is still current
         if (this.connectingPromise === connectionPromise) {
           this.connectingPromise = undefined;
+          this.pendingBinding = undefined;
         }
       });
 
@@ -195,7 +253,8 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * Tells if LLM socket is binding
    * @returns {string | undefined} binding
    */
-  public getBinding = (): string | undefined => this.binding;
+  public getBinding = (): string | undefined =>
+    this.binding ?? (this.isConnected() ? this.pendingBinding : undefined);
 
   /**
    * Get Locus URL for the connection
@@ -288,8 +347,9 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.connectingPromise = undefined;
 
     // Clear LLM-specific state before Mercury emits 'disconnected'
-    this.webSocketUrl = undefined;
     this.binding = undefined;
+    this.pendingBinding = undefined;
+    this.resolvedWebSocketUrl = undefined;
     this.locusUrl = undefined;
     this.datachannelUrl = undefined;
     this.datachannelToken = undefined;

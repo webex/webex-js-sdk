@@ -167,21 +167,19 @@ workspace.
 
 ## Design overview
 
-`LLMChannel` is a TypeScript class that extends the Mercury plugin. It overrides two fields:
-`namespace` becomes `llm`, which makes `this.config` resolve to `config.llm` and prefixes inherited
-Mercury log lines, and `defaultSessionId` becomes `llm-default-session`, which decides which
-session's events are unsuffixed.
+`LLMChannel` extends Mercury and owns one LLM connection. Its `llm` namespace selects `config.llm`
+and prefixes connection logs. `registerAndConnect` associates the locus and Data Channel URLs with
+the channel before POSTing, so token refresh can find that channel during registration.
 
-The class adds an HTTP registration step in front of Mercury's `connect`. `registerAndConnect`
-records the locus and data-channel URLs, POSTs to the data-channel URL, keeps the returned socket URL
-and binding, and then calls `connect` with that URL, adding the `subscriptionAwareSubchannels` query
-when the JWT toggle is on. Retry, keepalive, close handling, and event emission after that point are
-Mercury's.
+An unchanged registration reuses its connected or recovering socket. A changed registration retires
+the old transport and keeps the channel in the token refresh registry. The assigned WebSocket URL
+includes `subscriptionAwareSubchannels` when the JWT toggle is on. The new binding becomes visible
+only after socket authorization. `isConnecting()` covers both registration and Mercury retry.
 
-Per-session metadata lives in a private `connections` map. Tokens live in a separate
-`datachannelTokens` record so that disconnecting does not drop a token a later reconnect needs. Most
-public methods are arrow-function instance fields; `setRefreshHandler`, `refreshDataChannelToken`,
-the two URL-lookup methods, and `isDataChannelTokenEnabled` are prototype methods.
+On graceful shutdown, the replacement uses the current LLM URL and retains its subscription query.
+After authorization, the channel activates the replacement, retires the old socket and emits
+`online` so Meetings can restore its subscriptions. LLM connection changes leave the device's
+Mercury connection diagnostics untouched. Explicit disconnect cancels recovery and clears channel state.
 
 ## Data flow and sequence coverage
 
