@@ -13,7 +13,6 @@ export type RecoveryOptions = {
   getSession: () => {
     orgId?: string;
     agentId?: string;
-    signal?: AbortSignal;
     connectionConfig: SubscribeRequest;
     isAgentLoggedIn?: boolean;
     station?: Agent.UserStationLogin;

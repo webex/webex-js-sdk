@@ -68,14 +68,6 @@ describe('Utils', () => {
     });
   });
 
-  it('releases the station retry delay when recovery stops', async () => {
-    const controller = new AbortController();
-    const delay = Utils.waitForRecoveryDelay(30_000, controller.signal);
-    controller.abort();
-    await expect(delay).resolves.toBeUndefined();
-    await expect(Utils.waitForRecoveryDelay(30_000, controller.signal)).resolves.toBeUndefined();
-  });
-
   describe('lifecycle recovery errors', () => {
     it.each(Object.values(REGION_RECOVERY_ERROR_CODES))(
       'preserves the %s error and its data during error translation',

@@ -553,8 +553,8 @@ bindings and operation settlement. ConnectionService owns ordinary and regional 
 | -------------- | ----- | ------------- | ------------------- | ----------------------------- |
 | Current `websocket`, `keepaliveWorker` and `isWelcomeReceived` | `WebSocketManager` | No socket; one worker | Subscription, Welcome, error, close, or replacement | Socket replacement or explicit close releases the timer and socket, and stops the worker's keepalive loop |
 | Pending success, failure, and cancel bindings | `AqmReqs` | Empty | Dispatch, notification, host rejection, or timeout | Clear pending bindings on settlement |
-| `isStopped`, `reconnectInterval`, `pending` and ordinary liveness timers | `ConnectionService` | Listening after construction; registration calls `reset()` | Registration reset, socket loss, region recovery or stop | Reset or stop invalidates outstanding work and prevents obsolete callbacks from changing state |
-| Regional timer, retry stage and budget, switch ids, settings, placement, snapshot, and auto-Available | `ConnectionService` | No regional work; unknown settings | Accepted profile settings, forwarded switch, subscription/session outcomes, and voice readiness | `resetRecovery()` clears registration-scoped recovery state; completed recovery releases its active attempt |
+| `isStopped`, `reconnectInterval`, `pending` flag and ordinary liveness timers | `ConnectionService` | Listening after construction; registration calls `reset()` | Registration reset, socket loss, region recovery or stop | Reset or stop clears ordinary timers and the pending flag; WebSocketManager closes pending initialization |
+| Regional timer, retry stage and budget, last switch tracking ID, settings, placement, snapshot, and auto-Available | `ConnectionService` | No regional work; unknown settings | Accepted profile settings, forwarded switch, subscription/session outcomes, and voice readiness | `resetRecovery()` clears registration-scoped recovery state; completed recovery releases its active attempt |
 | `WebexRequest.instance` | `WebexRequest` class | Unset until the first `getInstance({webex})` | First call with `webex` | Process lifetime |
 
 ## Business rules and invariants
@@ -572,6 +572,7 @@ ConnectionService owns regional station retry policy; ContactCenter applies acce
 
 The ordinary driver uses the existing five-second retry interval with one in-flight attempt.
 Interval ticks skip a pending attempt; offline and retryable failures wait for the next tick.
+A catalogue refresh that finishes after the ordinary restore timeout does not start another subscribe.
 A keepalive resets ordinary liveness timers and emits only in ordinary mode with no pending admission.
 Slots are anchored to the loss time by the interval, without timestamp calculations or catch-up.
 ConnectionService stops ordinary monitoring
@@ -589,10 +590,11 @@ Stop clears pending work and listeners.
 | `WELCOME_TIMEOUT`                  | 30 000 ms | Deadline after subscribe returns through socket Welcome |
 
 Regional attempts wait 100, 60, 30, then 15 seconds, with up to 50% added jitter; later attempts
-retain the 15-second base. Station reload retries wait 2, 4, and 8 seconds. The same recovery keeps
+retain the 15-second base. Station reload retries use plain waits of 2, 4, and 8 seconds and check
+socket readiness before continuing. The same recovery keeps
 that bounded reload budget across socket replacements, permits one accepted-station fallback, and
-allows one further reload after a session-already-exists response. `resetRecovery()` ends regional
-timers and waits separately from the ordinary `stop()` method.
+allows one further reload after a session-already-exists response. `resetRecovery()` clears scheduled
+regional attempts and recovery state separately from the ordinary `stop()` method.
 
 ContactCenter forwards normalized region-switch messages to `handleRegionSwitch()`. This forwarding
 remains active while ordinary ping listeners are detached during regional recovery.

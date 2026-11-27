@@ -157,7 +157,8 @@ Use `RegionRecoveryState['status']` if your host needs the type of the status fi
 | `unavailable` | Show the terminal reason and keep station actions paused. Use the app’s sign-in flow for `authentication-failed`, or allow a fresh `register()` attempt after recovery stops. |
 
 The SDK handles reconnection and station restoration. Your app pauses its controls and background
-station actions until `ready`. Requests already sent follow their usual completion or timeout path.
+station actions until `ready`. Await `register()` and `deregister()` before starting another
+lifecycle operation. Requests already sent follow their usual completion or timeout path.
 Use the latest station state and Task objects before deciding whether to retry an action. Replaying
 a call control can duplicate an action the backend already received.
 

@@ -11,7 +11,6 @@ import {
   getSubscriptionMismatchReason,
   normalizeRecoveryDiagnosticId,
   normalizeRecoveryFailure,
-  waitForRecoveryDelay,
   isRecord,
 } from '../Utils';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
@@ -35,10 +34,8 @@ const STATION_RELOAD_RETRY_DELAYS_MS = [2000, 4000, 8000];
 const REGION_RETRY_DELAYS_MS = [100000, 60000, 30000, 15000];
 
 type RegionRecovery = {
-  controller: AbortController;
   stage: 'reload' | 'fallback' | 'post1035' | 'manual';
   reloads: number;
-  retryNotBefore: number;
   timer?: ReturnType<typeof setTimeout>;
 };
 
@@ -66,14 +63,14 @@ export class ConnectionService extends EventEmitter {
   private isRestoreFailed: boolean;
   private isKeepAlive: boolean;
   private reconnectInterval: ReturnType<typeof setInterval>;
-  private pending?: object;
+  private pending = false;
   private isStopped = false;
   private webSocketManager: WebSocketManager;
   private subscribeRequest: SubscribeRequest;
 
   private recoveryOptions?: RecoveryOptions;
   private recovery?: RegionRecovery;
-  private readonly acceptedSwitchIds = new Set<string>();
+  private lastSwitchTrackingId?: string;
   private multiRegionSettings: MultiRegionSettings | null = null;
   private servingRegion?: string;
   private autoAvailable?: {requesting: boolean};
@@ -110,7 +107,7 @@ export class ConnectionService extends EventEmitter {
   public resetRecovery(identityFailure = false): void {
     const cancelled = this.cancelAutoAvailable();
     this.cancelRegionRecovery();
-    this.acceptedSwitchIds.clear();
+    this.lastSwitchTrackingId = undefined;
     if (cancelled) this.publishRegionState(cancelled);
     if (identityFailure) {
       delete this.regionStateContext.autoAvailable;
@@ -200,7 +197,6 @@ export class ConnectionService extends EventEmitter {
     this.recovery = undefined;
     if (!recovery) return;
     clearTimeout(recovery.timer);
-    recovery.controller.abort();
     this.webSocketManager.close(false, 'regionRecoveryEnded');
   }
 
@@ -215,16 +211,16 @@ export class ConnectionService extends EventEmitter {
     this.servingRegion = REFERENCE_SERVING_REGIONS.find((region) => labels.includes(region));
   }
 
-  public async connect(
-    refreshServices = false,
-    signal = this.recoveryOptions?.getSession().signal
-  ): Promise<WelcomeResponse> {
+  public async connect(refreshServices = false): Promise<WelcomeResponse> {
     try {
       if (refreshServices) {
+        const ordinaryReconnect = this.pending;
         this.handleSubscriptionMismatch();
         await this.recoveryOptions.webex.internal.services.updateServices({forceRefresh: true});
+        // The ordinary restore timeout may have stopped retries while discovery was pending.
+        if (ordinaryReconnect && !this.pending)
+          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
       }
-      if (signal?.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
       const manager = this.webSocketManager;
       const welcome = await manager.initWebSocket({
         body: this.recoveryOptions?.getSession().connectionConfig ?? this.subscribeRequest,
@@ -234,16 +230,10 @@ export class ConnectionService extends EventEmitter {
 
       return welcome;
     } catch (error) {
+      if (this.recoveryOptions && !refreshServices && getSubscriptionMismatchReason(error))
+        return this.connect(true);
       if (
         this.recoveryOptions &&
-        !refreshServices &&
-        getSubscriptionMismatchReason(error) &&
-        !signal?.aborted
-      )
-        return this.connect(true, signal);
-      if (
-        this.recoveryOptions &&
-        !signal?.aborted &&
         !this.recovery &&
         (getSubscriptionMismatchReason(error) || this.regionState?.status === 'recovering')
       )
@@ -292,9 +282,8 @@ export class ConnectionService extends EventEmitter {
       this.recordRecoveryDiagnostic('ignored-event', 'dropped', 0, startedAt, {
         trackingId: event.trackingId,
       });
-    const signal = this.recoveryOptions?.getSession().signal;
-    const orgId = this.recoveryOptions.getSession().orgId;
-    if (!signal || signal?.aborted || !this.recoveryOptions.getSession().agentId) return;
+    const {orgId, agentId} = this.recoveryOptions.getSession();
+    if (!agentId) return;
     if (this.regionState?.status === 'unavailable') {
       recordIgnoredSwitch();
 
@@ -310,14 +299,12 @@ export class ConnectionService extends EventEmitter {
 
       return;
     }
-    if (!this.multiRegionSettings || this.acceptedSwitchIds.has(event.trackingId)) {
+    if (!this.multiRegionSettings || this.lastSwitchTrackingId === event.trackingId) {
       recordIgnoredSwitch();
 
       return;
     }
-    this.acceptedSwitchIds.add(event.trackingId);
-    if (this.acceptedSwitchIds.size > 128)
-      this.acceptedSwitchIds.delete(this.acceptedSwitchIds.values().next().value);
+    this.lastSwitchTrackingId = event.trackingId;
     const cancelled = this.cancelAutoAvailable();
     this.servingRegion = undefined;
     this.cancelRegionRecovery();
@@ -333,10 +320,8 @@ export class ConnectionService extends EventEmitter {
       return;
     }
     const recovery: RegionRecovery = {
-      controller: new AbortController(),
       stage: 'reload',
       reloads: 0,
-      retryNotBefore: 0,
     };
     this.recovery = recovery;
     this.publishRegionState({status: 'recovering', reason: 'region-switch'});
@@ -365,18 +350,9 @@ export class ConnectionService extends EventEmitter {
     if (this.recovery !== recovery) return;
     const welcomeStartedAt = Date.now();
     const manager = this.webSocketManager;
-    let disconnected = false;
-    let welcomed = false;
-    const onClose = () => {
-      disconnected = true;
-    };
-    const isConnected = () =>
-      this.recovery === recovery && !disconnected && manager.hasUsableSocket();
-    manager.on('socketClose', onClose);
     try {
-      const welcome = await this.connect(false, recovery.controller.signal);
+      const welcome = await this.connect();
       if (this.recovery !== recovery) return;
-      welcomed = true;
       const agentId = isRecord(welcome) ? welcome.agentId : undefined;
       this.recordRecoveryDiagnostic(
         'welcome',
@@ -384,8 +360,9 @@ export class ConnectionService extends EventEmitter {
         attempt,
         welcomeStartedAt
       );
-      const state = await this.restoreRegionSession(recovery, isConnected);
-      if (!isConnected()) throw new Error('WebSocket closed');
+      const state = await this.restoreRegionSession(recovery);
+      if (this.recovery !== recovery) return;
+      if (!manager.hasUsableSocket()) throw new Error('WebSocket closed');
       this.recordRecoveryDiagnostic('admission', 'succeeded', attempt, startedAt);
       this.reset();
       this.recovery = undefined;
@@ -399,7 +376,7 @@ export class ConnectionService extends EventEmitter {
       if (state.status === 'ready') this.requestAutoAvailable();
     } catch (error) {
       if (this.recovery !== recovery) return;
-      const terminal = this.isTerminalConnectionFailure(error) || (welcomed && !disconnected);
+      const terminal = this.isTerminalConnectionFailure(error) || manager.hasUsableSocket();
       this.recordRecoveryDiagnostic(
         'admission',
         terminal ? 'terminal' : 'retrying',
@@ -409,26 +386,17 @@ export class ConnectionService extends EventEmitter {
       );
       if (terminal) this.handleRecoveryTerminal(error);
       else this.scheduleRegionRecovery(recovery, attempt + 1);
-    } finally {
-      manager.off('socketClose', onClose);
     }
   }
 
-  private async restoreRegionSession(
-    recovery: RegionRecovery,
-    isConnected: () => boolean
-  ): Promise<RegionRecoveryState> {
-    const {signal} = recovery.controller;
+  private async restoreRegionSession(recovery: RegionRecovery): Promise<RegionRecoveryState> {
     if (!this.recoveryOptions.getSession().isAgentLoggedIn)
       return {status: 'stationLoginRequired', reason: 'region-switch'};
     if (!this.recoveryOptions.getSession().allowAutomatedRelogin)
       return {status: 'stationLoginRequired', reason: 'automatic-relogin-disabled'};
 
     const payload = this.recoveryOptions.getSession().station;
-    while (isConnected()) {
-      // eslint-disable-next-line no-await-in-loop -- Station recovery retries are serial.
-      await waitForRecoveryDelay(recovery.retryNotBefore - Date.now(), signal);
-      if (!isConnected()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    while (this.recovery === recovery && this.webSocketManager.hasUsableSocket()) {
       if (recovery.stage === 'reload' && recovery.reloads > STATION_RELOAD_RETRY_DELAYS_MS.length)
         recovery.stage = 'fallback';
       const stage = recovery.stage;
@@ -436,9 +404,8 @@ export class ConnectionService extends EventEmitter {
       const diagnosticStage = stage === 'fallback' ? 'fallback-login' : 'reload';
       const attempt = stage === 'fallback' ? 1 : recovery.reloads + 1;
       const startedAt = Date.now();
-      let applying = false;
+      let response: Agent.ReloginSuccess | Agent.StationLoginSuccess;
       try {
-        let response: Agent.ReloginSuccess | Agent.StationLoginSuccess;
         if (stage === 'reload') recovery.reloads += 1;
         // Consume each one-shot stage before dispatch so a lost socket cannot repeat it.
         else recovery.stage = 'manual';
@@ -450,15 +417,51 @@ export class ConnectionService extends EventEmitter {
           // eslint-disable-next-line no-await-in-loop -- Bounded reload budget survives sockets.
           response = await this.recoveryOptions.agent.reload();
         }
-        if (!isConnected()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-        applying = true;
+      } catch (error) {
+        if (this.recovery !== recovery || !this.webSocketManager.hasUsableSocket())
+          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+        const failure = normalizeRecoveryFailure(error);
+        const category = getStationRecoveryFailureCategory(failure);
+        const retryDelay =
+          stage === 'reload' && category === 'transient'
+            ? STATION_RELOAD_RETRY_DELAYS_MS[recovery.reloads - 1]
+            : undefined;
+        if (category === 'cancelled' || category === 'auth') {
+          this.recordRecoveryDiagnostic(
+            diagnosticStage,
+            category === 'auth' ? 'failed' : 'cancelled',
+            attempt,
+            startedAt,
+            failure
+          );
+          throw error;
+        }
+        if (stage === 'fallback' && category === 'exists') recovery.stage = 'post1035';
+        else if (stage === 'reload') {
+          if (retryDelay === undefined) recovery.stage = 'fallback';
+        } else {
+          this.recordRecoveryDiagnostic(diagnosticStage, 'failed', attempt, startedAt, failure);
+          break;
+        }
+        this.recordRecoveryDiagnostic(diagnosticStage, 'retrying', attempt, startedAt, failure);
+        if (retryDelay !== undefined) {
+          // eslint-disable-next-line no-await-in-loop -- Station reload retries are serial.
+          await new Promise<void>((resolve) => {
+            setTimeout(resolve, retryDelay);
+          });
+        }
+      }
+      if (response) {
+        if (this.recovery !== recovery || !this.webSocketManager.hasUsableSocket())
+          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
         this.recordRecoveryDiagnostic(diagnosticStage, 'succeeded', attempt, startedAt);
         // eslint-disable-next-line no-await-in-loop -- Apply the accepted session before proceeding.
         await this.recoveryOptions.applySession(
           response,
           stage === 'fallback' ? payload : undefined
         );
-        if (!isConnected()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+        if (this.recovery !== recovery || !this.webSocketManager.hasUsableSocket())
+          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
 
         const state: RegionRecoveryState = {status: 'ready', reason: 'region-switch'};
         if (
@@ -471,38 +474,6 @@ export class ConnectionService extends EventEmitter {
         }
 
         return state;
-      } catch (error) {
-        const retryDelay = STATION_RELOAD_RETRY_DELAYS_MS[recovery.reloads - 1];
-        const current = this.recovery === recovery;
-        if (!isConnected()) {
-          if (current && stage === 'reload' && retryDelay !== undefined)
-            recovery.retryNotBefore = Math.max(recovery.retryNotBefore, Date.now() + retryDelay);
-          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-        }
-        if (applying) throw error;
-        const failure = normalizeRecoveryFailure(error);
-        const category = getStationRecoveryFailureCategory(failure);
-        if (category === 'cancelled' || category === 'auth') {
-          this.recordRecoveryDiagnostic(
-            diagnosticStage,
-            category === 'auth' ? 'failed' : 'cancelled',
-            attempt,
-            startedAt,
-            failure
-          );
-          throw error;
-        }
-        if (stage === 'fallback' && category === 'exists') recovery.stage = 'post1035';
-        else if (stage === 'reload' && category === 'transient' && retryDelay !== undefined) {
-          recovery.retryNotBefore = Date.now() + retryDelay;
-        } else if (stage === 'reload') {
-          recovery.stage = 'fallback';
-          recovery.retryNotBefore = 0;
-        } else {
-          this.recordRecoveryDiagnostic(diagnosticStage, 'failed', attempt, startedAt, failure);
-          break;
-        }
-        this.recordRecoveryDiagnostic(diagnosticStage, 'retrying', attempt, startedAt, failure);
       }
     }
 
@@ -585,7 +556,7 @@ export class ConnectionService extends EventEmitter {
   private handleRestoreFailed = (): void => {
     if (this.isStopped) return;
     if (this.reconnectInterval || !this.webSocketManager.hasUsableSocket()) {
-      this.pending = undefined;
+      this.pending = false;
       this.stop();
       this.webSocketManager.close(false, 'Restore watchdog expired');
     } else {
@@ -632,7 +603,7 @@ export class ConnectionService extends EventEmitter {
     this.reconnectingTimer = undefined;
     this.restoreTimer = undefined;
     const pending = this.pending;
-    this.pending = undefined;
+    this.pending = false;
     this.webSocketManager.off('message', this.onPing);
     this.webSocketManager.off('socketClose', this.onSocketClose);
     if (pending) this.webSocketManager.close(false, 'Recovery cancelled');
@@ -683,20 +654,19 @@ export class ConnectionService extends EventEmitter {
       module: CONNECTION_SERVICE_FILE,
       method: METHODS.HANDLE_SOCKET_CLOSE,
     });
-    const pending = {};
-    this.pending = pending;
+    this.pending = true;
     try {
       const onlineStatus = navigator.onLine;
       if (!onlineStatus)
         throw new Error('event=socketConnectionRetry | browser network not available');
       await this.connect();
-      if (this.pending !== pending) return;
+      if (!this.pending) return;
       if (!this.webSocketManager.hasUsableSocket()) throw new Error('WebSocket closed');
-      this.pending = undefined;
+      this.pending = false;
       this.reset(true);
     } catch (error) {
-      if (this.pending !== pending) return;
-      this.pending = undefined;
+      if (!this.pending) return;
+      this.pending = false;
       if (!this.webSocketManager.shouldReconnect) {
         this.stop();
 

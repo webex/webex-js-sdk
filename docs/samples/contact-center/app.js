@@ -770,7 +770,6 @@ function initOauth() {
       config: webexConfig,
     });
   } catch {
-    setRegionRecoveryDialog(false);
     window.history.replaceState(null, '', redirectUri);
     oauthStatusElm.textContent = 'Sign-in failed. Reload the sample to try again.';
     return;
@@ -3827,14 +3826,13 @@ function initAccessToken(credentials) {
   saveElm.disabled = true;
   authStatusElm.innerText = 'initializing...';
 
-  detachRegionRecoveryListener();
+  showRegionRecoveryState();
   try {
     webex = window.webex = Webex.init({
       config: generateWebexConfig({}),
       credentials,
     });
   } catch {
-    setRegionRecoveryDialog(false);
     authStatusElm.textContent = 'Initialization failed. Check your access token and try again.';
     tokenElm.disabled = false;
     saveElm.disabled = false;
@@ -3843,7 +3841,6 @@ function initAccessToken(credentials) {
 
   webex.once('ready', () => {
     if (!webex.canAuthorize) {
-      setRegionRecoveryDialog(false);
       authStatusElm.textContent = 'Enter a valid access token and try again.';
       tokenElm.disabled = false;
       saveElm.disabled = false;
@@ -3858,6 +3855,7 @@ function initAccessToken(credentials) {
 function completeSampleSignIn(fallbackExpiry = 0) {
   const {access_token: accessToken, expires} = webex.credentials.supertoken ?? {};
   attachVoiceConnectionStateLogging();
+  webex.cc.on('region:stateChange', showRegionRecoveryState);
   registerStatus.textContent = 'Not Subscribed';
   registerBtn.disabled = false;
 
@@ -4821,17 +4819,16 @@ function showRegionRecoveryState(state) {
   if (status === 'unavailable') registerBtn.disabled = false;
   if (!state) return;
 
+  setAgentStatusButton.disabled = stateActionsPaused || !Array.from(idleCodesDropdown.options).some(
+    (option) => option.value && !option.disabled && !option.hidden
+  );
   if (status === 'ready') {
-    setAgentStatusButton.disabled = stateActionsPaused || !Array.from(idleCodesDropdown.options).some(
-      (option) => option.value && !option.disabled && !option.hidden
-    );
     if (state.reason === 'region-switch') updateTaskList();
     return;
   }
 
   stopCampaignCountdown();
   renderTaskList({});
-  setAgentStatusButton.disabled = true;
   loginAgentElm.disabled = status !== 'stationLoginRequired';
   updateFieldsContainer.classList.add('hidden');
   if (status === 'stationLoginRequired') {
@@ -4841,18 +4838,11 @@ function showRegionRecoveryState(state) {
   }
 }
 
-function detachRegionRecoveryListener() {
-  webex?.cc?.off('region:stateChange', showRegionRecoveryState);
-  showRegionRecoveryState();
-}
-
 regionRecoveryDialog.addEventListener('cancel', (event) => event.preventDefault());
 function register() {
     registerBtn.disabled = true;
     attachWellnessSdkListeners();
     const cc = webex.cc;
-    cc.off('region:stateChange', showRegionRecoveryState);
-    cc.on('region:stateChange', showRegionRecoveryState);
     showRegionRecoveryState();
     cc.register().then((agentProfile) => {
         registerStatus.innerHTML = 'Subscribed';
@@ -5022,7 +5012,6 @@ function register() {
         }
         updateTaskList();
     }).catch((error) => {
-        cc.off('region:stateChange', showRegionRecoveryState);
         registerBtn.disabled = false;
         showRegionRecoveryState({status: 'unavailable'});
         detachWellnessSdkListeners();
@@ -5032,7 +5021,7 @@ function register() {
 }
 
 function resetDeregisteredSampleState() {
-    detachRegionRecoveryListener();
+    showRegionRecoveryState();
     detachWellnessSdkListeners();
     resetWellnessSession({clearEnablement: true});
     registerStatus.innerHTML = 'Unregistered';

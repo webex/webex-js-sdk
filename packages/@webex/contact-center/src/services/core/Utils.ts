@@ -202,22 +202,6 @@ export const createRegionRecoveryError = (
   return Object.assign(new Error(reason), {data: {reason}});
 };
 
-/** Waits for the recovery delay or releases the wait when ownership ends. */
-export const waitForRecoveryDelay = (delay: number, signal: AbortSignal): Promise<void> => {
-  if (delay <= 0 || signal.aborted) return Promise.resolve();
-
-  return new Promise<void>((resolve) => {
-    let timer: ReturnType<typeof setTimeout>;
-    const finish = () => {
-      clearTimeout(timer);
-      signal.removeEventListener('abort', finish);
-      resolve();
-    };
-    timer = setTimeout(finish, delay);
-    signal.addEventListener('abort', finish, {once: true});
-  });
-};
-
 /** Recognizes SDK lifecycle errors and narrows their required reason. */
 export const isRegionRecoveryError = (
   error: unknown

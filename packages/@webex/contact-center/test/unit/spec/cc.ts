@@ -707,10 +707,7 @@ describe('webex.cc', () => {
       expect(mercuryConnect).toHaveBeenCalled();
       expect(connectWebsocketSpy).toHaveBeenCalled();
       expect(setupEventListenersSpy).toHaveBeenCalled();
-      expect(webex.cc.services.connectionService.connect).toHaveBeenCalledWith(
-        false,
-        expect.any(AbortSignal)
-      );
+      expect(webex.cc.services.connectionService.connect).toHaveBeenCalledWith();
 
       // SPARK-626777 tracks moving listener cleanup into the future de-register API.
       expect(mockTaskManager.on).toHaveBeenCalledWith(
@@ -793,10 +790,7 @@ describe('webex.cc', () => {
       const result = await webex.cc.register();
 
       expect(connectWebsocketSpy).toHaveBeenCalled();
-      expect(webex.cc.services.connectionService.connect).toHaveBeenCalledWith(
-        false,
-        expect.any(AbortSignal)
-      );
+      expect(webex.cc.services.connectionService.connect).toHaveBeenCalledWith();
       expect(configSpy).toHaveBeenCalled();
       expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
         module: CC_FILE,
@@ -887,10 +881,7 @@ describe('webex.cc', () => {
       );
       expect(connectWebsocketSpy).toHaveBeenCalled();
       expect(setupEventListenersSpy).toHaveBeenCalled();
-      expect(webex.cc.services.connectionService.connect).toHaveBeenCalledWith(
-        false,
-        expect.any(AbortSignal)
-      );
+      expect(webex.cc.services.connectionService.connect).toHaveBeenCalledWith();
 
       expect(mockTaskManager.on).toHaveBeenCalledWith(
         TASK_EVENTS.TASK_INCOMING,
@@ -970,10 +961,7 @@ describe('webex.cc', () => {
 
       expect(connectWebsocketSpy).toHaveBeenCalled();
       expect(setupEventListenersSpy).toHaveBeenCalled();
-      expect(webex.cc.services.connectionService.connect).toHaveBeenCalledWith(
-        false,
-        expect.any(AbortSignal)
-      );
+      expect(webex.cc.services.connectionService.connect).toHaveBeenCalledWith();
 
       expect(configSpy).toHaveBeenCalled();
       expect(mercurySpy).not.toHaveBeenCalled();
@@ -1154,10 +1142,7 @@ describe('webex.cc', () => {
 
         const result = await webex.cc.register();
 
-        expect(webex.cc.services.connectionService.connect).toHaveBeenCalledWith(
-          false,
-          expect.any(AbortSignal)
-        );
+        expect(webex.cc.services.connectionService.connect).toHaveBeenCalledWith();
         expect(configSpy).toHaveBeenCalledWith('mockOrgId', welcomeAgentId);
         expect(setupEventListenersSpy).toHaveBeenCalled();
         expect(mockTaskManager.on).toHaveBeenCalledWith(
@@ -7323,6 +7308,35 @@ describe('regional recovery wiring', () => {
     });
   });
 
+  it('does not subscribe after the ordinary watchdog expires while refreshing U2C', async () => {
+    await withRouting(async ({
+      cc, requests, currentRouting, setSubscribeFailure, updateServices,
+    }) => {
+      const refresh = createDeferred<void>();
+      updateServices.mockReturnValueOnce(refresh.promise);
+      const connectionLost = jest.fn();
+      cc.services.connectionService.on('connectionLost', connectionLost);
+      setSubscribeFailure(subscribeConflict('REGION_MISMATCH_NO_OVERRIDE'));
+      currentRouting().lose();
+      jest.advanceTimersByTime(5000);
+      await flush();
+      expect(updateServices).toHaveBeenCalledTimes(1);
+      expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(2);
+
+      jest.advanceTimersByTime(45000);
+      await flush();
+      expect(connectionLost).toHaveBeenLastCalledWith(
+        expect.objectContaining({isRestoreFailed: true})
+      );
+      setSubscribeFailure();
+      refresh.resolve();
+      await flush();
+
+      expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(2);
+      expect(cc.services.webSocketManager.hasUsableSocket()).toBe(false);
+    });
+  });
+
   it('uses ordinary reconnect after a subscribe 409 with an unrelated reason', async () => {
     await withRouting(async ({
       cc, requests, currentRouting, setSubscribeFailure, login, updateServices,
@@ -7371,8 +7385,7 @@ describe('regional recovery wiring', () => {
     },
     {title: 'rejects expired credentials', failure: {statusCode: 401}},
     {title: 'retries a transient subscribe failure', failure: {statusCode: 503}},
-    {title: 'ends when deregistered while waiting', deregister: true},
-  ])('registration uses ordinary reconnect and $title', async ({failure, deregister}) => {
+  ])('registration uses ordinary reconnect and $title', async ({failure}) => {
     await withRouting(
       async ({cc, requests, currentRouting, setSubscribeFailure, updateServices}) => {
         const configService = cc.services.config;
@@ -7394,18 +7407,6 @@ describe('regional recovery wiring', () => {
         currentRouting().lose();
         profileAvailable.resolve();
         await flush();
-
-        if (deregister) {
-          await cc.deregister();
-          await expect(registration).rejects.toMatchObject({
-            data: {reason: 'RECOVERY_INTERRUPTED'},
-          });
-          jest.advanceTimersByTime(60000);
-          await flush();
-          expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(1);
-
-          return;
-        }
 
         setSubscribeFailure(failure);
         jest.advanceTimersByTime(5000);
@@ -7434,6 +7435,33 @@ describe('regional recovery wiring', () => {
       },
       {autoRegister: false}
     );
+  });
+
+  it('rejects registration when routing authentication fails while Mercury is connecting', async () => {
+    await withRouting(async ({cc, requests, currentRouting, setSubscribeFailure}) => {
+      const mercuryConnection = createDeferred<void>();
+      const connectMercury = jest.fn(() => mercuryConnection.promise);
+      cc.$webex.internal.mercury.connect = connectMercury;
+      cc.$config.allowAutomatedRelogin = true;
+      const registration = cc.register();
+      const rejection = expect(registration).rejects.toMatchObject({statusCode: 401});
+      await flush();
+      currentRouting().welcome();
+      await flush();
+      expect(connectMercury).toHaveBeenCalledTimes(1);
+
+      currentRouting().lose();
+      setSubscribeFailure({statusCode: 401});
+      jest.advanceTimersByTime(5000);
+      await flush();
+      mercuryConnection.resolve();
+      await rejection;
+
+      expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(2);
+      expect(requests.filter(({resource}) => resource === '/v1/agents/reload')).toHaveLength(0);
+      expect(requests.filter(({resource}) => resource === '/v1/agents/login')).toHaveLength(0);
+      expect(requests.filter(({resource}) => resource === 'v1/realtime/subscribe')).toHaveLength(0);
+    }, {autoRegister: false, browserVoice: true, rtdEnabled: true});
   });
 
   it('does not resume a pending regional subscription after deregister', async () => {
