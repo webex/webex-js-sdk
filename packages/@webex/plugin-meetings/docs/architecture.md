@@ -423,7 +423,7 @@ Registration lifecycle events, emitted on `webex.meetings`:
 | `meeting:media:local:start` / `meeting:media:remote:start` | local bytes began sending or remote bytes began arriving |
 | `meeting:ringing` / `meeting:ringingStop` | ringing starts/stops; payload identifies meeting `id` and `type`, and on stop the remote answer/decline state |
 | `meeting:startedSharingLocal` / `meeting:stoppedSharingLocal` | local share lifecycle; no payload |
-| `meeting:startedSharingRemote` / `meeting:stoppedSharingRemote` | remote share lifecycle |
+| `meeting:startedSharingRemote` / `meeting:stoppedSharingRemote` | remote share lifecycle; a former local share is unpublished before remote-start notification, including a split release/grant handoff ([floor cleanup](../src/meeting/docs/README.md#relinquishing-a-screen-share-floor)) |
 | `meeting:self:lobbyWaiting` / `meeting:self:guestAdmitted` | self lobby/admission transition; payload carries the self projection |
 | `meeting:self:mutedByOthers` | self was remotely muted; payload carries the self projection |
 | `meeting:reconnectionStarting` | reconnection began; no payload |

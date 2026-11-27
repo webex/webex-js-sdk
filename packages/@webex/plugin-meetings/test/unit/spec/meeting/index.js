@@ -52,7 +52,7 @@ import {LocalStreamEventNames} from '@webex/media-helpers';
 import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 import EventsScope from '@webex/plugin-meetings/src/common/events/events-scope';
 import Meetings, {CONSTANTS} from '@webex/plugin-meetings';
-import Meeting from '@webex/plugin-meetings/src/meeting';
+import Meeting, {ScreenShareFloorStatus} from '@webex/plugin-meetings/src/meeting';
 import {E2eeState} from '@webex/plugin-meetings/src/e2ee/types';
 import Members from '@webex/plugin-meetings/src/members';
 import * as MembersImport from '@webex/plugin-meetings/src/members';
@@ -17512,6 +17512,94 @@ describe('plugin-meetings', () => {
               }
             }
           };
+
+          describe('relinquishing a local content floor', () => {
+            const scenarios = [
+              {
+                name: 'unpublishes after Locus releases the local floor before granting the remote floor',
+                initialStatus: SHARE_STATUS.LOCAL_SHARE_ACTIVE,
+                floor: ScreenShareFloorStatus.GRANTED,
+                releaseFirst: true,
+                sendShare: true,
+                shouldUnpublish: true,
+              },
+              {
+                name: 'still unpublishes a direct handoff before the local floor response has returned',
+                initialStatus: SHARE_STATUS.LOCAL_SHARE_ACTIVE,
+                floor: ScreenShareFloorStatus.PENDING,
+                sendShare: true,
+                shouldUnpublish: true,
+              },
+              ...[ScreenShareFloorStatus.PENDING, ScreenShareFloorStatus.RELEASED].map((floor) => ({
+                name: `keeps a new local stream before its floor is granted (${floor})`,
+                initialStatus: SHARE_STATUS.NO_SHARE,
+                floor,
+                sendShare: true,
+                shouldUnpublish: false,
+              })),
+              {
+                name: 'does not unpublish when no local share is being sent',
+                initialStatus: SHARE_STATUS.NO_SHARE,
+                floor: ScreenShareFloorStatus.GRANTED,
+                sendShare: false,
+                shouldUnpublish: false,
+              },
+            ];
+
+            scenarios.forEach(({name, initialStatus, floor, releaseFirst, sendShare, shouldUnpublish}) => {
+              it(name, async () => {
+                const video = {id: 'local-share-video'};
+                const audio = {id: 'local-share-audio'};
+                meeting.mediaProperties.shareVideoStream = video;
+                meeting.mediaProperties.shareAudioStream = audio;
+                meeting.mediaProperties.mediaDirection.sendShare = sendShare;
+                meeting.shareStatus = initialStatus;
+                meeting.screenShareFloorState = floor;
+                const unpublish = sinon.stub(meeting, 'unpublishStreams').resolves();
+                const previous = {
+                  content:
+                    initialStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE
+                      ? generateContent(USER_IDS.ME, FLOOR_ACTION.GRANTED, DEVICE_URL.LOCAL_WEB)
+                      : generateContent(),
+                  whiteboard: generateWhiteboard(),
+                };
+                let current = previous;
+
+                if (releaseFirst) {
+                  current = {
+                    content: generateContent(USER_IDS.ME, FLOOR_ACTION.RELEASED, DEVICE_URL.LOCAL_WEB),
+                    whiteboard: generateWhiteboard(),
+                  };
+                  meeting.locusInfo.emit(
+                    {function: 'test', file: 'test'},
+                    EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+                    {previous, current}
+                  );
+                  assert.equal(meeting.shareStatus, SHARE_STATUS.NO_SHARE);
+                }
+
+                meeting.locusInfo.emit(
+                  {function: 'test', file: 'test'},
+                  EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+                  {
+                    previous: current,
+                    current: {
+                      content: generateContent(USER_IDS.REMOTE_A, FLOOR_ACTION.GRANTED, DEVICE_URL.REMOTE_A),
+                      whiteboard: generateWhiteboard(),
+                    },
+                  }
+                );
+                await testUtils.flushPromises();
+
+                if (shouldUnpublish) {
+                  assert.calledOnceWithExactly(unpublish, [video, audio]);
+                } else {
+                  assert.notCalled(unpublish);
+                }
+                assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
+              });
+            });
+          });
 
           it('should have #setUpLocusMediaSharesListener', () => {
             assert.exists(meeting.setUpLocusMediaSharesListener);

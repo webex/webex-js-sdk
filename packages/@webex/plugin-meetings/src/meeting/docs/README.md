@@ -359,6 +359,25 @@ self/system mute, local-mute updates during remote mute, and the existing breako
 `test/integration/spec/journey.js` requires the public unmuted-by-others event after Alice
 unmutes Bob and separately checks that Alice cannot unmute Bob after he mutes himself.
 
+### Relinquishing a screen-share floor
+
+When a remote participant takes the floor, the former local sharer unpublishes its share
+streams before emitting `meeting:startedSharingRemote`. Locus can deliver the handoff as
+separate release and grant updates: `LOCAL_SHARE_ACTIVE` becomes `NO_SHARE` before becoming
+`REMOTE_SHARE_ACTIVE`. The independent `screenShareFloorState` still identifies the former
+granted local share during that intermediate state; checking only the previous `shareStatus`
+would leave its streams publishing after the remote grant.
+
+This cleanup applies to a previously granted local share, as well as a direct handoff from
+`LOCAL_SHARE_ACTIVE`. It must not cancel a newly prepared stream whose local floor request
+is pending or has not started. Both share-video and share-audio streams are passed through
+the existing `unpublishStreams` path.
+
+Verification: the `relinquishing a local content floor` cases in
+`test/unit/spec/meeting/index.js` cover the split release/grant, direct handoff before the
+local grant response, pending/new local streams, and absence of local sending.
+`test/integration/spec/journey.js` checks the real stream-publication and sharing events.
+
 ## Data flow and sequence coverage
 
 Sequence coverage: the call style is in-process async method calls from the application; outbound
