@@ -184,7 +184,7 @@ export interface MLSConfig {
   correlationId: string;
   displayName: string;
   serviceUrl: string;
-  credentials?: IdentityCredentials;
+  credentials?: IdentityCredentials[];
   trustAnchors?: IdentityTrustAnchors;
   joinTimeout?: number;
   coalesceWindow?: number;

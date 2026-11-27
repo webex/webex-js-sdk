@@ -7,6 +7,40 @@ export interface IdentityCredentials {
   certChain: Uint8Array[];
 }
 
+/** PEM-encoded credentials for a customer-provided user identity certificate. */
+export interface UserIdentityCredentialsInput {
+  privateKeyPkcs8Pem: string;
+  certificateChainPem: string;
+}
+
+/** Customer CA certificates trusted to verify customer-provided member identity certificates. */
+export interface UserIdentityRoots {
+  /** One or more PEM-encoded CA certificates, concatenated when there are multiple roots. */
+  userIdentityRootsPem: string;
+}
+
+export interface UserIdentity {
+  email: string;
+}
+
+export interface IssueCertificateRequest {
+  /** SDK ID used to look up and cache credentials. */
+  contactId: string;
+  /** User identity for the certificate. */
+  identity: UserIdentity;
+  /** PEM-encoded PKCS#10 certificate signing request. */
+  csrPem: string;
+}
+
+export interface IssueCertificateResult {
+  /** PEM chain with the leaf first, then intermediates. Omit the root. */
+  certificateChainPem: string;
+}
+
+export interface UserIdentityCertificateProvider {
+  issueCertificate(request: IssueCertificateRequest): Promise<IssueCertificateResult>;
+}
+
 export interface IdentityTrustAnchors {
   webexCaRoots?: string;
   /** PEM-encoded domain-name trust anchors. */
@@ -18,7 +52,7 @@ export interface IdentityTrustAnchors {
 
 /** Methods exposed by the shared identity plugin to consuming plugins. */
 export interface IdentityProvider {
-  getCredentials(contactId: string): Promise<IdentityCredentials>;
+  getCredentials(contactId: string): Promise<IdentityCredentials[]>;
   getTrustAnchors(): IdentityTrustAnchors;
 }
 
@@ -26,4 +60,5 @@ export interface IdentityProvider {
 export interface CertSigningRequest {
   privKeyDer: Uint8Array;
   csr: string;
+  csrPem: string;
 }

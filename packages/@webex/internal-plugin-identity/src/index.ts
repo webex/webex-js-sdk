@@ -15,4 +15,10 @@ export type {
   IdentityCredentials,
   IdentityProvider,
   IdentityTrustAnchors,
+  IssueCertificateRequest,
+  IssueCertificateResult,
+  UserIdentity,
+  UserIdentityCertificateProvider,
+  UserIdentityCredentialsInput,
+  UserIdentityRoots,
 } from './types';
