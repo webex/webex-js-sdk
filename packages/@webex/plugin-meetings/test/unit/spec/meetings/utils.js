@@ -18,6 +18,21 @@ describe('plugin-meetings', () => {
     sinon.restore();
   });
   describe('Meetings utils function', () => {
+    describe('#isE2eeEnabledAndSupported', () => {
+      it('requires E2EE config and WebAssembly support', () => {
+        const supportsWasmStub = sinon.stub(WebCapabilities, 'supportsWasm');
+        supportsWasmStub.returns(CapabilityState.CAPABLE);
+
+        assert.isTrue(MeetingsUtil.isE2eeEnabledAndSupported({meetings: {enableE2ee: true}}));
+        assert.isFalse(MeetingsUtil.isE2eeEnabledAndSupported({meetings: {enableE2ee: false}}));
+        assert.isFalse(MeetingsUtil.isE2eeEnabledAndSupported({}));
+        assert.isFalse(MeetingsUtil.isE2eeEnabledAndSupported(undefined));
+
+        supportsWasmStub.returns(CapabilityState.NOT_CAPABLE);
+        assert.isFalse(MeetingsUtil.isE2eeEnabledAndSupported({meetings: {enableE2ee: true}}));
+      });
+    });
+
     describe('#parseDefaultSiteFromMeetingPreferences', () => {
       it('should return the default true site from user preferences', () => {
         const userPreferences = {

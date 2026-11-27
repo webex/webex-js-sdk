@@ -3,6 +3,11 @@ import {assert} from '@webex/test-helper-chai';
 
 import MemberUtil from '@webex/plugin-meetings/src/member/util';
 import Member from '@webex/plugin-meetings/src/member';
+import {
+  E2eeIdentityType,
+  E2eeMemberVerificationState,
+  E2eeValidationResult,
+} from '@webex/plugin-meetings/src/e2ee/types';
 
 describe('member', () => {
   const participant = {controls: {}, status: {}};
@@ -110,6 +115,293 @@ describe('member', () => {
       sinon.stub(MemberUtil, 'canApproveAIEnablement').returns(false);
       const memberWithFalse = new Member(testParticipant);
       assert.isFalse(memberWithFalse.canApproveAIEnablement);
+    });
+  });
+
+  describe('e2ee verification', () => {
+    const createMember = () => new Member({controls: {}, status: {}});
+
+    const successfulIdentity = (identityType) => ({
+      result: E2eeValidationResult.Success,
+      certificateChain: [{identityType}],
+    });
+
+    const failedIdentity = () => ({result: E2eeValidationResult.Failure, certificateChain: []});
+
+    const withIdentityResults = (deviceUrl, identityResults) => ({
+      deviceUrl,
+      validationResult: E2eeValidationResult.Success,
+      displayName: 'Alice',
+      deviceType: 'WEB',
+      identityResults,
+    });
+
+    const makeVerification = (
+      deviceUrl,
+      verified,
+      validationResult = verified ? E2eeValidationResult.Success : E2eeValidationResult.Failure
+    ) => ({
+      deviceUrl,
+      validationResult,
+      displayName: 'Alice',
+      deviceType: 'WEB',
+      identityResults: [
+        verified ? successfulIdentity(E2eeIdentityType.WebexUserIdentity) : failedIdentity(),
+      ],
+    });
+
+    it('defaults to an empty verification map and unknown state', () => {
+      const freshMember = createMember();
+
+      assert.instanceOf(freshMember.e2eeDeviceVerifications, Map);
+      assert.equal(freshMember.e2eeDeviceVerifications.size, 0);
+      assert.equal(freshMember.e2eeVerificationState, E2eeMemberVerificationState.Unknown);
+      assert.deepEqual(freshMember.getE2eeDeviceVerifications(), []);
+    });
+
+    it('stores per-device verifications and exposes them by url', () => {
+      const freshMember = createMember();
+      const verificationA = makeVerification('device-a', true);
+      const verificationB = makeVerification('device-b', false);
+
+      freshMember.setE2eeDeviceVerifications([verificationA, verificationB]);
+
+      assert.deepEqual(freshMember.getE2eeDeviceVerification('device-a'), verificationA);
+      assert.deepEqual(freshMember.getE2eeDeviceVerification('device-b'), verificationB);
+      assert.isUndefined(freshMember.getE2eeDeviceVerification('device-missing'));
+      assert.deepEqual(freshMember.getE2eeDeviceVerifications(), [verificationA, verificationB]);
+    });
+
+    it('replaces (does not merge) the previous verifications on each call', () => {
+      const freshMember = createMember();
+
+      freshMember.setE2eeDeviceVerifications([makeVerification('device-a', true)]);
+      freshMember.setE2eeDeviceVerifications([makeVerification('device-b', false)]);
+
+      assert.isUndefined(freshMember.getE2eeDeviceVerification('device-a'));
+      assert.deepEqual(freshMember.getE2eeDeviceVerifications(), [
+        makeVerification('device-b', false),
+      ]);
+    });
+
+    [
+      {
+        name: 'all devices verified',
+        verifications: [true, true],
+        expected: E2eeMemberVerificationState.Verified,
+      },
+      {
+        name: 'no devices verified',
+        verifications: [false, false],
+        expected: E2eeMemberVerificationState.Unverified,
+      },
+      {
+        name: 'some devices verified',
+        verifications: [true, false],
+        expected: E2eeMemberVerificationState.PartiallyVerified,
+      },
+      {
+        name: 'no devices present',
+        verifications: [],
+        expected: E2eeMemberVerificationState.Unknown,
+      },
+    ].forEach(({name, verifications, expected}) => {
+      it(`aggregate state is '${expected}' when ${name}`, () => {
+        const freshMember = createMember();
+
+        freshMember.setE2eeDeviceVerifications(
+          verifications.map((verified, index) => makeVerification(`device-${index}`, verified))
+        );
+
+        assert.equal(freshMember.e2eeVerificationState, expected);
+      });
+    });
+
+    describe('device identity classification', () => {
+      const {Success, Failure} = E2eeValidationResult;
+      const {
+        WebexAnonymousIdentity,
+        WebexMachineIdentity,
+        WebexUserIdentity,
+        ExternalVerifiedIdentity,
+      } = E2eeIdentityType;
+
+      [
+        {
+          name: 'a WebexMachineIdentity leaf',
+          identityResults: [successfulIdentity(WebexMachineIdentity)],
+          expected: E2eeMemberVerificationState.Verified,
+        },
+        {
+          name: 'a WebexUserIdentity leaf',
+          identityResults: [successfulIdentity(WebexUserIdentity)],
+          expected: E2eeMemberVerificationState.Verified,
+        },
+        {
+          name: 'an ExternalVerifiedIdentity leaf',
+          identityResults: [successfulIdentity(ExternalVerifiedIdentity)],
+          expected: E2eeMemberVerificationState.Verified,
+        },
+        {
+          name: 'a WebexAnonymousIdentity leaf',
+          identityResults: [successfulIdentity(WebexAnonymousIdentity)],
+          expected: E2eeMemberVerificationState.Unverified,
+        },
+        {
+          name: 'a leaf without an identity type',
+          identityResults: [{result: Success, certificateChain: [{}]}],
+          expected: E2eeMemberVerificationState.Unknown,
+        },
+        {
+          name: 'an empty certificate chain',
+          identityResults: [{result: Success, certificateChain: []}],
+          expected: E2eeMemberVerificationState.Unknown,
+        },
+        {
+          name: 'a failed result for a verified identity type',
+          identityResults: [
+            {result: Failure, certificateChain: [{identityType: WebexUserIdentity}]},
+          ],
+          expected: E2eeMemberVerificationState.Unverified,
+        },
+        {
+          name: 'a later successful result after a failed one',
+          identityResults: [failedIdentity(), successfulIdentity(WebexUserIdentity)],
+          expected: E2eeMemberVerificationState.Verified,
+        },
+        {
+          name: 'several successful results (the first one wins)',
+          identityResults: [
+            successfulIdentity(WebexAnonymousIdentity),
+            successfulIdentity(WebexUserIdentity),
+          ],
+          expected: E2eeMemberVerificationState.Unverified,
+        },
+        {
+          name: 'no identity results',
+          identityResults: undefined,
+          expected: E2eeMemberVerificationState.Unknown,
+        },
+        {
+          name: 'empty identity results',
+          identityResults: [],
+          expected: E2eeMemberVerificationState.Unknown,
+        },
+      ].forEach(({name, identityResults, expected}) => {
+        it(`classifies a device with ${name} as '${expected}'`, () => {
+          const freshMember = createMember();
+
+          freshMember.setE2eeDeviceVerifications([
+            withIdentityResults('device-a', identityResults),
+          ]);
+
+          assert.equal(freshMember.e2eeVerificationState, expected);
+        });
+      });
+
+      [
+        {
+          name: 'all devices are unknown',
+          identityResults: [undefined, undefined],
+          expected: E2eeMemberVerificationState.Unknown,
+        },
+        {
+          name: 'devices are unknown or unverified',
+          identityResults: [undefined, [failedIdentity()]],
+          expected: E2eeMemberVerificationState.Unverified,
+        },
+        {
+          name: 'devices are unknown or verified',
+          identityResults: [undefined, [successfulIdentity(WebexUserIdentity)]],
+          expected: E2eeMemberVerificationState.PartiallyVerified,
+        },
+      ].forEach(({name, identityResults, expected}) => {
+        it(`aggregate state is '${expected}' when ${name}`, () => {
+          const freshMember = createMember();
+
+          freshMember.setE2eeDeviceVerifications(
+            identityResults.map((results, index) => withIdentityResults(`device-${index}`, results))
+          );
+
+          assert.equal(freshMember.e2eeVerificationState, expected);
+        });
+      });
+    });
+
+    describe('per-device set/remove', () => {
+      it('upserts a single device verification and returns true when it changes', () => {
+        const freshMember = createMember();
+        const verification = makeVerification(
+          'device-a',
+          true,
+          E2eeValidationResult.PartialSuccess
+        );
+
+        assert.isTrue(freshMember.setE2eeDeviceVerification('device-a', verification));
+        assert.deepEqual(freshMember.getE2eeDeviceVerification('device-a'), verification);
+        assert.equal(
+          freshMember.getE2eeDeviceVerification('device-a').validationResult,
+          E2eeValidationResult.PartialSuccess
+        );
+        assert.equal(freshMember.e2eeVerificationState, E2eeMemberVerificationState.Verified);
+      });
+
+      it('keeps other devices when upserting one', () => {
+        const freshMember = createMember();
+        freshMember.setE2eeDeviceVerification(
+          'device-a',
+          makeVerification('device-a', true, E2eeValidationResult.PartialSuccess)
+        );
+
+        freshMember.setE2eeDeviceVerification('device-b', makeVerification('device-b', false));
+
+        assert.equal(
+          freshMember.getE2eeDeviceVerification('device-a').validationResult,
+          E2eeValidationResult.PartialSuccess
+        );
+        assert.equal(
+          freshMember.getE2eeDeviceVerification('device-b').validationResult,
+          E2eeValidationResult.Failure
+        );
+        assert.equal(
+          freshMember.e2eeVerificationState,
+          E2eeMemberVerificationState.PartiallyVerified
+        );
+      });
+
+      it('returns false and does nothing when the verification is unchanged', () => {
+        const freshMember = createMember();
+        freshMember.setE2eeDeviceVerification('device-a', makeVerification('device-a', true));
+
+        assert.isFalse(
+          freshMember.setE2eeDeviceVerification('device-a', makeVerification('device-a', true))
+        );
+      });
+
+      it('returns true and replaces the verification when an existing device changes', () => {
+        const freshMember = createMember();
+        const updated = makeVerification('device-a', false);
+        freshMember.setE2eeDeviceVerification('device-a', makeVerification('device-a', true));
+
+        assert.isTrue(freshMember.setE2eeDeviceVerification('device-a', updated));
+        assert.deepEqual(freshMember.getE2eeDeviceVerifications(), [updated]);
+        assert.equal(freshMember.e2eeVerificationState, E2eeMemberVerificationState.Unverified);
+      });
+
+      it('removes a single device verification and returns true', () => {
+        const freshMember = createMember();
+        freshMember.setE2eeDeviceVerification('device-a', makeVerification('device-a', true));
+
+        assert.isTrue(freshMember.removeE2eeDeviceVerification('device-a'));
+        assert.isUndefined(freshMember.getE2eeDeviceVerification('device-a'));
+        assert.equal(freshMember.e2eeVerificationState, E2eeMemberVerificationState.Unknown);
+      });
+
+      it('returns false when removing a device that has no verification', () => {
+        const freshMember = createMember();
+
+        assert.isFalse(freshMember.removeE2eeDeviceVerification('device-missing'));
+      });
     });
   });
 });
