@@ -1106,6 +1106,71 @@ describe('Registration Tests', () => {
     });
   });
 
+  describe('resumeFailover', () => {
+    const failoverKey = `wxc-failover-state.${webex.internal.device.userId}`;
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      setupRegistration(MockServiceData);
+      localStorage.clear();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      localStorage.clear();
+    });
+
+    it('clears failover cache before resuming', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      localStorage.setItem(
+        failoverKey,
+        JSON.stringify({attempt: 1, timeElapsed: 0, retryScheduledTime: now - 2, serverType: 'primary'})
+      );
+      const startFailoverSpy = jest.spyOn(reg as any, 'startFailoverTimer').mockResolvedValue(undefined);
+      jest.spyOn(reg as any, 'isDeviceRegistered').mockReturnValue(false);
+      const mutexSpy = jest.spyOn(reg.mutex, 'runExclusive');
+
+      const result = await (reg as any).resumeFailover();
+
+      expect(result).toBe(true);
+      expect(localStorage.getItem(failoverKey)).toBeNull();
+      expect(startFailoverSpy).toHaveBeenCalledTimes(1);
+      expect(mutexSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('concurrent resume does not double-start failover', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      localStorage.setItem(
+        failoverKey,
+        JSON.stringify({attempt: 2, timeElapsed: 5, retryScheduledTime: now - 1, serverType: 'primary'})
+      );
+      const startFailoverSpy = jest.spyOn(reg as any, 'startFailoverTimer').mockResolvedValue(undefined);
+      jest.spyOn(reg as any, 'isDeviceRegistered').mockReturnValue(false);
+      const mutexSpy = jest.spyOn(reg.mutex, 'runExclusive');
+
+      const [first, second] = await Promise.all([
+        (reg as any).resumeFailover(),
+        (reg as any).resumeFailover(),
+      ]);
+
+      expect(startFailoverSpy).toHaveBeenCalledTimes(1);
+      expect(mutexSpy).toHaveBeenCalledTimes(2);
+      const trueCount = [first, second].filter(Boolean).length;
+      expect(trueCount).toBe(1);
+    });
+
+    it('no cached state returns false', async () => {
+      const startFailoverSpy = jest.spyOn(reg as any, 'startFailoverTimer').mockResolvedValue(undefined);
+      const mutexSpy = jest.spyOn(reg.mutex, 'runExclusive');
+
+      const result = await (reg as any).resumeFailover();
+
+      expect(result).toBe(false);
+      expect(startFailoverSpy).not.toHaveBeenCalled();
+      expect(mutexSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('Registration failback tests', () => {
     let isPrimaryActiveSpy;
     beforeEach(async () => {
