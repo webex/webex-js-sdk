@@ -149,7 +149,7 @@ The module is internal to the package (contract `contact-center-task-state-machi
 
 | Dependency            | Why it is required | Failure behavior                    |
 | --------------------- | ------------------ | ----------------------------------- |
-| XState (`xstate` 5.24.0, contract `xstate-runtime`) | `setup`, `createMachine`, `.provide`, and `assign` build the actor graph | Build-time dependency; no runtime fallback |
+| XState (`xstate`, pinned in `package.json`; contract `xstate-runtime`) | `setup`, `createMachine`, `.provide`, and `assign` build the actor graph | Build-time dependency; no runtime fallback |
 | TaskData and task-event contracts (`src/services/task/types.ts`) | `TaskData`, `TaskUIControls`, `InteractionUIControls`, `DestinationType`, channel and voice-variant enums shape context and controls | Type-level; payload fields read defensively with optional chaining |
 | Task and TaskManager event/action integration (`src/services/task/Task.ts`, `src/services/task/TaskManager.ts`) | Task owns the actor and supplies action overrides; TaskManager and Voice send mapped `TaskEvent` values | Without overrides, emitters, `requestAutoAnswer`, `requestCleanup`, and `cleanupResources` are no-ops and `syncTaskDataFromEvent` is unimplemented |
 | Task utilities (`src/services/task/TaskUtils.ts`, `src/services/task/WebexCallingUtils.ts`) | Customer-in-call, conference participant counts, conference-in-progress, EP-DN pending-merge, campaign-preview, server hold, and wxApp device checks | Pure helpers; return false on missing data |

@@ -93,7 +93,7 @@ flowchart LR
 | ---------- | ---- | ------- | ------- | ------------------------------------ |
 | `@webex/internal-plugin-device` | Internal | `src/feature.js` | Toggle collections and `userId` | Workspace version (`workspace:*` in `package.json`); empty before registration |
 | `@webex/webex-core` | Internal | `src/index.js`, `src/feature.js` | Plugin base class, registration, request, and event helpers | Workspace version; request errors propagate |
-| `lodash` | External | `src/feature.js` | `partition` for the bundled-write response | `^4.17.21` in `package.json` |
+| `lodash` | External | `src/feature.js` | `partition` for the bundled-write response | Range in `package.json` |
 | Feature service | External service | `src/feature.js` | Stores toggle writes | Reached by service name through the services catalog; no retry or timeout in this package |
 | `@webex/internal-plugin-mercury` | Internal (caller) | Mercury plugin | Delivers pushed toggle records | No import in this package; Mercury imports this one |
 

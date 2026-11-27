@@ -20,13 +20,13 @@ is `webex-node`, without an `@webex/` scope, and the package lives at `packages/
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| Node.js | 22.14, required for working in this repository by the workspace root `AGENTS.md`; the root `.nvmrc` selects the Node 22 LTS line (the root `package.json` `engines.node` still declares `18.x`; the root `AGENTS.md` and `.nvmrc` take precedence for development) |
-| Yarn | The version pinned by the workspace root `packageManager` field, provided through Corepack, which must be enabled for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup requires. Workspaces are used, so install from the workspace root rather than this directory |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| Node.js | Development version: `.nvmrc` and the workspace root `AGENTS.md` (the workspace root `package.json` `engines.node` differs from it; the root `AGENTS.md` and `.nvmrc` take precedence for development) |
+| Yarn | `packageManager` in the workspace root `package.json`, provided through Corepack, which must be enabled for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup requires. Workspaces are used, so install from the workspace root rather than this directory |
 | Browser | Not needed: the package has no browser test script and is not meant for browsers |
 
-The `package.json` `engines` value `>=18` is the floor for applications that install the package,
+The `package.json` `engines.node` value is the floor for applications that install the package,
 not the development runtime.
 
 ## Install

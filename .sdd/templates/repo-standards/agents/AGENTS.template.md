@@ -73,14 +73,19 @@ Definition of done:
 
 ### Tech Stack
 
-Document concrete versions so assistants choose compatible APIs.
+Point at the file and field that owns each version rather than copying the
+value, so an assistant resolves the version that is current at the time it
+reads this file.
 
-| Area             | Tooling     | Version     |
-| ---------------- | ----------- | ----------- |
-| Language runtime | `[runtime]` | `[version]` |
-| Build tool       | `[tool]`    | `[version]` |
-| Test framework   | `[tool]`    | `[version]` |
-| Lint/format      | `[tooling]` | `[version]` |
+| Area             | Tooling     | Version source     |
+| ---------------- | ----------- | ------------------ |
+| Language runtime | `[runtime]` | `[manifest field]` |
+| Build tool       | `[tool]`    | `[manifest field]` |
+| Test framework   | `[tool]`    | `[manifest field]` |
+| Lint/format      | `[tooling]` | `[manifest field]` |
+
+For example `engines.node` in `package.json`, `packageManager` in the workspace
+root `package.json`, or `devDependencies.eslint` in `package.json`.
 
 ### Project Map
 

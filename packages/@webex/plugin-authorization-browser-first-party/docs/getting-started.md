@@ -20,10 +20,10 @@ Onboarding for **@webex/plugin-authorization-browser-first-party**, a package in
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| Node.js        | `>=8` per this package's `engines`; the workspace `.nvmrc` selects `lts/jod` and the root `AGENTS.md` asks for 22.14 |
-| Yarn           | `yarn@3.4.1` (`packageManager` in the workspace root `package.json`) |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| Node.js        | Consumer floor: `engines.node` in `package.json`. Development version: `.nvmrc` and the workspace root `AGENTS.md` |
+| Yarn           | `packageManager` in the workspace root `package.json` |
 | Registry or account access | N/A for building and unit tests; the skipped automation suite needs test users and a redirect URI |
 
 ## Install

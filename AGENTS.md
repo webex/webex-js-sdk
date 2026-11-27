@@ -65,6 +65,15 @@ When asked to find all occurrences of a logical pattern (e.g. "where state is LE
 3. After finding all matches, **list every occurrence** and confirm the full set with the user before making changes, to avoid missing any.
 
 
+# Versions in SDD documentation
+Never copy a dependency or toolchain version into an SDD artifact (`docs/architecture.md`, `AGENTS.md`, `docs/getting-started.md`, `.sdd/manifest.json`). `package.json` owns every version; the docs own only the policy around it.
+
+Record the pin style and the field that holds the value — ``Exact pin in `package.json` dependencies``, `engines.node`, `packageManager` — so a reader resolves the current version from the manifest and a version bump never makes a document stale.
+
+In `.sdd/manifest.json` specifically:
+- `toolchain` entries with `origin: repo-config` omit `version` and cite `source_file` instead; the schema makes `version` optional precisely for this case.
+- `contract_catalog` entries for external packages use an unversioned source, for example `https://www.npmjs.com/package/@webex/internal-media-core` rather than a `/v/<version>` URL.
+
 <!-- sdd-package-routing:start -->
 ## SDD package routing
 

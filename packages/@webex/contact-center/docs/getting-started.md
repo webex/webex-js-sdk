@@ -21,10 +21,10 @@ followed by the script name; `package.json` in `packages/@webex/contact-center` 
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| Node.js        | 22.14 (workspace root `AGENTS.md`; the workspace `.nvmrc` selects `lts/jod`); `engines.node` in `package.json` is `>=20.x` |
-| Yarn           | 3.4.1 (`packageManager` in the workspace root `package.json`) |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| Node.js        | Development version: `.nvmrc` and the workspace root `AGENTS.md`. Consumer floor: `engines.node` in `package.json` |
+| Yarn           | `packageManager` in the workspace root `package.json` |
 | Webex access   | N/A for building, unit tests, and linting. Running against Contact Center needs a Webex access token for a Contact Center agent |
 
 ## Install

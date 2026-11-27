@@ -194,7 +194,7 @@ is omitted.
 
 | Platform | Shared versus platform-specific boundary | Entry or build | Support and compatibility constraints |
 | -------- | ---------------------------------------- | -------------- | ------------------------------------- |
-| Node | `src/config-storage.js` (memory storage) | `dist/index.js` and subpaths | `engines` `>=18`; `env.js` is Node-only |
+| Node | `src/config-storage.js` (memory storage) | `dist/index.js` and subpaths | `engines.node` in `package.json`; `env.js` is Node-only |
 | Browser via bundler | `browser` field maps `config-storage` to `src/config-storage.shim.js` (localStorage bounded storage) | `dist/index.js` and subpaths | `browser.js` sets `window.webex` |
 | Browser via script tag | Bundled per entry | `umd/*.min.js` | Globals `Webex` and `Calling`; built by the workspace root webpack config |
 

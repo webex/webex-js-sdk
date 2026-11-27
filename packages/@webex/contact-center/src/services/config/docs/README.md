@@ -89,7 +89,7 @@ missing or contradictory evidence blocks promotion.
 | `test/unit/spec/services/config/index.ts` | Unit cases for every request method, pagination, the wellness lookup, `getAgentConfig` staging and rejection, and `getOutdialAniEntries` |
 | `test/unit/spec/services/config/Util.ts` | Unit cases for `parseAgentConfigs` field mapping, aux codes, dial plan, and the wellness gate |
 | `test/unit/spec/cc.ts` | WebSocket allow-list cases: an unknown `data.type` is not emitted; a known one is emitted verbatim |
-| `package.json` | TypeScript 5.4.5 and Jest 27.5.1 |
+| `package.json` | TypeScript and Jest versions |
 
 ## Purpose and boundary
 

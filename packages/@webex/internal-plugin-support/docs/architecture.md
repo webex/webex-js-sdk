@@ -95,8 +95,8 @@ flowchart LR
 | `@webex/webex-core` | Internal | `src/index.js`, `src/support.js` | Registration, plugin base, `webex.request`, `webex.upload`, credentials, `sessionId` | `workspace:*` in `package.json` |
 | `@webex/internal-plugin-device` | Internal | `src/index.js`, `src/support.js` | Registration side effect; `userId` and `orgId` | `workspace:*` |
 | `@webex/plugin-logger` | Internal, not declared | `src/support.js` | `webex.logger` buffers and index calls | Provided by the host |
-| `lodash` | External | `src/support.js` | `defaults` | `^4.17.21` in `package.json` |
-| `uuid` | External | `src/support.js` | Feedback id | `^3.3.2` in `package.json` |
+| `lodash` | External | `src/support.js` | `defaults` | Range in `package.json` |
+| `uuid` | External | `src/support.js` | Feedback id | Range in `package.json` |
 | `@webex/internal-plugin-search` and the `@webex/test-helper-*` packages | Internal, declared under dependencies | Integration spec only | Test setup | `workspace:*`; not used by `src/` |
 | Client logs and conversation services | External service | `src/support.js` | Log upload; desk URLs | Resolved through the service catalog |
 

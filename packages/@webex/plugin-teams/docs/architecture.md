@@ -88,7 +88,7 @@ flowchart LR
 | Dependency | Type | Used by | Purpose | Version, failure, or fallback policy |
 | ---------- | ---- | ------- | ------- | ------------------------------------ |
 | `@webex/webex-core` | Internal | `src/index.js`, `src/teams.js` | Registration, plugin base, `Page`, `webex.request` | `workspace:*` in `package.json` |
-| `@webex/internal-plugin-device`, `lodash` | Internal; external library | The integration spec only | Declared in `dependencies` but not imported by `src/` | `workspace:*`; `^4.17.21` |
+| `@webex/internal-plugin-device`, `lodash` | Internal; external library | The integration spec only | Declared in `dependencies` but not imported by `src/` | Workspace link; range in `package.json` |
 | `@webex/plugin-rooms`, `@webex/plugin-memberships`, `@webex/plugin-logger` | Internal peer | The integration spec only | Rooms in a team and the skipped leave case | Peer dependencies; not reached by `src/` |
 | Webex REST API teams resource | External service | `src/teams.js` | Team records | Resolved through the service catalog |
 

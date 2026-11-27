@@ -82,12 +82,18 @@ flowchart LR
 
 ## Dependency topology
 
-| Dependency | Type                       | Used by    | Purpose | Version, failure, or fallback policy |
-| ---------- | -------------------------- | ---------- | ------- | ------------------------------------ |
-| [name]     | Internal / External / Peer | [resource] | [usage] | [policy]                             |
+| Dependency | Type                       | Used by    | Purpose | Version source, failure, or fallback policy |
+| ---------- | -------------------------- | ---------- | ------- | ------------------------------------------- |
+| [name]     | Internal / External / Peer | [resource] | [usage] | [pin style and owning manifest; failure or fallback policy] |
 
-Record cycles, single points of failure, and ordering constraints. Link exact
-configuration or package manifests rather than copying dependency versions.
+Record cycles, single points of failure, and ordering constraints.
+
+Never copy a version number into this table. The package manifest owns every
+version; this table owns only the policy around it. Record the pin style —
+exact pin, range, floor, or workspace link — and name the manifest and field
+that holds the value, for example ``Exact pin in `package.json` dependencies``
+or ``Range in `package.json` devDependencies``. A reader who needs the current
+value reads the manifest, so a dependency bump never makes this document stale.
 
 ## Public and consumer surfaces
 
@@ -257,6 +263,10 @@ the repository's version-synchronization rule.
 | Repository or external system | Relationship                      | Exchanged contract or artifact | Owner          | Sequencing constraint |
 | ----------------------------- | --------------------------------- | ------------------------------ | -------------- | --------------------- |
 | [name]                        | Consumes / Provides / Coordinates | [contract]                     | [team or role] | [order or N/A]        |
+
+The no-copied-versions rule of Dependency topology applies here too. Describe
+the exchanged contract and name the manifest that pins it; do not restate the
+pinned version.
 
 <!-- Include if: trust boundaries or identity flows warrant a dedicated architectural view. [condition-id: repo.security_arch_warranted] -->
 

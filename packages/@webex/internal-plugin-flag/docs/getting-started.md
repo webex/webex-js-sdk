@@ -19,17 +19,16 @@ Onboarding for **@webex/internal-plugin-flag**. Commands run from the webex-js-s
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| Node.js | 22.14, required for working in this repository by the workspace root `AGENTS.md`; the root `.nvmrc` selects the Node 22 LTS line. The workspace root `package.json` `engines` field still says `18.x`; follow the root `AGENTS.md` |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| Node.js | Development version: `.nvmrc` and the workspace root `AGENTS.md`, which requires it for working in this repository. The workspace root `package.json` `engines.node` field differs; follow the root `AGENTS.md` |
 | Yarn | The version pinned by the workspace root `packageManager` field, run from the release that the root `.yarnrc.yml` `yarnPath` names, provided through Corepack: enable Corepack for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup steps require. Workspaces are used, so install from the workspace root rather than this directory |
 | Browsers for `test:browser` | Chrome and Firefox. The script passes no browser list, so the legacy-tools `karma-browsers` option keeps its default of both (sibling package legacy-tools, file src/commands/run-tests/run-tests.constants.ts), and karma starts both headless launchers (file src/utils/karma/browsers/browsers.ts of the same package) |
 | Karma over HTTPS for `test:browser` | Required for the live integration spec, which calls Webex services: the root `CONTRIBUTING.md` "Browser tests over HTTPS" section says those services reject requests from `http://` origins such as the default Karma page. Do its one-time setup (the root `setup:karma-https` script) and set `KARMA_HTTPS` to `true` in your root `.env`; the root `.env.default` leaves it commented out, and legacy-tools serves Karma over HTTPS only when it is set (sibling package legacy-tools, file src/utils/karma/https/https.ts) |
 
-Applications that install the package need Node 18 or later: this package's `package.json`
-`engines` says `>=18`, as do its direct workspace dependencies webex-core,
-internal-plugin-conversation, and internal-plugin-device. That value is the consumer floor, not the
-development runtime.
+The consumer floor is this package's `package.json` `engines.node`, which its direct workspace
+dependencies webex-core, internal-plugin-conversation, and internal-plugin-device match. That value
+is the consumer floor, not the development runtime.
 
 ## Install
 

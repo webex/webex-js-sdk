@@ -116,11 +116,11 @@ flowchart LR
 | Dependency         | Type     | Used by       | Purpose                                                    | Version, failure, or fallback policy                                          |
 | ------------------ | -------- | ------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | `@webex/common`    | Internal | `src`, `src/request` | `Exception` base class for `HttpError`; `isBuffer` predicate | `workspace:*` in `package.json` — versioned with the workspace                |
-| `request`          | External | `src/request` | The Node transport                                          | `^2.88.0` in `package.json`; an unmaintained library, which constrains upgrades |
-| `file-type`        | External | `src`         | MIME detection from a buffer in `src/lib/detect.js`         | `^16.0.1` in `package.json`                                                     |
-| `lodash`           | External | `src`, `src/request` | Option merging, currying, and picking                | `^4.17.21` in `package.json`                                                    |
-| `qs`               | External | `src/request` | Query-string and form-body serialization in the browser shim | `^6.7.3` in `package.json`                                                     |
-| `safe-buffer`      | External | `src/request` | Buffer reconstruction in the Node transport                 | `^5.2.0` in `package.json`                                                      |
+| `request`          | External | `src/request` | The Node transport                                          | Range in `package.json`; an unmaintained library, which constrains upgrades |
+| `file-type`        | External | `src`         | MIME detection from a buffer in `src/lib/detect.js`         | Range in `package.json`                                                     |
+| `lodash`           | External | `src`, `src/request` | Option merging, currying, and picking                | Range in `package.json`                                                    |
+| `qs`               | External | `src/request` | Query-string and form-body serialization in the browser shim | Range in `package.json`                                                     |
+| `safe-buffer`      | External | `src/request` | Buffer reconstruction in the Node transport                 | Range in `package.json`                                                      |
 | `global`, `is-function`, `parse-headers`, `xtend` | External | `src` | Runtime dependencies of the vendored XHR fork | Pinned in `package.json`; upgrading them means re-checking `src/lib/xhr.js`  |
 
 No dependency cycles exist between the two modules: `src/request` is imported by `src`, and never the

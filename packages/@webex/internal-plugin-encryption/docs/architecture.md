@@ -100,9 +100,9 @@ flowchart LR
 | `@webex/kms-caroots` | Internal | `src/kms.js`, `scripts/refresh-union-bundle.js` | Union bundle verification | `workspace:*`; no spec |
 | `@webex/internal-plugin-metrics` | Internal, undeclared | `src/kms.js` | Client metrics | Must be registered by the host; failures are swallowed |
 | `@webex/test-helper-file` | Internal | None under src | — | Runtime dependency with no import |
-| `node-kms`, `node-jose`, `node-scr` | External | `src/kms.js`, `src/encryption.js` | KMS messages and ECDH, JWE and JWK, SCR | `^0.4.1`, `^2.2.0`, `^0.3.0` |
-| `pkijs`, `asn1js`, `isomorphic-webcrypto`, `safe-buffer`, `valid-url` | External | `src/kms-certificate-validation.js`, `src/kms.js` | Certificate chain checks and WebCrypto | `pkijs` and `asn1js` pinned exactly (3.3.3, 3.0.10) |
-| `lodash`, `uuid`, `debug` | External | Several files | Helpers, CMK request ids, debug channel | `^4.17.21`, `^3.3.2`, `^4.3.4` |
+| `node-kms`, `node-jose`, `node-scr` | External | `src/kms.js`, `src/encryption.js` | KMS messages and ECDH, JWE and JWK, SCR | Ranges in `package.json` |
+| `pkijs`, `asn1js`, `isomorphic-webcrypto`, `safe-buffer`, `valid-url` | External | `src/kms-certificate-validation.js`, `src/kms.js` | Certificate chain checks and WebCrypto | `pkijs` and `asn1js` pinned exactly in `package.json` |
+| `lodash`, `uuid`, `debug` | External | Several files | Helpers, CMK request ids, debug channel | Ranges in `package.json` |
 | Encryption service, KMS, files service | External service | `src/kms.js`, `src/encryption.js` | Key operations and downloads | Resolved through the service catalog or the file URL host |
 
 No import cycle exists: none of these workspace packages imports this one.
@@ -227,7 +227,7 @@ flowchart LR
 
 | Platform   | Shared versus platform-specific boundary | Entry or build      | Support and compatibility constraints |
 | ---------- | ---------------------------------------- | ------------------- | ------------------------------------- |
-| Node       | Reads the packaged CA-roots asset before any URL; accepts only Buffers | `src/caroots-asset.js`, `src/ensure-buffer.js` | `engines.node` `>=18`; WebCrypto through isomorphic-webcrypto |
+| Node       | Reads the packaged CA-roots asset before any URL; accepts only Buffers | `src/caroots-asset.js`, `src/ensure-buffer.js` | `engines.node` in `package.json`; WebCrypto through isomorphic-webcrypto |
 | Browser    | Always fetches the asset from `assetsBaseUrl`; converts ArrayBuffer, Blob, and File | `src/caroots-asset.browser.js`, `src/ensure-buffer.browser.js` via the `package.json` browser field | The asset host must allow CORS and the page's `connect-src` (README) |
 
 Everything else is shared. The report-only URL check fetches in both platforms.

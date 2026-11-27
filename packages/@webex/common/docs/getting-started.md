@@ -20,9 +20,9 @@ from the **monorepo root**, not from this package directory.
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| node | `>=16` per `package.json` engines. The monorepo root `AGENTS.md` directs contributors to node 22.14 via nvm; that is the wider workspace requirement and satisfies this floor |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| node | Consumer floor: `engines.node` in `package.json`. The monorepo root `AGENTS.md` and `.nvmrc` direct contributors to a newer node via nvm; that is the wider workspace requirement and satisfies this floor |
 | yarn | Yarn workspaces (the repository uses `workspace:*` protocol dependencies) |
 | Registry, VPN, or account | N/A for building and testing. Publishing requires npm credentials and is handled centrally by release automation |
 

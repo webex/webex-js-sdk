@@ -83,7 +83,7 @@ Runtime dependencies declared by this package:
 
 | Dependency | Role |
 | ---------- | ---- |
-| `lodash@^4.17.21` | `curry` on both implementations. The shim also uses `forEach`, `includes`, and `reduce`. |
+| `lodash` (range in `package.json`) | `curry` on both implementations. The shim also uses `forEach`, `includes`, and `reduce`. |
 
 Dev dependencies supply babel, eslint, legacy tools, and the Mocha/chai test helpers. They are not imported from `src/`.
 

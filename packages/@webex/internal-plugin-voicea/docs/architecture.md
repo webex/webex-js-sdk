@@ -100,7 +100,7 @@ flowchart LR
 | `@webex/webex-core` | Internal | `src/index.ts`, `src/voicea-plugin.ts`, `src/voicea.ts` | Registration, plugin base, request function, default `config` for the trackingId prefix | `workspace:*` in `package.json` |
 | `@webex/internal-plugin-llm` | Internal | `src/voicea-plugin.ts`, `src/voicea.ts` (type imports only) | The `LLMChannel` type; the channel object itself comes from the caller | `workspace:*` |
 | `@webex/internal-plugin-mercury` | Internal | Unit tests only | Declared runtime dependency that `src/` never imports | `workspace:*` |
-| `uuid` | External | `src/voicea.ts` | trackingId and message ids | `^3.3.2` in `package.json` |
+| `uuid` | External | `src/voicea.ts` | trackingId and message ids | Range in `package.json` |
 | Locus | External service | `src/voicea.ts` | `controls` endpoint | URL from the bound LLM channel's `getLocusUrl()` |
 | Voicea service through the AI bridge | External service | `src/voicea.ts` | Captions, translation, highlights, speaker names | Reached only through the LLM data channel |
 

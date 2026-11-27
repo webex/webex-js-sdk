@@ -21,9 +21,9 @@ addressed through `yarn workspace`.
 
 ## Prerequisites
 
-| Tool or access   | Version or requirement                                                    |
+| Tool or access   | Version source or requirement                                             |
 | ---------------- | ------------------------------------------------------------------------- |
-| Node.js          | `>=18` (`package.json` engines)                                            |
+| Node.js          | `engines.node` in `package.json`                                          |
 | Yarn             | Yarn Berry workspaces; this package is resolved via `workspace:*` dependencies in `package.json` |
 | Webex test users | Required for the integration tier only, via `@webex/test-helper-test-users` (`package.json`) |
 

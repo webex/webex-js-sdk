@@ -130,7 +130,7 @@ As a published SDK package the measurable boundaries are footprint and compatibi
 
 - Seven runtime dependencies, none Webex-owned. Adding one affects every consumer's bundle.
 - Dual Node and browser support; the browser build must stay in step with `src/in-browser`.
-- Node `>=16` floor, per `package.json` engines.
+- Node floor, per `package.json` `engines.node`.
 - Test evidence is the weak axis: 8 of 25 source files have a dedicated unit spec.
 
 ## Caching catalog
@@ -155,7 +155,7 @@ These are development-time only. None is a runtime dependency, which preserves t
 
 | Platform | Shared versus platform-specific boundary | Entry or build | Support and compatibility constraints |
 | -------- | ---------------------------------------- | -------------- | ------------------------------------- |
-| Node | Everything except the in-browser flag is shared | `src/in-browser/node.js` resolves the flag to `false` | Node `>=16` per `package.json` engines |
+| Node | Everything except the in-browser flag is shared | `src/in-browser/node.js` resolves the flag to `false` | `engines.node` in `package.json` |
 | Browser | Same shared code; only the flag differs | Bundler rewrites the import to `src/in-browser/browser.js` via the `package.json` browser field | Depends on the bundler honouring the browser field; `inBrowser` is a build-time constant, not a runtime probe |
 
 `src/browser-detection.js` degrades independently of this switch: it returns an `os`-based object

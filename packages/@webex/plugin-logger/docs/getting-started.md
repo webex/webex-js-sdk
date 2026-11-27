@@ -21,9 +21,9 @@ The unit spec is `test/unit/spec/logger.js`. `test:unit` runs it under jest in N
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| Node.js | `>=18`, declared in `package.json` `engines` |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| Node.js | `engines.node` in `package.json` |
 | Yarn | Workspaces are used, so install from the workspace root rather than this directory |
 | Browser for `test:browser` | A local browser for the karma runner that `test:browser` starts through `@webex/legacy-tools` |
 | Container, registry, VPN, or account | N/A — no external account is required to build, lint, or unit-test this package |

@@ -428,7 +428,7 @@ references of its own.
   before `test:unit`, or the tests run against stale output.
 - `test:browser` runs the specs through karma, where every `nodeOnly` suite is skipped; only the
   placeholder case runs, so it verifies no behavior.
-- `package.json` declares `engines.node` `>=16`, lower than the sibling browser package's `>=18`, and
+- `package.json` declares an `engines.node` floor lower than the sibling browser package's, and
   an empty `browser` field.
 
 ## Module-specific rules

@@ -86,12 +86,12 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling | Version |
-| ---------------- | ------- | ------- |
-| Language runtime | node; TypeScript sources | 22.14 (workspace root `AGENTS.md`; `.nvmrc` `lts/jod`); package `engines` accepts `>=18`; the workspace root `package.json` `engines.node` reads `18.x` |
-| Build tool       | yarn workspaces and `@webex/legacy-tools` over babel; `tsc` for declarations; typedoc for API pages | yarn `3.4.1` (root `packageManager`), `@babel/core` `7.17.10`, typedoc `0.23.26` |
-| Test framework   | jest through `webex-legacy-tools` and `@webex/jest-config-legacy`, with sinon, `@webex/test-helper-chai`, and `@webex/test-helper-mock-webex` | sinon `9.2.4` |
-| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | eslint `8.24.0`, prettier `2.7.1` |
+| Area             | Tooling | Version source |
+| ---------------- | ------- | -------------- |
+| Language runtime | node; TypeScript sources | Development version: `.nvmrc` and the workspace root `AGENTS.md`. Consumer floor: `engines.node` in `package.json`. The workspace root `package.json` `engines.node` differs from both |
+| Build tool       | yarn workspaces and `@webex/legacy-tools` over babel; `tsc` for declarations; typedoc for API pages | `packageManager` in the workspace root `package.json`; `devDependencies.@babel/core` and `devDependencies.typedoc` in `package.json` |
+| Test framework   | jest through `webex-legacy-tools` and `@webex/jest-config-legacy`, with sinon, `@webex/test-helper-chai`, and `@webex/test-helper-mock-webex` | `devDependencies.sinon` in `package.json` |
+| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` |
 
 ### Project Map
 

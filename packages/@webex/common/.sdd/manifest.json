@@ -44,25 +44,21 @@
   "toolchain": [
     {
       "name": "node",
-      "version": ">=16",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "babel",
-      "version": "^7.17.10",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "eslint",
-      "version": "^8.24.0",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "prettier",
-      "version": "^2.7.1",
       "origin": "repo-config",
       "source_file": "package.json"
     }

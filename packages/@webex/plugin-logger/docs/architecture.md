@@ -102,7 +102,7 @@ Runtime dependencies declared in `package.json` and imported from `src/`:
 | ---------- | ---- |
 | `@webex/webex-core` | `WebexPlugin` base class and `registerPlugin` |
 | `@webex/common` | `inBrowser` and `patterns` |
-| `lodash@^4.17.21` | `cloneDeep`, `has`, `isArray`, `isObject`, `isString` |
+| `lodash` (range in `package.json`) | `cloneDeep`, `has`, `isArray`, `isObject`, `isString` |
 
 `@webex/test-helper-chai`, `@webex/test-helper-mocha`, and `@webex/test-helper-mock-webex` are also listed under `dependencies`, but only `test/` imports them.
 

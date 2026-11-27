@@ -19,10 +19,10 @@ Onboarding for **@webex/plugin-meetings**, a package inside the `webex-js-sdk` Y
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| Node.js | Use Node.js 22.14 for this repository (Node 22.14), as the workspace root `AGENTS.md` requires; the workspace `.nvmrc` selects `lts/jod` (Node 22). This package's `engines` accepts `>=18`; the workspace root `package.json` `engines.node` reads `18.x` |
-| Yarn | The repository Yarn version, `yarn@3.4.1` (`packageManager` in the workspace root `package.json`) |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| Node.js | Development version: `.nvmrc` and the workspace root `AGENTS.md`. Consumer floor: `engines.node` in `package.json`. The workspace root `package.json` `engines.node` differs from both |
+| Yarn | The repository Yarn version, `packageManager` in the workspace root `package.json` |
 | Webex test users | N/A for building, unit tests, and lint. The browser tier creates Webex test users through `@webex/test-helper-test-users`, which needs `WEBEX_CLIENT_ID`, `WEBEX_CLIENT_SECRET`, and related values in the workspace `.env` |
 
 ## Install

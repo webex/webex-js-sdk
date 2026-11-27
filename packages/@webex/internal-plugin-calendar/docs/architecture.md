@@ -104,8 +104,8 @@ flowchart LR
 | `@webex/internal-plugin-conversation` | Internal | `src/index.js` | Import side effect; its `decryptTextProp` transform | Workspace version |
 | `@webex/internal-plugin-mercury` | Internal, undeclared | `src/calendar.js` through `webex.internal.mercury` | Connect, disconnect, calendar events | Not in `package.json`; registered by the encryption plugin import |
 | `@webex/common` | Internal, undeclared | `src/calendar.js` | `base64.encode` for event ids | Not in `package.json`; resolved through the workspace |
-| `lodash` | External | `src/index.js`, `src/collection.js`, `src/calendar.encrypt.helper.js` | `has`, `find`, `isArray` | `^4.17.21` in `package.json` |
-| `uuid` | External, unused by `src` | `test/integration/spec/calendar.js` | Test ids | `^3.3.2` in `package.json` dependencies |
+| `lodash` | External | `src/index.js`, `src/collection.js`, `src/calendar.encrypt.helper.js` | `has`, `find`, `isArray` | Range in `package.json` |
+| `uuid` | External, unused by `src` | `test/integration/spec/calendar.js` | Test ids | Range in `package.json` dependencies |
 | Calendar, KMS, and Mercury services | External services | `src/calendar.js` | Meetings, keys, events | URLs from the services catalog and from meeting objects |
 
 No import cycle exists: this package imports its siblings, and none of them imports this package.

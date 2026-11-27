@@ -67,7 +67,7 @@ Use only documented commands. Do not invent alternatives when a command is missi
 | Run tests              | `yarn workspace @webex/internal-plugin-conversation test:unit` |
 | Run linters            | `yarn workspace @webex/internal-plugin-conversation test:style` |
 | Build/release artifact | `yarn workspace @webex/internal-plugin-conversation build:src` |
-| Format code            | No package format script; Prettier ^2.7.1 runs through the repository configuration |
+| Format code            | No package format script; Prettier runs through the repository configuration |
 
 Run a single unit file with `--targets <path relative to test/unit/spec>`, for example
 `yarn workspace @webex/internal-plugin-conversation test:unit --targets share-activity.js`.
@@ -102,12 +102,12 @@ outbound payload transform and decryption in the inbound one, through
 
 ### Tech Stack
 
-| Area             | Tooling     | Version     |
-| ---------------- | ----------- | ----------- |
-| Language runtime | Node.js     | Develop on 22.14 per the root `AGENTS.md`; `package.json` declares `engines.node >=18` |
+| Area             | Tooling     | Version source |
+| ---------------- | ----------- | -------------- |
+| Language runtime | Node.js     | Development version: `.nvmrc` and the workspace root `AGENTS.md`. Consumer floor: `engines.node` in `package.json` |
 | Build tool       | `webex-legacy-tools` (Babel via `@webex/babel-config-legacy`) | workspace |
 | Test framework   | Jest via `@webex/jest-config-legacy`; integration specs via the workspace runner | workspace |
-| Lint/format      | ESLint `^8.24.0`, Prettier `^2.7.1` | see `package.json` |
+| Lint/format      | ESLint, Prettier | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` |
 
 ### Project Map
 

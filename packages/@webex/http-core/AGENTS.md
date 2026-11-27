@@ -91,13 +91,13 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling                                   | Version                        |
+| Area             | Tooling                                   | Version source                 |
 | ---------------- | ----------------------------------------- | ------------------------------ |
-| Language runtime | Node.js                                   | `>=18` (`package.json` engines) |
+| Language runtime | Node.js                                   | `engines.node` in `package.json` |
 | Language         | JavaScript with one TypeScript source file | `src/request/utils.ts`         |
 | Build tool       | `@webex/legacy-tools` (`webex-legacy-tools build`) | workspace                |
 | Test framework   | Jest (unit), Mocha (integration), Karma (browser) | `jest.config.js`, `package.json` |
-| Lint/format      | ESLint via `@webex/eslint-config-legacy`; Prettier | `^8.24.0` / `^2.7.1` (`package.json`) |
+| Lint/format      | ESLint via `@webex/eslint-config-legacy`; Prettier | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` |
 
 ### Project Map
 

@@ -101,9 +101,9 @@ flowchart LR
 | ---------- | ---- | ------- | ------- | ------------------------------------ |
 | `@webex/webex-core` | Internal | `src/index.js`, `src/authorization.js` | Plugin base, registration, request, credentials, services, grant errors | Workspace version (`workspace:*` in `package.json`) |
 | `@webex/common` | Internal | `src/authorization.js` | `oneFlight`, `whileInFlight`, `encodeState`, `decodeState` | Workspace version |
-| `crypto-js` | External | `src/authorization.js` | SHA-256 and base64url | `^4.1.1` in `package.json` |
-| `uuid` | External | `src/authorization.js` | CSRF token | `^3.3.2` in `package.json` |
-| `lodash` | External | `src/authorization.js` | Object helpers | `^4.17.21` in `package.json` |
+| `crypto-js` | External | `src/authorization.js` | SHA-256 and base64url | Range in `package.json` |
+| `uuid` | External | `src/authorization.js` | CSRF token | Range in `package.json` |
+| `lodash` | External | `src/authorization.js` | Object helpers | Range in `package.json` |
 | Identity broker and token endpoint | External service | `src/authorization.js`, `src/config.js` | Login pages and token grants | URLs come from credentials config |
 | `oauth-helper` service | External service | `src/authorization.js` | Device authorization | Reached by service name through the services catalog |
 

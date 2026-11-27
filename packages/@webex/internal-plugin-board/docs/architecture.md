@@ -104,10 +104,10 @@ flowchart LR
 | `@webex/internal-plugin-conversation` | Internal | `src/index.js` | Import side effect registering `conversation` | Workspace version |
 | `@webex/internal-plugin-device` | Internal, undeclared | `src/board.js` through `webex.internal.device` | `deviceType`, `webSocketUrl` | Not in `package.json`; registered by the mercury plugin import |
 | `@webex/common` | Internal | `src/realtime.js` | `tap` | Workspace version |
-| `ampersand-collection` | External | `src/realtime-channel-collection.js` | Realtime channel collection | `^2.0.2` in `package.json` |
-| `es6-promise-series` | External | `src/board.js` | Serial content chunks | `^0.2.2` in `package.json` |
-| `lodash` | External | `src/index.js`, `src/board.js` | Object helpers | `^4.17.21` in `package.json` |
-| `uuid` | External | `src/realtime.js` | Frame ids | `^3.3.2` in `package.json` |
+| `ampersand-collection` | External | `src/realtime-channel-collection.js` | Realtime channel collection | Range in `package.json` |
+| `es6-promise-series` | External | `src/board.js` | Serial content chunks | Range in `package.json` |
+| `lodash` | External | `src/index.js`, `src/board.js` | Object helpers | Range in `package.json` |
+| `uuid` | External | `src/realtime.js` | Frame ids | Range in `package.json` |
 | Board, ACL, Files, KMS, Mercury services | External services | `src/board.js`, `src/realtime.js` | Storage, access control, upload, keys, sockets | URLs from the services catalog and from channel objects |
 
 Every runtime dependency in `package.json` is imported by `src/`. No import cycle exists: this package

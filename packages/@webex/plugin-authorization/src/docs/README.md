@@ -70,7 +70,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | -------- | ------------------- |
 | `src/index.js` | The Node entry: `export {default, config} from '@webex/plugin-authorization-node'`. No other statement |
 | `src/index.browser.js` | The browser entry: `export {default, config} from '@webex/plugin-authorization-browser'`. No other statement |
-| `package.json` | `main` `dist/index.js`, `devMain` `src/index.js`, and a `browser` field mapping `./dist/index.js` to `./dist/index.browser.js` and `./src/index.js` to `./src/index.browser.js`; `engines.node` `>=18`; runtime dependencies are only the two sibling plugins; scripts `build`, `build:src`, `deploy:npm`, `test`, `test:browser`, `test:style` — `test:unit` and `test:integration` are not defined |
+| `package.json` | `main` `dist/index.js`, `devMain` `src/index.js`, and a `browser` field mapping `./dist/index.js` to `./dist/index.browser.js` and `./src/index.js` to `./src/index.browser.js`; `engines.node` declares the floor; runtime dependencies are only the two sibling plugins; scripts `build`, `build:src`, `deploy:npm`, `test`, `test:browser`, `test:style` — `test:unit` and `test:integration` are not defined |
 | `process` | Package-root module exporting `{browser: true}`; nothing in `src/` imports it and no package script names it |
 | `babel.config.js`, `jest.config.js`, `.eslintrc.js` | One-line re-exports of the legacy Babel and Jest configurations; ESLint sets `root: true` and extends `@webex/eslint-config-legacy` |
 | `README.md` | Retained npm page; context only. Its differences from code are recorded in `docs/adr/0001-keep-existing-docs-separate.md` |

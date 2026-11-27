@@ -82,12 +82,12 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling | Version |
-| ---------------- | ------- | ------- |
-| Language runtime | node; JavaScript sources | `>=18` (`package.json` engines) |
-| Build tool       | `@webex/legacy-tools` over babel | `@babel/core` `^7.17.10` |
-| Test framework   | jest via `webex-legacy-tools` (`test:unit`); chai, sinon, and `@webex/test-helper-mock-webex` | sinon `^9.2.4` |
-| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | eslint `^8.24.0`, prettier `^2.7.1` |
+| Area             | Tooling | Version source |
+| ---------------- | ------- | -------------- |
+| Language runtime | node; JavaScript sources | `engines.node` in `package.json` |
+| Build tool       | `@webex/legacy-tools` over babel | `devDependencies.@babel/core` in `package.json` |
+| Test framework   | jest via `webex-legacy-tools` (`test:unit`); chai, sinon, and `@webex/test-helper-mock-webex` | `devDependencies.sinon` in `package.json` |
+| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` |
 
 The unit specs use Mocha-style `describe` and `it` blocks, so they need the Jest runner that
 `test:unit` selects.

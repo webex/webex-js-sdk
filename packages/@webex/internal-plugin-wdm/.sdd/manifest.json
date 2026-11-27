@@ -49,7 +49,6 @@
   "toolchain": [
     {
       "name": "node",
-      "version": ">=16",
       "origin": "repo-config",
       "source_file": "package.json"
     },

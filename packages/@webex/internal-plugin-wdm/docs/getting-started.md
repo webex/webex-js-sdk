@@ -20,11 +20,11 @@ All commands below run from the monorepo root through `yarn workspace`.
 
 ## Prerequisites
 
-| Tool or access                                  | Version or requirement                                                                                                         |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Node.js                                         | `>=16` per this package's `engines`; Node.js 22.14 for repository work, as the monorepo root `AGENTS.md` requires (`nvm use 22.14`) |
-| Yarn workspaces                                 | Provided by the monorepo root; this package declares its workspace dependencies with `workspace:*`                              |
-| Webex test-user provisioning (integration only) | Required by `@webex/test-helper-test-users`; credentials come from the monorepo's environment setup, not this package          |
+| Tool or access                                  | Version source or requirement                                                                                                                  |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Node.js                                         | Consumer floor: `engines.node` in `package.json`. For repository work use the development version: `.nvmrc` and the workspace root `AGENTS.md` |
+| Yarn workspaces                                 | Provided by the monorepo root; this package declares its workspace dependencies with `workspace:*`                                             |
+| Webex test-user provisioning (integration only) | Required by `@webex/test-helper-test-users`; credentials come from the monorepo's environment setup, not this package                          |
 
 ## Install
 

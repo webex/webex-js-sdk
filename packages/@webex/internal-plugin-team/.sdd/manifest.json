@@ -48,49 +48,41 @@
   "toolchain": [
     {
       "name": "node",
-      "version": ">=18",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "node",
-      "version": "22.14",
       "origin": "repo-config",
       "source_file": "../../../AGENTS.md"
     },
     {
       "name": "node",
-      "version": "lts/jod",
       "origin": "repo-config",
       "source_file": "../../../.nvmrc"
     },
     {
       "name": "node",
-      "version": "18.x",
       "origin": "repo-config",
       "source_file": "../../../package.json"
     },
     {
       "name": "yarn",
-      "version": "3.4.1",
       "origin": "repo-config",
       "source_file": "../../../package.json"
     },
     {
       "name": "babel",
-      "version": "^7.17.10",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "eslint",
-      "version": "^8.24.0",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "prettier",
-      "version": "^2.7.1",
       "origin": "repo-config",
       "source_file": "package.json"
     }
@@ -261,14 +253,14 @@
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "lodash@^4.17.21 (npm)",
+        "source": "lodash (npm)",
         "summary": "isArray, has, get, find, pick, and uniq for team payloads, lookups, and participant de-duplication."
       },
       "uuid": {
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "uuid@^3.3.2 (npm)",
+        "source": "uuid (npm)",
         "summary": "v4 generates the KMS requestId of joinConversation."
       }
     }

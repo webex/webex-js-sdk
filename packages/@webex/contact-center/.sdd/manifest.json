@@ -87,61 +87,51 @@
   "toolchain": [
     {
       "name": "node",
-      "version": ">=20.x",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "node",
-      "version": "22.14",
       "origin": "repo-config",
       "source_file": "../../../AGENTS.md"
     },
     {
       "name": "node",
-      "version": "lts/jod",
       "origin": "repo-config",
       "source_file": "../../../.nvmrc"
     },
     {
       "name": "yarn",
-      "version": "3.4.1",
       "origin": "repo-config",
       "source_file": "../../../package.json"
     },
     {
       "name": "typescript",
-      "version": "5.4.5",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "jest",
-      "version": "27.5.1",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "xstate",
-      "version": "5.24.0",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "eslint",
-      "version": "^8.24.0",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "prettier",
-      "version": "2.5.1",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "typedoc",
-      "version": "^0.25.0",
       "origin": "repo-config",
       "source_file": "package.json"
     }

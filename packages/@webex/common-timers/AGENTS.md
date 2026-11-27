@@ -82,14 +82,14 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling                                             | Version                                    |
+| Area             | Tooling                                             | Version source                             |
 | ---------------- | --------------------------------------------------- | ------------------------------------------ |
-| Language runtime | Node.js                                             | `>=18` per `package.json` `engines`        |
+| Language runtime | Node.js                                             | `engines.node` in `package.json`           |
 | Language         | TypeScript source, transpiled by Babel              | No local `tsconfig.json` and no TypeScript dependency; declarations are emitted by the `-ts` flag of the build command |
 | Build tool       | `webex-legacy-tools` via `@webex/legacy-tools`      | `workspace:*`                              |
 | Test framework   | jest via `@webex/jest-config-legacy`, with sinon fake timers | `workspace:*`                     |
-| Lint             | eslint via `@webex/eslint-config-legacy`            | eslint `^8.24.0`                           |
-| Format           | prettier                                            | `^2.7.1` (declared, no local script)       |
+| Lint             | eslint via `@webex/eslint-config-legacy`            | `devDependencies.eslint` in `package.json` |
+| Format           | prettier                                            | `devDependencies.prettier` in `package.json` (declared, no local script) |
 
 ### Project Map
 

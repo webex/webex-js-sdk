@@ -99,8 +99,8 @@ flowchart LR
 | `@webex/internal-plugin-encryption` | Internal, undeclared | `src/ai-assistant.ts`, `src/utils.ts` | `encryptText`, `decryptText` | Not in `package.json`; the host must load it |
 | `@webex/common-timers` | Internal | `src/ai-assistant.ts` | `Timer` | `workspace:*` |
 | `@webex/common` | Internal, unused | None in `src/` | Declared only | `workspace:*` |
-| `uuid` | External | `src/ai-assistant.ts` | Request ids | `^3.3.2` in `package.json` |
-| `lodash` | External | `src/ai-assistant.ts`, `src/utils.ts` | `get`, `set`, `merge` | `^4.17.21` |
+| `uuid` | External | `src/ai-assistant.ts` | Request ids | Range in `package.json` |
+| `lodash` | External | `src/ai-assistant.ts`, `src/utils.ts` | `get`, `set`, `merge` | Range in `package.json` |
 | assistant-api service | External service | `src/ai-assistant.ts` | Assistant requests and chunks | Resolved through the service catalog as `assistant-api` |
 
 No import cycle exists: none of the packages this one imports imports it back.

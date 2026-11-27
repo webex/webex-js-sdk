@@ -49,13 +49,11 @@
   "toolchain": [
     {
       "name": "node",
-      "version": ">=16",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "yarn",
-      "version": "berry (workspace protocol)",
       "origin": "repo-config",
       "source_file": "package.json"
     }

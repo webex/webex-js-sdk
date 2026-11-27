@@ -49,37 +49,31 @@
   "toolchain": [
     {
       "name": "node",
-      "version": ">=18",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "babel",
-      "version": "^7.17.10",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "eslint",
-      "version": "^8.24.0",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "prettier",
-      "version": "^2.7.1",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "sinon",
-      "version": "^9.2.4",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "mocha",
-      "version": "^10.2.0",
       "origin": "repo-config",
       "source_file": "package.json"
     }
@@ -198,7 +192,7 @@
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "lodash@^4.17.21 (npm)",
+        "source": "lodash (npm)",
         "summary": "Feature uses partition to split the bundled-write response into user and developer records."
       }
     }

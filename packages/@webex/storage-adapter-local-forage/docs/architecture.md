@@ -95,7 +95,7 @@ flowchart LR
 
 | Dependency | Type | Used by | Purpose | Version, failure, or fallback policy |
 | ---------- | ---- | ------- | ------- | ------------------------------------ |
-| `localforage` | External | `src/` | All persistence through the default instance | `^1.7.3` in `package.json`, resolving to 1.10.0; flagged stale by the workspace unmaintained-dependency catalog; no fallback when no driver exists |
+| `localforage` | External | `src/` | All persistence through the default instance | Range in `package.json`; flagged stale by the workspace unmaintained-dependency catalog; no fallback when no driver exists |
 | `@webex/common` | Internal (workspace) | `src/` | `oneFlight` decorator for `get` and `del` | `workspace:*`; documented by its own canonical spec (sibling package `packages/@webex/common`, file `src/docs/README.md`) |
 | `@webex/webex-core` | Internal (workspace) | `src/` | `NotFoundError` type; also the runtime caller of the adapter | `workspace:*`; documented by its storage sub-module spec (sibling package `packages/@webex/webex-core`, file `src/lib/storage/docs/README.md`), cross-checked against its storage code because that spec is rated Partial |
 | `@webex/storage-adapter-spec` | Internal (workspace) | Package test | Shared conformance suite | `workspace:*`; declared as a runtime dependency though only the test imports it. Its spec (sibling package `packages/@webex/storage-adapter-spec`, file `src/docs/README.md`) is rated Untracked, so its code is authoritative |

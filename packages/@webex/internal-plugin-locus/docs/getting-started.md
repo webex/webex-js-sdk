@@ -19,13 +19,13 @@ Onboarding for **@webex/internal-plugin-locus**. Commands run from the webex-js-
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| Node.js | 22.14, required for working in this repository by the workspace root `AGENTS.md`; the root `.nvmrc` selects the Node 22 LTS line (the root `package.json` `engines.node` still declares `18.x`; the root `AGENTS.md` and `.nvmrc` take precedence for development) |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| Node.js | Development version: `.nvmrc` and the workspace root `AGENTS.md`, which requires it for working in this repository (the workspace root `package.json` `engines.node` differs; the root `AGENTS.md` and `.nvmrc` take precedence for development) |
 | Yarn | The version pinned by the workspace root `packageManager` field, provided through Corepack, which must be enabled for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup requires. Workspaces are used, so install from the workspace root rather than this directory |
 | Browser for `test:browser` | Not needed for this package: with no integration specs, the legacy-tools karma runner collects no files and starts no browser |
 
-The `package.json` `engines` value `>=18` is the floor for applications that install the package,
+The `package.json` `engines.node` value is the floor for applications that install the package,
 not the development runtime.
 
 ## Install

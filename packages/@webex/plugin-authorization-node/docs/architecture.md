@@ -99,8 +99,8 @@ flowchart LR
 | `@webex/webex-core` | Internal | `src/index.js`, `src/authorization.js` | Plugin base, registration, request, credentials config, services, grant errors | Workspace version (`workspace:*` in `package.json`) |
 | `@webex/common` | Internal | `src/authorization.js` | `oneFlight`, `whileInFlight` | Workspace version |
 | `@webex/internal-plugin-device` | Internal | `src/index.js` | Import side effect registering internal plugin `device` | Workspace version |
-| `jsonwebtoken` | External | `src/authorization.js` | HS256 signing for guest JWTs | `^9.0.0` in `package.json` |
-| `uuid` | External | `src/authorization.js` | Guest subject and default name | `^3.3.2` in `package.json` |
+| `jsonwebtoken` | External | `src/authorization.js` | HS256 signing for guest JWTs | Range in `package.json` |
+| `uuid` | External | `src/authorization.js` | Guest subject and default name | Range in `package.json` |
 | Identity broker | External service | `src/authorization.js` | Token and logout endpoints | URLs come from credentials config |
 | Hydra | External service | `src/authorization.js` | `jwt/login` | Catalog URL, else `HYDRA_SERVICE_URL`, else a hard-coded default |
 

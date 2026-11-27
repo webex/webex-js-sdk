@@ -19,9 +19,9 @@ Onboarding for **@webex/internal-plugin-llm**. Commands run from the webex-js-sd
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| Node.js | `>=18`, declared in `package.json` `engines` |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| Node.js | `engines.node` in `package.json` |
 | Yarn | Workspaces are used, so install from the workspace root rather than this directory |
 | Browser for `test:browser` | Only to exercise the karma runner that `test:browser` starts through `@webex/legacy-tools` |
 

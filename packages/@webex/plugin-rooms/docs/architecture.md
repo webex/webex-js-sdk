@@ -99,7 +99,7 @@ flowchart LR
 | `@webex/internal-plugin-conversation` | Internal | `src/index.js` (import), `src/rooms.js` (calls) | Read status | `workspace:*` |
 | `@webex/internal-plugin-mercury` | Internal | `src/index.js` (import), `src/rooms.js` (calls) | Room events | `workspace:*` |
 | `@webex/plugin-people`, `@webex/plugin-logger` | Internal peer | Reached at run time through `webex.people` and `webex.logger` | Current user for the envelope; error logging | Peer dependencies; not imported by `src/` |
-| `lodash`, `debug` | External library | `src/rooms.js` | `cloneDeep`; trace lines | `^4.17.21`, `^4.3.4` |
+| `lodash`, `debug` | External library | `src/rooms.js` | `cloneDeep`; trace lines | Ranges in `package.json` |
 | Webex REST API rooms resource, conversation service | External service | `src/rooms.js` | Room records and conversations | Resolved through the service catalog |
 
 No import cycle exists: none of the internal dependencies imports this package. `@webex/common` reads

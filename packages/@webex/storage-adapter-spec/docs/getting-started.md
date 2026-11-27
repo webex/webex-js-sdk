@@ -23,9 +23,9 @@ running a *consumer's* tests — and only one of them actually runs it under Nod
 
 ## Prerequisites
 
-| Tool or access                         | Version or requirement |
-| -------------------------------------- | ---------------------- |
-| Node.js | `>=18`, declared in `package.json` `engines` |
+| Tool or access                         | Version source or requirement |
+| -------------------------------------- | ----------------------------- |
+| Node.js | `engines.node` in `package.json` |
 | Yarn | Workspaces are used, so install from the workspace root rather than this directory |
 | Container, registry, VPN, or account | N/A — no external account or network access is required to build or lint this package |
 

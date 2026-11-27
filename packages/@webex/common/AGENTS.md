@@ -76,12 +76,12 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling     | Version     |
-| ---------------- | ----------- | ----------- |
-| Language runtime | node        | `>=16` (`package.json` engines) |
-| Build tool       | `@webex/legacy-tools` over babel | `@babel/core` `^7.17.10` |
+| Area             | Tooling     | Version source |
+| ---------------- | ----------- | -------------- |
+| Language runtime | node        | `engines.node` in `package.json` |
+| Build tool       | `@webex/legacy-tools` over babel | `devDependencies.@babel/core` in `package.json` |
 | Test framework   | jest via `@webex/jest-config-legacy` | workspace |
-| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | eslint `^8.24.0`, prettier `^2.7.1` |
+| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` |
 
 ### Project Map
 

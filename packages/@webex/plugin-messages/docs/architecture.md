@@ -98,8 +98,8 @@ flowchart LR
 | `@webex/internal-plugin-mercury` | Internal | `src/index.js` (import), `src/messages.js` (calls) | Message events | `workspace:*` |
 | `@webex/internal-plugin-device` | Internal | Not imported by `src/`; the integration spec imports it | Device registration, which Mercury performs on connect | `workspace:*` |
 | `@webex/plugin-people`, `@webex/plugin-logger`, `@webex/plugin-rooms` | Internal peer | Reached at run time through `webex.people` and `webex.logger`; rooms only in JSDoc examples and the integration spec | Current user for the envelope; logging; test rooms | Peer dependencies; not imported by `src/` |
-| `lodash` | External library | `src/messages.js` | `cloneDeep`, `isArray` | `^4.17.21` |
-| `debug` | External library | Declared; not imported by `src/` | The integration spec's trace lines | `^4.3.4` |
+| `lodash` | External library | `src/messages.js` | `cloneDeep`, `isArray` | Range in `package.json` |
+| `debug` | External library | Declared; not imported by `src/` | The integration spec's trace lines | Range in `package.json` |
 | Webex REST API messages resource | External service | `src/messages.js` | Message records | Resolved through the service catalog |
 
 No import cycle exists: none of the internal dependencies imports this package. `@webex/common` reads

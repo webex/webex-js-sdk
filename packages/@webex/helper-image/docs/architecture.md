@@ -164,7 +164,7 @@ rather than latency or availability:
 - The export surface in `src/index.js` is the compatibility boundary for external consumers.
 - Browser bundles must not pull in the Node image toolchain path. The `browser` field substitution in
   `package.json` is what enforces that, and it applies to both `src/` and `dist/` paths.
-- Node's floor is declared as `>=18` in `package.json`.
+- Node's floor is declared by `engines.node` in `package.json`.
 
 ## Observability patterns
 

@@ -221,7 +221,7 @@ flowchart TD
 
 | Platform | Shared versus platform-specific boundary | Entry or build | Support and compatibility constraints |
 | -------- | ---------------------------------------- | -------------- | ------------------------------------- |
-| Node | `src/socket/socket.js` returns `ws` | `src/socket/socket.js` | `engines.node` `>=18`; constructor options such as `agent` apply |
+| Node | `src/socket/socket.js` returns `ws` | `src/socket/socket.js` | `engines.node` in `package.json`; constructor options such as `agent` apply |
 | Browser | `src/socket/socket.shim.js` returns the global `WebSocket` or `MozWebSocket` | `package.json` `browser` field | Constructor options are ignored; close codes may be dropped and are fixed from reasons |
 
 Everything else in `src/` is shared.

@@ -36,7 +36,7 @@ Preserve existing `README.md` and `SECURITY.md` unless a change request explicit
 
 ## 1. Commands (Run First)
 
-Use only documented commands. Do not invent alternatives when a command is missing. Run them from the `webex-js-sdk` workspace root. Use Node **22.14** (`nvm use 22.14`) before these commands. `package.json` `engines.node` is `>=18` for the published package; that does not mean Node 18–21 is a supported local toolchain.
+Use only documented commands. Do not invent alternatives when a command is missing. Run them from the `webex-js-sdk` workspace root. Use Node **22.14** (`nvm use 22.14`) before these commands. `package.json` `engines.node` declares the floor for the published package; that floor is not the supported local toolchain.
 
 | Task                   | Command                                                      |
 | ---------------------- | ------------------------------------------------------------ |
@@ -73,12 +73,12 @@ Definition of done:
 
 ### Tech Stack
 
-Document concrete versions so assistants choose compatible APIs.
+Point at the file and field that owns each version rather than copying the value, so an assistant resolves the version that is current at the time it reads this file.
 
-| Area             | Tooling     | Version                          |
+| Area             | Tooling     | Version source                   |
 | ---------------- | ----------- | -------------------------------- |
-| Language runtime | Node.js     | Published `>=18` (`package.json` engines); local workspace requires **22.14** (`nvm use 22.14`)  |
-| Language         | TypeScript  | `^4.9.5`                         |
+| Language runtime | Node.js     | Consumer floor: `engines.node` in `package.json`; development version: `.nvmrc` and the workspace root `AGENTS.md` |
+| Language         | TypeScript  | `devDependencies.typescript` in `package.json` |
 | Build tool       | tsc + `@webex/legacy-tools` | workspace scripts     |
 | Test framework   | mocha + sinon + chai | `package.json` devDependencies |
 | Lint/format      | eslint      | `test:style`                     |

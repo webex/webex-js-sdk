@@ -49,31 +49,26 @@
   "toolchain": [
     {
       "name": "node",
-      "version": ">=8",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "babel",
-      "version": "^7.17.10",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "eslint",
-      "version": "^8.24.0",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "prettier",
-      "version": "^2.7.1",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "sinon",
-      "version": "^9.2.4",
       "origin": "repo-config",
       "source_file": "package.json"
     }
@@ -218,21 +213,21 @@
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "crypto-js@^4.1.1 (npm)",
+        "source": "crypto-js (npm)",
         "summary": "SHA256 hashes the email and the PKCE verifier; enc-base64url encodes the challenge and supplies the verifier alphabet."
       },
       "uuid": {
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "uuid@^3.3.2 (npm)",
+        "source": "uuid (npm)",
         "summary": "uuid.v4 generates the CSRF token."
       },
       "lodash": {
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "lodash@^4.17.21 (npm)",
+        "source": "lodash (npm)",
         "summary": "cloneDeep, isEmpty, omit, and isObject for option cloning, state validation, and URL cleanup."
       }
     }

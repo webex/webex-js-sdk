@@ -417,7 +417,7 @@ Stack: TypeScript 5.4, EventEmitter, XState 5, @webex/calling, AQM/WebSocket int
 | WebCallingService, MetricsManager, and task state machine | BROWSER call answer, decline, mute, and call-to-task mapping; telemetry; the per-task actor | Calling errors reject `WebRTC` methods; metrics never block behavior; actor events are synchronous |
 | `ApiAIAssistant` (services module) | Summary requests and responses, transcript start and stop events | Disabled, transport, and timeout errors reject the summary methods; transcript event failures are logged only |
 | `AnswerCallOnWebexService` (services module) | wxApp telephony accept, reject, mute, DTMF, and call details | Errors are mapped by `mapWxAppVoiceError` and rethrown; a call-not-found error during mute sync is not logged |
-| `xstate` 5.24.0, `@webex/calling` (workspace) | `createActor`, `LocalMicrophoneStream`, `LINE_EVENTS`, `CALL_EVENT_KEYS` | Import-time only |
+| `xstate` (pinned in `package.json`), `@webex/calling` (workspace) | `createActor`, `LocalMicrophoneStream`, `LINE_EVENTS`, `CALL_EVENT_KEYS` | Import-time only |
 
 ## Requirements
 

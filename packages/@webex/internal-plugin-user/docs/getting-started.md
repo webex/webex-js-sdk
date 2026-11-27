@@ -19,9 +19,9 @@ Onboarding for **@webex/internal-plugin-user**. Commands run from the webex-js-s
 
 ## Prerequisites
 
-| Tool or access | Version or requirement |
-| -------------- | ---------------------- |
-| Node.js | `>=18`, declared in `package.json` `engines`. Follow the workspace root setup instructions for the exact version. |
+| Tool or access | Version source or requirement |
+| -------------- | ----------------------------- |
+| Node.js | Consumer floor: `engines.node` in `package.json`. Follow the workspace root setup instructions for the development version. |
 | Yarn | Workspaces are used, so install from the workspace root rather than this directory |
 | Live services and test users | Only for `test/integration/spec/user.js`, which `@webex/test-helper-test-users` drives against real services |
 

@@ -135,13 +135,13 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling | Version |
-| ---------------- | ------- | ------- |
-| Language runtime | TypeScript sources (one JavaScript entry, `src/webex.js`, and a JavaScript keepalive worker) on node | node 22.14 for workspace development (workspace root `AGENTS.md`; `.nvmrc` `lts/jod`); package `engines` `>=20.x`; typescript `5.4.5` |
-| Build tool       | yarn workspaces, `@webex/legacy-tools` over babel, and `tsc` for declarations | yarn `3.4.1` (root `packageManager`) |
-| Test framework   | jest through `webex-legacy-tools test --unit --runner jest`, `@webex/jest-config-legacy` extended by `jest.config.js`, `@webex/test-helper-mock-webex` | jest `27.5.1` |
-| Lint/format      | eslint with the monorepo root `.eslintrc.js` (the package has none of its own), prettier | eslint `^8.24.0`, prettier `2.5.1` |
-| Runtime libraries | `WebexPlugin` from `@webex/webex-core`, Node `events` `EventEmitter`, XState, WebSocket, `@webex/calling` for WebRTC, Mercury, metrics | xstate `5.24.0` |
+| Area             | Tooling | Version source |
+| ---------------- | ------- | -------------- |
+| Language runtime | TypeScript sources (one JavaScript entry, `src/webex.js`, and a JavaScript keepalive worker) on node | Development version: `.nvmrc` and the workspace root `AGENTS.md`. Consumer floor: `engines.node` in `package.json`. TypeScript: `devDependencies.typescript` in `package.json` |
+| Build tool       | yarn workspaces, `@webex/legacy-tools` over babel, and `tsc` for declarations | `packageManager` in the workspace root `package.json` |
+| Test framework   | jest through `webex-legacy-tools test --unit --runner jest`, `@webex/jest-config-legacy` extended by `jest.config.js`, `@webex/test-helper-mock-webex` | `devDependencies.jest` in `package.json` |
+| Lint/format      | eslint with the monorepo root `.eslintrc.js` (the package has none of its own), prettier | `devDependencies.eslint` and `devDependencies.prettier` in `package.json` |
+| Runtime libraries | `WebexPlugin` from `@webex/webex-core`, Node `events` `EventEmitter`, XState, WebSocket, `@webex/calling` for WebRTC, Mercury, metrics | `dependencies.xstate` in `package.json` |
 
 ### Project Map
 

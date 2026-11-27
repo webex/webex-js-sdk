@@ -99,7 +99,7 @@ flowchart LR
 | `@webex/internal-plugin-device` | Internal | `src/index.js` | Registers `webex.internal.device`, whose URL Lyra joins with | `workspace:*` |
 | `@webex/internal-plugin-mercury`, `@webex/internal-plugin-encryption` | Internal, undeclared | `src/device-manager.js` | Lyra events and name decryption | Not in `package.json`; reached through the Lyra plugin's imports |
 | `@webex/internal-plugin-calendar`, `@webex/plugin-authorization`, `@webex/plugin-logger`, `@webex/test-helper-chai` | Internal | The package-root `webex.js` and the unit spec only | Browser harness and assertions | `workspace:*` runtime dependencies that `src/` does not import |
-| `lodash`, `uuid` | External | `src/device-manager.js`, `src/collection.js` | Deep copy and merge; search ids | `^4.17.21`, `^3.3.2` |
+| `lodash`, `uuid` | External | `src/device-manager.js`, `src/collection.js` | Deep copy and merge; search ids | Ranges in `package.json` |
 | WDM auxiliary devices API, Lyra service | External service | `src/device-manager.js` | Device records and pairing | Resolved through the service catalog |
 
 No import cycle exists: none of these packages imports this one.

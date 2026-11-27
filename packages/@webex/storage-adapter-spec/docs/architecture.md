@@ -230,7 +230,7 @@ constraint here, and it is a workspace-internal one, not a cross-repository one.
 
 | Platform   | Shared versus platform-specific boundary | Entry or build      | Support and compatibility constraints |
 | ---------- | ---------------------------------------- | ------------------- | ------------------------------------- |
-| Node.js | Fully shared — `src/index.js` contains no platform branch | `yarn workspace @webex/storage-adapter-spec build` | `package.json` `engines` requires Node `>=18` |
+| Node.js | Fully shared — `src/index.js` contains no platform branch | `yarn workspace @webex/storage-adapter-spec build` | `package.json` `engines.node` declares the Node floor |
 | Browser | Fully shared — the same module, transpiled and bundled | `yarn workspace @webex/storage-adapter-spec test:browser` | `process` declares `{browser: true}` and `package.json` configures a browserify transform |
 
 The suite has no platform-specific code path. Platform differences belong to the adapters that

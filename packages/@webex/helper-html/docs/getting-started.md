@@ -21,9 +21,9 @@ The unit spec lives in `test/unit/spec/html.js` and is skipped in Node. The comm
 
 ## Prerequisites
 
-| Tool or access                         | Version or requirement |
-| -------------------------------------- | ---------------------- |
-| Node.js | `>=18`, declared in `package.json` `engines` |
+| Tool or access                         | Version source or requirement |
+| -------------------------------------- | ----------------------------- |
+| Node.js | `engines.node` in `package.json` |
 | Yarn | Workspaces are used, so install from the workspace root rather than this directory |
 | Browser for the unit spec | The karma runner used by `test:browser` |
 | Container, registry, VPN, or account | N/A — no external account is required to build or lint this package |

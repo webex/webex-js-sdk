@@ -72,7 +72,7 @@ run-report paths are canonical evidence.
 | `src/mobius-socket/index.ts` | The singleton accessor and reset function, the default and named `MobiusSocket` export, and side-effect imports of the device, feature, and metrics plugins |
 | `src/mobius-socket/mobius-socket.ts` | `MobiusSocket`: connect, disconnect, request delegation, backoff policy, close-code handling, message dispatch, async-event dedup, token refresh, shutdown switchover, the `off` override, safe emission, and the `console` logger fallback |
 | `src/mobius-socket/socket/socket-base.ts` | `Socket`: open guards including the trusted-host check, the AUTH handshake, request correlation and timeouts, event acknowledgement, close and forced close, and close-code repair |
-| `src/mobius-socket/socket/socket.ts`, `src/mobius-socket/socket/socket.shim.ts`, `src/mobius-socket/socket/index.ts`, `package.json` | The Node.js binding uses `ws` 8.17.1; the `browser` field of `package.json` swaps in the shim, which returns the global `WebSocket` or `MozWebSocket` |
+| `src/mobius-socket/socket/socket.ts`, `src/mobius-socket/socket/socket.shim.ts`, `src/mobius-socket/socket/index.ts`, `package.json` | The Node.js binding uses `ws`, pinned in `package.json`; the `browser` field of `package.json` swaps in the shim, which returns the global `WebSocket` or `MozWebSocket` |
 | `src/mobius-socket/socket/constants.ts`, `src/mobius-socket/socket/types.ts` | Ready states, the `auth` and `event_ack` message types, the synthetic 4001 event, and the envelope, option, and pending-entry shapes |
 | `src/mobius-socket/config.ts`, `src/mobius-socket/types.ts`, `src/mobius-socket/errors.ts` | Configuration defaults, the request and close option types, the response error type, and the connection error classes |
 | `src/common/Utils.ts`, `src/common/constants.ts` | `isMobiusWssHostAllowed`, the allowlist `webex.com`, `wbx2.com`, `webexapis.com`, `cisco.com` (exact host or subdomain), and `filterMobiusUris` |
@@ -224,9 +224,9 @@ singleton merges the package defaults with any partial override passed on the fi
 | Dependency | Why it is required | Failure behavior |
 | ---------- | ------------------ | ---------------- |
 | Mobius WebSocket (`mobius-websocket`) | Request/response and asynchronous call events; the URL comes from the caller, the cache, or the device | Closes drive the close-code policy (State machine) |
-| WebSocket implementation: `ws` 8.17.1 in Node.js, the global `WebSocket` or `MozWebSocket` in browsers | Transport, chosen by the `browser` field of `package.json` | A missing constructor fails `Socket#open` |
+| WebSocket implementation: `ws` (pinned in `package.json`) in Node.js, the global `WebSocket` or `MozWebSocket` in browsers | Transport, chosen by the `browser` field of `package.json` | A missing constructor fails `Socket#open` |
 | Webex credentials and device (`webex-sdk-host`) | `credentials.getUserToken`, `credentials.refresh` and `canRefresh`; `internal.device.registered`, `register`, `refresh`, and `webSocketUrl`; `config.defaultMobiusSocketOptions`; `logger`; `sessionId` | A rejected token or device call fails the attempt and enters the retry policy (`MOD-005`) |
-| `backoff` 2.5.0 | Exponential retry with `failAfter` and `retryIf` (`MOD-004`) | — |
+| `backoff` (pinned in `package.json`) | Exponential retry with `failAfter` and `retryIf` (`MOD-004`) | — |
 | `@webex/common`, `@webex/common-timers`, `lodash` | `Exception` base class and `checkRequired`; `safeSetTimeout`; `defaults`, `has`, `isObject` | — |
 | Trusted-host check in `src/common/Utils.ts` | `isMobiusWssHostAllowed` before any WebSocket is created (`INV-006`) | Rejects the attempt with `ConnectionError` code 4000 |
 

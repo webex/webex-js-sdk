@@ -19,10 +19,10 @@ Onboarding for **@webex/internal-plugin-call-ai-summary**.
 
 ## Prerequisites
 
-| Tool or access                         | Version or requirement |
-| -------------------------------------- | ---------------------- |
-| Node.js                                | `>=16` per `package.json` |
-| Yarn (berry, workspace protocol)       | As pinned by the monorepo |
+| Tool or access                         | Version source or requirement |
+| -------------------------------------- | ----------------------------- |
+| Node.js                                | `engines.node` in `package.json` |
+| Yarn (berry, workspace protocol)       | `packageManager` in the workspace root `package.json` |
 | An authenticated Webex SDK instance with a registered device | Required |
 | `@webex/internal-plugin-encryption` (pulled in automatically as a dependency) | Workspace dependency |
 | A valid Pragya container ID (obtained from Janus call history `extensionPayload.callingContainerIds`) | Required for any live call |
@@ -76,8 +76,8 @@ The unit tier runs 38 tests from `test/unit/spec/ai-summary.ts`, with upstream w
 `test/unit/fixture/responses.ts`. Jest collects `test/unit/**` excluding `lib` and `fixture`, so new
 fixture files belong under `fixture/`.
 
-The suite needs only `engines.node >=16`; it is verified on Node 24.10 as well as the monorepo's
-pinned 22.14, so `nvm` is not required to run it.
+The suite needs only the floor in `engines.node`; it is verified on Node 24.10 as well as the
+monorepo's pinned development version, so `nvm` is not required to run it.
 
 ### Manual verification scripts
 

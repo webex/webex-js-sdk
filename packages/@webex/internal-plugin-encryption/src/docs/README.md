@@ -179,7 +179,7 @@ contracts `encryption-key-cache-entry`, `encryption-kms-events`, and `cisco-unio
 | `@webex/http-core` (spec consulted) | `Interceptor` base of the test-only interceptor | — |
 | `@webex/kms-caroots` (no spec; code consulted) | `verifyUnionBundle` for the CA-roots asset; `loadUnionBundle` in the refresh script | A verification rejection becomes a KMSError (see Caller-visible failure modes) |
 | `node-kms`, `node-jose`, `node-scr` | KMS message wrapping and ECDH; JWE and JWK; SCR | Their errors propagate as rejections |
-| `pkijs` 3.3.3, `asn1js` 3.0.10, `isomorphic-webcrypto`, `safe-buffer`, `valid-url` | Certificate parsing and chain verification; WebCrypto; base64 decoding; kid URI check | Pinned exact versions; an older root install breaks bundle parsing (see Verification) |
+| `pkijs`, `asn1js`, `isomorphic-webcrypto`, `safe-buffer`, `valid-url` | Certificate parsing and chain verification; WebCrypto; base64 decoding; kid URI check | Pinned exact versions; an older root install breaks bundle parsing (see Verification) |
 | `lodash`, `uuid`, `debug` | Helpers, CMK request ids, and the `kms` debug channel for timeouts | — |
 | `@webex/test-helper-file` | Listed in `dependencies`, but no file under src imports it | — |
 | Encryption service, KMS, files service, Union bundle host (external) | Key operations and file download URLs; CA roots | See Cross-boundary use-case flow |
@@ -451,7 +451,7 @@ stateDiagram-v2
 
 | Message or frame | Version | Producer or serializer | Consumer or parser | Compatibility and ordering rule |
 | ---------------- | ------- | ---------------------- | ------------------ | ------------------------------- |
-| KMS request: node-kms Request of `{method, uri, …fields}` wrapped as compact JWE | node-kms ^0.4.1 | `prepareRequest` | KMS | ECDHE request wrapped with the server key, others with the ephemeral key |
+| KMS request: node-kms Request of `{method, uri, …fields}` wrapped as compact JWE | node-kms (range in `package.json`) | `prepareRequest` | KMS | ECDHE request wrapped with the server key, others with the ephemeral key |
 | KMS request methods and URIs: `create /resources`, `/authorizations`, `/keys`, `/cmk` or `/awsKmsCmk`, `<cluster>/ecdhe`; `retrieve <key or kro>`, `/publicKey`, `<kro>/authorizations`; `update` with `resourceUri`, `keyId`, `default`, `/ping`; `delete <kro>/authorizations?authId=`, `/cmk` or `/awsKmsCmk` | — | `src/kms.js` methods | KMS | The batcher matches responses by the Request's `requestId`; CMK requests also send a v4 uuid `requestId` field |
 | `POST encryption /kms/messages` body `{destination, kmsMessages}` | — | `KmsBatcher` | Encryption service | HTTP response ignored |
 | `GET encryption /kms/<userId>` response `{kmsCluster, rsaPublicKey}` | — | Encryption service | `_getKMSDetails` | `rsaPublicKey` is a JSON string of the KMS JWK with `kid`, `kty`, `n`, `e`, `x5c` |

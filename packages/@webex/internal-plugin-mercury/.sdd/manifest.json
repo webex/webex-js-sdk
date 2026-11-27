@@ -49,25 +49,21 @@
   "toolchain": [
     {
       "name": "node",
-      "version": ">=18",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "babel",
-      "version": "^7.17.10",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "eslint",
-      "version": "^8.24.0",
       "origin": "repo-config",
       "source_file": "package.json"
     },
     {
       "name": "prettier",
-      "version": "^2.7.1",
       "origin": "repo-config",
       "source_file": "package.json"
     }
@@ -268,28 +264,28 @@
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "backoff@^2.5.0 (npm)",
+        "source": "backoff (npm)",
         "summary": "backoff.call with ExponentialStrategy drives connection retries in src/mercury.js; failAfter applies maxRetries and initialConnectionMaxRetries."
       },
       "lodash": {
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "lodash@^4.17.21 (npm)",
+        "source": "lodash (npm)",
         "summary": "src/mercury.js imports camelCase, get, and set; src/socket/socket-base.js imports defaults, has, and isObject."
       },
       "uuid": {
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "uuid@^3.3.2 (npm)",
+        "source": "uuid (npm)",
         "summary": "uuid.v4 generates authorization message ids and ping ids in src/socket/socket-base.js."
       },
       "ws": {
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "ws@^8.17.1 (npm)",
+        "source": "ws (npm)",
         "summary": "Node WebSocket constructor returned by src/socket/socket.js. Browser builds use the global WebSocket through src/socket/socket.shim.js instead."
       }
     }
