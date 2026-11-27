@@ -1635,6 +1635,22 @@ export function escapeScimFilterValue(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
+const SANITIZE_LOG_VALUE_MAX_LEN = 100;
+
+/**
+ * Sanitizes a network-controlled string value for safe inclusion in log messages and error
+ * payloads. Strips ASCII control characters (which could forge log lines) and truncates to a
+ * fixed maximum length (which prevents unbounded leakage of network data).
+ *
+ * @param value - The raw string value from an untrusted/network source.
+ * @param maxLen - Maximum allowed length after stripping (default 100).
+ * @returns The sanitized, length-bounded string.
+ */
+export function sanitizeLogValue(value: string, maxLen = SANITIZE_LOG_VALUE_MAX_LEN): string {
+  // eslint-disable-next-line no-control-regex
+  return value.replace(/[\x00-\x1f]/g, '').slice(0, maxLen);
+}
+
 /**
  * Resolve the contact information.
  *

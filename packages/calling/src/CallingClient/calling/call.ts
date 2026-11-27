@@ -12,6 +12,7 @@ import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
 import {
   handleCallErrors,
   parseMediaQualityStatistics,
+  sanitizeLogValue,
   serviceErrorCodeHandler,
   uploadLogs,
 } from '../../common/Utils';
@@ -359,11 +360,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private handleIceCandidateError = (event: IceCandidateErrorEventPayload) => {
     const iceErrorPayload = {
-      address: event.address ?? null,
+      address: event.address != null ? sanitizeLogValue(String(event.address)) : null,
       errorCode: event.errorCode,
-      errorText: event.errorText,
+      errorText: sanitizeLogValue(event.errorText),
       port: event.port ?? null,
-      url: event.url,
+      url: sanitizeLogValue(event.url),
     };
 
     log.warn(`ICE candidate error occurred: ${JSON.stringify(iceErrorPayload)}`, {
