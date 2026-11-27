@@ -17,7 +17,7 @@ const http = require(`http`);
 const morgan = require(`morgan`);
 const path = require(`path`);
 const querystring = require(`querystring`);
-const request = require(`request`);
+const request = require(`@cypress/request`);
 const url = require(`url`);
 const base64 = require(`urlsafe-base64`);
 

@@ -219,8 +219,8 @@
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "request@^2.88.0 (npm)",
-        "summary": "Third-party Node HTTP client used as the Node transport; option names are passed through largely unchanged, which is why the public option shape mirrors it."
+        "source": "@cypress/request@^4.0.1 (npm)",
+        "summary": "Maintained fork of the `request` Node HTTP client, used as the Node transport; option names are passed through largely unchanged, which is why the public option shape mirrors it."
       }
     }
   },

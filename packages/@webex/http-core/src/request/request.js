@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import request from 'request';
+import request from '@cypress/request';
 import {Buffer} from 'safe-buffer';
 import {isBuffer} from '@webex/common';
 
