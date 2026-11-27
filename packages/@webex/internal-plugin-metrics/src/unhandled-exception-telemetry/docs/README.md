@@ -113,7 +113,8 @@ satisfies its condition.
 | `startUnhandledExceptionTelemetry`    | `src/new-metrics.ts`    | Idempotent per SDK instance: a later call supersedes the previous reporter. Returns void and never throws                   | `src/unhandled-exception-telemetry/index.ts`  |
 | `UNHANDLED_EXCEPTION_METRIC_NAME`     | Tests                   | The submitted metric name. Changing it is breaking for ingestion and dashboards                                            | `src/unhandled-exception-telemetry/index.ts`  |
 | `UnhandledExceptionEvent` type        | Tests, and ingestion consumers | The submitted event shape, versioned by its own schema-version field                                                | `src/unhandled-exception-telemetry/index.ts`  |
-| Configuration under the metrics namespace | First party clients | Two keys: an enable flag and an optional synchronous metadata provider. Disabled by default                               | `src/config.js`                               |
+| `unhandledExceptionTelemetry:started` | Applications | Synchronous SDK event with no payload after successful listener installation; not replayed | `src/unhandled-exception-telemetry/index.ts` |
+| Configuration under the metrics namespace | Applications | An enable flag and an optional synchronous metadata provider. Disabled by default | `src/unhandled-exception-telemetry/index.ts`, `src/config.js` |
 
 Telemetry is disabled by default. Enable it with `metrics.unhandledExceptionTelemetry.enabled: true`.
 Applications may provide a synchronous `getMetadata` callback in the same configuration object. It
@@ -122,9 +123,16 @@ must return an object whose fields can include application context such as `orgI
 typical configuration is `metrics.unhandledExceptionTelemetry.enabled: true` together with a
 synchronous `getMetadata: () => ({orgId, dataCenter})` provider.
 
-The enable flag and the metadata provider are declared, with their exact names and types, in the
-structural configuration type in `src/unhandled-exception-telemetry/index.ts`, and their defaults in
-`src/config.js`. The provider is called with no arguments and must return an object synchronously;
+The SDK emits `unhandledExceptionTelemetry:started` with no payload after both browser listeners
+are installed, once for each successful installation. Subscribe on the SDK instance immediately
+after construction, before waiting for `ready`, because installation runs inside the SDK's `ready`
+event. The event is not replayed. Disabled, unsupported, or failed installation does not emit it.
+Notification failures are logged separately from installation failures. They do not escape or stop
+the installed reporter. This event confirms listener installation, not telemetry delivery.
+
+The structural configuration type in `src/unhandled-exception-telemetry/index.ts` declares the exact
+names and types of the enable flag and metadata provider. `src/config.js` sets the
+disabled default. The metadata provider is called with no arguments and must return an object synchronously;
 a return value of `undefined` attaches nothing, while a non-object, oversized or throwing provider is
 recorded as a metadata capture status rather than submitted. These declarations are the only contract
 surface for the configuration; no separate code block restates them.
@@ -162,6 +170,7 @@ surface for the configuration; no separate code block restates them.
 | `MOD-016` | No capture, metadata, submission or logging failure escapes the module                                                                      | The listeners run inside the application's own error path; an exception here would turn one failure into two                                                      | `src/unhandled-exception-telemetry/index.ts`           | `test/unit/spec/unhandled-exception-telemetry.ts`          | none                | Present    |
 | `MOD-017` | A rejection reason whose `message`, `name` or `stack` property access throws is contained: the failure is logged, nothing is submitted and nothing propagates. A reason that only fails JSON serialization is still reported, falling back to `String(reason)` and then to a fixed unserializable-reason message | A rejection can carry a proxy or a throwing getter; the reporter runs inside the application's error path, so it must never throw there, and it cannot build a trustworthy report from a reason it cannot read | `src/unhandled-exception-telemetry/index.ts`, `src/unhandled-exception-telemetry/utils.ts` | `test/unit/spec/unhandled-exception-telemetry.ts` | The serialization fallbacks in `stringifyReason` have no dedicated case | Present |
 | `MOD-018` | Events are never persisted and a failed submission is never retried                                                                         | Persisting browser error state across loads would create its own privacy surface, and retrying during a failing page risks amplifying the failure                 | `src/unhandled-exception-telemetry/index.ts`           | none found                                                 | The absence of persistence and retry is structural rather than asserted by a case | Present |
+| `MOD-019` | The SDK emits a start event synchronously after both listeners are installed, once per successful installation. Disabled, unsupported, or failed startup does not emit it; notification failures are contained without stopping the reporter | Applications need a confirmed listener-installation point to coordinate their own error handling safely | `src/unhandled-exception-telemetry/index.ts` | `test/unit/spec/unhandled-exception-telemetry.ts` | none | Present |
 
 ## Design overview
 

@@ -13,6 +13,7 @@ import {
 } from './utils';
 
 export const UNHANDLED_EXCEPTION_METRIC_NAME = 'JS_SDK_OBSERVED_CLIENT_UNHANDLED_EXCEPTION';
+export const UNHANDLED_EXCEPTION_TELEMETRY_STARTED_EVENT = 'unhandledExceptionTelemetry:started';
 
 const DEDUPE_WINDOW_MS = 1_000;
 const MAX_ERROR_MESSAGE_LENGTH = 4_096;
@@ -52,6 +53,7 @@ export type UnhandledExceptionEvent = {
 };
 
 type WebexForUnhandledExceptionTelemetry = {
+  trigger: (eventName: string) => unknown;
   canAuthorize?: boolean;
   version?: string;
   config?: {
@@ -400,5 +402,13 @@ export function startUnhandledExceptionTelemetry(webex: WebexForUnhandledExcepti
     activeTelemetry = new UnhandledExceptionTelemetry(webex, window);
   } catch {
     logTelemetryFailure(webex, 'Failed to start exception telemetry.');
+
+    return;
+  }
+
+  try {
+    webex.trigger(UNHANDLED_EXCEPTION_TELEMETRY_STARTED_EVENT);
+  } catch {
+    logTelemetryFailure(webex, 'Failed to emit exception telemetry start event.');
   }
 }
