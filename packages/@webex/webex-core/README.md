@@ -42,6 +42,44 @@ webex.request({
 
 ## Configuration
 
+### Requests without the SDK bearer token
+
+Use `services.allowedWithoutAuthHeader` for domains that may receive requests
+outside the service catalog and ordinary `allowedDomains`:
+
+```js
+services: {
+  validateCatalogUrls: true,
+  allowedWithoutAuthHeader: ['webex.com']
+}
+```
+
+The default is `[]`. Matching uses the same domain helper as `allowedDomains`.
+A plain domain covers itself and its subdomains. No path, scheme, or port policy
+is added. Configure the list when creating the SDK instance.
+
+Catalog and ordinary `allowedDomains` trust retain precedence. For example,
+a catalogued home site still receives its normal authentication when
+`webex.com` is also in the new list. A URL admitted only by the new list does not
+receive an automatically attached SDK bearer token.
+Auth removes any existing Bearer authorization header on this fallback.
+This includes headers from callers and earlier SDK requests. It copies headers
+before removal so the source request stays unchanged. Other authorization schemes
+and transport authentication options retain their existing behavior.
+
+The existing Catalog interceptor admits this fallback. The existing Auth
+interceptor skips the SDK bearer token. Requests still use
+`webex.request`, its normal transport, and its existing interceptor chain. The Auth
+interceptor already honors `addAuthHeader: false` and
+`shouldRefreshAccessToken: false`; this fallback sets those options and clears
+an inherited SDK bearer token. It adds no request API or interceptor.
+
+Existing per-request interceptor replacement remains application-controlled.
+Matching uses existing absolute URLs; no URL-object, `baseUrl`, or runtime
+configuration mechanism is added. Bodies and cookies retain existing behavior.
+SDK redirect replay checks the new destination through the same request pipeline.
+Native HTTP redirects inside XHR remain outside that mechanism.
+
 ### Client Scope Requirements
 
 To utilize the basic functionality of the services plugin, the following scopes must be present in the client's scopes:
