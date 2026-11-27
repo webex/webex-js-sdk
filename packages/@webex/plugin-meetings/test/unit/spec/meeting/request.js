@@ -119,7 +119,6 @@ describe('plugin-meetings', () => {
     });
 
     describe('#changeVideoLayout', () => {
-
       const locusUrl = 'locusURL';
       const deviceUrl = 'deviceUrl';
       const layoutType = 'Equal';
@@ -326,6 +325,7 @@ describe('plugin-meetings', () => {
 
       it('adds deviceCapabilities to request when breakouts are supported', async () => {
         await meetingsRequest.joinMeeting({
+          locusUrl: 'locusUrl',
           breakoutsSupported: true,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
@@ -335,6 +335,7 @@ describe('plugin-meetings', () => {
 
       it('adds deviceCapabilities to request when live annotation are supported', async () => {
         await meetingsRequest.joinMeeting({
+          locusUrl: 'locusUrl',
           liveAnnotationSupported: true,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
@@ -342,6 +343,7 @@ describe('plugin-meetings', () => {
       });
       it('adds deviceCapabilities to request when breakouts and live annotation are supported', async () => {
         await meetingsRequest.joinMeeting({
+          locusUrl: 'locusUrl',
           liveAnnotationSupported: true,
           breakoutsSupported: true,
         });
@@ -364,7 +366,7 @@ describe('plugin-meetings', () => {
         ]);
       });
       it('does not add deviceCapabilities to request when breakouts and live annotation are not supported', async () => {
-        await meetingsRequest.joinMeeting({});
+        await meetingsRequest.joinMeeting({locusUrl: 'locusUrl'});
 
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
@@ -404,6 +406,7 @@ describe('plugin-meetings', () => {
 
       it('adds deviceCapabilities and locale to request when they are provided', async () => {
         await meetingsRequest.joinMeeting({
+          locusUrl: 'locusUrl',
           locale: 'en_UK',
           deviceCapabilities: ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED'],
         });
@@ -416,7 +419,7 @@ describe('plugin-meetings', () => {
       });
 
       it('does not add deviceCapabilities and locale to request when they are not provided', async () => {
-        await meetingsRequest.joinMeeting({});
+        await meetingsRequest.joinMeeting({locusUrl: 'locusUrl'});
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
         assert.deepEqual(requestParams.body.deviceCapabilities, undefined);
@@ -425,6 +428,7 @@ describe('plugin-meetings', () => {
 
       it('adds alias to request when they are provided', async () => {
         await meetingsRequest.joinMeeting({
+          locusUrl: 'locusUrl',
           alias: 'assigned name',
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
@@ -433,10 +437,18 @@ describe('plugin-meetings', () => {
       });
 
       it('does not add alias to request when they are not provided', async () => {
-        await meetingsRequest.joinMeeting({});
+        await meetingsRequest.joinMeeting({locusUrl: 'locusUrl'});
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
         assert.deepEqual(requestParams.body.alias, undefined);
+      });
+
+      it('throws when locusUrl, inviteeAddress, and meetingNumber are all absent', async () => {
+        await assert.isRejected(
+          meetingsRequest.joinMeeting({deviceUrl: 'deviceUrl', correlationId: 'random-uuid'}),
+          'Locus join meeting URL is empty'
+        );
+        assert.notCalled(meetingsRequest.request);
       });
     });
 
@@ -962,7 +974,7 @@ describe('plugin-meetings', () => {
         },
         headers: {
           locusId,
-        }
+        },
       });
     });
   });
