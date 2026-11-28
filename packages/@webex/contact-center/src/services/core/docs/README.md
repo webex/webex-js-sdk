@@ -73,7 +73,7 @@ Related context: [documentation index](../../../../docs/index.md) ·
 | `src/services/core/websocket/WebSocketManager.ts` | Subscribe registration, the `wss` allow-list check, socket handlers, keepalive worker wiring, welcome resolution, multi-login close, and `message`/`socketClose` events |
 | `src/services/core/websocket/connection-service.ts` | Ordinary liveness/reconnect, regional pacing, primary mismatch/U2C recovery, snapshots, and diagnostics; awaits ContactCenter's station restoration |
 | `src/services/core/websocket/keepalive.worker.js` | The worker script, its `start`/`terminate` inputs, and its `keepalive`/`closeSocket` outputs |
-| `src/services/core/websocket/types.ts` | `ConnectionServiceOptions`, `ConnectionLostDetails`, `ConnectionProp`, `RecoveryOptions` |
+| `src/services/core/websocket/types.ts` | `ConnectionServiceOptions`, `ConnectionLostDetails`, `ConnectionProp` |
 | `src/services/core/constants.ts` | Timer values, `ALLOWED_ROUTING_NOTIFS_DOMAINS`, participant constants, and method-name constants |
 | `src/services/core/Utils.ts`, `src/services/core/Err.ts`, `src/services/core/GlobalTypes.ts` | Error helpers, the `Err` classes and error-id types, and `Msg`, `Failure`, `TaskError`, `AugmentedError` |
 | `src/services/index.ts`, `src/cc.ts` | Consumers: construction order, the second RTD `WebSocketManager`, `connectWebsocket`, `handleConnectionLost`, and the `allowAutomatedRelogin` relogin policy |
@@ -133,7 +133,7 @@ services/core/
 | `GlobalTypes` | [`GlobalTypes.ts`](../GlobalTypes.ts) | `Msg`, `Failure`, `TaskError`, `AugmentedError` type definitions. |
 | `types` | [`types.ts`](../types.ts) | `Pending`, `Req`, `Conf`, `Res` types for AqmReqs, plus the internal RTD request types. |
 | keepalive worker | [`keepalive.worker.js`](../websocket/keepalive.worker.js) | Web Worker for periodic keepalive and offline detection, exported as a script string. |
-| websocket `types` | [`types.ts`](../websocket/types.ts) | `ConnectionServiceOptions`, `ConnectionLostDetails`, `ConnectionProp`, `RecoveryOptions`. |
+| websocket `types` | [`types.ts`](../websocket/types.ts) | `ConnectionServiceOptions`, `ConnectionLostDetails`, `ConnectionProp`. |
 
 Files outside the source layout above:
 
@@ -155,7 +155,7 @@ contract `contact-center-core-transport` (internal SDK contract, canonical sourc
 | `contact-center-core-transport`: `AqmReqs` (`req`, `reqEmpty`) and the `Req` configuration | Agent, contact, and dialer factories | Internal; additive config fields only, every in-package caller updated in the same change | `src/services/core/aqm-reqs.ts`, `src/services/core/types.ts` |
 | `contact-center-core-transport`: `WebexRequest.getInstance`, `request`, `uploadLogs` | `src/cc.ts`, config and other services, the error helpers | Internal; `request` returns or rejects with the host result unchanged | `src/services/core/WebexRequest.ts` |
 | `contact-center-core-transport`: `WebSocketManager` (`initWebSocket`, `close`, `handleConnectionLost`, `shouldReconnect`, `isSocketClosed`, `hasUsableSocket`, `getUrl`, events `message` and `socketClose`) | `Services`, `src/cc.ts`, `TaskManager`, `AqmReqs`, `ConnectionService` | Internal; event names are string literals that listeners depend on | `src/services/core/websocket/WebSocketManager.ts` |
-| `contact-center-core-transport`: `ConnectionService` (`configureRecovery`, `connect`, `handleRegionSwitch`, `resetRecovery`, `reset`, `stop`, `setConnectionProp`; events `connectionLost`, `reconnectFailed`, `regionStateChange`, `recoveryDiagnostic`) | `src/cc.ts` | Internal; ContactCenter supplies session effects and forwards recovery snapshots | `src/services/core/websocket/connection-service.ts`, `src/services/core/websocket/types.ts` |
+| `contact-center-core-transport`: `ConnectionService` (`setSessionRecoveryHandler`, `connect`, `handleRegionSwitch`, `resetRecovery`, `reset`, `stop`, `setConnectionProp`; events `connectionLost`, `reconnectFailed`, `regionStateChange`, `recoveryDiagnostic`, `recoveryConnectionChange`) | `src/cc.ts` | Internal; ContactCenter supplies session effects and forwards recovery snapshots | `src/services/core/websocket/connection-service.ts`, `src/services/core/websocket/types.ts` |
 | `contact-center-core-transport`: error and utility helpers, `Err` classes, `Msg`, `Failure`, `AugmentedError` | Agent, config, task, and plugin code | Internal; error `message` and `data` shapes are observed by callers | `src/services/core/Utils.ts`, `src/services/core/Err.ts`, `src/services/core/GlobalTypes.ts` |
 
 | Event | Data | Description |
@@ -183,7 +183,7 @@ Do not remove or reinterpret exported symbols/events without a documented consum
 | Browser WebSocket, Worker, URL and network-status APIs | Socket, keepalive worker (`Blob` + `URL.createObjectURL`), URL validation, `navigator.onLine` | Offline ordinary attempts skip subscribe and retry at the next five-second single-flight slot, bounded by the watchdog |
 | LoggerProxy and log upload | Every diagnostic line and the error helpers' upload | Fire and forget in the helpers |
 | `MetricsManager` (`src/metrics/MetricsManager.ts`) | Log-upload events and operational regional admission/station-reload outcomes | Not awaited |
-| ContactCenter's `RecoveryOptions` | `getConnection`, awaited `recoverSession`, and `onConnectionChange` | ConnectionService owns transport recovery; ContactCenter owns station policy and profile/device/task/RTD effects |
+| ContactCenter's station-recovery handler | Awaited `recoverSession`, registered through `setSessionRecoveryHandler`; connection notifications use `recoveryConnectionChange` | ConnectionService reuses its constructor's subscribe settings and Webex credentials; ContactCenter owns station policy and profile/device/task/RTD effects |
 | `src/services/constants.ts`, `src/services/config/types.ts` | `WCC_API_GATEWAY`, `SUBSCRIBE_API`, `CC_EVENTS.WELCOME`, `SubscribeResponse`, `WelcomeResponse` | Compile-time |
 | `src/types.ts` | Shared `WebexSDK`, `HTTP_METHODS`, `RequestBody`, `IHttpResponse`, `LogsMetaData`, `UploadLogsResponse`, `SubscribeRequest`, `WebexRequestPayload`, `LoginOption`, and `RegionRecoveryState` types (contract `contact-center-region-recovery`) | Compile-time |
 | `src/services/task/types.ts` | Interaction and destination types for the consult helpers in `Utils.ts` | Compile-time |
@@ -457,7 +457,7 @@ sequenceDiagram
   else Eligible regional switch
     CC->>CS: handleRegionSwitch(event)
     CS->>CS: Stop ordinary monitoring
-    CS->>CC: onConnectionChange(false)
+    CS-->>CC: recoveryConnectionChange(false)
     CS->>CS: Wait for regional retry delay
     CS->>WS: initWebSocket({body, resource})
     WS-->>CS: Welcome
@@ -469,7 +469,7 @@ sequenceDiagram
     CS->>CS: reset()
     CS-->>CC: regionStateChange(snapshot)
     CC->>CC: Forward public recovery event
-    CS->>CC: onConnectionChange(true)
+    CS-->>CC: recoveryConnectionChange(true)
     CC->>CC: Connect RTD when enabled and request Available when voice is ready
   end
 ```
@@ -513,8 +513,9 @@ actions using `region:stateChange`.
 ### ConnectionService members
 
 - The constructor accepts `{webex, webSocketManager, subscribeRequest}` options.
-- `configureRecovery` supplies `getConnection`, `recoverSession`, and `onConnectionChange`.
-  Connection details are read live; `recoverSession()` restores the station and returns its outcome.
+- `setSessionRecoveryHandler` supplies one awaited `recoverSession` callback that restores the station
+  and returns its outcome. Connection notifications use the internal `recoveryConnectionChange`
+  event; subscribe settings and organization identity come from the constructor and Webex credentials.
 - `connect()` subscribes to the primary socket and refreshes U2C for one retry after a recognized
   mismatch. `handleRegionSwitch()` owns eligibility, deduplication, and transport pacing.
 - `reset(socketReconnected = false)` resumes liveness monitoring or ordinary subscription retries;

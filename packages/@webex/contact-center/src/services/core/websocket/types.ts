@@ -1,16 +1,6 @@
 import {SubscribeRequest} from '../../../types';
 import type WebSocketManager from './WebSocketManager';
-import type {RegionRecoveryState, WebexSDK} from '../../../types';
-
-/** Session and application operations used by connection recovery. */
-export type RecoveryOptions = {
-  getConnection: () => {
-    orgId?: string;
-    connectionConfig: SubscribeRequest;
-  };
-  recoverSession: () => Promise<RegionRecoveryState>;
-  onConnectionChange: (connected: boolean) => void;
-};
+import type {WebexSDK} from '../../../types';
 
 /**
  * Options for initializing a connection service.

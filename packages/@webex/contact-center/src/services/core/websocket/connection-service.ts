@@ -14,7 +14,6 @@ import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 import {WebSocketManager} from './WebSocketManager';
 import LoggerProxy from '../../../logger-proxy';
 import {ConnectionServiceOptions, ConnectionLostDetails, ConnectionProp} from './types';
-import type {RecoveryOptions} from './types';
 import {
   LOST_CONNECTION_RECOVERY_TIMEOUT,
   WS_DISCONNECT_ALLOWED,
@@ -63,7 +62,7 @@ export class ConnectionService extends EventEmitter {
   private webSocketManager: WebSocketManager;
   private subscribeRequest: SubscribeRequest;
 
-  private recoveryOptions?: RecoveryOptions;
+  private recoverSession?: () => Promise<RegionRecoveryState>;
   private recovery?: RegionRecovery;
   private lastSwitchTrackingId?: string;
   private multiRegionSettings: MultiRegionSettings | null = null;
@@ -87,8 +86,8 @@ export class ConnectionService extends EventEmitter {
     this.setupEventListeners();
   }
 
-  public configureRecovery(options: RecoveryOptions): void {
-    this.recoveryOptions = options;
+  public setSessionRecoveryHandler(recoverSession: () => Promise<RegionRecoveryState>): void {
+    this.recoverSession = recoverSession;
   }
 
   public get isRecovering(): boolean {
@@ -212,17 +211,17 @@ export class ConnectionService extends EventEmitter {
       }
       const manager = this.webSocketManager;
       const welcome = await manager.initWebSocket({
-        body: this.recoveryOptions?.getConnection().connectionConfig ?? this.subscribeRequest,
+        body: this.subscribeRequest,
         resource: SUBSCRIBE_API,
       });
-      if (this.recoveryOptions) this.rememberServingRegion(manager.getUrl());
+      if (this.recoverSession) this.rememberServingRegion(manager.getUrl());
 
       return welcome;
     } catch (error) {
-      if (this.recoveryOptions && !refreshServices && getSubscriptionMismatchReason(error))
+      if (this.recoverSession && !refreshServices && getSubscriptionMismatchReason(error))
         return this.connect(true);
       if (
-        this.recoveryOptions &&
+        this.recoverSession &&
         !this.recovery &&
         (getSubscriptionMismatchReason(error) || this.regionState?.status === 'recovering')
       )
@@ -248,7 +247,7 @@ export class ConnectionService extends EventEmitter {
 
   private handleSubscriptionMismatch = (): void => {
     this.servingRegion = undefined;
-    this.recoveryOptions.onConnectionChange(false);
+    this.emit('recoveryConnectionChange', false);
     this.publishRegionState({status: 'recovering', reason: 'region-mismatch'});
   };
 
@@ -256,14 +255,14 @@ export class ConnectionService extends EventEmitter {
     this.cancelRegionRecovery();
     this.stop();
     this.webSocketManager.close(false, 'recoveryFailed');
-    this.recoveryOptions.onConnectionChange(false);
+    this.emit('recoveryConnectionChange', false);
     delete this.regionStateContext.autoAvailable;
     this.publishRegionState({status: 'unavailable', reason});
   }
 
   public handleRegionSwitch(event: SystemRegionSwitch): void {
     const startedAt = Date.now();
-    const {orgId} = this.recoveryOptions.getConnection();
+    const orgId = this.webex.credentials.getOrgId();
     if (
       event.orgId !== orgId ||
       !this.multiRegionSettings ||
@@ -279,7 +278,7 @@ export class ConnectionService extends EventEmitter {
     this.servingRegion = undefined;
     this.cancelRegionRecovery();
     this.stop();
-    this.recoveryOptions.onConnectionChange(false);
+    this.emit('recoveryConnectionChange', false);
     this.resetRegionState();
     this.regionStateContext = {trackingId: event.trackingId, ...event.data};
     if (this.multiRegionSettings?.multiRegionEnabled === false) {
@@ -317,14 +316,14 @@ export class ConnectionService extends EventEmitter {
       await this.connect();
       if (this.recovery !== recovery) return;
       this.recordRecoveryDiagnostic('welcome', 'succeeded', attempt, welcomeStartedAt);
-      const state = await this.recoveryOptions.recoverSession();
+      const state = await this.recoverSession();
       if (this.recovery !== recovery) return;
       if (!manager.hasUsableSocket()) throw new Error('WebSocket closed');
       this.recordRecoveryDiagnostic('admission', 'succeeded', attempt, startedAt);
       this.reset();
       this.recovery = undefined;
       this.publishRegionState(state);
-      this.recoveryOptions.onConnectionChange(true);
+      this.emit('recoveryConnectionChange', true);
     } catch (error) {
       if (this.recovery !== recovery) return;
       const terminal = this.isTerminalConnectionFailure(error) || manager.hasUsableSocket();
@@ -484,9 +483,9 @@ export class ConnectionService extends EventEmitter {
 
         return;
       }
-      if (this.recoveryOptions && this.isTerminalConnectionFailure(error))
+      if (this.recoverSession && this.isTerminalConnectionFailure(error))
         this.handleRecoveryTerminal(error);
-      else if (!this.recoveryOptions) this.emit('reconnectFailed', error);
+      else if (!this.recoverSession) this.emit('reconnectFailed', error);
     }
   };
 

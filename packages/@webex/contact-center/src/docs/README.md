@@ -356,9 +356,10 @@ sequenceDiagram
 
 Ordinary reconnect uses the existing relogin path shown below. ConnectionService owns regional
 switch filtering, timers, subscribe and Welcome, U2C refresh, placement metadata, and complete recovery
-snapshots. ContactCenter supplies connection details and the `recoverSession()` callback once during
-READY initialization; it pauses RTD and retires failed-region Tasks
-when ConnectionService reports a region change. Hosts pause new station actions during recovery.
+snapshots. ContactCenter registers its awaited station-restoration callback once during
+READY initialization with `setSessionRecoveryHandler`; it pauses RTD and retires failed-region Tasks
+on the internal `recoveryConnectionChange` event. ConnectionService reuses its constructor's subscribe
+settings and Webex credentials. Hosts pause new station actions during recovery.
 
 ContactCenter owns station reload retries, fallback login, and existing-session recovery. Each
 station-recovery call has its own bounded retry budget, as in Desktop. Public station

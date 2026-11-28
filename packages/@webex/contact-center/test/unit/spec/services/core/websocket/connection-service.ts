@@ -63,7 +63,10 @@ describe('ConnectionService', () => {
     Object.defineProperty(global, 'navigator', {value: {onLine: true}, configurable: true});
     manager = new SocketManagerDouble();
     service = new ConnectionService({
-      webex: {internal: {services: {updateServices: jest.fn()}}} as unknown as WebexSDK,
+      webex: {
+        credentials: {getOrgId: () => 'org'},
+        internal: {services: {updateServices: jest.fn()}},
+      } as unknown as WebexSDK,
       webSocketManager: manager as unknown as WebSocketManager,
       subscribeRequest,
     });
@@ -108,11 +111,8 @@ describe('ConnectionService', () => {
     const recoverSession = jest.fn(() => recovery.promise);
     const onConnectionChange = jest.fn();
     jest.spyOn(Math, 'random').mockReturnValue(0);
-    service.configureRecovery({
-      getConnection: () => ({orgId: 'org', connectionConfig: subscribeRequest}),
-      recoverSession,
-      onConnectionChange,
-    });
+    service.setSessionRecoveryHandler(recoverSession);
+    service.on('recoveryConnectionChange', onConnectionChange);
     service.setMultiRegionSettings({multiRegionEnabled: true, homeRegion: 'produs1'});
     service.handleRegionSwitch({
       type: 'SYSTEM_REGION_SWITCH',
@@ -123,6 +123,9 @@ describe('ConnectionService', () => {
     await tick(100000);
 
     expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
+    expect(manager.initWebSocket).toHaveBeenCalledWith({
+      body: subscribeRequest, resource: SUBSCRIBE_API,
+    });
     expect(recoverSession).toHaveBeenCalledTimes(1);
     expect(service.regionState.status).toBe('recovering');
     expect(onConnectionChange.mock.calls).toEqual([[false]]);

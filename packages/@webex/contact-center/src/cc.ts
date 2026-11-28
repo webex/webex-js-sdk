@@ -645,14 +645,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.services.rtdWebSocketManager
       );
       this.taskManager.setAnswerCallOnWebexService(this.answerCallOnWebexService);
-      this.services.connectionService.configureRecovery({
-        getConnection: () => ({
-          orgId: this.agentConfig?.orgId,
-          connectionConfig: this.getConnectionConfig(),
-        }),
-        recoverSession: () => this.silentRelogin('region-switch'),
-        onConnectionChange: this.handleRecoveryConnectionChange,
-      });
+      this.services.connectionService.setSessionRecoveryHandler(() =>
+        this.silentRelogin('region-switch')
+      );
       this.incomingTaskListener();
 
       // Initialize API instances
@@ -1082,6 +1077,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.services.connectionService.off('connectionLost', this.handleConnectionLost);
       this.services.connectionService.off('regionStateChange', this.handleRegionStateChange);
       this.services.connectionService.off('recoveryDiagnostic', this.handleRecoveryDiagnostic);
+      this.services.connectionService.off(
+        'recoveryConnectionChange',
+        this.handleRecoveryConnectionChange
+      );
 
       const {publishError: wxAppPublishError} = await this.teardownWxAppLocalState({
         clearInitFlag: true,
@@ -2567,6 +2566,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.services.connectionService.on('regionStateChange', this.handleRegionStateChange);
     this.services.connectionService.off('recoveryDiagnostic', this.handleRecoveryDiagnostic);
     this.services.connectionService.on('recoveryDiagnostic', this.handleRecoveryDiagnostic);
+    this.services.connectionService.off(
+      'recoveryConnectionChange',
+      this.handleRecoveryConnectionChange
+    );
+    this.services.connectionService.on(
+      'recoveryConnectionChange',
+      this.handleRecoveryConnectionChange
+    );
   }
 
   private handleRegionStateChange = (state: RegionRecoveryState): void => {

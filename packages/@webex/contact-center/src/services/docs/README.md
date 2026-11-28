@@ -243,9 +243,10 @@ Understanding the instantiation order is essential — getting it wrong causes r
 
 Each WebSocketManager uses its existing subscribe-and-connect path for primary or RTD transport.
 The subscription has a 20-second HTTP timeout and adds the organization header required in INT.
-After composing the READY graph, ContactCenter calls `connectionService.configureRecovery` with
-`getConnection`, `recoverSession`, and `onConnectionChange`. ConnectionService receives the host in
-its constructor and owns regional transport timing, primary mismatch/U2C recovery, snapshots, and
+After composing the READY graph, ContactCenter calls `connectionService.setSessionRecoveryHandler`
+with its awaited station-restoration callback and listens for internal `recoveryConnectionChange`
+events during registration. ConnectionService reuses its constructor's subscribe settings and Webex
+credentials and owns regional transport timing, primary mismatch/U2C recovery, snapshots, and
 diagnostics. ContactCenter owns station retries, deferred Available, profile/device updates, task/RTD
 effects, recovery metric submission, and forwarding `regionStateChange` as the public recovery event.
 
@@ -344,7 +345,7 @@ sequenceDiagram
   S->>S: primary WS + RTD WS + AqmReqs + config/agent/contact/dialer + ConnectionService
   CC->>CC: create calling + wxApp services + AI assistant + metrics
   CC->>TM: getTaskManager(AI, contact, calling, primary WS, RTD WS)
-  CC->>S: connectionService.configureRecovery({getConnection, recoverSession, onConnectionChange})
+  CC->>S: connectionService.setSessionRecoveryHandler(recoverSession)
   CC->>CC: create data services + UserPreference
 ```
 
