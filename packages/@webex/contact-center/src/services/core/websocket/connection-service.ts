@@ -274,23 +274,16 @@ export class ConnectionService extends EventEmitter {
 
   public handleRegionSwitch(event: SystemRegionSwitch): void {
     const startedAt = Date.now();
-    const recordIgnoredSwitch = () =>
+    const {orgId} = this.recoveryOptions.getSession();
+    if (
+      this.regionState?.status === 'unavailable' ||
+      event.orgId !== orgId ||
+      !this.multiRegionSettings ||
+      this.lastSwitchTrackingId === event.trackingId
+    ) {
       this.recordRecoveryDiagnostic('ignored-event', 'dropped', 0, startedAt, {
         trackingId: event.trackingId,
       });
-    const {orgId} = this.recoveryOptions.getSession();
-    if (this.regionState?.status === 'unavailable') {
-      recordIgnoredSwitch();
-
-      return;
-    }
-    if (event.orgId !== orgId) {
-      recordIgnoredSwitch();
-
-      return;
-    }
-    if (!this.multiRegionSettings || this.lastSwitchTrackingId === event.trackingId) {
-      recordIgnoredSwitch();
 
       return;
     }
@@ -444,9 +437,6 @@ export class ConnectionService extends EventEmitter {
           response,
           stage === 'fallback' ? payload : undefined
         );
-        if (this.recovery !== recovery || !this.webSocketManager.hasUsableSocket())
-          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-
         const state: RegionRecoveryState = {status: 'ready', reason: 'region-switch'};
         if (
           response.data.type === CC_EVENTS.AGENT_RELOGIN_SUCCESS &&
@@ -522,7 +512,6 @@ export class ConnectionService extends EventEmitter {
     });
     if (this.recoveryOptions) {
       if (event.isConnectionLost) this.servingRegion = undefined;
-      else if (socketReconnected) this.rememberServingRegion(this.webSocketManager.getUrl());
       if (event.isConnectionLost || socketReconnected) {
         const cancelled = this.cancelAutoAvailable();
         if (cancelled) this.publishRegionState(cancelled);
@@ -532,13 +521,11 @@ export class ConnectionService extends EventEmitter {
   }
 
   private handleConnectionLost = (): void => {
-    if (this.isStopped) return;
     this.isConnectionLost = true;
     this.dispatchConnectionEvent();
   };
 
   private handleRestoreFailed = (): void => {
-    if (this.isStopped) return;
     if (this.reconnectInterval || !this.webSocketManager.hasUsableSocket()) {
       this.pending = false;
       this.stop();
@@ -633,7 +620,7 @@ export class ConnectionService extends EventEmitter {
   };
 
   private handleSocketClose = async (): Promise<void> => {
-    if (this.isStopped || this.pending) return;
+    if (this.pending) return;
     LoggerProxy.info(`event=socketConnectionRetry | Trying to reconnect to websocket`, {
       module: CONNECTION_SERVICE_FILE,
       method: METHODS.HANDLE_SOCKET_CLOSE,

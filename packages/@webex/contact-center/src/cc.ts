@@ -112,6 +112,7 @@ import type {
  * @ignore
  */
 const CC_EVENT_ALLOW_LIST = new Set<string>(Object.values(CC_EVENTS));
+
 /**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.
  *
@@ -385,14 +386,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return;
     }
-    if (payload)
-      this.rememberAcceptedStation({
-        source: 'login',
-        payload,
-        response: response as Agent.StationLoginSuccess,
-      });
-    else
-      this.rememberAcceptedStation({source: 'reload', response: response as Agent.ReloginSuccess});
+    this.rememberAcceptedStation(
+      response as Agent.ReloginSuccess | Agent.StationLoginSuccess,
+      payload
+    );
     if (this.acceptedStation)
       await this.handleDeviceType(
         this.acceptedStation.deviceType as LoginOption,
@@ -403,11 +400,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   private rememberAcceptedStation(
-    input:
-      | {source: 'login'; payload: Agent.UserStationLogin; response: Agent.StationLoginSuccess}
-      | {source: 'reload'; response: Agent.ReloginSuccess}
+    response: Agent.ReloginSuccess | Agent.StationLoginSuccess,
+    station?: Agent.UserStationLogin
   ): void {
-    const {response} = input;
     const data = response.data;
     const nonblank = (value: unknown): value is string =>
       typeof value === 'string' && Boolean(value.trim());
@@ -420,13 +415,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.updateWellnessSession(sessionId);
     this.agentConfig.currentTeamId = data.teamId;
     let payload: Agent.UserStationLogin;
-    if (input.source === 'login') {
+    if (station) {
       payload = {
-        ...input.payload,
-        teamId: nonblank(data.teamId) ? data.teamId : input.payload.teamId,
+        ...station,
+        teamId: nonblank(data.teamId) ? data.teamId : station.teamId,
       };
     } else {
-      const fields = input.response.data;
+      const fields = response.data as Agent.ReloginSuccess['data'];
       let number: string | undefined;
       if (nonblank(fields.dn)) number = fields.dn;
       else if (nonblank(fields.dialNumber)) number = fields.dialNumber;
@@ -675,7 +670,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           isAgentLoggedIn: this.agentConfig?.isAgentLoggedIn,
           station: this.acceptedStation,
           allowAutomatedRelogin: this.$config?.allowAutomatedRelogin ?? false,
-          waitingForVoice: this.isWaitingForBrowserVoice(),
+          waitingForVoice:
+            this.webCallingService.isBrowserVoiceRequired() &&
+            !this.webCallingService.isVoiceReady(),
         }),
         onConnectionChange: (connected) => {
           if (connected) this.resumeRtd();
@@ -715,6 +712,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   private handleVoiceConnectionStateChange = (state: VoiceConnectionState): void => {
+    // WebexPlugin exposes `trigger` at runtime, though it is missing from its TypeScript types.
     // @ts-ignore
     this.trigger(VOICE_CONNECTION_EVENTS.STATE_CHANGE, state);
     this.services.connectionService.requestAutoAvailable();
@@ -861,7 +859,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     const wellnessEvent = this.normalizeWellnessBreakEvent(payload);
     if (wellnessEvent) {
-      // @ts-ignore
+      // @ts-ignore - WebexPlugin emit is available at runtime but absent from its declaration.
       this.emit(CC_EVENTS.WELLNESS_BREAK, wellnessEvent);
     }
 
@@ -996,7 +994,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.services.connectionService.resetRecovery();
     this.pauseRtd();
     this.services.connectionService.stop();
-    const previousProfile = this.agentConfig;
     if (this.agentConfig?.agentId) {
       this.services.webSocketManager.close(false, 'register');
       this.taskManager.unregisterIncomingCallEvent();
@@ -1004,9 +1001,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
     this.clearAcceptedStation();
     this.wellnessRegistrationGeneration += 1;
-    this.agentConfig = null;
     this.wellbeingBreakIdleCode = undefined;
-    const orgId = this.$webex.credentials.getOrgId();
     LoggerProxy.log('Starting CC SDK registration', {
       module: CC_FILE,
       method: METHODS.REGISTER,
@@ -1021,7 +1016,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.services.webSocketManager.off('message', this.handleWebsocketMessage);
       this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
-      const resp = await this.connectWebsocket(orgId);
+      const resp = await this.connectWebsocket();
       // Ensure 'dn' is always populated from 'defaultDn'
       resp.dn = resp.defaultDn;
       this.metricsManager.trackEvent(
@@ -1045,8 +1040,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ? {...resp, agentSessionId: this.currentAgentSessionId}
         : resp;
     } catch (error) {
-      // Retain the browser flags needed by deregister if profile retrieval failed.
-      if (!this.agentConfig) this.agentConfig = previousProfile;
       this.services.connectionService.stop();
       this.services.webSocketManager.close(false, 'registrationFailed');
       this.pauseRtd();
@@ -1276,12 +1269,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /**
    * Connects to the websocket and fetches the agent profile
-   * @param {string} orgId - Organization used for this registration
    * @returns {Promise<Profile>} Agent profile information
    * @throws {Error} If connection fails or profile cannot be fetched
    * @private
    */
-  private async connectWebsocket(orgId: string) {
+  private async connectWebsocket() {
     LoggerProxy.log('Connecting to websocket', {
       module: CC_FILE,
       method: METHODS.CONNECT_WEBSOCKET,
@@ -1290,6 +1282,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     try {
       const data = (await this.services.connectionService.connect()) as WelcomeEvent;
       const agentId = data.agentId;
+      const orgId = this.$webex.credentials.getOrgId();
       const profile = await this.services.config.getAgentConfig(orgId, agentId);
       const {multiRegionSettings} = profile;
       // Keep recovery settings private when register() returns this profile.
@@ -1459,7 +1452,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       const payload = this.buildStationLoginPayload(data);
       const loginResponse = await this.services.agent.stationLogin({data: payload});
-      this.rememberAcceptedStation({source: 'login', payload, response: loginResponse});
+      this.rememberAcceptedStation(loginResponse, payload);
 
       this.webCallingService.setLoginOption(data.loginOption);
       this.webCallingService.setBrowserVoiceRequired(this.isBrowserVoiceRequired(data.loginOption));
@@ -1744,12 +1737,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const {error: detailedError} = getErrorDetails(error, METHODS.SET_AGENT_STATE, CC_FILE);
       throw detailedError;
     }
-  }
-
-  private isWaitingForBrowserVoice(): boolean {
-    return (
-      this.webCallingService.isBrowserVoiceRequired() && !this.webCallingService.isVoiceReady()
-    );
   }
 
   private applyAvailableState(response: Agent.StateChangeSuccess): void {
@@ -2693,8 +2680,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (
         this.$config?.allowAutomatedRelogin &&
         this.agentConfig?.isAgentLoggedIn !== false &&
-        !this.services.connectionService.isRecovering &&
-        this.services.connectionService.regionState?.status !== 'unavailable' &&
         this.services.connectionService.regionState?.status !== 'stationLoginRequired'
       ) {
         try {
@@ -2721,6 +2706,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     let fallbackAttempted = false;
     try {
       let reLoginResponse: Agent.ReloginSuccess | Agent.StationLoginSuccess;
+      let station: Agent.UserStationLogin | undefined;
       try {
         reLoginResponse = await this.services.agent.reload();
       } catch (error) {
@@ -2733,36 +2719,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         fallbackAttempted = true;
         try {
           reLoginResponse = await this.services.agent.stationLogin({data: payload});
+          station = payload;
         } catch (loginError) {
           if (getStationRecoveryFailureCategory(normalizeRecoveryFailure(loginError)) !== 'exists')
             throw loginError;
           reLoginResponse = await this.services.agent.reload();
         }
-        if (reLoginResponse.data.type === CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS)
-          this.rememberAcceptedStation({
-            source: 'login',
-            payload,
-            response: reLoginResponse as Agent.StationLoginSuccess,
-          });
       }
-      if (reLoginResponse.data.type !== CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS)
-        this.rememberAcceptedStation({
-          source: 'reload',
-          response: reLoginResponse as Agent.ReloginSuccess,
-        });
+      this.rememberAcceptedStation(reLoginResponse, station);
 
       const {agentId} = reLoginResponse.data;
-      const {lastStateChangeReason, deviceType, dn} =
-        reLoginResponse.data as Agent.ReloginSuccess['data'];
-      const acceptedPayload = this.acceptedStation;
-      if (acceptedPayload)
-        await this.handleDeviceType(
-          acceptedPayload.deviceType as LoginOption,
-          acceptedPayload.dialNumber,
-          fallbackAttempted
-        );
-      else if (Object.values(LoginOption).includes(deviceType as LoginOption))
-        await this.handleDeviceType(deviceType as LoginOption, dn);
+      const {lastStateChangeReason} = reLoginResponse.data as Agent.ReloginSuccess['data'];
+      const {deviceType, dn} = this.agentConfig;
+      if (Object.values(LoginOption).includes(deviceType))
+        await this.handleDeviceType(deviceType, dn, fallbackAttempted);
 
       if (lastStateChangeReason === 'agent-wss-disconnect') {
         LoggerProxy.log(
