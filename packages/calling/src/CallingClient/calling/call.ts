@@ -362,9 +362,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     const iceErrorPayload = {
       address: event.address != null ? sanitizeLogValue(String(event.address)) : null,
       errorCode: event.errorCode,
-      errorText: sanitizeLogValue(event.errorText),
+      errorText: event.errorText != null ? sanitizeLogValue(event.errorText) : null,
       port: event.port != null ? sanitizeLogValue(String(event.port)) : null,
-      url: sanitizeLogValue(event.url),
+      url: event.url != null ? sanitizeLogValue(event.url) : null,
     };
 
     log.warn(`ICE candidate error occurred: ${JSON.stringify(iceErrorPayload)}`, {
