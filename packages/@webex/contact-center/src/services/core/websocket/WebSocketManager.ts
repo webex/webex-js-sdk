@@ -82,10 +82,6 @@ export class WebSocketManager extends EventEmitter {
     });
   }
 
-  public getUrl(): string | null {
-    return this.url;
-  }
-
   public hasUsableSocket(): boolean {
     return this.isWelcomeReceived && this.websocket?.readyState === 1;
   }

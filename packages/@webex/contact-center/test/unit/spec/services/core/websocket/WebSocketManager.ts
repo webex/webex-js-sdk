@@ -137,7 +137,6 @@ describe('WebSocketManager subscription and connection', () => {
     expect(workers[0].postMessage).not.toHaveBeenCalled();
     const {promise, socket} = await start();
     expect(socket.url).toBe(url);
-    expect(webSocketManager.getUrl()).toBe(url);
     expect(request).toHaveBeenCalledWith({
       service: WCC_API_GATEWAY,
       resource: SUBSCRIBE_API,
@@ -376,7 +375,7 @@ describe('WebSocketManager subscription and connection', () => {
     expect(MockWebSocket.instances).toHaveLength(action === 'close' ? 0 : 1);
     expect(webSocketManager.hasUsableSocket()).toBe(action === 'replace');
     expect(jest.getTimerCount()).toBe(0);
-    if (action === 'replace') expect(webSocketManager.getUrl()).toBe(otherUrl);
+    if (action === 'replace') expect(MockWebSocket.instances[0].url).toBe(otherUrl);
   });
 
   it('rejects a closed connection before Welcome and stops its worker', async () => {

@@ -156,7 +156,7 @@ The `contact-center-region-recovery` contract exports the runtime constants `REG
 and `REGION_RECOVERY_ERROR_CODES` and the `RegionRecoveryState` type from `src/index.ts`.
 `region:stateChange` carries the whole `RegionRecoveryState` snapshot. Status is `recovering`,
 `ready`, `stationLoginRequired`, or `unavailable`. Missing optional fields clear
-previous tracking, scope, placement, retry, and auto-Available metadata. Hosts use these snapshots
+previous tracking, scope, home-region, retry, and auto-Available metadata. Hosts use these snapshots
 to pause station actions during recovery. Requests already sent follow their existing completion
 or timeout path.
 
@@ -364,7 +364,7 @@ sequenceDiagram
 ### Recovery
 
 Ordinary reconnect uses the existing relogin path shown below. ContactCenter handles system region
-switches, eligibility, switch deduplication, regional retry timing, placement, and recovery snapshots.
+switches, eligibility, switch deduplication, regional retry timing, and recovery snapshots.
 It pauses RTD and retires failed-region Tasks, then awaits `connectionService.connect()` before
 restoring the station. ConnectionService owns subscribe/Welcome, recognized 409/U2C refresh, and
 ordinary reconnect timing, reporting transport changes through events. Hosts pause new station actions

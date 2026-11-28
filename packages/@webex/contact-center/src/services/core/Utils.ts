@@ -72,17 +72,6 @@ export const sanitizeForObservability = (value: unknown): string => {
   return value.replace(/[\x00-\x1f\x7f]/g, '').slice(0, MAX_SANITIZED_OBSERVABILITY_VALUE_LENGTH);
 };
 
-/** Restricts recovery diagnostic identifiers to the expected characters and length. */
-export const normalizeRecoveryDiagnosticId = (value: unknown): string | undefined => {
-  const id = sanitizeForObservability(value);
-
-  return /^[A-Za-z0-9_.:-]{1,200}$/.test(id) ? id : undefined;
-};
-
-/** Reads the first nonblank string without interpreting backend reason text. */
-const firstNonblankString = (...values: unknown[]): string | undefined =>
-  values.find((value): value is string => typeof value === 'string' && !!value.trim())?.trim();
-
 /** Looks up a known HTTP header case-insensitively without copying any other headers. */
 const getHeader = (headers: Record<string, unknown>, name: string): unknown =>
   Object.entries(headers ?? {}).find(([key]) => key.toLowerCase() === name)?.[1];
@@ -107,15 +96,19 @@ export const normalizeRecoveryFailure = (error: any): RecoveryFailure => {
   const reasonCode = [data?.reasonCode, details?.reasonCode, source.data?.reasonCode]
     .map((code) => (typeof code === 'string' && /^\d+$/.test(code) ? Number(code) : code))
     .find(Number.isInteger);
-  const reason = firstNonblankString(data?.reason, details?.reason, source.data?.reason);
-  const trackingId = firstNonblankString(
+  const reason = [data?.reason, details?.reason, source.data?.reason]
+    .find((value): value is string => typeof value === 'string' && !!value.trim())
+    ?.trim();
+  const trackingId = [
     data?.trackingId,
     details?.trackingId,
     getHeader(source.headers, 'trackingid'),
     getHeader(response?.headers, 'trackingid'),
-    source.data?.trackingId
-  );
-  const id = firstNonblankString(source.id);
+    source.data?.trackingId,
+  ]
+    .find((value): value is string => typeof value === 'string' && !!value.trim())
+    ?.trim();
+  const id = typeof source.id === 'string' ? source.id.trim() : undefined;
 
   return {
     ...(status !== undefined ? {status} : {}),
@@ -153,12 +146,14 @@ export const getSubscriptionMismatchReason = (error: any): string | undefined =>
 
   const {response} = error;
   const body = error.body ?? response?.body ?? response?.data;
-  const reason = firstNonblankString(
+  const reason = [
     getHeader(error.headers, 'x-wxcc-region-reason'),
     getHeader(response?.headers, 'x-wxcc-region-reason'),
     body?.reason,
-    body?.error?.reason
-  );
+    body?.error?.reason,
+  ]
+    .find((value): value is string => typeof value === 'string' && !!value.trim())
+    ?.trim();
 
   return SUBSCRIPTION_MISMATCH_REASONS.find((candidate) => candidate === reason);
 };

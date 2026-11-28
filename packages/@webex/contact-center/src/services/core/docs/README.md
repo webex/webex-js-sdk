@@ -154,7 +154,7 @@ contract `contact-center-core-transport` (internal SDK contract, canonical sourc
 | ------- | -------- | ------------------------ | ------ |
 | `contact-center-core-transport`: `AqmReqs` (`req`, `reqEmpty`) and the `Req` configuration | Agent, contact, and dialer factories | Internal; additive config fields only, every in-package caller updated in the same change | `src/services/core/aqm-reqs.ts`, `src/services/core/types.ts` |
 | `contact-center-core-transport`: `WebexRequest.getInstance`, `request`, `uploadLogs` | `src/cc.ts`, config and other services, the error helpers | Internal; `request` returns or rejects with the host result unchanged | `src/services/core/WebexRequest.ts` |
-| `contact-center-core-transport`: `WebSocketManager` (`initWebSocket`, `close`, `handleConnectionLost`, `shouldReconnect`, `isSocketClosed`, `hasUsableSocket`, `getUrl`, events `message` and `socketClose`) | `Services`, `src/cc.ts`, `TaskManager`, `AqmReqs`, `ConnectionService` | Internal; event names are string literals that listeners depend on | `src/services/core/websocket/WebSocketManager.ts` |
+| `contact-center-core-transport`: `WebSocketManager` (`initWebSocket`, `close`, `handleConnectionLost`, `shouldReconnect`, `isSocketClosed`, `hasUsableSocket`, events `message` and `socketClose`) | `Services`, `src/cc.ts`, `TaskManager`, `AqmReqs`, `ConnectionService` | Internal; event names are string literals that listeners depend on | `src/services/core/websocket/WebSocketManager.ts` |
 | `contact-center-core-transport`: `ConnectionService` (`connect`, `reset`, `stop`, `setConnectionProp`; events `connectionLost`, `reconnectFailed`, `subscriptionMismatch`) | `src/cc.ts` | Internal; ContactCenter awaits transport and handles its notifications | `src/services/core/websocket/connection-service.ts`, `src/services/core/websocket/types.ts` |
 | `contact-center-core-transport`: error and utility helpers, `Err` classes, `Msg`, `Failure`, `AugmentedError` | Agent, config, task, and plugin code | Internal; error `message` and `data` shapes are observed by callers | `src/services/core/Utils.ts`, `src/services/core/Err.ts`, `src/services/core/GlobalTypes.ts` |
 
@@ -498,8 +498,7 @@ classDiagram
 
 `connect()` constructs the socket; `setupWebSocketHandlers()` attaches its socket and keepalive handlers.
 
-`hasUsableSocket()` requires an open socket with an accepted Welcome. `getUrl()` returns the
-subscribed URL for ConnectionService's serving-region state. Explicit close rejects a pending subscription or
+`hasUsableSocket()` requires an open socket with an accepted Welcome. Explicit close rejects a pending subscription or
 Welcome wait; a late subscription reply cannot open that closed attempt. See CORE-R-002 and CORE-R-016.
 
 ### AqmReqs members
@@ -676,6 +675,8 @@ reads the backend reason and reason code from that body without copying them int
 boundary. It validates numeric status and reason-code values once; ContactCenter uses the typed
 result without repeating those checks. Region-switch identity and recognized subscribe-409 reasons
 are checked where the remote message or response enters the recovery flow.
+HTTP header lookup remains case-insensitive; diagnostic identifier checks stay at the ContactCenter
+log/metric emission point.
 
 `Failure` in [GlobalTypes.ts](../GlobalTypes.ts) is a specific `Msg<T>` for failure responses whose
 `data` holds `agentId`, `trackingId`, `reasonCode`, `orgId`, and `reason`; `AugmentedError` is an

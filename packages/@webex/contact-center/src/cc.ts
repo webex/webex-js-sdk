@@ -64,13 +64,11 @@ import {
   sanitizeForObservability,
   createRegionRecoveryError,
   normalizeRecoveryFailure,
-  normalizeRecoveryDiagnosticId,
   normalizeRegionSwitch,
   isRegionRecoveryError,
 } from './services/core/Utils';
 import type {RecoveryFailure} from './services/core/types';
 import type {MultiRegionSettings, SystemRegionSwitch} from './services/config/types';
-import {REFERENCE_SERVING_REGIONS} from './services/core/constants';
 import {
   Profile,
   WelcomeEvent,
@@ -2566,24 +2564,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       ...state,
     };
     delete retained.homeRegion;
-    delete retained.servingRegion;
-    delete retained.limitedService;
-    const {homeRegion, multiRegionEnabled} = this.multiRegionSettings ?? {};
-    const manager = this.services.webSocketManager;
-    const url = manager.getUrl();
-    const servingRegion =
-      manager.hasUsableSocket() && url
-        ? REFERENCE_SERVING_REGIONS.find((region) =>
-            new URL(url).hostname.split('.').includes(region)
-          )
-        : undefined;
+    const homeRegion = this.multiRegionSettings?.homeRegion;
     const snapshot = Object.freeze({
       ...retained,
       ...(homeRegion ? {homeRegion} : {}),
-      ...(servingRegion ? {servingRegion} : {}),
-      ...(multiRegionEnabled && homeRegion && servingRegion
-        ? {limitedService: homeRegion !== servingRegion}
-        : {}),
     });
     if (isEqual(snapshot, this.regionState)) return;
     this.regionState = snapshot;
@@ -2599,8 +2583,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     failure?: RecoveryFailure
   ): void {
     const elapsedMs = Math.max(0, Date.now() - startedAt);
-    const id = normalizeRecoveryDiagnosticId(failure?.id);
-    const trackingId = normalizeRecoveryDiagnosticId(failure?.trackingId);
+    const [id, trackingId] = [failure?.id, failure?.trackingId].map((value) => {
+      const identifier = sanitizeForObservability(value);
+
+      return /^[A-Za-z0-9_.:-]+$/.test(identifier) ? identifier : undefined;
+    });
     const payload = {
       stage,
       outcome,

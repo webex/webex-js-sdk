@@ -42,23 +42,6 @@ export const PING_API_URL = '/health';
  */
 export const WELCOME_TIMEOUT = 30000;
 
-/** Exact supported hostname labels; placement never authorizes a socket URL. */
-export const REFERENCE_SERVING_REGIONS = [
-  'intgus1',
-  'qaus1',
-  'loadus1',
-  'loadus2',
-  'produs1',
-  'produs2',
-  'prodanz1',
-  'prodca1',
-  'prodeu1',
-  'prodeu2',
-  'prodin1',
-  'prodjp1',
-  'prodsg1',
-] as const;
-
 /**
  * Event name used for real-time device (RTD) ping status.
  * @ignore

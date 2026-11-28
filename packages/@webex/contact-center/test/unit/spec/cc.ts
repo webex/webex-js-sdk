@@ -303,7 +303,6 @@ class EventEmitterDouble extends EventEmitter {
   public mapCallToTask = jest.fn();
   public cleanUpCall = jest.fn();
   public hasUsableSocket = jest.fn(() => true);
-  public getUrl = jest.fn();
 
   public on = jest.fn((eventName: string | symbol, listener: (...args: unknown[]) => void) => {
     super.on(eventName, listener);
@@ -416,7 +415,6 @@ describe('webex.cc', () => {
     mockWebSocketManager = {
       initWebSocket: jest.fn(),
       hasUsableSocket: jest.fn(() => true),
-      getUrl: jest.fn(),
       on: jest.fn(),
       off: jest.fn(),
       close: jest.fn(),
@@ -6642,8 +6640,6 @@ describe('regional recovery wiring', () => {
           status: 'ready',
           reason: 'initial-login',
           homeRegion: 'produs1',
-          servingRegion: 'produs1',
-          limitedService: false,
         })
       );
       expect(registerLine).toHaveBeenCalledTimes(browserVoice ? 1 : 0);
@@ -6758,7 +6754,6 @@ describe('regional recovery wiring', () => {
           status: 'ready',
           operation: 'FAILOVER',
           scope: 'ORG',
-          servingRegion: 'produs2',
         })
       );
       startSwitch('FAILOVER');
@@ -6799,7 +6794,6 @@ describe('regional recovery wiring', () => {
           status: 'ready',
           operation: 'FAILBACK',
           scope: 'REGION',
-          servingRegion: 'produs1',
         })
       );
       expect(requests.slice(start).map(({resource}) => resource)).toEqual([
@@ -7163,7 +7157,6 @@ describe('regional recovery wiring', () => {
           expect.objectContaining({
             status: 'ready',
             operation: 'FAILOVER',
-            servingRegion: 'produs2',
           })
         );
         expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(3);
@@ -7436,7 +7429,6 @@ describe('regional recovery wiring', () => {
       expect(state).toHaveBeenLastCalledWith(
         expect.objectContaining({status: 'recovering', reason: 'region-mismatch'})
       );
-      expect(state.mock.calls.at(-1)[0].servingRegion).toBeUndefined();
       const replacement = currentRouting();
       expect(new URL(replacement.url).hostname).toBe('routing.produs2.cisco.com');
       replacement.welcome();

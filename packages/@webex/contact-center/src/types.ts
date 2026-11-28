@@ -52,8 +52,6 @@ export type RegionRecoveryState = {
   operation?: 'FAILOVER' | 'FAILBACK';
   scope?: 'REGION' | 'ORG';
   homeRegion?: string;
-  servingRegion?: string;
-  limitedService?: boolean;
   retryAfterMs?: number;
   /** Outcome of the conditional automatic state action, separate from readiness. */
   autoAvailable?: 'waitingForVoice' | 'requesting' | 'succeeded' | 'failed' | 'cancelled';
