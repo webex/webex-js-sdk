@@ -24,6 +24,7 @@ import {SetStateResponse} from '../../../src/types';
 import {
   AGENT,
   SUBSCRIBE_API,
+  RTD_SUBSCRIBE_API,
   WCC_API_GATEWAY,
   WEB_RTC_PREFIX,
 } from '../../../src/services/constants';
@@ -301,6 +302,7 @@ class EventEmitterDouble extends EventEmitter {
   public mapCallToTask = jest.fn();
   public cleanUpCall = jest.fn();
   public hasUsableSocket = jest.fn(() => true);
+  public getUrl = jest.fn();
 
   public on = jest.fn((eventName: string | symbol, listener: (...args: unknown[]) => void) => {
     super.on(eventName, listener);
@@ -413,6 +415,7 @@ describe('webex.cc', () => {
     mockWebSocketManager = {
       initWebSocket: jest.fn(),
       hasUsableSocket: jest.fn(() => true),
+      getUrl: jest.fn(),
       on: jest.fn(),
       off: jest.fn(),
       close: jest.fn(),
@@ -4080,9 +4083,6 @@ describe('webex.cc', () => {
         data: {lastStateChangeTimestamp: 1234, lastIdleCodeChangeTimestamp: 12345},
       } as unknown as SetStateResponse);
       jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
-      webex.cc.services.connectionService.publishRegionState.mockImplementation((state) => {
-        webex.cc.services.connectionService.regionState = state;
-      });
 
       const registerWebCallingLineSpy = jest.spyOn(
         webex.cc.webCallingService,
@@ -6818,7 +6818,7 @@ describe('regional recovery wiring', () => {
           type: CC_EVENTS.AGENT_STATION_LOGIN,
         });
         await flush();
-        expect(cc.services.connectionService.regionState).toMatchObject({status: 'ready'});
+        expect(cc['regionState']).toMatchObject({status: 'ready'});
       });
     }
   );
@@ -7442,6 +7442,26 @@ describe('regional recovery wiring', () => {
     });
   });
 
+  it('ends regional recovery if station restoration rejects expired credentials', async () => {
+    await withRouting(async ({cc, requests, connectBackup, login}) => {
+      await login();
+      const state = jest.fn();
+      cc.on('region:stateChange', state);
+      jest.spyOn(cc.services.agent, 'reload').mockRejectedValueOnce({statusCode: 401});
+      await connectBackup();
+      await flush();
+
+      expect(state).toHaveBeenLastCalledWith(expect.objectContaining({
+        status: 'unavailable', reason: 'authentication-failed',
+      }));
+      expect(cc.services.webSocketManager.hasUsableSocket()).toBe(false);
+      const subscriptions = requests.filter(({resource}) => resource === SUBSCRIBE_API).length;
+      jest.advanceTimersByTime(10 * 60 * 1000);
+      await flush();
+      expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(subscriptions);
+    });
+  });
+
   it('ends regional recovery if refreshing U2C rejects the credentials', async () => {
     await withRouting(async ({
       cc, requests, startSwitch, advanceSwitch, setSubscribeFailure, updateServices,
@@ -7639,6 +7659,36 @@ describe('regional recovery wiring', () => {
       );
       expect(requests.some(({resource}) => resource === '/v1/agents/reload')).toBe(restores);
     });
+  });
+
+  it('reconnects RTD after ordinary 409 discovery and station restoration', async () => {
+    await withRouting(async ({cc, requests, sockets, currentRouting, setSubscribeFailure, login}) => {
+      const originalRtd = sockets.find((socket) => socket.url.includes('rtd.'));
+      originalRtd.welcome();
+      await flush();
+      await login();
+
+      setSubscribeFailure(subscribeConflict('REGION_MISMATCH_ORG_OVERRIDE'));
+      currentRouting().lose();
+      jest.advanceTimersByTime(5000);
+      await flush();
+      expect(originalRtd.close).toHaveBeenCalledTimes(1);
+      const rtdRequests = () => requests.filter(({resource}) => resource === RTD_SUBSCRIBE_API);
+      expect(rtdRequests()).toHaveLength(1);
+      const replacement = currentRouting();
+      replacement.welcome();
+      await flush();
+      expect(rtdRequests()).toHaveLength(1);
+      replacement.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS));
+      await flush();
+
+      expect(rtdRequests()).toHaveLength(2);
+      const recoveredRtd = sockets.filter((socket) => socket.url.includes('rtd.')).at(-1);
+      expect(recoveredRtd).not.toBe(originalRtd);
+      recoveredRtd.welcome();
+      await flush();
+      expect(cc.services.rtdWebSocketManager.hasUsableSocket()).toBe(true);
+    }, {rtdEnabled: true});
   });
 
   it('keeps RTD connected when ordinary reconnect restores a new station session', async () => {

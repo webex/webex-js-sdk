@@ -93,7 +93,7 @@ Related context: [documentation index](../../../../docs/index.md) ·
 ## Purpose and boundary
 
 - Purpose: Manage agent lifecycle including login, logout, state changes, and buddy agent queries.
-- Responsibility: Agent owns the `routingAgent(AqmReqs)` request factory for station login, station logout, agent-state change, buddy-agent lookup, and agent-session reload. ContactCenter owns station restoration, application-facing methods/events, and profile/device updates. ConnectionService reconnects transport and awaits ContactCenter's restoration result.
+- Responsibility: Agent owns the `routingAgent(AqmReqs)` request factory for station login, station logout, agent-state change, buddy-agent lookup, and agent-session reload. ContactCenter owns station restoration, application-facing methods/events, and profile/device updates. ConnectionService reconnects transport; ContactCenter awaits it before station restoration.
 - In scope: Own AQM request definitions for station login/logout, state change, buddy-agent queries, and reload, the routing payload and notification types, and `AGENT_EVENTS`.
 - Out of scope: Device/profile update and automated relogin orchestration belong to ContactCenter. Request correlation, timeouts, and the socket belong to AqmReqs and the core module.
 - Consumers: the services root (`services.agent`), ContactCenter, and applications that import `routingAgent` or `AGENT_EVENTS` from the package.
@@ -303,7 +303,7 @@ Preconditions for the wrappers:
 | AGENT-R-001 | routingAgent station login/logout must use the documented WCC endpoints (`POST /v1/agents/login`, `POST /v1/agents/logout`) and settle on their nested `CC_EVENTS` success/failure notifications. | The backend operation is asynchronous and HTTP acknowledgement is not final agent state. | `src/services/agent/index.ts` | `test/unit/spec/services/agent/index.ts`, `test/unit/spec/cc.ts` | The factory test asserts delegation to `req` only; endpoint and bind values are not asserted. | PRESENT |
 | AGENT-R-002 | State change must use PUT `/v1/agents/session/state` and preserve typed success/failure binds. | Agent availability drives routing eligibility and must not be inferred from request acknowledgement. | `src/services/agent/index.ts` | `test/unit/spec/services/agent/index.ts`, `test/unit/spec/cc.ts` | The PUT method and binds are not asserted by a unit test. | PRESENT |
 | AGENT-R-003 | Buddy-agent lookup must preserve its typed request and correlated response contract. | Consult/transfer selection depends on backend-filtered availability. | `src/services/agent/index.ts` | `test/unit/spec/services/agent/index.ts`, `test/unit/spec/cc.ts` | The `POST /v1/agents/buddyList` endpoint is not asserted by a unit test. | PRESENT |
-| AGENT-R-004 | The agent factory exposes `reload`. ContactCenter owns ordinary and regional station restoration; ConnectionService awaits its recovery callback after reconnecting transport. | The request factory should not duplicate connection policy or mutate the agent profile. | `src/cc.ts`, `src/services/core/websocket/connection-service.ts` | `test/unit/spec/cc.ts` | None. | PRESENT |
+| AGENT-R-004 | The agent factory exposes `reload`. ContactCenter awaits ConnectionService transport and owns ordinary and regional station restoration using existing AQM requests. | The request factory should not duplicate connection policy or mutate the agent profile. | `src/cc.ts`, `src/services/core/websocket/connection-service.ts` | `test/unit/spec/cc.ts` | None. | PRESENT |
 | AGENT-R-005 | Device/profile update is `ContactCenter.updateAgentProfile`: it calls `stationLogout` with reason 'User requested agent profile update', then `stationLogin` with the new `loginOption`, `dialNumber`, and `teamId`, and returns the login response typed `AgentDeviceTypeUpdateSuccess`; `routingAgent` has no `deviceUpdate` function. | The factory has no device-update request, so a device or team change reuses the logout and login flows with their metrics; calling a non-existent `routingAgent.deviceUpdate` would fail at runtime. | `src/cc.ts`, `src/services/agent/index.ts` | `test/unit/spec/cc.ts` | No test asserts that `routingAgent.deviceUpdate` is absent. | PRESENT |
 | AGENT-R-006 | BROWSER station login must send `dialNumber` and `deviceId` as `webrtc-{agentId}` on `POST /v1/agents/login`. EXTENSION and AGENT_DN continue to send the caller-supplied dial number for both fields. | QRM stores `agent.dn` from `dialNumber`. Legacy VPOP RTMS only treats a DN as WebRTC when it starts with `webrtc-`; a bare UUID gets a steering prefix and the agent invite fails with SIP 484. | `src/cc.ts` | `test/unit/spec/cc.ts` | Public `stationLogin({loginOption: 'BROWSER'})` input is unchanged; only the backend login payload is prefixed. | PRESENT |
 | AGENT-R-007 | An AGENT_DN station login whose dial number fails `isValidDialNumber` against the profile dial plan rejects with `INVALID_DIAL_NUMBER` before any request is sent. | The backend would otherwise register an unreachable DN; the reason maps to a field message for the login form. | `src/cc.ts` | `test/unit/spec/services/core/Utils.ts` | No `test/unit/spec/cc.ts` case drives the AGENT_DN rejection. | PRESENT |
@@ -318,7 +318,7 @@ The agent service uses a factory pattern: `routingAgent` is a pure AQM factory. 
 
 The factory initiates authenticated HTTP requests and supplies `CC_EVENTS` success/failure binds to AqmReqs. The services root builds it once as `services.agent` (`src/services/index.ts`); the factory holds no state.
 
-ContactCenter validates and enriches public inputs, starts metrics, delegates to the factory, performs browser-calling work when required, and maps backend notifications to application-facing events. `updateAgentProfile()` and private `silentRelogin()` remain ContactCenter methods. ConnectionService awaits ContactCenter's station-recovery callback; ordinary and regional restoration share the same private login and session-application flows.
+ContactCenter validates and enriches public inputs, starts metrics, delegates to the factory, performs browser-calling work when required, and maps backend notifications to application-facing events. `updateAgentProfile()` and private `silentRelogin()` remain ContactCenter methods. ContactCenter awaits ConnectionService transport and uses the same private login and session-application flows for ordinary and regional station restoration.
 
 Stack: TypeScript 5.4 AQM request factory, REST initiation, WebSocket completion events, Jest 27.
 
@@ -349,7 +349,7 @@ Sequence coverage:
 | Station logout | `cc.stationLogout` → `logout` → `POST /v1/agents/logout`; resolves `StationLogoutResponse` | Station logout | Nested failure/timeout rejects and calling deregistration occurs only after success |
 | State change | `cc.setAgentState` → `stateChange` → `PUT /v1/agents/session/state`; resolves `SetStateResponse` | State change | Pre-request browser-voice rejection; failure notification or timeout returns a structured rejection |
 | Buddy agents | `cc.getBuddyAgents` → `buddyAgents` → `POST /v1/agents/buddyList`; resolves `BuddyAgentsResponse` | Buddy-agent lookup | Correlated retrieval failure/timeout rejects |
-| Reload | Ordinary reconnect, `cc.register()`, or the regional recovery callback → ContactCenter station restoration → `reload` → `POST /v1/agents/reload` | Recovery reload | Ordinary `AGENT_NOT_FOUND` is silent; regional retries are bounded and can require station login |
+| Reload | Ordinary reconnect, `cc.register()`, or regional recovery → ContactCenter station restoration → `reload` → `POST /v1/agents/reload` | Recovery reload | Ordinary `AGENT_NOT_FOUND` is silent; regional retries are bounded and can require station login |
 | Event mapping | WebSocket message → `handleWebsocketMessage` → `AGENT_EVENTS` emit | WebSocket-to-application event mapping | Types outside `CC_EVENTS` are not emitted |
 
 ### Station login
@@ -500,16 +500,16 @@ sequenceDiagram
 Automatic relogin on WebSocket reconnection: `handleConnectionLost` runs `silentRelogin()` only
 when `isConnectionLost` is false, `isSocketReconnected` is true, `allowAutomatedRelogin` is enabled,
 `agentConfig.isAgentLoggedIn !== false`, and the last recovery status is not `stationLoginRequired`.
-ConnectionService stops ordinary monitoring during regional recovery and terminal failure. Explicit
+ContactCenter stops ordinary monitoring during regional recovery; ConnectionService stops on terminal transport failure. Explicit
 logout suppresses automatic restoration; enabling the config flag alone
 does not bypass suppression or regional recovery ownership. Separately, `connectWebsocket` during
 `cc.register()` restores the station when `allowAutomatedRelogin` is enabled and the primary
 socket is still connected; a disconnect or relogin failure rejects `cc.register()`. Ordinary
 monitoring starts after registration setup completes. Hosts await
-`register()` and `deregister()` and pause new station/task actions during recovery. ConnectionService
-owns the regional connection timer and awaits ContactCenter's `recoverSession()` callback. ContactCenter
-owns the bounded reload/fallback path, sharing `loginStation()` and `applyStationSession()` with
-ordinary login and relogin. The callback returns the station outcome before it is published. `stationLoginRequired`
+`register()` and `deregister()` and pause new station/task actions during recovery. ContactCenter
+owns the regional timer and awaits `connectionService.connect()` before its bounded reload/fallback
+path, sharing `loginStation()` and `applyStationSession()` with ordinary login and relogin.
+ContactCenter publishes the station outcome after applying the accepted response. `stationLoginRequired`
 requires explicit station login. Evidence: `src/cc.ts`,
 `src/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts`.
 
@@ -568,7 +568,7 @@ classDiagram
   class AqmReqs
   class WebSocketManager
   ContactCenter --> routingAgent : public agent operations / reload
-  ConnectionService --> ContactCenter : recoverSession callback
+  ContactCenter --> ConnectionService : await connect; listen for ordinary reconnect
   routingAgent --> AqmReqs : request factories
   AqmReqs --> WebSocketManager : correlated notifications
   ContactCenter --> ContactCenter : updateAgentProfile + silentRelogin ownership
@@ -643,7 +643,7 @@ The [AQM request contract](../../core/docs/README.md#aqmreqs-members) describes 
 | HTTP rejection, timeout after 20000 ms, or the same request already pending | AqmReqs rejects with `Service.aqm.agent.stationLogin`, `Service.reqs.generic.failure`, `Service.aqm.reqs.Timeout`, or `Service.aqm.reqs.Pending` details; these carry no `data.reason`, so the wrapper throws `Error` with the message Error while performing followed by the method name | Treat the outcome as unknown and wait for an agent event; never synthesize success | Call again once the pending call has settled | `src/services/core/aqm-reqs.ts`, `src/services/core/Utils.ts` |
 | Available requested while browser voice is not ready | `Error` whose message is `VOICE_CONNECTION_ERROR.NOT_READY`; no request sent | Wait for `voice:connectionStateChange` to report voice ready, or choose an Idle code | Call again when voice is ready | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | Silent relogin finds no agent session and has no accepted station to restore | Reason `AGENT_NOT_FOUND`; returns without throwing, error logging, or log upload | Nothing to handle; the agent is logged out | Call `stationLogin` | `src/cc.ts`, `src/services/core/Utils.ts` |
-| Ordinary reconnect does not run silent relogin | No reload unless `isConnectionLost` is false, `isSocketReconnected` is true, `allowAutomatedRelogin` is true (the default), `agentConfig.isAgentLoggedIn !== false`, and the last recovery status is not `stationLoginRequired` | Preserve logout intent; ConnectionService stops ordinary monitoring during regional recovery and terminal failure | A later eligible reconnect can relogin; `stationLoginRequired` needs explicit login. Register-time relogin is a separate path gated by the flag and connection readiness | `src/config.ts`, `src/cc.ts`, `test/unit/spec/cc.ts` |
+| Ordinary reconnect does not run silent relogin | No reload unless `isConnectionLost` is false, `isSocketReconnected` is true, `allowAutomatedRelogin` is true (the default), `agentConfig.isAgentLoggedIn !== false`, and the last recovery status is not `stationLoginRequired` | Preserve logout intent; ContactCenter stops ordinary monitoring during regional recovery; ConnectionService stops on terminal transport failure | A later eligible reconnect can relogin; `stationLoginRequired` needs explicit login. Register-time relogin is a separate path gated by the flag and connection readiness | `src/config.ts`, `src/cc.ts`, `test/unit/spec/cc.ts` |
 
 For `stationLogin`, special error handling extracts field-specific messages: `getStationLoginErrorData`
 in `src/services/core/Utils.ts` builds an `errorCodeMessageMap` in which `DUPLICATE_LOCATION` gives the

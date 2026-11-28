@@ -124,7 +124,7 @@ services/core/
 | Component | File | Description |
 |---|---|---|
 | `WebSocketManager` | [`WebSocketManager.ts`](../websocket/WebSocketManager.ts) | Subscribes, validates and connects the returned URL, waits for Welcome, dispatches messages, and manages the socket's keepalive worker. Reports explicit or admitted socket closure through `socketClose({shouldReconnect})`. |
-| `ConnectionService` | [`connection-service.ts`](../websocket/connection-service.ts) | Orchestrates ordinary and regional transport recovery on top of `WebSocketManager`, including U2C refresh, snapshots, and diagnostics. ContactCenter restores the station through the awaited `recoverSession()` callback. |
+| `ConnectionService` | [`connection-service.ts`](../websocket/connection-service.ts) | Owns subscribe/connect, recognized 409/U2C refresh, and ordinary reconnect on top of WebSocketManager. ContactCenter awaits transport, then restores the station and publishes regional outcomes. |
 | `WebexRequest` | [`WebexRequest.ts`](../WebexRequest.ts) | Singleton HTTP client that forwards service/resource/method/body options to the authenticated host request API and provides `uploadLogs` diagnostics. |
 | `AqmReqs` | [`aqm-reqs.ts`](../aqm-reqs.ts) | Factory for creating request methods that send HTTP requests and wait for correlated WebSocket notifications (success or failure): the AQM request/response pattern and WebSocket notification binding, with the pending maps and timeout. Used by routing and task services to implement their API methods. |
 | `Utils` | [`Utils.ts`](../Utils.ts) | Shared utility functions including `getErrorDetails()` for standardized error handling, `generateTaskErrorObject()` for task-specific errors, and `createErrDetailsObject()` for constructing error detail objects; also `getStationLoginErrorData`, `getStationRecoveryFailureCategory`, `isAllowedUrlHost`, `isValidDialNumber`, `stripDialPlanChars`, and the consult utilities (`getConsultedAgentId`, `getDestAgentIdForCBT`, `calculateDestAgentId`, `calculateDestType`, `buildConsultConferenceParamData`, `deriveConsultTransferDestinationType`). |
@@ -155,7 +155,7 @@ contract `contact-center-core-transport` (internal SDK contract, canonical sourc
 | `contact-center-core-transport`: `AqmReqs` (`req`, `reqEmpty`) and the `Req` configuration | Agent, contact, and dialer factories | Internal; additive config fields only, every in-package caller updated in the same change | `src/services/core/aqm-reqs.ts`, `src/services/core/types.ts` |
 | `contact-center-core-transport`: `WebexRequest.getInstance`, `request`, `uploadLogs` | `src/cc.ts`, config and other services, the error helpers | Internal; `request` returns or rejects with the host result unchanged | `src/services/core/WebexRequest.ts` |
 | `contact-center-core-transport`: `WebSocketManager` (`initWebSocket`, `close`, `handleConnectionLost`, `shouldReconnect`, `isSocketClosed`, `hasUsableSocket`, `getUrl`, events `message` and `socketClose`) | `Services`, `src/cc.ts`, `TaskManager`, `AqmReqs`, `ConnectionService` | Internal; event names are string literals that listeners depend on | `src/services/core/websocket/WebSocketManager.ts` |
-| `contact-center-core-transport`: `ConnectionService` (`setSessionRecoveryHandler`, `connect`, `handleRegionSwitch`, `resetRecovery`, `reset`, `stop`, `setConnectionProp`; events `connectionLost`, `reconnectFailed`, `regionStateChange`, `recoveryDiagnostic`, `recoveryConnectionChange`) | `src/cc.ts` | Internal; ContactCenter supplies session effects and forwards recovery snapshots | `src/services/core/websocket/connection-service.ts`, `src/services/core/websocket/types.ts` |
+| `contact-center-core-transport`: `ConnectionService` (`connect`, `reset`, `stop`, `setConnectionProp`; events `connectionLost`, `reconnectFailed`, `subscriptionMismatch`) | `src/cc.ts` | Internal; ContactCenter awaits transport and handles its notifications | `src/services/core/websocket/connection-service.ts`, `src/services/core/websocket/types.ts` |
 | `contact-center-core-transport`: error and utility helpers, `Err` classes, `Msg`, `Failure`, `AugmentedError` | Agent, config, task, and plugin code | Internal; error `message` and `data` shapes are observed by callers | `src/services/core/Utils.ts`, `src/services/core/Err.ts`, `src/services/core/GlobalTypes.ts` |
 
 | Event | Data | Description |
@@ -165,7 +165,7 @@ contract `contact-center-core-transport` (internal SDK contract, canonical sourc
 | `connectionLost` | `ConnectionLostDetails` | Emitted by `ConnectionService` on ordinary lost, recovered, reconnected, and restore-failed transitions. A keepalive echo sets `isKeepAlive: true` and emits only in ordinary mode with no pending admission in progress. |
 | `reconnectFailed` | Original error (`unknown`) | Reports connection failures; ConnectionService owns retry/terminal policy when configured. Registration failures propagate through the awaited connection promise. |
 | `recoveryDiagnostic` | Metric name and normalized diagnostic payload | ContactCenter submits the mapped recovery metric through MetricsManager. |
-| `regionStateChange` | `RegionRecoveryState` | Complete, deduplicated recovery snapshot from ConnectionService. ContactCenter forwards it as the public `region:stateChange` event. |
+| `subscriptionMismatch` | No payload | A recognized primary subscribe mismatch is refreshing U2C. ContactCenter pauses RTD, retires stale Tasks, and publishes recovering. |
 
 Generic message wrapper used throughout the SDK. All WebSocket messages and AQM responses conform to this shape:
 `Msg<T>` in [GlobalTypes.ts](../GlobalTypes.ts) carries `type`, `orgId`, `trackingId`, and a `data` payload of type `T`, so a typed event such as a login success is declared as `Msg<{agentId, status, ...}>` and arrives as `{type, orgId, trackingId, data: {agentId, status, ...}}`.
@@ -183,7 +183,6 @@ Do not remove or reinterpret exported symbols/events without a documented consum
 | Browser WebSocket, Worker, URL and network-status APIs | Socket, keepalive worker (`Blob` + `URL.createObjectURL`), URL validation, `navigator.onLine` | Offline ordinary attempts skip subscribe and retry at the next five-second single-flight slot, bounded by the watchdog |
 | LoggerProxy and log upload | Every diagnostic line and the error helpers' upload | Fire and forget in the helpers |
 | `MetricsManager` (`src/metrics/MetricsManager.ts`) | Log-upload events and operational regional admission/station-reload outcomes | Not awaited |
-| ContactCenter's station-recovery handler | Awaited `recoverSession`, registered through `setSessionRecoveryHandler`; connection notifications use `recoveryConnectionChange` | ConnectionService reuses its constructor's subscribe settings and Webex credentials; ContactCenter owns station policy and profile/device/task/RTD effects |
 | `src/services/constants.ts`, `src/services/config/types.ts` | `WCC_API_GATEWAY`, `SUBSCRIBE_API`, `CC_EVENTS.WELCOME`, `SubscribeResponse`, `WelcomeResponse` | Compile-time |
 | `src/types.ts` | Shared `WebexSDK`, `HTTP_METHODS`, `RequestBody`, `IHttpResponse`, `LogsMetaData`, `UploadLogsResponse`, `SubscribeRequest`, `WebexRequestPayload`, `LoginOption`, and `RegionRecoveryState` types (contract `contact-center-region-recovery`) | Compile-time |
 | `src/services/task/types.ts` | Interaction and destination types for the consult helpers in `Utils.ts` | Compile-time |
@@ -195,7 +194,7 @@ Do not remove or reinterpret exported symbols/events without a documented consum
 | CORE-R-001 | WebexRequest must delegate service/resource/method/body options to the authenticated host request API and return or reject with the host result unchanged. | All Contact Center REST clients share host-owned authentication and service routing without duplicating credential logic. | `src/services/core/WebexRequest.ts` | `test/unit/spec/services/core/WebexRequest.ts` | Authorization-header masking belongs to `AqmReqs` HTTP-failure handling, not `WebexRequest.request`. | PRESENT |
 | CORE-R-002 | `initWebSocket({body, resource}): Promise<WelcomeResponse>` resolves on an accepted current Welcome. Application notifications, including `SYSTEM_REGION_SWITCH`, are delivered after Welcome. `AGENT_MULTI_LOGIN` can close the attempt before Welcome. | A socket must finish admission before delivering station, state, task, or region-switch messages. | `src/services/core/websocket/WebSocketManager.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts`, `test/unit/spec/cc.ts` | Subscription failure, invalid URL, supersession, and socket close before Welcome reject initialization. | PRESENT |
 | CORE-R-003 | AqmReqs must be constructed with the primary WebSocket manager and settle generated request promises from `notifSuccess`/`notifFail` binds or `TIMEOUT_REQ`. | HTTP acknowledgement alone does not represent backend operation completion. | `src/services/core/aqm-reqs.ts` | `test/unit/spec/services/core/aqm-reqs.ts` | None. | PRESENT |
-| CORE-R-004 | ConnectionService owns ordinary and regional transport recovery, with one pending ordinary attempt. Its `recoverSession()` callback awaits ContactCenter station restoration before the regional outcome is published. | Transport retry scheduling stays separate from ContactCenter station policy and profile/device effects. | `src/services/core/websocket/connection-service.ts`, `src/services/core/websocket/types.ts`, `src/cc.ts` | `test/unit/spec/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` | None. | PRESENT |
+| CORE-R-004 | ConnectionService owns subscribe/connect and ordinary transport recovery with one pending ordinary attempt. ContactCenter handles system region switches, awaits connect(), then restores the station and publishes the outcome. | Transport retry scheduling stays separate from ContactCenter station policy and profile/device effects. | `src/services/core/websocket/connection-service.ts`, `src/services/core/websocket/types.ts`, `src/cc.ts` | `test/unit/spec/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` | None. | PRESENT |
 | CORE-R-005 | The keepalive worker must use `KEEPALIVE_WORKER_INTERVAL` as its interval and `CLOSE_SOCKET_TIMEOUT` as its close-socket timeout, and AQM requests default to `TIMEOUT_REQ` unless disabled/overridden (values in the timer table under Concurrency and reactive flow). | Accurate timing is required for predictable recovery and request failure behavior. | `src/services/core/constants.ts`, `src/services/core/websocket/WebSocketManager.ts` | `test/unit/spec/services/core/aqm-reqs.ts`, `test/unit/spec/services/core/websocket/WebSocketManager.ts` | Socket tests assert the worker start values; the AQM default is asserted by its timeout cases. | PRESENT |
 | CORE-R-007 | AQM routing-failure logging never emits the raw routing message payload or error verbatim; the failure-bind path logs only a fixed redacted diagnostic regardless of `redactSensitiveLogs`. When an AQM request additionally sets `redactSensitiveLogs`, timeout logs must also omit the request URL, bind key, and response while preserving settlement and cleanup behavior. | Dynamic request paths and routing messages can contain participant identifiers or phone numbers that must not enter diagnostic logs. | `src/services/core/aqm-reqs.ts`, `src/services/core/types.ts` | `test/unit/spec/services/core/aqm-reqs.ts` | The timeout flag is internal and opt-in; ordinary AQM logging remains backward compatible while routing-failure logging is unconditionally redacted. | PRESENT |
 | CORE-R-008 | `WebSocketManager` opens a socket only for a subscribe/register `webSocketUrl` that parses as a `wss` URL whose host equals, or is a subdomain of, an entry in `ALLOWED_ROUTING_NOTIFS_DOMAINS`; a malformed, non-`wss`, or non-allow-listed URL is rejected with an error and no socket is opened. | A server-controlled subscribe response could otherwise direct the realtime connection to an untrusted or non-secure endpoint. | `src/services/core/websocket/WebSocketManager.ts`, `src/services/core/constants.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | The allow-list is a fixed domain set; subdomain matching is exact suffix matching on the parsed hostname. | PRESENT |
@@ -207,8 +206,8 @@ Do not remove or reinterpret exported symbols/events without a documented consum
 | CORE-R-014 | `uploadLogs(metaData)` submits diff logs with a fresh `feedbackId`, tracks `UPLOAD_LOGS_SUCCESS` or `UPLOAD_LOGS_FAILED`, resolves `{trackingid, feedbackId}` plus any returned `url`, `userId`, `correlationId`, and rethrows a failure. | The JSDoc: logs are uploaded to the backend for diagnostics; the `feedbackId` and `correlationId` let support find them. | `src/services/core/WebexRequest.ts` | `test/unit/spec/services/core/WebexRequest.ts` | None. | PRESENT |
 | CORE-R-015 | `getErrorDetails` and `generateTaskErrorObject` keep the error shapes and the logging and log-upload side effects specified under Caller-visible failure modes. | Callers rely on one error shape per flow for metrics, UI messages, and station-login field hints. | `src/services/core/Utils.ts` | `test/unit/spec/services/core/Utils.ts` | `generateTaskErrorObject` has no unit case in this module's tests. | PRESENT |
 | CORE-R-016 | Socket initialization owns the subscription, socket, 30-second Welcome deadline after subscription, and keepalive resources. Supersession, timeout, or explicit close disposes that attempt; a late subscription response cannot open its socket. | An obsolete socket or unresolved Welcome cannot claim the current transport. | `src/services/core/websocket/WebSocketManager.ts`, `src/services/core/constants.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | ConnectionService owns recovery policy. | PRESENT |
-| CORE-R-017 | Ordinary reconnect uses five-second slots under a 50-second watchdog and one pending attempt. Each retry uses the existing subscribe-and-connect method. A stopped or expired attempt cannot open a late socket. When configured, ConnectionService refreshes U2C and retries once for a recognized primary subscribe mismatch, and owns terminal handling. An admitted quiet socket can still receive a late keepalive. | Socket reconnection needs bounded, serialized transport work and one owner for mismatch recovery. | `src/services/core/websocket/connection-service.ts` | `test/unit/spec/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` | Regional transport delays live in ConnectionService; ContactCenter owns station retry budgets. | PRESENT |
-| CORE-R-018 | ContactCenter's regional station retries use the same AQM notification bindings, duplicate-request handling, and timeout as ordinary station requests; ConnectionService awaits their outcome. | The region switch changes the notification connection. | `src/services/core/aqm-reqs.ts`, `src/services/core/websocket/connection-service.ts`, `src/cc.ts` | `test/unit/spec/services/core/aqm-reqs.ts`, `test/unit/spec/cc.ts` | Live station recovery remains release verification. | PRESENT |
+| CORE-R-017 | Ordinary reconnect uses five-second slots under a 50-second watchdog and one pending attempt. Each retry uses the existing subscribe-and-connect method. A stopped or expired attempt cannot open a late socket. ConnectionService refreshes U2C and retries once for a recognized primary subscribe mismatch, and owns terminal handling. An admitted quiet socket can still receive a late keepalive. | Socket reconnection needs bounded, serialized transport work and one owner for mismatch recovery. | `src/services/core/websocket/connection-service.ts` | `test/unit/spec/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` | ContactCenter owns regional delays and station retry budgets. | PRESENT |
+| CORE-R-018 | ContactCenter's regional station retries use the same AQM notification bindings, duplicate-request handling, and timeout as ordinary station requests, after awaiting ConnectionService transport. | The region switch changes the notification connection. | `src/services/core/aqm-reqs.ts`, `src/services/core/websocket/connection-service.ts`, `src/cc.ts` | `test/unit/spec/services/core/aqm-reqs.ts`, `test/unit/spec/cc.ts` | Live station recovery remains release verification. | PRESENT |
 | CORE-R-019 | In ordinary mode without a pending admission, `ConnectionService.onPing` guards JSON parsing and object validation. Malformed JSON and non-object/array payloads produce fixed `LoggerProxy.error` diagnostics and return without changing liveness state/timers; valid objects retain keepalive and recovery handling. | One malformed server frame must not disrupt the liveness loop, and the frame must not enter logs. | `src/services/core/websocket/connection-service.ts` (onPing) | `test/unit/spec/services/core/websocket/connection-service.ts` malformed-payload and ordinary recovery cases | Stopped monitoring and a pending initialization return before parsing or logging. | PRESENT |
 
 ## Design overview
@@ -220,7 +219,7 @@ Core separates four responsibilities:
 1. `WebexRequest` wraps the authenticated host request API and service-catalog routing.
 2. `WebSocketManager` subscribes, validates the returned URL against the `wss` and `ALLOWED_ROUTING_NOTIFS_DOMAINS` rules, connects the socket, owns the keepalive worker, and emits raw messages/socket lifecycle events.
 3. `AqmReqs` registers bind matchers on the primary WebSocket, sends HTTP through WebexRequest, and settles requests only from matching notifications, HTTP failure, or timeout.
-4. `ConnectionService` owns ordinary and regional transport recovery and emits connection-state details. ContactCenter owns station restoration; regional recovery awaits its result.
+4. ConnectionService owns connect and ordinary reconnect, reporting transport events. ContactCenter schedules regional recovery, awaits connect, restores the station, and publishes application outcomes.
 
 Component instantiation order (`Services` constructor in `src/services/index.ts`, after the plugin
 has called `WebexRequest.getInstance({webex})` in `src/cc.ts`):
@@ -455,28 +454,26 @@ sequenceDiagram
       end
     end
   else Eligible regional switch
-    CC->>CS: handleRegionSwitch(event)
-    CS->>CS: Stop ordinary monitoring
-    CS-->>CC: recoveryConnectionChange(false)
-    CS->>CS: Wait for regional retry delay
+    CC->>CC: Validate switch and publish recovering
+    CC->>CS: stop()
+    CC->>CC: Pause RTD and retire stale Tasks
+    CC->>CC: Wait for regional retry delay
+    CC->>CS: await connect()
     CS->>WS: initWebSocket({body, resource})
     WS-->>CS: Welcome
-    CS->>CC: recoverSession()
+    CS-->>CC: Welcome
     CC->>Agent: Reload or bounded station-login fallback
     Agent-->>CC: Accepted session or failure
     CC->>CC: Apply profile/device/wxApp effects and determine Available intent
-    CC-->>CS: ready or stationLoginRequired
-    CS->>CS: reset()
-    CS-->>CC: regionStateChange(snapshot)
-    CC->>CC: Forward public recovery event
-    CS-->>CC: recoveryConnectionChange(true)
+    CC->>CS: reset()
+    CC->>CC: Publish ready or stationLoginRequired
     CC->>CC: Connect RTD when enabled and request Available when voice is ready
   end
 ```
 
 ConnectionService owns the ordinary 8-second loss detection, five-second retry slots, and
-50-second restore watchdog, plus regional transport retry timing, subscription mismatch policy,
-snapshots, and diagnostics. ContactCenter owns station retry budgets, deferred Available,
+50-second restore watchdog, plus subscription mismatch/U2C handling. ContactCenter owns regional
+retry timing, snapshots, diagnostics, station retry budgets, deferred Available,
 profile/device changes, and task/RTD effects. Both paths reuse the existing subscribe-and-connect WebSocketManager.
 
 ## Class and component relationships
@@ -513,20 +510,15 @@ actions using `region:stateChange`.
 ### ConnectionService members
 
 - The constructor accepts `{webex, webSocketManager, subscribeRequest}` options.
-- `setSessionRecoveryHandler` supplies one awaited `recoverSession` callback that restores the station
-  and returns its outcome. Connection notifications use the internal `recoveryConnectionChange`
-  event; subscribe settings and organization identity come from the constructor and Webex credentials.
-- `connect()` subscribes to the primary socket and refreshes U2C for one retry after a recognized
-  mismatch. `handleRegionSwitch()` owns eligibility, deduplication, and transport pacing.
+- `connect()` returns primary Welcome and refreshes U2C for one retry after a recognized mismatch.
+  It emits `subscriptionMismatch` before discovery refresh so ContactCenter can prepare application state.
 - `reset(socketReconnected = false)` resumes liveness monitoring or ordinary subscription retries;
-  `reset(true)` reports an already reconnected socket.
+  `reset(true)` reports an already reconnected socket through `connectionLost`.
 - `setConnectionProp({lostConnectionRecoveryTimeout})` retains the existing watchdog override.
-- `stop()` clears ordinary retry timers, closes a pending socket, and removes the monitoring listeners.
-  `resetRecovery()` separately cancels regional work and clears settings and snapshots for registration teardown.
-- `clearStationRecovery()` owns logout's recovery cancellation, ordinary monitoring reset, and
-  snapshot cleanup. ContactCenter owns pending automatic state changes.
-- `regionState` and `isRecovering` expose internal recovery state to ContactCenter. It forwards
-  `regionStateChange` and applies registration and RTD effects.
+- `stop()` clears ordinary retry timers, closes a pending socket, and removes monitoring listeners.
+- `reconnectFailed` reports failed ordinary attempts. Terminal authentication/mismatch failures stop
+  transport retries; ContactCenter publishes the application failure outcome.
+- Regional scheduling, eligibility, snapshots, station logic, and RTD effects belong to ContactCenter.
 
 ## Use cases and flows
 
@@ -535,7 +527,7 @@ actions using `region:stateChange`.
 | `UC-1` Authenticated REST | Any service | Pass the service key and request options to the host and return its response or rejection unchanged. | Rejection passes through unchanged | `src/services/core/WebexRequest.ts`, `test/unit/spec/services/core/WebexRequest.ts` |
 | `UC-2` Subscribe/connect | ConnectionService for primary, ContactCenter for RTD | Call `initWebSocket({body, resource})` to subscribe and await Welcome. | HTTP failure, URL rejection, socket error/early close, timeout, explicit close, or supersession reject the owning step; primary mismatch/U2C policy belongs to ConnectionService | `src/services/core/websocket/WebSocketManager.ts`, `src/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` |
 | `UC-3` AQM correlation | Agent, contact, and dialer factories | Send HTTP but settle on matching notification/failure/timeout. | Duplicate pending, HTTP failure, failure bind, timeout | `src/services/core/aqm-reqs.ts`, `test/unit/spec/services/core/aqm-reqs.ts` |
-| `UC-4` Reconnect | `ConnectionService` | Retry socket initialization. Ordinary recovery emits connection details; regional recovery awaits ContactCenter station restoration and publishes its outcome. | Offline retries; restore failure stops ordinary reconnect; regional retries use their own pacing | `src/services/core/websocket/connection-service.ts`, `test/unit/spec/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` |
+| `UC-4` Reconnect | `ConnectionService` | Retry socket initialization. Ordinary recovery emits connection details; ContactCenter awaits explicit regional connect, then restores the station and publishes the outcome. | Offline retries; restore failure stops ordinary reconnect; regional retries use their own pacing | `src/services/core/websocket/connection-service.ts`, `test/unit/spec/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` |
 | `UC-5` Error normalization | Agent, config, and task code | Convert a caught error into an `Error` with `data`, log it, and upload logs | Silent-relogin `AGENT_NOT_FOUND` is not logged | `src/services/core/Utils.ts`, `test/unit/spec/services/core/Utils.ts` |
 | `UC-6` Diagnostics upload | Error helpers and the plugin | `uploadLogs({correlationId})` returns the feedback and tracking ids | Failure tracked and rethrown | `src/services/core/WebexRequest.ts`, `test/unit/spec/services/core/WebexRequest.ts` |
 
@@ -551,14 +543,13 @@ actions using `region:stateChange`.
 ## Client state model
 
 WebSocketManager owns socket, Welcome, and worker state. AqmReqs owns pending notification
-bindings and operation settlement. ConnectionService owns ordinary and regional transport recovery state; ContactCenter owns station recovery state.
+bindings and operation settlement. ConnectionService owns ordinary transport state; ContactCenter owns regional and station recovery state.
 
 | State or slice | Owner | Initial state | Transition triggers | Reset or persistence boundary |
 | -------------- | ----- | ------------- | ------------------- | ----------------------------- |
 | Current `websocket`, `keepaliveWorker` and `isWelcomeReceived` | `WebSocketManager` | No socket; one worker | Subscription, Welcome, error, close, or replacement | Socket replacement or explicit close releases the timer and socket, and stops the worker's keepalive loop |
 | Pending success, failure, and cancel bindings | `AqmReqs` | Empty | Dispatch, notification, host rejection, or timeout | Clear pending bindings on settlement |
 | `isStopped`, `reconnectInterval`, `pending` flag and ordinary liveness timers | `ConnectionService` | Listening after construction; registration stops monitoring until setup completes | Registration reset, socket loss, region recovery or stop | Reset or stop clears ordinary timers and the pending flag; WebSocketManager closes pending initialization |
-| Regional transport timer, last switch tracking ID, settings, placement, and snapshot | `ConnectionService` | No regional work; unknown settings | Accepted profile settings, forwarded switch, and subscription/session outcomes | `resetRecovery()` clears registration-scoped recovery state; completed recovery releases its active attempt |
 | `WebexRequest.instance` | `WebexRequest` class | Unset until the first `getInstance({webex})` | First call with `webex` | Process lifetime |
 
 ## Business rules and invariants
@@ -572,15 +563,15 @@ bindings and operation settlement. ConnectionService owns ordinary and regional 
 ## Concurrency and reactive flow
 
 AqmReqs owns pending request bindings. A duplicate bind rejects before dispatch.
-ContactCenter owns station retry policy and applies accepted responses. ConnectionService awaits its result.
+ContactCenter awaits transport, applies accepted station responses, and publishes the final recovery outcome.
 
 The ordinary driver uses the existing five-second retry interval with one in-flight attempt.
 Interval ticks skip a pending attempt; offline and retryable failures wait for the next tick.
 A catalogue refresh that finishes after the ordinary restore timeout does not start another subscribe.
-A keepalive resets ordinary liveness timers and emits only in ordinary mode with no pending admission.
+A keepalive resets ordinary liveness timers and emits only when no connection attempt is pending.
 Slots are anchored to the loss time by the interval, without timestamp calculations or catch-up.
-ConnectionService stops ordinary monitoring
-while its regional timer reconnects and restores the station. Reset resumes ordinary monitoring.
+ContactCenter stops ordinary monitoring while its regional timer reconnects transport and restores
+the station. It calls reset() after determining the station outcome.
 Registration also keeps monitoring stopped until profile, Mercury, and optional station restoration complete.
 Stop clears pending work and listeners.
 
@@ -598,11 +589,11 @@ Regional attempts wait 100, 60, 30, then 15 seconds, with up to 50% added jitter
 retain the 15-second base. ContactCenter's station reload retries use plain waits of 2, 4, and 8 seconds
 and check socket readiness before continuing. Each station-recovery call starts a fresh budget,
 permits one station-login fallback, and allows one further reload after a session-already-exists response.
-`resetRecovery()` clears scheduled
-regional attempts and recovery state separately from the ordinary `stop()` method.
+ContactCenter's registration teardown clears its regional timer, settings, and snapshot separately
+from ConnectionService.stop().
 
-ContactCenter forwards normalized region-switch messages to `handleRegionSwitch()`. This forwarding
-remains active while ordinary ping listeners are detached during regional recovery.
+ContactCenter handles normalized region-switch messages directly, including while ordinary
+ping listeners are detached during regional recovery.
 
 ## State machine
 
@@ -611,10 +602,7 @@ stateDiagram-v2
   [*] --> Ordinary: constructor attaches listeners
   Stopped --> Ordinary: reset()
   Ordinary --> Ordinary: loss, subscription retry, or keepalive
-  Ordinary --> Regional: forwarded eligible region switch
-  Regional --> Ordinary: reset() after station outcome
-  Regional --> Stopped: terminal failure or resetRecovery()
-  Ordinary --> Stopped: watchdog, terminal failure, or close without reconnect
+  Ordinary --> Stopped: watchdog, terminal failure, explicit stop, or close without reconnect
 ```
 
 Sockets become usable only after the current attempt receives Welcome. Explicit close and admitted
@@ -668,7 +656,7 @@ Source: [`keepalive.worker.js`](../websocket/keepalive.worker.js) — a Web Work
 | Condition | Signal or result | Caller behavior | Retry or recovery | Evidence |
 | --------- | ---------------- | --------------- | ----------------- | -------- |
 | HTTP subscribe rejects or returns an explicit non-2xx status | `initWebSocket` rejects with the host error or response | ContactCenter handles registration failure; ConnectionService owns primary retry policy | A recognized primary 409 refreshes U2C and retries once; other failures follow ordinary or regional recovery policy | `src/services/core/websocket/WebSocketManager.ts`, `src/services/core/websocket/connection-service.ts`, `src/cc.ts` |
-| Subscribe exceeds the 20-second HTTP request timeout | The host request rejects socket initialization | Registration or resubscription fails | ConnectionService applies the ordinary or regional retry policy | `src/services/core/websocket/WebSocketManager.ts`, `src/services/core/websocket/connection-service.ts` |
+| Subscribe exceeds the 20-second HTTP request timeout | The host request rejects socket initialization | Registration or resubscription fails | ConnectionService applies ordinary retry policy; ContactCenter schedules regional retries | `src/services/core/websocket/WebSocketManager.ts`, `src/services/core/websocket/connection-service.ts` |
 | No valid Welcome within 30 seconds after subscription completes | `Error('Welcome deadline exceeded')` | `register()` fails; the attempt's socket and timers are disposed, and the worker's keepalive loop is stopped | Caller retries `register()`; recovery driver applies its own retry policy | `src/services/core/websocket/WebSocketManager.ts`, `test/unit/spec/services/core/websocket/WebSocketManager.ts` (“rejects malformed Welcome data”) |
 | Socket initialization is explicitly closed or superseded, including during subscription | `Error` named `AbortError` | Pending `initWebSocket` rejects and releases the socket | The caller owns subsequent attempts | `src/services/core/websocket/WebSocketManager.ts`, `test/unit/spec/services/core/websocket/WebSocketManager.ts` |
 | Subscribe response URL missing, malformed, non-`wss`, or not allow-listed | `Error('Rejected webSocketUrl from RoutingNotifs registration: scheme or host not allow-listed')` | Socket admission fails | Caller handles the error | `src/services/core/websocket/WebSocketManager.ts` |
@@ -780,7 +768,7 @@ const errDetails = createErrDetailsObject(webexRequestPayload);
 
 ## Pitfalls and constraints
 
-- `initWebSocket({body, resource})` reuses the existing subscription request and connects its returned URL; ConnectionService owns regional transport policy.
+- `initWebSocket({body, resource})` reuses the existing subscription request and connects its returned URL; ContactCenter owns regional orchestration and awaits ConnectionService transport.
 - AqmReqs installs notification binds before HTTP and never resolves from acknowledgement; duplicate binds, timeout, and cleanup ordering are correctness-critical.
 - `AqmReqs` calls `WebexRequest.getInstance()` without options, so `WebexRequest.getInstance({webex})`
   must run first (the plugin does this before `Services.getInstance`); otherwise `webexRequest` is
@@ -802,7 +790,7 @@ const errDetails = createErrDetailsObject(webexRequestPayload);
 - DO mask authorization headers in the `AqmReqs` HTTP-error/timeout paths before those details are logged or surfaced.
 - DO enable `redactSensitiveLogs` for AQM requests whose dynamic URL or event payload can contain identity/PII.
 - DO clear success/failure/cancel bind entries together when an AQM request settles.
-- DO keep regional transport timing and snapshots in ConnectionService; station retry policy, deferred Available, and profile/device/task/RTD effects belong to ContactCenter.
+- DO keep ConnectionService focused on connect and ordinary reconnect. ContactCenter owns regional timing, snapshots, station retry policy, deferred Available, and profile/device/task/RTD effects.
 - DON'T treat timeout constants as feature flags or reuse one timer for another lifecycle purpose: the keepalive closure, lost-connection detection, five-second single-flight ordinary retry slots, and recovery timeout in the timer table are separate controls and must not be conflated. `Services` constructs ConnectionService unconditionally; regional recovery uses the accepted organization settings.
 - Do: All core-level constants (timeouts, intervals, participant types, method names) are defined in [`constants.ts`](../constants.ts). Any new constants for the core layer should be added there.
 - Do: use `getErrorDetails` for agent/config-style flows (agent service operations, station
@@ -847,7 +835,7 @@ const trackingId = response.headers?.trackingid ||
 | Chosen trade-off | Preserved invariant or benefit | Cost or limitation | Decision evidence |
 | ---------------- | ------------------------------ | ------------------ | ----------------- |
 | Request initiation stays HTTP while completion can arrive asynchronously over WebSocket | Explicit timers and correlation preserve backend fidelity (CORE-R-003) | Increased lifecycle complexity: bind keys, pending maps, and timeouts must be cleaned up together | `src/services/core/aqm-reqs.ts` |
-| ConnectionService owns transport recovery; ContactCenter owns station restoration | Ordinary and regional transport decisions share one owner without moving profile/device handling into WebSocketManager (CORE-R-004) | One awaited station-recovery callback joins the existing classes; RTD retains a separate lifecycle | `src/services/core/websocket/connection-service.ts`, `src/cc.ts` |
+| ConnectionService owns transport recovery; ContactCenter owns station restoration | Transport operations stay separate from regional application orchestration and profile/device handling (CORE-R-004) | ContactCenter awaits the existing transport operation before station restoration; RTD retains a separate lifecycle | `src/services/core/websocket/connection-service.ts`, `src/cc.ts` |
 
 ## Verification
 

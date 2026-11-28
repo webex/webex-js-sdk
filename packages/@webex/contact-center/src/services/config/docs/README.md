@@ -236,8 +236,9 @@ const orgId = this.$webex.credentials.getOrgId();
 const profile = await this.services.config.getAgentConfig(orgId, agentId);
 const {multiRegionSettings} = profile;
 delete profile.multiRegionSettings;
+profile.orgId = orgId;
 this.agentConfig = profile;
-this.services.connectionService.setMultiRegionSettings(multiRegionSettings);
+this.multiRegionSettings = multiRegionSettings;
 // After Mercury and optional station relogin complete:
 this.services.connectionService.reset();
 ```

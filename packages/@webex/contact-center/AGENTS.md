@@ -727,12 +727,12 @@ await this.services.config.getAgentConfig(orgId, agentId);
 `this.$webex.once(READY, ...)` block; non-AQM services are instantiated directly in `cc.ts`. Details:
 [`src/services/docs/README.md`](src/services/docs/README.md).
 
-`ConnectionService` owns ordinary reconnect, regional transport timing, U2C refresh, and recovery snapshots.
-ContactCenter sets one awaited station handler with `setSessionRecoveryHandler` during READY,
-listens for `recoveryConnectionChange`, forwards parsed region-switch messages, and publishes recovery
-snapshots. ConnectionService reuses its constructor's subscribe settings and Webex credentials.
-Keep station retry budgets, reload/login policy, deferred Available, and profile/device/task effects
-in `src/cc.ts`.
+`ConnectionService` owns subscribe/connect, recognized primary 409/U2C refresh, and ordinary socket
+reconnect timing. It reports `connectionLost`, `reconnectFailed`, and `subscriptionMismatch` events.
+ContactCenter handles region-switch messages, entitlement, switch deduplication, regional retry timing,
+and public recovery snapshots. Its recovery sequence awaits `connectionService.connect()`, restores
+the station using the existing login/relogin methods, then publishes the outcome and resumes RTD.
+Keep station retry budgets, deferred Available, and profile/device/task effects in `src/cc.ts`.
 
 Agent/contact services use factory pattern: an AQM service is a function of `AqmReqs` that returns
 `routing.req` (or `routing.reqEmpty`) request definitions. The real `stateChange` in
