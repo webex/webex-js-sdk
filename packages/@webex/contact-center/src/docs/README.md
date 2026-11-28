@@ -369,7 +369,7 @@ during recovery.
 
 ContactCenter owns station reload retries, fallback login, and existing-session recovery. Each
 station-recovery call has its own bounded retry budget, as in Desktop. Public station
-login and recovery fallback share the private `loginStation()` flow and `completeStationLogin()`.
+login and recovery fallback share the private `stationLoginInternal()` flow and `handleStationLoginSuccess()`.
 The accepted Profile holds the station team, device type, and dial number; reload updates returned
 values and retains omitted station details for a later fallback login.
 After connection and station restoration, ContactCenter resumes ordinary monitoring, publishes
@@ -413,9 +413,9 @@ sequenceDiagram
 
 ### Station login, logout, and agent state
 
-`loginStation()` sends the request and calls `completeStationLogin()` for Calling setup and station
+`stationLoginInternal()` sends the request and calls `handleStationLoginSuccess()` for Calling setup and station
 preferences. `buildStationLoginPayload()` constructs the request, `saveStationLoginPreferences()` saves
-the accepted device/dial-number details, and `connectRtd()` owns RTD setup.
+the accepted device/dial-number details, and `connectRTDWebsocket()` owns RTD setup.
 
 ```mermaid
 sequenceDiagram
@@ -427,7 +427,7 @@ sequenceDiagram
   alt AGENT_DN and number outside the dial plan
     CC-->>App: throw INVALID_DIAL_NUMBER
   end
-  CC->>CC: loginStation(payload); shared with recovery fallback
+  CC->>CC: stationLoginInternal(payload); shared with recovery fallback
   CC->>Agent: stationLogin (AQM; deviceId webrtc- prefix for BROWSER)
   Agent-->>CC: StationLoginSuccess or failure notification
   CC->>Calling: setLoginOption; setBrowserVoiceRequired

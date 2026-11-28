@@ -508,7 +508,7 @@ socket is still connected; a disconnect or relogin failure rejects `cc.register(
 monitoring starts after registration setup completes. Hosts await
 `register()` and `deregister()` and pause new station/task actions during recovery. ContactCenter
 owns the regional timer and awaits `connectionService.connect()` before its bounded reload/fallback
-path, sharing `loginStation()` and `completeStationLogin()` with ordinary login and relogin.
+path, sharing `stationLoginInternal()` and `handleStationLoginSuccess()` with ordinary login and relogin.
 ContactCenter publishes the station outcome after applying the accepted response. `stationLoginRequired`
 requires explicit station login. Evidence: `src/cc.ts`,
 `src/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts`.

@@ -385,18 +385,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.taskManager.invalidateRegionalTasks();
   }
 
-  private async loginStation(
+  private async stationLoginInternal(
     payload: Agent.UserStationLogin,
     restoringRegion = false
   ): Promise<Agent.StationLoginSuccess | undefined> {
     if (!payload) return undefined;
     const response = await this.services.agent.stationLogin({data: payload});
-    await this.completeStationLogin(response, payload, restoringRegion);
+    await this.handleStationLoginSuccess(response, payload, restoringRegion);
 
     return response;
   }
 
-  private async completeStationLogin(
+  private async handleStationLoginSuccess(
     response: Agent.ReloginSuccess | Agent.StationLoginSuccess,
     station?: Agent.UserStationLogin,
     restoringRegion = true
@@ -851,7 +851,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (wasSubscribed) this.taskManager.clearAISummaryState();
   }
 
-  private connectRtd(): void {
+  private connectRTDWebsocket(): void {
     /**
      * RTD websocket currently supports realtime transcripts and suggested responses.
      * Extend this condition when additional AI RTD features are introduced.
@@ -1318,7 +1318,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           reason: 'region-mismatch',
         });
       }
-      this.connectRtd();
+      this.connectRTDWebsocket();
 
       return this.agentConfig;
     } catch (error) {
@@ -1397,7 +1397,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       }
 
-      const resp = await this.loginStation(this.buildStationLoginPayload(data), manual);
+      const resp = await this.stationLoginInternal(this.buildStationLoginPayload(data), manual);
       const {channelsMap, ...loginData} = resp.data;
       const response = {
         ...loginData,
@@ -2726,7 +2726,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.clearRegionRecovery();
         connection.reset();
         this.publishRegionState(state);
-        this.connectRtd();
+        this.connectRTDWebsocket();
         this.requestAutoAvailable();
       } catch (error) {
         if (this.regionRecoveryTimer !== timer) return;
@@ -2828,7 +2828,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       ) {
         try {
           await this.silentRelogin();
-          this.connectRtd();
+          this.connectRTDWebsocket();
         } catch (error) {
           const failure = normalizeRecoveryFailure(error);
           if (failure.status === 401 || failure.status === 403) this.handleReconnectFailed(error);
@@ -2852,7 +2852,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         if (stage === 'reload') reloads += 1;
         if (stage === 'fallback') {
           // eslint-disable-next-line no-await-in-loop -- A fallback is dispatched at most once.
-          response = await this.loginStation(this.buildStationLoginPayload(), true);
+          response = await this.stationLoginInternal(this.buildStationLoginPayload(), true);
           if (!response) break;
         } else {
           // eslint-disable-next-line no-await-in-loop -- Reloads use a bounded serial budget.
@@ -2902,7 +2902,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           this.recordRecoveryDiagnostic(diagnosticStage, 'succeeded', attempt, startedAt);
         if (stage !== 'fallback')
           // eslint-disable-next-line no-await-in-loop -- Fallback already applies its accepted session.
-          await this.completeStationLogin(response, undefined, regional || stage === 'post1035');
+          await this.handleStationLoginSuccess(
+            response,
+            undefined,
+            regional || stage === 'post1035'
+          );
 
         return response;
       }
