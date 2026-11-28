@@ -369,7 +369,7 @@ during recovery.
 
 ContactCenter owns station reload retries, fallback login, and existing-session recovery. Each
 station-recovery call has its own bounded retry budget, as in Desktop. Public station
-login and recovery fallback share the private `loginStation()` flow and `applyStationSession()`.
+login and recovery fallback share the private `loginStation()` flow and `completeStationLogin()`.
 The accepted Profile holds the station team, device type, and dial number; reload updates returned
 values and retains omitted station details for a later fallback login.
 After connection and station restoration, ContactCenter resumes ordinary monitoring, publishes
@@ -412,6 +412,10 @@ sequenceDiagram
 ```
 
 ### Station login, logout, and agent state
+
+`loginStation()` sends the request and calls `completeStationLogin()` for Calling setup and station
+preferences. `buildStationLoginPayload()` constructs the request, `saveStationLoginPreferences()` saves
+the accepted device/dial-number details, and `connectRtd()` owns RTD setup.
 
 ```mermaid
 sequenceDiagram

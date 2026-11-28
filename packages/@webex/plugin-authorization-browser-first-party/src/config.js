@@ -32,7 +32,15 @@ export default {
      */
     clientType: 'public',
 
-    refreshCallback(webex, token) {
+    /**
+     * @param {Webex} webex
+     * @param {Token} token
+     * @param {Object} [options={}]
+     * @param {string} [options.scope] Scope to request on refresh, if same or narrower than existing scope
+     * @param {string} [options.upgradeScope] Scope to request on refresh, if broader than existing scope
+     * @returns {Promise<Object>}
+     */
+    refreshCallback(webex, token, {scope, upgradeScope} = {}) {
       /* eslint-disable camelcase */
       const {form: clientForm = {}, ...clientAuthentication} = getClientAuthenticationOptions(
         token.config
@@ -46,6 +54,8 @@ export default {
             grant_type: 'refresh_token',
             redirect_uri: token.config.redirect_uri,
             refresh_token: token.refresh_token,
+            ...(scope && {scope}),
+            ...(upgradeScope && {upgrade_scope: upgradeScope}),
             ...clientForm,
           },
           ...clientAuthentication,

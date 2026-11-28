@@ -2,6 +2,7 @@ import 'jsdom-global/register';
 import WebCallingService from '../../../../src/services/WebCallingService';
 import {
   createClient,
+  createMicrophoneStream,
   ICallingClient,
   ILine,
   LINE_EVENTS,
@@ -31,6 +32,16 @@ describe('WebCallingService', () => {
   let line: ILine;
   let webRTCCalling: WebCallingService;
   let mockCall;
+  let microphoneStream: LocalMicrophoneStream;
+
+  const deferred = <T,>() => {
+    let resolve: (value: T) => void;
+    const promise = new Promise<T>((resolvePromise) => {
+      resolve = resolvePromise;
+    });
+
+    return {promise, resolve};
+  };
 
   const setBrowserVoiceRequired = () => {
     webRTCCalling.setLoginOption('BROWSER');
@@ -103,6 +114,8 @@ describe('WebCallingService', () => {
       }),
     } as unknown as ICallingClient;
 
+    microphoneStream = {stop: jest.fn()} as unknown as LocalMicrophoneStream;
+    (createMicrophoneStream as jest.Mock).mockResolvedValue(microphoneStream);
     (createClient as jest.Mock).mockResolvedValue(callingClient);
 
     webRTCCalling = new WebCallingService(webex);
@@ -182,9 +195,37 @@ describe('WebCallingService', () => {
         id: 'line1',
       };
 
-      const lineOnSpy = registerLineImmediately(deviceInfo);
+      const capture = deferred<LocalMicrophoneStream>();
+      const captureStarted = deferred<void>();
+      const initialization = deferred<ICallingClient>();
+      const initializationStarted = deferred<void>();
+      const registrationStarted = deferred<void>();
+      (createMicrophoneStream as jest.Mock).mockImplementation(() => {
+        captureStarted.resolve();
+        return capture.promise;
+      });
+      (createClient as jest.Mock).mockImplementation(() => {
+        initializationStarted.resolve();
+        return initialization.promise;
+      });
+      const lineOnSpy = jest.spyOn(line, 'on');
+      line.register.mockImplementation(() => registrationStarted.resolve());
+      const registration = webRTCCalling.registerWebCallingLine();
+      await captureStarted.promise;
+      expect(createMicrophoneStream).toHaveBeenCalledWith();
+      expect(createClient).not.toHaveBeenCalled();
 
-      await expect(webRTCCalling.registerWebCallingLine()).resolves.toBeUndefined();
+      capture.resolve(microphoneStream);
+      await initializationStarted.promise;
+      expect(microphoneStream.stop).not.toHaveBeenCalled();
+
+      initialization.resolve(callingClient);
+      await registrationStarted.promise;
+      expect(microphoneStream.stop).not.toHaveBeenCalled();
+      line.on.mock.calls
+        .filter(([event]) => event === LINE_EVENTS.REGISTERED)
+        .forEach(([, handler]) => handler(deviceInfo));
+      await expect(registration).resolves.toBeUndefined();
 
       expect(webRTCCalling.getVoiceConnectionState()).toEqual({
         status: VOICE_CONNECTION_STATUS.READY,
@@ -193,6 +234,7 @@ describe('WebCallingService', () => {
       });
 
       expect(createClient).toHaveBeenCalledWith(webex, {
+        localAudioStream: microphoneStream,
         logger: {
           level: 'info',
         },
@@ -202,12 +244,120 @@ describe('WebCallingService', () => {
         },
       });
       expect(lineOnSpy).toHaveBeenCalledWith(LINE_EVENTS.REGISTERED, expect.any(Function));
-      expect(line.register).toHaveBeenCalled();
+      expect(line.register).toHaveBeenCalledTimes(1);
+      expect(microphoneStream.stop).toHaveBeenCalledTimes(1);
       expect(LoggerProxy.log).toHaveBeenCalledWith(
         `WxCC-SDK: Desktop registered successfully, mobiusDeviceId: ${deviceInfo.mobiusDeviceId}`,
         {method: 'registerWebCallingLine', module: WEB_CALLING_SERVICE_FILE}
       );
     }, 20000); // Increased timeout to 20 seconds
+
+    it.each(['rejected', 'missing'])('registers when microphone capture is %s', async (capture) => {
+      if (capture === 'rejected') {
+        (createMicrophoneStream as jest.Mock).mockRejectedValue(new Error('Permission denied'));
+      } else {
+        (createMicrophoneStream as jest.Mock).mockResolvedValue(undefined);
+      }
+      registerLineImmediately();
+
+      await expect(webRTCCalling.registerWebCallingLine()).resolves.toBeUndefined();
+
+      expect(createClient).toHaveBeenCalledWith(webex, {
+        logger: {level: 'info'},
+        serviceData: {indicator: 'contactcenter', domain: 'rtw.prod-us1.rtmsprod.net'},
+      });
+      expect((createClient as jest.Mock).mock.calls[0][1]).not.toHaveProperty('localAudioStream');
+      expect(line.register).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(['success', 'failure'])('preserves registration %s if stream cleanup throws', async (outcome) => {
+      const error = new Error('Initialization failed');
+      (microphoneStream.stop as jest.Mock).mockImplementation(() => {
+        throw new Error('Stream cleanup failed');
+      });
+      if (outcome === 'success') {
+        registerLineImmediately();
+      } else {
+        (createClient as jest.Mock).mockRejectedValue(error);
+      }
+
+      const registration = webRTCCalling.registerWebCallingLine();
+      if (outcome === 'success') {
+        await expect(registration).resolves.toBeUndefined();
+      } else {
+        await expect(registration).rejects.toBe(error);
+      }
+      expect(microphoneStream.stop).toHaveBeenCalledTimes(1);
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'Failed to release registration microphone stream: Error: Stream cleanup failed',
+        {module: WEB_CALLING_SERVICE_FILE, method: 'registerWebCallingLine'}
+      );
+    });
+
+    it.each(['deregistration', 'new registration'])(
+      'releases late capture after %s without creating a stale client',
+      async (supersession) => {
+        const capture = deferred<LocalMicrophoneStream>();
+        const captureStarted = deferred<void>();
+        (createMicrophoneStream as jest.Mock).mockImplementationOnce(() => {
+          captureStarted.resolve();
+          return capture.promise;
+        });
+        const firstRegistration = webRTCCalling.registerWebCallingLine();
+        await captureStarted.promise;
+        if (supersession === 'deregistration') {
+          await webRTCCalling.deregisterWebCallingLine();
+        } else {
+          (createMicrophoneStream as jest.Mock).mockResolvedValueOnce(undefined);
+          registerLineImmediately();
+          await webRTCCalling.registerWebCallingLine();
+        }
+        const currentState = webRTCCalling.getVoiceConnectionState();
+        const clientCreations = supersession === 'deregistration' ? 0 : 1;
+
+        capture.resolve(microphoneStream);
+        await expect(firstRegistration).resolves.toBeUndefined();
+
+        expect(microphoneStream.stop).toHaveBeenCalledTimes(1);
+        expect(createClient).toHaveBeenCalledTimes(clientCreations);
+        expect(webRTCCalling.getVoiceConnectionState()).toEqual(currentState);
+      }
+    );
+
+    it('releases superseded initialization audio without stopping the newer registration audio', async () => {
+      const initialization = deferred<ICallingClient>();
+      const initializationStarted = deferred<void>();
+      (createClient as jest.Mock).mockImplementationOnce(() => {
+        initializationStarted.resolve();
+        return initialization.promise;
+      });
+      const firstRegistration = webRTCCalling.registerWebCallingLine();
+      await initializationStarted.promise;
+      const newerStream = {stop: jest.fn()} as unknown as LocalMicrophoneStream;
+      (createMicrophoneStream as jest.Mock).mockResolvedValueOnce(newerStream);
+      const registrationStarted = deferred<void>();
+      line = callingClient.getLines().line1 as ILine;
+      line.register.mockImplementation(() => {
+        registrationStarted.resolve();
+      });
+      const nextRegistration = webRTCCalling.registerWebCallingLine();
+      await registrationStarted.promise;
+      expect(microphoneStream.stop).toHaveBeenCalledTimes(1);
+      expect(newerStream.stop).not.toHaveBeenCalled();
+
+      const staleLine = {deregister: jest.fn()};
+      initialization.resolve({getLines: () => ({staleLine})} as unknown as ICallingClient);
+      await expect(firstRegistration).resolves.toBeUndefined();
+      expect(staleLine.deregister).toHaveBeenCalledTimes(1);
+      expect(microphoneStream.stop).toHaveBeenCalledTimes(1);
+      expect(newerStream.stop).not.toHaveBeenCalled();
+
+      line.on.mock.calls
+        .filter(([event]) => event === LINE_EVENTS.REGISTERED)
+        .forEach(([, handler]) => handler({mobiusDeviceId: 'device123'}));
+      await expect(nextRegistration).resolves.toBeUndefined();
+      expect(newerStream.stop).toHaveBeenCalledTimes(1);
+    });
 
     it('retires the previous registration before registering a new calling client', async () => {
       const firstLine = Object.assign(createEmitter(), {
@@ -332,6 +482,7 @@ describe('WebCallingService', () => {
       const lineOnSpy = registerLineImmediately(deviceInfo);
       await expect(webRTCCalling.registerWebCallingLine()).resolves.toBeUndefined();
       expect(createClient).toHaveBeenCalledWith(webex, {
+        localAudioStream: microphoneStream,
         logger: {
           level: 'info',
         },
@@ -342,6 +493,7 @@ describe('WebCallingService', () => {
       });
       expect(lineOnSpy).toHaveBeenCalledWith(LINE_EVENTS.REGISTERED, expect.any(Function));
       expect(line.register).toHaveBeenCalled();
+      expect(microphoneStream.stop).toHaveBeenCalledTimes(1);
       expect(LoggerProxy.log).toHaveBeenCalledWith(
         `WxCC-SDK: Desktop registered successfully, mobiusDeviceId: ${deviceInfo.mobiusDeviceId}`,
         {method: 'registerWebCallingLine', module: WEB_CALLING_SERVICE_FILE}
@@ -364,6 +516,7 @@ describe('WebCallingService', () => {
       const lineOnSpy = registerLineImmediately(deviceInfo);
       await expect(webRTCCalling.registerWebCallingLine()).resolves.toBeUndefined();
       expect(createClient).toHaveBeenCalledWith(webex, {
+        localAudioStream: microphoneStream,
         logger: {
           level: 'info',
         },
@@ -396,6 +549,7 @@ describe('WebCallingService', () => {
       const lineOnSpy = registerLineImmediately(deviceInfo);
       await expect(webRTCCalling.registerWebCallingLine()).resolves.toBeUndefined();
       expect(createClient).toHaveBeenCalledWith(webex, {
+        localAudioStream: microphoneStream,
         logger: {
           level: 'info',
         },
@@ -426,6 +580,7 @@ describe('WebCallingService', () => {
       jest.advanceTimersByTime(TIMEOUT_DURATION);
 
       await expect(promise).rejects.toThrow('WebCallingService Registration timed out');
+      expect(microphoneStream.stop).toHaveBeenCalledTimes(1);
       expect(webRTCCalling.getVoiceConnectionState()).toEqual({
         status: VOICE_CONNECTION_STATUS.UNAVAILABLE,
         lineStatus: 'error',
@@ -435,18 +590,27 @@ describe('WebCallingService', () => {
       });
     });
 
-    it('should report initial registration failure and reject registration', async () => {
+    it.each(['initialization', 'line event', 'register'])('preserves %s errors', async (failure) => {
       setBrowserVoiceRequired();
       line = callingClient.getLines().line1 as ILine;
       const error = new Error('Registration failed');
-      line.register.mockRejectedValue(error);
+      if (failure === 'initialization') {
+        (createClient as jest.Mock).mockRejectedValue(error);
+      } else if (failure === 'line event') {
+        line.register.mockImplementation(() => getHandler(line, LINE_EVENTS.ERROR)(error));
+      } else {
+        line.register.mockRejectedValue(error);
+      }
+
       const registration = webRTCCalling.registerWebCallingLine();
 
-      await expect(registration).rejects.toThrow('Registration failed');
+      await expect(registration).rejects.toBe(error);
+
+      expect(microphoneStream.stop).toHaveBeenCalledTimes(1);
       expect(webRTCCalling.getVoiceConnectionState()).toEqual({
         status: VOICE_CONNECTION_STATUS.UNAVAILABLE,
         lineStatus: 'error',
-        mobiusSocketStatus: 'not-in-use',
+        mobiusSocketStatus: failure === 'initialization' ? 'unknown' : 'not-in-use',
         reason: 'Registration failed',
         retryable: false,
       });
@@ -721,6 +885,7 @@ describe('WebCallingService', () => {
 
   describe('answerCall', () => {
     const mockStream = {
+      stop: jest.fn(),
       outputStream: {
         getAudioTracks: jest.fn().mockReturnValue(['']),
       },
@@ -728,14 +893,23 @@ describe('WebCallingService', () => {
 
     const localAudioStream = mockStream as unknown as LocalMicrophoneStream;
 
-    it('should answer the call and log info when call exists', () => {
+    it('should answer with separate call audio and log info after registration', async () => {
+      registerLineImmediately();
+      await webRTCCalling.registerWebCallingLine();
+      expect(microphoneStream.stop).toHaveBeenCalledTimes(1);
+      getHandler(line, LINE_EVENTS.INCOMING_CALL)(mockCall);
+
       webRTCCalling.answerCall(localAudioStream, 'task-id');
 
       expect(LoggerProxy.info).toHaveBeenCalledWith('Call answered: task-id', {
         module: WEB_CALLING_SERVICE_FILE,
         method: 'answerCall',
       });
-      expect(mockCall.answer).toHaveBeenCalledWith(localAudioStream);
+      expect(mockCall.answer).toHaveBeenCalledTimes(1);
+      expect(mockCall.answer.mock.calls[0][0]).toBe(localAudioStream);
+      expect(localAudioStream).not.toBe(microphoneStream);
+      expect(localAudioStream.stop).not.toHaveBeenCalled();
+      expect(microphoneStream.stop).toHaveBeenCalledTimes(1);
     });
 
     it('should log error and throw when call.answer fails', () => {

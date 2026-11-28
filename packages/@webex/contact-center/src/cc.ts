@@ -391,12 +391,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   ): Promise<Agent.StationLoginSuccess | undefined> {
     if (!payload) return undefined;
     const response = await this.services.agent.stationLogin({data: payload});
-    await this.applyStationSession(response, payload, restoringRegion);
+    await this.completeStationLogin(response, payload, restoringRegion);
 
     return response;
   }
 
-  private async applyStationSession(
+  private async completeStationLogin(
     response: Agent.ReloginSuccess | Agent.StationLoginSuccess,
     station?: Agent.UserStationLogin,
     restoringRegion = true
@@ -418,9 +418,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     profile.isAgentLoggedIn = true;
     this.updateWellnessSession(data.agentSessionId);
     profile.currentTeamId = data.teamId || station?.teamId || profile.currentTeamId;
-    profile.deviceType = mode as LoginOption;
-    profile.dn = mode === LoginOption.BROWSER ? this.getDeviceId(mode, number) : number;
-    profile.defaultDn = profile.dn;
+    this.saveStationLoginPreferences(
+      mode as LoginOption,
+      mode === LoginOption.BROWSER ? this.getDeviceId(mode, number) : number
+    );
 
     const {deviceType, dn} = profile;
     if (station && deviceType === LoginOption.BROWSER && !this.isBrowserVoiceRequired(deviceType)) {
@@ -452,14 +453,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         dialNumber: profile.dn,
       };
     }
-    const {loginOption, dialNumber, teamId} = data;
-    const deviceId = this.getDeviceId(loginOption, dialNumber);
+    const deviceId = this.getDeviceId(data.loginOption, data.dialNumber);
 
     return {
-      dialNumber: loginOption === LoginOption.BROWSER ? deviceId : dialNumber,
-      teamId,
-      deviceType: loginOption,
-      isExtension: loginOption === LoginOption.EXTENSION,
+      // BROWSER DN must be webrtc-{agentId} so VPOP/RTMS do not treat a bare UUID as PSTN.
+      dialNumber: data.loginOption === LoginOption.BROWSER ? deviceId : data.dialNumber,
+      teamId: data.teamId,
+      deviceType: data.loginOption,
+      isExtension: data.loginOption === LoginOption.EXTENSION,
       deviceId,
       roles: [AGENT],
       teamName: EMPTY_STRING,
@@ -467,6 +468,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       usesOtherDN: false,
       auxCodeId: EMPTY_STRING,
     };
+  }
+
+  private saveStationLoginPreferences(loginOption: LoginOption, dialNumber?: string): void {
+    if (this.agentConfig) {
+      this.agentConfig.deviceType = loginOption;
+      this.agentConfig.defaultDn = dialNumber;
+      this.agentConfig.dn = dialNumber;
+    }
   }
 
   private handleRemoteStationLogout(event: Record<string, any>): void {
@@ -843,6 +852,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   private connectRtd(): void {
+    /**
+     * RTD websocket currently supports realtime transcripts and suggested responses.
+     * Extend this condition when additional AI RTD features are introduced.
+     * Wellness break notifications also arrive on this websocket.
+     */
     if (
       !this.rtdPaused ||
       !(
@@ -2888,7 +2902,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           this.recordRecoveryDiagnostic(diagnosticStage, 'succeeded', attempt, startedAt);
         if (stage !== 'fallback')
           // eslint-disable-next-line no-await-in-loop -- Fallback already applies its accepted session.
-          await this.applyStationSession(response, undefined, regional || stage === 'post1035');
+          await this.completeStationLogin(response, undefined, regional || stage === 'post1035');
 
         return response;
       }

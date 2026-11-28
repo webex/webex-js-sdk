@@ -259,11 +259,11 @@ const Token = WebexPlugin.extend({
       return Promise.reject(new Error('cannot downscope access token'));
     }
 
-    if (diffScopes(scope, this.config.scope) !== '') {
+    const availableScope = this.scope || this.config.scope;
+
+    if (diffScopes(scope, availableScope) !== '') {
       return Promise.reject(
-        new Error(
-          `new scope (${scope}) is not subset of the available scopes (${this.config.scope})`
-        )
+        new Error(`new scope (${scope}) is not subset of the available scopes (${availableScope})`)
       );
     }
 
@@ -276,7 +276,7 @@ const Token = WebexPlugin.extend({
     // Ideally, we could depend on the service to communicate this error, but
     // all we get is "invalid scope", which, to the lay person, implies
     // something wrong with *one* of the scopes, not the whole thing.
-    if (scope === sortScope(this.config.scope)) {
+    if (scope === sortScope(availableScope)) {
       return Promise.reject(new Error('token: scope reduction requires a reduced scope'));
     }
 
@@ -339,9 +339,12 @@ const Token = WebexPlugin.extend({
    * {@link config.credentials.refreshCallback()}
    * @instance
    * @memberof Token
+   * @param {Object} [options={}]
+   * @param {string} [options.scope] Scope to request on refresh, if same or narrower than existing scope
+   * @param {string} [options.upgradeScope] Scope to request on refresh, if broader than existing scope
    * @returns {Promise<Token>}
    */
-  refresh() {
+  refresh({scope, upgradeScope} = {}) {
     if (!this.canRefresh) {
       throw new Error('Not enough information available to refresh this access token');
     }
@@ -353,7 +356,9 @@ const Token = WebexPlugin.extend({
         throw new Error('Cannot refresh access token without refreshCallback');
       }
 
-      promise = Promise.resolve(this.config.refreshCallback(this.webex, this));
+      promise = Promise.resolve(
+        this.config.refreshCallback(this.webex, this, {scope, upgradeScope})
+      );
     }
 
     return (
@@ -366,6 +371,8 @@ const Token = WebexPlugin.extend({
             grant_type: 'refresh_token',
             redirect_uri: this.config.redirect_uri,
             refresh_token: this.refresh_token,
+            ...(scope && {scope}),
+            ...(upgradeScope && {upgrade_scope: upgradeScope}),
           },
           auth: {
             user: this.config.client_id,
@@ -409,7 +416,7 @@ const Token = WebexPlugin.extend({
         }
 
         obj.previousToken = this;
-        obj.scope = this.scope;
+        obj.scope = obj.scope || scope || this.scope;
 
         return new Token(obj, {parent: this.parent});
       })
