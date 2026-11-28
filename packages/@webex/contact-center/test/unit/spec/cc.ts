@@ -6292,7 +6292,6 @@ describe('regional recovery wiring', () => {
   type RoutingOptions = {
     autoRegister?: boolean;
     initialSubscribeFailure?: SubscribeFailure;
-    resolveSubscribeFailure?: boolean;
     multiRegionEnabled?: boolean | null;
     rtdEnabled?: boolean;
     rtdReconnectFailure?: number;
@@ -6304,7 +6303,6 @@ describe('regional recovery wiring', () => {
     {
       autoRegister = true,
       initialSubscribeFailure,
-      resolveSubscribeFailure = false,
       multiRegionEnabled = true,
       rtdEnabled = false,
       rtdReconnectFailure,
@@ -6391,7 +6389,6 @@ describe('regional recovery wiring', () => {
         const {resource} = request;
         if (resource === SUBSCRIBE_API) {
           if (subscribeFailure) {
-            if (resolveSubscribeFailure) return subscribeFailure;
             throw subscribeFailure;
           }
           const host = refreshedRoutingHost ?? routingHosts[routingSubscribes];
@@ -7174,39 +7171,33 @@ describe('regional recovery wiring', () => {
     );
   });
 
-  it.each([false, true])(
-    'completes the original registration after refreshing a subscribe conflict (resolved response=%s)',
-    async (resolveSubscribeFailure) => {
-      await withRouting(
-        async ({cc, requests, currentRouting, updateServices}) => {
-          const state = jest.fn();
-          cc.on('region:stateChange', state);
-          const registration = cc.register();
-          await flush();
-          expect(state).toHaveBeenLastCalledWith(
-            expect.objectContaining({status: 'recovering', reason: 'region-mismatch'})
-          );
-          expect(updateServices).toHaveBeenCalledTimes(1);
-          expect(updateServices).toHaveBeenCalledWith({forceRefresh: true});
-          const socket = currentRouting();
-          expect(new URL(socket.url).hostname).toBe('routing.produs2.cisco.com');
-          socket.welcome();
+  it('completes the original registration after refreshing a subscribe conflict', async () => {
+    await withRouting(
+      async ({cc, requests, currentRouting, updateServices}) => {
+        const state = jest.fn();
+        cc.on('region:stateChange', state);
+        const registration = cc.register();
+        await flush();
+        expect(state).toHaveBeenLastCalledWith(
+          expect.objectContaining({status: 'recovering', reason: 'region-mismatch'})
+        );
+        expect(updateServices).toHaveBeenCalledTimes(1);
+        expect(updateServices).toHaveBeenCalledWith({forceRefresh: true});
+        const socket = currentRouting();
+        expect(new URL(socket.url).hostname).toBe('routing.produs2.cisco.com');
+        socket.welcome();
 
-          await expect(registration).resolves.toMatchObject({agentId: 'agent'});
-          expect(state).toHaveBeenLastCalledWith(
-            expect.objectContaining({status: 'stationLoginRequired'})
-          );
-          expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
-          expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(2);
-          expect(requests.filter(({resource}) => resource === '/v1/agents/login')).toHaveLength(0);
-        },
-        {
-          initialSubscribeFailure: subscribeConflict('REGION_MISMATCH_REGION_FAILOVER'),
-          resolveSubscribeFailure,
-        }
-      );
-    }
-  );
+        await expect(registration).resolves.toMatchObject({agentId: 'agent'});
+        expect(state).toHaveBeenLastCalledWith(
+          expect.objectContaining({status: 'stationLoginRequired'})
+        );
+        expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
+        expect(requests.filter(({resource}) => resource === SUBSCRIBE_API)).toHaveLength(2);
+        expect(requests.filter(({resource}) => resource === '/v1/agents/login')).toHaveLength(0);
+      },
+      {initialSubscribeFailure: subscribeConflict('REGION_MISMATCH_REGION_FAILOVER')}
+    );
+  });
 
   it.each([
     {title: 'the refreshed subscribe still returns a regional conflict'},

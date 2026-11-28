@@ -1,4 +1,5 @@
 import MockWebex from '@webex/test-helper-mock-webex';
+import {HttpStatusInterceptor} from '@webex/http-core';
 import {ServiceInterceptor, Services} from '@webex/webex-core';
 import {WebSocketManager} from '../../../../../../src/services/core/websocket/WebSocketManager';
 import {
@@ -231,17 +232,13 @@ describe('WebSocketManager subscription and connection', () => {
   });
 
   it.each([401, 409, 503])('preserves a subscribe HTTP %s failure for its caller', async (statusCode) => {
-    const failure = {statusCode, headers: {'x-wxcc-region-reason': 'REGION_MISMATCH_NO_OVERRIDE'}};
+    const interceptor = new HttpStatusInterceptor();
+    const failure = await interceptor.onResponse({}, {
+      statusCode,
+      headers: {'x-wxcc-region-reason': 'REGION_MISMATCH_NO_OVERRIDE'},
+    }).catch((error) => error);
+    expect(failure.statusCode).toBe(statusCode);
     request.mockRejectedValueOnce(failure);
-    await expect(initialize()).rejects.toBe(failure);
-    expect(request).toHaveBeenCalledTimes(1);
-    expect(SocketDouble.instances).toHaveLength(0);
-    expect(jest.getTimerCount()).toBe(0);
-  });
-
-  it('preserves an explicit non-2xx subscribe response instead of opening a socket', async () => {
-    const failure = {statusCode: 409, body: {webSocketUrl: url}};
-    request.mockResolvedValueOnce(failure);
     await expect(initialize()).rejects.toBe(failure);
     expect(request).toHaveBeenCalledTimes(1);
     expect(SocketDouble.instances).toHaveLength(0);
@@ -281,18 +278,6 @@ describe('WebSocketManager subscription and connection', () => {
     expect(SocketDouble.instances).toHaveLength(0);
     expect(global.Worker).toHaveBeenCalledTimes(1);
     expect(jest.getTimerCount()).toBe(0);
-  });
-
-  it.each([undefined, [], 'agent'])('rejects malformed Welcome data %# at its deadline', async (data) => {
-    const {promise, socket} = await start();
-    socket.open();
-    socket.message({type: 'Welcome', data});
-    jest.advanceTimersByTime(WELCOME_TIMEOUT - 1);
-    await flush();
-    expect(manager.hasUsableSocket()).toBe(false);
-    jest.advanceTimersByTime(1);
-    await expect(promise).rejects.toThrow('Welcome deadline');
-    expectReleased(socket);
   });
 
   it.each([false, true])('bounds Welcome from connect even when native open is delayed (%s)', async (opened) => {
@@ -448,21 +433,6 @@ describe('WebSocketManager subscription and connection', () => {
     oldWorker({data: {type: 'closeSocket'}});
     expect(next.socket.close).not.toHaveBeenCalled();
     expect(manager.hasUsableSocket()).toBe(true);
-  });
-
-  it('passes malformed payloads to consumers only after Welcome', async () => {
-    const {promise, socket} = await start();
-    const received = jest.fn();
-    manager.on('message', received);
-    socket.message('not JSON');
-    expect(received).not.toHaveBeenCalled();
-    socket.open();
-    socket.message({type: 'Welcome', data: {}});
-    await promise;
-    socket.message('not JSON');
-    expect(received).toHaveBeenLastCalledWith('not JSON');
-    socket.message('null');
-    expect(received).toHaveBeenLastCalledWith('null');
   });
 
   it('rejects a socket construction failure and clears the Welcome deadline', async () => {

@@ -855,6 +855,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     )
       return;
     this.rtdPaused = false;
+    LoggerProxy.info('Connecting to RTD websocket', {
+      module: CC_FILE,
+      method: METHODS.CONNECT_WEBSOCKET,
+    });
     const manager = this.services.rtdWebSocketManager;
     manager.on('message', this.handleRTDWebsocketMessage);
     manager
@@ -1218,13 +1222,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const data = (await this.services.connectionService.connect()) as WelcomeEvent;
       const agentId = data.agentId;
       const orgId = this.$webex.credentials.getOrgId();
-      const profile = await this.services.config.getAgentConfig(orgId, agentId);
-      const {multiRegionSettings} = profile;
+      this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
+      this.multiRegionSettings = this.agentConfig.multiRegionSettings;
       // Keep recovery settings private when register() returns this profile.
-      delete profile.multiRegionSettings;
-      profile.orgId = orgId;
-      this.agentConfig = profile;
-      this.multiRegionSettings = multiRegionSettings;
+      delete this.agentConfig.multiRegionSettings;
+      this.agentConfig.orgId = orgId;
       this.taskManager.registerIncomingCallEvent();
 
       LoggerProxy.log(`Agent config is fetched successfully`, {
@@ -1742,13 +1744,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @param {string} event The raw websocket event message
    */
   private handleWebsocketMessage = (event: string) => {
-    let eventData: Record<string, any>;
-    try {
-      eventData = JSON.parse(event);
-    } catch {
-      return;
-    }
-    if (!eventData || typeof eventData !== 'object') return;
+    const eventData = JSON.parse(event);
     if (eventData.type === SYSTEM_EVENTS.SYSTEM_REGION_SWITCH) {
       const regionSwitch = normalizeRegionSwitch(eventData);
       if (regionSwitch) this.handleRegionSwitch(regionSwitch);
@@ -2863,15 +2859,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           regional && stage === 'reload' && category === 'transient'
             ? STATION_RELOAD_RETRY_DELAYS_MS[reloads - 1]
             : undefined;
-        if (category === 'cancelled' || category === 'auth') {
+        if (category === 'auth') {
           if (regional)
-            this.recordRecoveryDiagnostic(
-              diagnosticStage,
-              category === 'auth' ? 'failed' : 'cancelled',
-              attempt,
-              startedAt,
-              failure
-            );
+            this.recordRecoveryDiagnostic(diagnosticStage, 'failed', attempt, startedAt, failure);
           throw error;
         }
         if (stage === 'fallback' && category === 'exists') stage = 'post1035';
@@ -2981,8 +2971,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
       // Keep the structured HTTP classification across the public Error translation.
       const {status} = normalizeRecoveryFailure(error);
-      if (status !== undefined && !isRegionRecoveryError(error))
-        Object.assign(detailedError, {statusCode: status});
+      if (status !== undefined) Object.assign(detailedError, {statusCode: status});
       throw detailedError;
     }
   }
@@ -3007,8 +2996,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     switch (deviceType) {
       case LoginOption.BROWSER:
         if (restoringRegion) {
-          if (this.isBrowserVoiceRequired(deviceType))
-            this.webCallingService.ensureWebCallingLine();
+          this.webCallingService.ensureWebCallingLine();
           break;
         }
         if (this.isWebRTCRegistrationDisabled()) {

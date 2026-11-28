@@ -253,6 +253,8 @@ describe('ConnectionService', () => {
     expect(events).toHaveBeenLastCalledWith({...lost, isRestoreFailed: true});
     expect(manager.close).not.toHaveBeenCalled();
     expect(manager.shouldReconnect).toBe(false);
+    manager.emit('message', JSON.stringify({type: 'AgentStateChange'}));
+    expect(events).toHaveBeenLastCalledWith({...lost, isRestoreFailed: true});
     manager.emit('message', JSON.stringify({keepalive: 'true'}));
     expect(events).toHaveBeenLastCalledWith({...lost, isConnectionLost: false, isKeepAlive: true});
     expect(jest.getTimerCount()).toBe(2);

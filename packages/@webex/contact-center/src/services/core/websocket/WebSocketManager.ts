@@ -14,7 +14,7 @@ import {
   ALLOWED_ROUTING_NOTIFS_DOMAINS,
 } from '../constants';
 import {WEB_SOCKET_MANAGER_FILE} from '../../../constants';
-import {isAllowedUrlHost, isRecord} from '../Utils';
+import {isAllowedUrlHost} from '../Utils';
 
 const interrupted = (): Error =>
   Object.assign(new Error('WebSocket connection interrupted'), {name: 'AbortError'});
@@ -128,11 +128,6 @@ export class WebSocketManager extends EventEmitter {
         headers: isIntEnv && orgId ? {'X-ORGANIZATION-ID': orgId} : undefined,
         timeout: TIMEOUT_REQ,
       });
-      if (
-        subscribeResponse.statusCode !== undefined &&
-        (subscribeResponse.statusCode < 200 || subscribeResponse.statusCode >= 300)
-      )
-        throw subscribeResponse;
       const {webSocketUrl} = subscribeResponse.body;
 
       // Only a `wss` URL whose hostname is, or is a subdomain of, one of the allow-listed
@@ -174,7 +169,7 @@ export class WebSocketManager extends EventEmitter {
       this.isSocketClosed = false;
 
       this.websocket.send(JSON.stringify({keepalive: 'true'}));
-      this.keepaliveWorker.onmessage = (keepAliveEvent: MessageEvent) => {
+      this.keepaliveWorker.onmessage = (keepAliveEvent: {data: any}) => {
         if (this.websocket !== websocket) return;
         if (keepAliveEvent?.data?.type === 'keepalive' && this.websocket.readyState === 1) {
           this.websocket.send(JSON.stringify({keepalive: 'true'}));
@@ -206,32 +201,18 @@ export class WebSocketManager extends EventEmitter {
         '[WebSocketStatus] | event=socketConnectionFailed | WebSocket connection failed',
         {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
       );
-      const error = new Error('WebSocket connection failed');
-      this.webSocketOnCloseHandler(websocket, error);
+      this.webSocketOnCloseHandler(websocket, new Error('WebSocket connection failed'));
     };
 
     this.websocket.onclose = () => {
-      const error = new Error('WebSocket closed');
-      this.webSocketOnCloseHandler(websocket, error);
+      this.webSocketOnCloseHandler(websocket, new Error('WebSocket closed'));
     };
 
     this.websocket.onmessage = (e: MessageEvent) => {
       if (this.websocket !== websocket) return;
-      let eventData;
-      try {
-        eventData = JSON.parse(e.data);
-      } catch {
-        if (this.isWelcomeReceived) this.emit('message', e.data);
+      const eventData = JSON.parse(e.data);
 
-        return;
-      }
-
-      if (
-        eventData?.type === CC_EVENTS.WELCOME &&
-        !this.isWelcomeReceived &&
-        isRecord(eventData.data) &&
-        !Array.isArray(eventData.data)
-      ) {
+      if (eventData.type === CC_EVENTS.WELCOME) {
         this.isWelcomeReceived = true;
         clearTimeout(this.welcomeTimer);
         this.welcomePromiseResolve?.(eventData.data as WelcomeResponse);
@@ -239,7 +220,7 @@ export class WebSocketManager extends EventEmitter {
         this.welcomePromiseReject = null;
       }
 
-      if (eventData?.type === 'AGENT_MULTI_LOGIN') {
+      if (eventData.type === 'AGENT_MULTI_LOGIN') {
         this.close(false, 'multiLogin');
         LoggerProxy.error(
           '[WebSocketStatus] | event=agentMultiLogin | WebSocket connection closed by agent multiLogin',

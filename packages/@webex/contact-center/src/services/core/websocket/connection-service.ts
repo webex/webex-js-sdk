@@ -180,15 +180,17 @@ export class ConnectionService extends EventEmitter {
       clearTimeout(this.restoreTimer);
     }
     this.isKeepAlive = parsedEvent.keepalive === 'true';
+
+    if ((this.isConnectionLost && !this.isRestoreFailed) || this.isKeepAlive) {
+      this.updateConnectionData();
+      this.dispatchConnectionEvent();
+    }
+
     this.reconnectingTimer = setTimeout(this.handleConnectionLost, this.wsDisconnectAllowed);
     this.restoreTimer = setTimeout(
       this.handleRestoreFailed,
       this.connectionProp && this.connectionProp.lostConnectionRecoveryTimeout
     );
-    if (this.isConnectionLost || this.isKeepAlive) {
-      this.updateConnectionData();
-      this.dispatchConnectionEvent();
-    }
   };
 
   private handleSocketClose = async (): Promise<void> => {
@@ -200,13 +202,15 @@ export class ConnectionService extends EventEmitter {
     this.pending = true;
     try {
       const onlineStatus = navigator.onLine;
-      if (!onlineStatus)
+      if (onlineStatus) {
+        await this.connect();
+        if (!this.pending) return;
+        if (!this.webSocketManager.hasUsableSocket()) throw new Error('WebSocket closed');
+        this.pending = false;
+        this.reset(true);
+      } else {
         throw new Error('event=socketConnectionRetry | browser network not available');
-      await this.connect();
-      if (!this.pending) return;
-      if (!this.webSocketManager.hasUsableSocket()) throw new Error('WebSocket closed');
-      this.pending = false;
-      this.reset(true);
+      }
     } catch (error) {
       if (!this.pending) return;
       this.pending = false;

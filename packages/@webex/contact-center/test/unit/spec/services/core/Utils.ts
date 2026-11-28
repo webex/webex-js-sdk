@@ -118,8 +118,6 @@ describe('Utils', () => {
       [{reasonCode: 9999, reason: 'INTERNAL_ERROR'}, 'transient'],
       [{id: 'Service.aqm.reqs.Timeout'}, 'transient'],
       [{id: 'Service.aqm.reqs.TimeoutEvent'}, 'transient'],
-      [{reasonCode: 9999, id: 'Timeout'}, 'transient'],
-      [{reasonCode: 9999, id: 'TimeoutEvent'}, 'transient'],
       [{reasonCode: 1038, reason: 'INTERNAL_ERROR', status: 503}, 'fallback'],
       [{reasonCode: 1041}, 'fallback'],
       [{reasonCode: 9999, status: 400}, 'other'],
@@ -127,7 +125,6 @@ describe('Utils', () => {
       [{reasonCode: 1035, reason: 'AGENT_NOT_FOUND'}, 'exists'],
       [{reasonCode: 1037, status: 401}, 'auth'],
       [{reasonCode: 1035, status: 403}, 'auth'],
-      [{reasonCode: 1037, reason: 'RECOVERY_INTERRUPTED', status: 403}, 'cancelled'],
     ])('classifies a recovery failure using the matching priority: %j', (failure, category) => {
       expect(Utils.getStationRecoveryFailureCategory(failure)).toBe(category);
     });

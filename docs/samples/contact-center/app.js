@@ -4883,14 +4883,14 @@ function register() {
           updateTeamDropdownElm.value      = teamsDropdown.value;  // sync initial selection
         }
         // Keep both dropdowns in sync
-        teamsDropdown.onchange = () => {
+        teamsDropdown.addEventListener('change', () => {
           if (updateTeamDropdownElm) {
             updateTeamDropdownElm.value = teamsDropdown.value;
           }
-        };
-        updateTeamDropdownElm.onchange = () => {
+        });
+        updateTeamDropdownElm.addEventListener('change', () => {
           teamsDropdown.value = updateTeamDropdownElm.value;
-        };
+        });
         const loginVoiceOptions = agentProfile.loginVoiceOptions;
         populateLoginOptions(
           loginVoiceOptions.filter((o) => agentProfile.webRtcEnabled || o !== 'BROWSER')
@@ -4905,7 +4905,6 @@ function register() {
           updateUnregisterButtonState();
         }
 
-        idleCodesDropdown.innerHTML = '';
         const idleCodesList = getSelectableIdleCodes(agentProfile.idleCodes);
         setAgentStatusButton.disabled = idleCodesDropdown.disabled || idleCodesList.length === 0;
         idleCodesList.forEach((idleCodes) => {
