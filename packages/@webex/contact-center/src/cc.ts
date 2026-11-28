@@ -851,7 +851,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (wasSubscribed) this.taskManager.clearAISummaryState();
   }
 
-  private connectRTDWebsocket(): void {
+  private initializeRTDWebSocket(): void {
     /**
      * RTD websocket currently supports realtime transcripts and suggested responses.
      * Extend this condition when additional AI RTD features are introduced.
@@ -1318,7 +1318,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           reason: 'region-mismatch',
         });
       }
-      this.connectRTDWebsocket();
+      this.initializeRTDWebSocket();
 
       return this.agentConfig;
     } catch (error) {
@@ -2726,7 +2726,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.clearRegionRecovery();
         connection.reset();
         this.publishRegionState(state);
-        this.connectRTDWebsocket();
+        this.initializeRTDWebSocket();
         this.requestAutoAvailable();
       } catch (error) {
         if (this.regionRecoveryTimer !== timer) return;
@@ -2828,7 +2828,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       ) {
         try {
           await this.silentRelogin();
-          this.connectRTDWebsocket();
+          this.initializeRTDWebSocket();
         } catch (error) {
           const failure = normalizeRecoveryFailure(error);
           if (failure.status === 401 || failure.status === 403) this.handleReconnectFailed(error);

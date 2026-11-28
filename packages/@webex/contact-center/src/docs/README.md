@@ -415,7 +415,7 @@ sequenceDiagram
 
 `stationLoginInternal()` sends the request and calls `handleStationLoginSuccess()` for Calling setup and station
 preferences. `buildStationLoginPayload()` constructs the request, `saveStationLoginPreferences()` saves
-the accepted device/dial-number details, and `connectRTDWebsocket()` owns RTD setup.
+the accepted device/dial-number details, and `initializeRTDWebSocket()` owns RTD setup.
 
 ```mermaid
 sequenceDiagram
