@@ -327,9 +327,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /** Registration generation that owns the wellness idle-code cache and in-flight lookups. */
   private wellnessRegistrationGeneration = 0;
 
-  private async stationLoginInternal(
-    payload: Agent.UserStationLogin
-  ): Promise<Agent.StationLoginSuccess> {
+  private async stationLoginInternal(data: AgentLogin): Promise<Agent.StationLoginSuccess> {
+    const deviceId = this.getDeviceId(data.loginOption, data.dialNumber);
+    const payload: Agent.UserStationLogin = {
+      // BROWSER DN must be webrtc-{agentId} so VPOP/RTMS do not treat a bare UUID as PSTN.
+      dialNumber: data.loginOption === LoginOption.BROWSER ? deviceId : data.dialNumber,
+      teamId: data.teamId,
+      deviceType: data.loginOption,
+      isExtension: data.loginOption === LoginOption.EXTENSION,
+      deviceId,
+      roles: [AGENT],
+      teamName: EMPTY_STRING,
+      siteId: EMPTY_STRING,
+      usesOtherDN: false,
+      auxCodeId: EMPTY_STRING,
+    };
     const response = await this.services.agent.stationLogin({data: payload});
     await this.handleStationLoginSuccess(response, payload);
 
@@ -362,24 +374,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.updateWellnessSession(response.data.agentSessionId);
     this.agentConfig.currentTeamId = response.data.teamId;
     this.saveStationLoginPreferences(loginOption, station.dialNumber);
-  }
-
-  private buildStationLoginPayload(data: AgentLogin): Agent.UserStationLogin {
-    const deviceId = this.getDeviceId(data.loginOption, data.dialNumber);
-
-    return {
-      // BROWSER DN must be webrtc-{agentId} so VPOP/RTMS do not treat a bare UUID as PSTN.
-      dialNumber: data.loginOption === LoginOption.BROWSER ? deviceId : data.dialNumber,
-      teamId: data.teamId,
-      deviceType: data.loginOption,
-      isExtension: data.loginOption === LoginOption.EXTENSION,
-      deviceId,
-      roles: [AGENT],
-      teamName: EMPTY_STRING,
-      siteId: EMPTY_STRING,
-      usesOtherDN: false,
-      auxCodeId: EMPTY_STRING,
-    };
   }
 
   private saveStationLoginPreferences(loginOption: LoginOption, dialNumber?: string): void {
@@ -1275,7 +1269,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       }
 
-      const resp = await this.stationLoginInternal(this.buildStationLoginPayload(data));
+      const resp = await this.stationLoginInternal(data);
       const {channelsMap, ...loginData} = resp.data;
       const response = {
         ...loginData,
