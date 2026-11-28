@@ -413,9 +413,9 @@ sequenceDiagram
 
 ### Station login, logout, and agent state
 
-`stationLoginInternal()` sends the request and calls `handleStationLoginSuccess()` for Calling setup and station
-preferences. `buildStationLoginPayload()` constructs the request, `saveStationLoginPreferences()` saves
-the accepted device/dial-number details, and `initializeRTDWebSocket()` owns RTD setup.
+`stationLoginInternal()` constructs and sends the request, then calls `handleStationLoginSuccess()` for
+Calling setup and station preferences. `saveStationLoginPreferences()` saves the accepted device/dial-number
+details, and `initializeRTDWebSocket()` owns RTD setup.
 
 ```mermaid
 sequenceDiagram
@@ -427,7 +427,7 @@ sequenceDiagram
   alt AGENT_DN and number outside the dial plan
     CC-->>App: throw INVALID_DIAL_NUMBER
   end
-  CC->>CC: stationLoginInternal(payload); shared with recovery fallback
+  CC->>CC: stationLoginInternal(data); shared with recovery fallback
   CC->>Agent: stationLogin (AQM; deviceId webrtc- prefix for BROWSER)
   Agent-->>CC: StationLoginSuccess or failure notification
   CC->>Calling: setLoginOption; setBrowserVoiceRequired

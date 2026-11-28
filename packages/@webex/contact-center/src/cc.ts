@@ -374,10 +374,23 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   private async stationLoginInternal(
-    payload: Agent.UserStationLogin,
+    data: AgentLogin,
     restoringRegion = false
-  ): Promise<Agent.StationLoginSuccess | undefined> {
-    if (!payload) return undefined;
+  ): Promise<Agent.StationLoginSuccess> {
+    const deviceId = this.getDeviceId(data.loginOption, data.dialNumber);
+    const payload: Agent.UserStationLogin = {
+      // BROWSER DN must be webrtc-{agentId} so VPOP/RTMS do not treat a bare UUID as PSTN.
+      dialNumber: data.loginOption === LoginOption.BROWSER ? deviceId : data.dialNumber,
+      teamId: data.teamId,
+      deviceType: data.loginOption,
+      isExtension: data.loginOption === LoginOption.EXTENSION,
+      deviceId,
+      roles: [AGENT],
+      teamName: EMPTY_STRING,
+      siteId: EMPTY_STRING,
+      usesOtherDN: false,
+      auxCodeId: EMPTY_STRING,
+    };
     const response = await this.services.agent.stationLogin({data: payload});
     await this.handleStationLoginSuccess(response, payload, restoringRegion);
 
@@ -431,39 +444,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       await this.handleDeviceType(loginOption, profile.dn, restoringRegion);
     }
     await this.ensureWxAppPostStationLogin();
-  }
-
-  private buildStationLoginPayload(data?: AgentLogin): Agent.UserStationLogin | undefined {
-    if (!data) {
-      const profile = this.agentConfig;
-      if (
-        !profile?.isAgentLoggedIn ||
-        !profile.currentTeamId?.trim() ||
-        !Object.values(LoginOption).includes(profile.deviceType) ||
-        (profile.deviceType !== LoginOption.BROWSER && !profile.dn?.trim())
-      )
-        return undefined;
-      data = {
-        teamId: profile.currentTeamId,
-        loginOption: profile.deviceType,
-        dialNumber: profile.dn,
-      };
-    }
-    const deviceId = this.getDeviceId(data.loginOption, data.dialNumber);
-
-    return {
-      // BROWSER DN must be webrtc-{agentId} so VPOP/RTMS do not treat a bare UUID as PSTN.
-      dialNumber: data.loginOption === LoginOption.BROWSER ? deviceId : data.dialNumber,
-      teamId: data.teamId,
-      deviceType: data.loginOption,
-      isExtension: data.loginOption === LoginOption.EXTENSION,
-      deviceId,
-      roles: [AGENT],
-      teamName: EMPTY_STRING,
-      siteId: EMPTY_STRING,
-      usesOtherDN: false,
-      auxCodeId: EMPTY_STRING,
-    };
   }
 
   private saveStationLoginPreferences(loginOption: LoginOption, dialNumber?: string): void {
@@ -1393,7 +1373,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       }
 
-      const resp = await this.stationLoginInternal(this.buildStationLoginPayload(data), manual);
+      const resp = await this.stationLoginInternal(data, manual);
       const {channelsMap, ...loginData} = resp.data;
       const response = {
         ...loginData,
@@ -2835,6 +2815,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private async restoreStationSession(
     regional: boolean
   ): Promise<Agent.ReloginSuccess | Agent.StationLoginSuccess | undefined> {
+    const profile = this.agentConfig;
+    const canRestoreStation = Boolean(
+      profile?.isAgentLoggedIn &&
+        profile.currentTeamId?.trim() &&
+        Object.values(LoginOption).includes(profile.deviceType) &&
+        (profile.deviceType === LoginOption.BROWSER || profile.dn?.trim())
+    );
     let stage: 'reload' | 'fallback' | 'post1035' = 'reload';
     let reloads = 0;
     const manager = this.services.webSocketManager;
@@ -2846,9 +2833,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       try {
         if (stage === 'reload') reloads += 1;
         if (stage === 'fallback') {
+          if (!canRestoreStation) break;
           // eslint-disable-next-line no-await-in-loop -- A fallback is dispatched at most once.
-          response = await this.stationLoginInternal(this.buildStationLoginPayload(), true);
-          if (!response) break;
+          response = await this.stationLoginInternal(
+            {
+              teamId: profile.currentTeamId,
+              loginOption: profile.deviceType,
+              dialNumber: profile.dn,
+            },
+            true
+          );
         } else {
           // eslint-disable-next-line no-await-in-loop -- Reloads use a bounded serial budget.
           response = await this.services.agent.reload();
@@ -2858,11 +2852,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
         const failure = normalizeRecoveryFailure(error);
         const category = getStationRecoveryFailureCategory(failure);
-        if (
-          !regional &&
-          stage === 'reload' &&
-          (category !== 'fallback' || !this.buildStationLoginPayload())
-        )
+        if (!regional && stage === 'reload' && (category !== 'fallback' || !canRestoreStation))
           throw error;
         const retryDelay =
           regional && stage === 'reload' && category === 'transient'
