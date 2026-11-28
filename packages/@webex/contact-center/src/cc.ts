@@ -361,19 +361,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private multiRegionSettings?: MultiRegionSettings;
   private regionState?: RegionRecoveryState;
 
-  private static getRegistrationErrorDetails(error: unknown) {
-    const {status, reasonCode, id, trackingId} = normalizeRecoveryFailure(error);
-
-    return {
-      status,
-      reasonCode,
-      id: normalizeRecoveryDiagnosticId(id),
-      trackingId:
-        normalizeRecoveryDiagnosticId(trackingId) ??
-        normalizeRecoveryDiagnosticId(isRecord(error) ? error.trackingId : undefined),
-    };
-  }
-
   private clearStationProfile(): void {
     if (this.agentConfig) {
       this.agentConfig.isAgentLoggedIn = false;
@@ -882,10 +869,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         });
       })
       .catch((error) => {
-        LoggerProxy.error('Error connecting to RTD websocket', {
+        LoggerProxy.error(`Error connecting to RTD websocket ${error}`, {
           module: CC_FILE,
           method: METHODS.CONNECT_WEBSOCKET,
-          data: ContactCenter.getRegistrationErrorDetails(error),
         });
       });
   }
@@ -1014,18 +1000,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
         {
-          orgId: normalizeRecoveryDiagnosticId(isRecord(error) ? error.orgId : undefined),
+          orgId: error.orgId,
         },
         ['operational']
       );
-      const data = ContactCenter.getRegistrationErrorDetails(error);
-      LoggerProxy.error('Error during register', {
+      LoggerProxy.error(`Error during register: ${error}`, {
         module: CC_FILE,
         method: METHODS.REGISTER,
-        data,
       });
-      Promise.resolve(this.webexRequest.uploadLogs({correlationId: data.trackingId})).catch(() => {
-        /* Log upload failure must not replace the registration error. */
+      this.webexRequest.uploadLogs({
+        correlationId: error?.trackingId,
       });
 
       throw error;
@@ -1325,10 +1309,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (error?.name === 'AbortError') throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
       this.updateWellnessSession();
       if (isRegionRecoveryError(error)) throw error;
-      LoggerProxy.error('Error during register', {
+      LoggerProxy.error(`Error during register: ${error}`, {
         module: CC_FILE,
         method: METHODS.CONNECT_WEBSOCKET,
-        data: ContactCenter.getRegistrationErrorDetails(error),
       });
 
       throw error;

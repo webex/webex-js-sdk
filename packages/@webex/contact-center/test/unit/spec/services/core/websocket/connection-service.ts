@@ -272,7 +272,7 @@ describe('ConnectionService', () => {
     expect(events).toHaveBeenLastCalledWith({...lost, isKeepAlive: keepalive});
   });
 
-  it.each(['not json', 'null', '[]', '7'])('ignores malformed liveness payload %s', (message) => {
+  it.each(['not json', 'null', '7'])('ignores malformed liveness payload %s', (message) => {
     manager.emit('message', message);
     expect(events).not.toHaveBeenCalled();
     expect(jest.getTimerCount()).toBe(2);

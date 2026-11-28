@@ -60,7 +60,7 @@ Related context: [documentation index](../../../../docs/index.md) ·
 | `module.module_specific_conventions` | Applicable | Error-helper, constants, redaction, and listener rules recorded under Module-specific rules, enforced by `src/services/core/Utils.ts` and `src/services/core/aqm-reqs.ts` | Module-specific rules |
 | `module.published_package` | N/A | Core transport classes and helpers are internal; the package re-exports only the lifecycle error-reason catalog from core constants | Export stability |
 | `module.embedded_in_host` | N/A | The package-level host integration is owned by the package root module | Host integration and theming |
-| `module.has_design_tradeoff` | Applicable | HTTP initiation with WebSocket completion in `src/services/core/aqm-reqs.ts`; connection recovery policy with ContactCenter-owned session effects in `src/services/core/websocket/connection-service.ts` | Key design trade-off |
+| `module.has_design_tradeoff` | Applicable | HTTP initiation with WebSocket completion in `src/services/core/aqm-reqs.ts`; transport-only recovery in `src/services/core/websocket/connection-service.ts` | Key design trade-off |
 | `module.has_submodules` | N/A | The websocket folder is part of this module; the plugin's module_tree.py reports no child module | Sub-modules |
 
 ## Evidence register
@@ -71,7 +71,7 @@ Related context: [documentation index](../../../../docs/index.md) ·
 | `src/services/core/aqm-reqs.ts` | `AqmReqs`: `req`, `reqEmpty`, bind keys, pending maps, duplicate rejection, HTTP failure masking, timeout, and redaction |
 | `src/services/core/types.ts` | `Req`, `Conf`, `ConfEmpty`, `Res`, `ResEmpty`, `CbRes`, `Pending`, `Timeout`, and the RTD request types |
 | `src/services/core/websocket/WebSocketManager.ts` | Subscribe registration, the `wss` allow-list check, socket handlers, keepalive worker wiring, welcome resolution, multi-login close, and `message`/`socketClose` events |
-| `src/services/core/websocket/connection-service.ts` | Ordinary liveness/reconnect, regional pacing, primary mismatch/U2C recovery, snapshots, and diagnostics; awaits ContactCenter's station restoration |
+| `src/services/core/websocket/connection-service.ts` | Liveness timers, reconnect interval, restore failure, primary subscribe/U2C recovery, and connection notifications |
 | `src/services/core/websocket/keepalive.worker.js` | The worker script, its `start`/`terminate` inputs, and its `keepalive`/`closeSocket` outputs |
 | `src/services/core/websocket/types.ts` | `ConnectionServiceOptions`, `ConnectionLostDetails`, `ConnectionProp` |
 | `src/services/core/constants.ts` | Timer values, `ALLOWED_ROUTING_NOTIFS_DOMAINS`, participant constants, and method-name constants |
@@ -90,14 +90,14 @@ Core is the foundational infrastructure layer that all other services depend on.
 
 Boundary:
 
-- Responsibility: the four concerns above, regional transport recovery, and the shared consult and dial-number helpers in
+- Responsibility: the four concerns above, plus the shared consult and dial-number helpers in
   `src/services/core/Utils.ts`.
 - In scope: every file under `src/services/core`, including `websocket/`.
 - Out of scope: agent credentials, agent profile/device updates, station retries, and deferred Available (the
   ContactCenter plugin in `src/cc.ts`); composing the services (`src/services/index.ts`, parent spec);
   the meaning of individual AQM operations (the agent, task, and dialer modules that call `req`).
 - Consumers: `Services` constructs `WebSocketManager`, `AqmReqs`, and `ConnectionService`; `src/cc.ts`
-  configures recovery, connects the primary socket through ConnectionService, calls `initWebSocket`
+  connects the primary socket through ConnectionService, calls `initWebSocket`
   for RTD, and listens to socket and recovery events; `TaskManager`
   listens to `message` on both sockets; the agent, contact, and dialer factories call `req`; many
   service files call `WebexRequest`, `getErrorDetails`, `generateTaskErrorObject`, and the consult
@@ -208,7 +208,6 @@ Do not remove or reinterpret exported symbols/events without a documented consum
 | CORE-R-016 | Socket initialization owns the subscription, socket, 30-second Welcome deadline after subscription, and keepalive resources. Supersession, timeout, or explicit close disposes that attempt; a late subscription response cannot open its socket. | An obsolete socket or unresolved Welcome cannot claim the current transport. | `src/services/core/websocket/WebSocketManager.ts`, `src/services/core/constants.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | ConnectionService owns recovery policy. | PRESENT |
 | CORE-R-017 | Ordinary reconnect uses five-second slots under a 50-second watchdog and one pending attempt. Each retry uses the existing subscribe-and-connect method. A stopped or expired attempt cannot open a late socket. ConnectionService refreshes U2C and retries once for a recognized primary subscribe mismatch, and owns terminal handling. An admitted quiet socket can still receive a late keepalive. | Socket reconnection needs bounded, serialized transport work and one owner for mismatch recovery. | `src/services/core/websocket/connection-service.ts` | `test/unit/spec/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` | ContactCenter owns regional delays and station retry budgets. | PRESENT |
 | CORE-R-018 | ContactCenter's regional station retries use the same AQM notification bindings, duplicate-request handling, and timeout as ordinary station requests, after awaiting ConnectionService transport. | The region switch changes the notification connection. | `src/services/core/aqm-reqs.ts`, `src/services/core/websocket/connection-service.ts`, `src/cc.ts` | `test/unit/spec/services/core/aqm-reqs.ts`, `test/unit/spec/cc.ts` | Live station recovery remains release verification. | PRESENT |
-| CORE-R-019 | In ordinary mode without a pending admission, `ConnectionService.onPing` guards JSON parsing and object validation. Malformed JSON and non-object/array payloads produce fixed `LoggerProxy.error` diagnostics and return without changing liveness state/timers; valid objects retain keepalive and recovery handling. | One malformed server frame must not disrupt the liveness loop, and the frame must not enter logs. | `src/services/core/websocket/connection-service.ts` (onPing) | `test/unit/spec/services/core/websocket/connection-service.ts` malformed-payload and ordinary recovery cases | Stopped monitoring and a pending initialization return before parsing or logging. | PRESENT |
 
 ## Design overview
 
@@ -558,7 +557,6 @@ bindings and operation settlement. ConnectionService owns ordinary transport sta
 | -- | --------- | --- | ------------------ | ------------- |
 | `INV-001` | Core must preserve its typed public/event contracts and must not invent backend states or responses. | Callers trust that a resolved AQM promise is the backend's own notification (CORE-R-003). | `src/services/core/WebexRequest.ts`, `src/services/core/aqm-reqs.ts` | `test/unit/spec/services/core/aqm-reqs.ts` |
 | `INV-002` | A subscribe/register `webSocketUrl` is trusted only when it is a `wss` URL on the `ALLOWED_ROUTING_NOTIFS_DOMAINS` allow-list; otherwise `WebSocketManager` throws and never opens a socket. | CORE-R-008 | `src/services/core/websocket/WebSocketManager.ts`, `src/services/core/Utils.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts`, `test/unit/spec/services/core/Utils.ts` |
-| `INV-003` | Invalid ping input cannot alter liveness state, emit a connection event, schedule work, or leak frame data. | CORE-R-019 | `src/services/core/websocket/connection-service.ts` | `test/unit/spec/services/core/websocket/connection-service.ts` malformed-payload cases |
 
 ## Concurrency and reactive flow
 
@@ -854,7 +852,6 @@ Unit tests mirror module paths under `test/unit/spec/services/core`. Preserve po
 | `CORE-R-016` | Unit | `test/unit/spec/services/core/websocket/WebSocketManager.ts` subscription and Welcome cases | Welcome deadline, early close, explicit close, and replacement suppress obsolete callbacks | None |
 | `CORE-R-017` | Unit | `test/unit/spec/services/core/websocket/connection-service.ts` ordinary resubscription, retry, and watchdog cases | One pending operation, stopped initialization, and original error forwarding | Regional mismatch and session behavior is covered by CC integration. |
 | `CORE-R-018` | Unit | `test/unit/spec/cc.ts` regional station recovery cases | Existing AQM matching and timeout | Live station recovery remains release verification |
-| `CORE-R-019`, `INV-003` | Unit | `test/unit/spec/services/core/websocket/connection-service.ts` ordinary ping/reconnect cases | Malformed JSON, null, array, and number payloads are ignored without throwing. | No browser execution required. |
 
 Run `yarn workspace @webex/contact-center build:src` and then `yarn workspace @webex/contact-center test:unit` from the workspace root. A module specification is
 complete only when its public surface, invariants, failure modes, and test evidence agree with the

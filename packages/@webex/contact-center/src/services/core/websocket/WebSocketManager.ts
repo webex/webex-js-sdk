@@ -141,7 +141,7 @@ export class WebSocketManager extends EventEmitter {
 
       try {
         isWssUrl = !!webSocketUrl && new URL(webSocketUrl).protocol === 'wss:';
-      } catch {
+      } catch (error) {
         isWssUrl = false;
       }
 

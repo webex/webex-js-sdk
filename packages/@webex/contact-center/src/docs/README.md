@@ -83,7 +83,7 @@ missing or contradictory evidence blocks promotion.
 | `src/services/ApiAiAssistant.ts` | Wellness action validation and the direct `/event` POST that must return 202 |
 | `src/services/config/Util.ts` | The `isWellnessBreakEnabled` gate computed from the AI feature row and the organization licence count |
 | `src/services/WebCallingService.ts` | Voice connection snapshot, readiness check, and reset on line deregistration |
-| `src/services/core/websocket/connection-service.ts` | Ordinary connection monitoring, primary subscribe/U2C recovery, regional transport retries, recovery diagnostics and snapshots |
+| `src/services/core/websocket/connection-service.ts` | Ordinary connection monitoring, primary subscribe/U2C recovery, and connection notifications |
 | `package.json` | Name, `main`, `exports`, `types`, `devMain`, dependencies, and scripts |
 | `jest.config.js` | 85% global branch, function, line, and statement threshold |
 | `test/unit/spec/cc.ts` | ContactCenter behavior: construction, register, station login and logout, agent state, wellness contracts, buddy agents, silent relogin, outdial, queues, upload logs, deregister, WebSocket events, API properties, profile update, outdial ANI, preview campaign, and the private wxApp toggle |

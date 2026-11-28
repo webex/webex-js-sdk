@@ -4,7 +4,7 @@ export const REGION_RECOVERY_ERROR_CODES = {
   STALE_TASK: 'STALE_TASK',
 } as const;
 
-/** Subscribe conflicts that require a new Contact Center registration. */
+/** Subscribe conflicts that require a service-catalog refresh. */
 export const SUBSCRIPTION_MISMATCH_REASONS = [
   'REGION_MISMATCH_REGION_FAILOVER',
   'REGION_MISMATCH_ORG_OVERRIDE',
@@ -140,6 +140,7 @@ export const METHODS = {
   ON_MESSAGE: 'onMessage',
 
   // WebSocketManager methods
+  INIT_WEB_SOCKET: 'initWebSocket',
   CLOSE: 'close',
   HANDLE_CONNECTION_LOST: 'handleConnectionLost',
   REGISTER: 'register',
@@ -153,6 +154,7 @@ export const METHODS = {
   CLEAR_TIMER_ON_RESTORE_FAILED: 'clearTimerOnRestoreFailed',
   HANDLE_RESTORE_FAILED: 'handleRestoreFailed',
   UPDATE_CONNECTION_DATA: 'updateConnectionData',
+  SET_CONNECTION_PROP: 'setConnectionProp',
   ON_PING: 'onPing',
   HANDLE_SOCKET_CLOSE: 'handleSocketClose',
   ON_SOCKET_CLOSE: 'onSocketClose',

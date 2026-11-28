@@ -816,10 +816,10 @@ describe('webex.cc', () => {
         module: CC_FILE,
         method: 'register',
       });
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        'Error during register',
-        expect.objectContaining({module: CC_FILE, method: 'register'})
-      );
+      expect(LoggerProxy.error).toHaveBeenCalledWith(`Error during register: ${mockError}`, {
+        module: CC_FILE,
+        method: 'register',
+      });
 
       // Verify metrics tracking
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
