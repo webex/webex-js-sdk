@@ -1,3 +1,5 @@
+import MockWebex from '@webex/test-helper-mock-webex';
+import {ServiceInterceptor, Services} from '@webex/webex-core';
 import {WebSocketManager} from '../../../../../../src/services/core/websocket/WebSocketManager';
 import {
   CLOSE_SOCKET_TIMEOUT,
@@ -9,7 +11,7 @@ import {
 import {WEB_SOCKET_MANAGER_FILE} from '../../../../../../src/constants';
 import LoggerProxy from '../../../../../../src/logger-proxy';
 import {SubscribeRequest, WebexSDK} from '../../../../../../src/types';
-import {SUBSCRIBE_API, WCC_API_GATEWAY} from '../../../../../../src/services/constants';
+import {RTD_SUBSCRIBE_API, SUBSCRIBE_API, WCC_API_GATEWAY} from '../../../../../../src/services/constants';
 import {createDeferred} from '../../../../fixtures/aiSummaryTestUtils';
 
 jest.mock('../../../../../../src/logger-proxy', () => ({
@@ -180,6 +182,52 @@ describe('WebSocketManager subscription and connection', () => {
       headers: undefined,
       timeout: TIMEOUT_REQ,
     });
+  });
+
+  it('resubscribes RTD through the updated catalog and uses the returned socket URL', async () => {
+    const host = new MockWebex({
+      children: {services: Services},
+      config: {services: {servicesNotNeedValidation: []}},
+    });
+    const services = host.internal.services;
+    const catalog = services._getCatalog();
+    const oldGateway = 'https://api.produs1.ciscoccservice.com';
+    const newGateway = 'https://api.prodeu2.ciscoccservice.com';
+    const setGateway = (defaultUrl: string) =>
+      catalog.updateServiceUrls('postauth', [{name: WCC_API_GATEWAY, defaultUrl}]);
+    webex.internal.services = services;
+    const interceptor = new ServiceInterceptor({webex});
+    const requestUris: string[] = [];
+    request.mockImplementation(async (options) => {
+      const routed = await interceptor.onRequest(options);
+      requestUris.push(routed.uri);
+      return {body: {webSocketUrl: routed.uri.startsWith(newGateway) ? otherUrl : url}};
+    });
+
+    setGateway(oldGateway);
+    const first = manager.initWebSocket({body, resource: RTD_SUBSCRIBE_API});
+    await flush();
+    const oldSocket = SocketDouble.instances.at(-1)!;
+    oldSocket.open();
+    oldSocket.message({type: 'Welcome', data: {agentId: 'agent'}});
+    await first;
+    manager.close(false);
+
+    setGateway(newGateway);
+    const replacement = manager.initWebSocket({body, resource: RTD_SUBSCRIBE_API});
+    await flush();
+    const newSocket = SocketDouble.instances.at(-1)!;
+    newSocket.open();
+    newSocket.message({type: 'Welcome', data: {agentId: 'agent'}});
+    await replacement;
+
+    expect(requestUris).toEqual([
+      `${oldGateway}/${RTD_SUBSCRIBE_API}`,
+      `${newGateway}/${RTD_SUBSCRIBE_API}`,
+    ]);
+    expect(oldSocket.close).toHaveBeenCalledTimes(1);
+    expect(newSocket.url).toBe(otherUrl);
+    expect(manager.hasUsableSocket()).toBe(true);
   });
 
   it.each([401, 409, 503])('preserves a subscribe HTTP %s failure for its caller', async (statusCode) => {

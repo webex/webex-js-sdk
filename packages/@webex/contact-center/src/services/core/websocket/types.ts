@@ -2,27 +2,23 @@ import {SubscribeRequest} from '../../../types';
 import type WebSocketManager from './WebSocketManager';
 import type {WebexSDK} from '../../../types';
 import type MetricsManager from '../../../metrics/MetricsManager';
-import type routingAgent from '../../agent';
 import type * as Agent from '../../agent/types';
 
 /** Session and application operations used by connection recovery. */
 export type RecoveryOptions = {
   webex: WebexSDK;
-  agent: Pick<ReturnType<typeof routingAgent>, 'reload' | 'stationLogin'>;
+  reload: () => Promise<Agent.ReloginSuccess>;
+  stationLogin: () => Promise<Agent.StationLoginSuccess | undefined>;
   metricsManager: MetricsManager;
   getSession: () => {
     orgId?: string;
     connectionConfig: SubscribeRequest;
     isAgentLoggedIn?: boolean;
-    station?: Agent.UserStationLogin;
     allowAutomatedRelogin: boolean;
     waitingForVoice: boolean;
   };
   onConnectionChange: (connected: boolean) => void;
-  applySession: (
-    response: Agent.ReloginSuccess | Agent.StationLoginSuccess | Agent.StateChangeSuccess,
-    station?: Agent.UserStationLogin
-  ) => Promise<void>;
+  applySession: (response: Agent.ReloginSuccess | Agent.StateChangeSuccess) => Promise<void>;
   makeAvailable: () => Promise<Agent.StateChangeSuccess>;
 };
 

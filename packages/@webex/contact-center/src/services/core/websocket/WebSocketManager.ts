@@ -161,7 +161,7 @@ export class WebSocketManager extends EventEmitter {
     }
   }
 
-  private async connect() {
+  private connect(): void {
     LoggerProxy.log('[WebSocketStatus] | event=webSocketConnecting | Connecting to WebSocket', {
       module: WEB_SOCKET_MANAGER_FILE,
       method: METHODS.CONNECT,
@@ -169,94 +169,87 @@ export class WebSocketManager extends EventEmitter {
     this.websocket = new WebSocket(this.url);
     const websocket = this.websocket;
 
-    return new Promise<void>((resolve, reject) => {
-      this.websocket.onopen = () => {
+    this.websocket.onopen = () => {
+      if (this.websocket !== websocket) return;
+      this.isSocketClosed = false;
+
+      this.websocket.send(JSON.stringify({keepalive: 'true'}));
+      this.keepaliveWorker.onmessage = (keepAliveEvent: MessageEvent) => {
         if (this.websocket !== websocket) return;
-        this.isSocketClosed = false;
-
-        this.websocket.send(JSON.stringify({keepalive: 'true'}));
-        this.keepaliveWorker.onmessage = (keepAliveEvent: MessageEvent) => {
-          if (this.websocket !== websocket) return;
-          if (keepAliveEvent?.data?.type === 'keepalive' && this.websocket.readyState === 1) {
-            this.websocket.send(JSON.stringify({keepalive: 'true'}));
-          }
-
-          if (
-            keepAliveEvent?.data?.type === 'closeSocket' &&
-            this.isConnectionLost &&
-            this.shouldReconnect
-          ) {
-            this.close(true, 'WebSocket did not auto close within 16 secs');
-            LoggerProxy.error(
-              '[webSocketTimeout] | event=webSocketTimeout | WebSocket connection closed forcefully',
-              {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
-            );
-          }
-        };
-
-        this.keepaliveWorker.postMessage({
-          type: 'start',
-          intervalDuration: KEEPALIVE_WORKER_INTERVAL, // Keepalive interval
-          isSocketClosed: this.isSocketClosed,
-          closeSocketTimeout: CLOSE_SOCKET_TIMEOUT, // Close socket timeout
-        });
-        resolve();
-      };
-
-      this.websocket.onerror = () => {
-        LoggerProxy.error(
-          '[WebSocketStatus] | event=socketConnectionFailed | WebSocket connection failed',
-          {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
-        );
-        const error = new Error('WebSocket connection failed');
-        this.webSocketOnCloseHandler(websocket, error);
-        reject(error);
-      };
-
-      this.websocket.onclose = () => {
-        const error = new Error('WebSocket closed');
-        this.webSocketOnCloseHandler(websocket, error);
-        reject(error);
-      };
-
-      this.websocket.onmessage = (e: MessageEvent) => {
-        if (this.websocket !== websocket) return;
-        let eventData;
-        try {
-          eventData = JSON.parse(e.data);
-        } catch {
-          if (this.isWelcomeReceived) this.emit('message', e.data);
-
-          return;
+        if (keepAliveEvent?.data?.type === 'keepalive' && this.websocket.readyState === 1) {
+          this.websocket.send(JSON.stringify({keepalive: 'true'}));
         }
 
         if (
-          eventData?.type === CC_EVENTS.WELCOME &&
-          !this.isWelcomeReceived &&
-          isRecord(eventData.data) &&
-          !Array.isArray(eventData.data)
+          keepAliveEvent?.data?.type === 'closeSocket' &&
+          this.isConnectionLost &&
+          this.shouldReconnect
         ) {
-          this.isWelcomeReceived = true;
-          clearTimeout(this.welcomeTimer);
-          if (this.welcomePromiseResolve) {
-            this.welcomePromiseResolve(eventData.data as WelcomeResponse);
-            this.welcomePromiseResolve = null;
-          }
-          this.welcomePromiseReject = null;
-        }
-
-        if (eventData?.type === 'AGENT_MULTI_LOGIN') {
-          this.close(false, 'multiLogin');
+          this.close(true, 'WebSocket did not auto close within 16 secs');
           LoggerProxy.error(
-            '[WebSocketStatus] | event=agentMultiLogin | WebSocket connection closed by agent multiLogin',
+            '[webSocketTimeout] | event=webSocketTimeout | WebSocket connection closed forcefully',
             {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
           );
-        } else if (!this.isWelcomeReceived) {
-          return;
         }
-        this.emit('message', e.data);
       };
-    });
+
+      this.keepaliveWorker.postMessage({
+        type: 'start',
+        intervalDuration: KEEPALIVE_WORKER_INTERVAL, // Keepalive interval
+        isSocketClosed: this.isSocketClosed,
+        closeSocketTimeout: CLOSE_SOCKET_TIMEOUT, // Close socket timeout
+      });
+    };
+
+    this.websocket.onerror = () => {
+      LoggerProxy.error(
+        '[WebSocketStatus] | event=socketConnectionFailed | WebSocket connection failed',
+        {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
+      );
+      const error = new Error('WebSocket connection failed');
+      this.webSocketOnCloseHandler(websocket, error);
+    };
+
+    this.websocket.onclose = () => {
+      const error = new Error('WebSocket closed');
+      this.webSocketOnCloseHandler(websocket, error);
+    };
+
+    this.websocket.onmessage = (e: MessageEvent) => {
+      if (this.websocket !== websocket) return;
+      let eventData;
+      try {
+        eventData = JSON.parse(e.data);
+      } catch {
+        if (this.isWelcomeReceived) this.emit('message', e.data);
+
+        return;
+      }
+
+      if (
+        eventData?.type === CC_EVENTS.WELCOME &&
+        !this.isWelcomeReceived &&
+        isRecord(eventData.data) &&
+        !Array.isArray(eventData.data)
+      ) {
+        this.isWelcomeReceived = true;
+        clearTimeout(this.welcomeTimer);
+        this.welcomePromiseResolve?.(eventData.data as WelcomeResponse);
+        this.welcomePromiseResolve = null;
+        this.welcomePromiseReject = null;
+      }
+
+      if (eventData?.type === 'AGENT_MULTI_LOGIN') {
+        this.close(false, 'multiLogin');
+        LoggerProxy.error(
+          '[WebSocketStatus] | event=agentMultiLogin | WebSocket connection closed by agent multiLogin',
+          {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
+        );
+      } else if (!this.isWelcomeReceived) {
+        return;
+      }
+      this.emit('message', e.data);
+    };
   }
 
   private webSocketOnCloseHandler(websocket: WebSocket, error: Error) {

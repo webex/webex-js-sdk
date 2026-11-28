@@ -182,7 +182,7 @@ Do not remove or reinterpret exported symbols/events without a documented consum
 | Browser WebSocket, Worker, URL and network-status APIs | Socket, keepalive worker (`Blob` + `URL.createObjectURL`), URL validation, `navigator.onLine` | Offline ordinary attempts skip subscribe and retry at the next five-second single-flight slot, bounded by the watchdog |
 | LoggerProxy and log upload | Every diagnostic line and the error helpers' upload | Fire and forget in the helpers |
 | `MetricsManager` (`src/metrics/MetricsManager.ts`) | Log-upload events and operational regional admission/station-reload outcomes | Not awaited |
-| ContactCenter's `RecoveryOptions` | Live session getter, region-change cleanup, accepted-response application, and the existing Available action | ConnectionService classifies request failures; ContactCenter retains profile/device/task/RTD effects |
+| ContactCenter's `RecoveryOptions` | Live session getter, reload and shared station-login callbacks, region-change cleanup, accepted-response application, and the existing Available action | ConnectionService classifies raw request failures; ContactCenter retains profile/device/task/RTD effects |
 | `src/services/constants.ts`, `src/services/config/types.ts` | `WCC_API_GATEWAY`, `SUBSCRIBE_API`, `CC_EVENTS.WELCOME`, `SubscribeResponse`, `WelcomeResponse` | Compile-time |
 | `src/types.ts` | Shared `WebexSDK`, `HTTP_METHODS`, `RequestBody`, `IHttpResponse`, `LogsMetaData`, `UploadLogsResponse`, `SubscribeRequest`, `WebexRequestPayload`, `LoginOption`, and `RegionRecoveryState` types (contract `contact-center-region-recovery`) | Compile-time |
 | `src/services/task/types.ts` | Interaction and destination types for the consult helpers in `Utils.ts` | Compile-time |
@@ -457,17 +457,23 @@ sequenceDiagram
     CS->>CS: Wait for regional retry delay
     CS->>WS: initWebSocket({body, resource})
     WS-->>CS: Welcome
-    CS->>Agent: Reload or bounded station-login fallback
-    Agent-->>CS: Accepted session
-    CS->>CC: applySession(response, station?)
-    CC-->>CS: Profile/device effects applied
+    alt Reload
+      CS->>Agent: reload()
+      Agent-->>CS: Accepted session
+      CS->>CC: applySession(response)
+      CC-->>CS: Profile/device effects applied
+    else Bounded station-login fallback
+      CS->>CC: stationLogin() callback; build current Profile payload
+      CC->>Agent: Shared loginStation request
+      Agent-->>CC: Accepted session
+      CC->>CC: Apply profile/device/wxApp effects
+      CC-->>CS: Raw response
+    end
     CS->>CS: reset()
     CS-->>CC: regionStateChange(snapshot)
     CC->>CC: Forward public recovery event
-    opt ready or no prior station session
-      CS->>CC: onConnectionChange(true)
-      CC->>CC: Resume RTD when enabled
-    end
+    CS->>CC: onConnectionChange(true)
+    CC->>CC: Resume RTD when enabled
   end
 ```
 
@@ -510,8 +516,9 @@ actions using `region:stateChange`.
 ### ConnectionService members
 
 - The constructor accepts the existing `{webSocketManager, subscribeRequest}` options.
-- `configureRecovery` supplies `webex`, the agent service, metrics, and four hooks: `getSession`,
-  `onConnectionChange`, `applySession`, and `makeAvailable`. Session values are read live from ContactCenter.
+- `configureRecovery` supplies `webex`, metrics, `reload` and shared `stationLogin` callbacks, plus
+  `getSession`, `onConnectionChange`, `applySession`, and `makeAvailable`. Session values are read live from ContactCenter.
+  `stationLogin()` builds its payload when invoked and returns no response when Profile station details are incomplete, leaving manual login required.
 - `connect()` subscribes to the primary socket and refreshes U2C for one retry after a recognized
   mismatch. `handleRegionSwitch()` owns eligibility, deduplication, pacing, and station retries.
 - `reset(socketReconnected = false)` resumes liveness monitoring or ordinary subscription retries;
@@ -788,7 +795,7 @@ const errDetails = createErrDetailsObject(webexRequestPayload);
 - The ordinary driver observes offline and retryable admission failures and keeps the next slot bounded by the watchdog.
 - Once the ordinary watchdog disables reconnect on an admitted socket, a late worker close request
   leaves that socket available for a late keepalive.
-- RTD has its own WebSocket manager. ContactCenter closes it for a regional switch and reconnects it when needed.
+- RTD has its own WebSocket manager. After a regional switch, it subscribes through the current `wcc-api-gateway` and connects the returned `webSocketUrl`, even when station restoration requires manual login.
 - WebSocket not connecting — **Cause**: Subscribe API failed or invalid URL — **Solution**: Check subscribe response and WebSocket URL, including the `wss` scheme and allow-listed host.
 - Messages not received — **Cause**: Event listener not registered — **Solution**: Ensure `on('message', handler)` called before connect
 - Connection drops frequently — **Cause**: Keepalive not enabled or network issues — **Solution**: Verify worker-driven keepalive is running after socket `onopen`, and check network/offline transitions
@@ -844,7 +851,7 @@ const trackingId = response.headers?.trackingid ||
 | Chosen trade-off | Preserved invariant or benefit | Cost or limitation | Decision evidence |
 | ---------------- | ------------------------------ | ------------------ | ----------------- |
 | Request initiation stays HTTP while completion can arrive asynchronously over WebSocket | Explicit timers and correlation preserve backend fidelity (CORE-R-003) | Increased lifecycle complexity: bind keys, pending maps, and timeouts must be cleaned up together | `src/services/core/aqm-reqs.ts` |
-| ConnectionService owns recovery policy; ContactCenter applies accepted session effects | Ordinary and regional transport decisions share one owner without moving profile/device handling into WebSocketManager (CORE-R-004) | Four configured session hooks and recovery-event forwarding connect the existing classes; RTD retains a separate lifecycle | `src/services/core/websocket/connection-service.ts`, `src/cc.ts` |
+| ConnectionService owns recovery policy; ContactCenter applies accepted session effects | Ordinary and regional transport decisions share one owner without moving profile/device handling into WebSocketManager (CORE-R-004) | Configured callbacks reuse shared station login and forward recovery events; RTD retains a separate lifecycle | `src/services/core/websocket/connection-service.ts`, `src/cc.ts` |
 
 ## Verification
 

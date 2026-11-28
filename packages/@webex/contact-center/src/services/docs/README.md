@@ -244,8 +244,8 @@ Understanding the instantiation order is essential — getting it wrong causes r
 Each WebSocketManager uses its existing subscribe-and-connect path for primary or RTD transport.
 The subscription has a 20-second HTTP timeout and adds the organization header required in INT.
 After composing the READY graph, ContactCenter calls `connectionService.configureRecovery` with
-the host, agent service, metrics, and four hooks: `getSession`, `onConnectionChange`, `applySession`,
-and `makeAvailable`. ConnectionService owns regional timing, primary mismatch/U2C recovery,
+the host, metrics, reload and shared station-login callbacks, plus `getSession`, `onConnectionChange`,
+`applySession`, and `makeAvailable`. ConnectionService owns regional timing, primary mismatch/U2C recovery,
 station retries, auto-Available, snapshots, and diagnostics. ContactCenter retains profile/device
 updates, task/RTD effects, and forwarding `regionStateChange` as the public recovery event.
 

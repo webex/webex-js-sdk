@@ -335,7 +335,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /** Registration generation that owns the wellness idle-code cache and in-flight lookups. */
   private wellnessRegistrationGeneration = 0;
-  private acceptedStation?: Agent.UserStationLogin;
   private rtdPaused = true;
 
   private static getRegistrationErrorDetails(error: unknown) {
@@ -353,8 +352,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     };
   }
 
-  private clearAcceptedStation(): void {
-    this.acceptedStation = undefined;
+  private clearStationProfile(): void {
     if (this.agentConfig) {
       this.agentConfig.isAgentLoggedIn = false;
       this.agentConfig.currentTeamId = undefined;
@@ -368,7 +366,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private terminateRegistration(): void {
     this.services.connectionService.resetRecovery();
     this.wellnessRegistrationGeneration += 1;
-    this.clearAcceptedStation();
+    this.clearStationProfile();
     this.wellbeingBreakIdleCode = undefined;
     this.services.connectionService.stop();
     this.pauseRtd('registrationEnded');
@@ -377,88 +375,114 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.taskManager.invalidateRegionalTasks();
   }
 
-  private applyRecoveredSession = async (
+  private async loginStation(
+    payload: Agent.UserStationLogin,
+    restoringRegion = false
+  ): Promise<Agent.StationLoginSuccess | undefined> {
+    if (!payload) return undefined;
+    const response = await this.services.agent.stationLogin({data: payload});
+    await this.applyStationSession(response, payload, restoringRegion);
+
+    return response;
+  }
+
+  private applyStationSession = async (
     response: Agent.ReloginSuccess | Agent.StationLoginSuccess | Agent.StateChangeSuccess,
-    payload?: Agent.UserStationLogin
+    payload?: Agent.UserStationLogin,
+    restoringRegion = true
   ): Promise<void> => {
     if (response.data.type === CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS) {
       this.applyAvailableState(response as Agent.StateChangeSuccess);
 
       return;
     }
-    this.rememberAcceptedStation(
+    const complete = this.updateStationProfile(
       response as Agent.ReloginSuccess | Agent.StationLoginSuccess,
       payload
     );
-    if (this.acceptedStation)
-      await this.handleDeviceType(
-        this.acceptedStation.deviceType as LoginOption,
-        this.acceptedStation.dialNumber,
-        true
-      );
+    const {deviceType, dn} = this.agentConfig;
+    if (complete || !restoringRegion) {
+      if (
+        payload &&
+        deviceType === LoginOption.BROWSER &&
+        !this.isBrowserVoiceRequired(deviceType)
+      ) {
+        this.webCallingService.setLoginOption(deviceType);
+        this.webCallingService.setBrowserVoiceRequired(false);
+        if (this.agentConfig.webRtcEnabled && this.isWebRTCRegistrationDisabled())
+          LoggerProxy.info(
+            'Skipping web calling line registration because disableWebRTCRegistration is enabled',
+            {module: CC_FILE, method: METHODS.STATION_LOGIN}
+          );
+      } else if (Object.values(LoginOption).includes(deviceType))
+        await this.handleDeviceType(deviceType, dn, restoringRegion);
+    }
     await this.ensureWxAppPostStationLogin();
   };
 
-  private rememberAcceptedStation(
+  private updateStationProfile(
     response: Agent.ReloginSuccess | Agent.StationLoginSuccess,
     station?: Agent.UserStationLogin
-  ): void {
+  ): boolean {
     const data = response.data;
     const nonblank = (value: unknown): value is string =>
       typeof value === 'string' && Boolean(value.trim());
     const sessionId = nonblank(data.agentSessionId) ? data.agentSessionId : undefined;
-    const old = this.acceptedStation;
+    const teamId = station && !nonblank(data.teamId) ? station.teamId : data.teamId;
+    let mode = station?.deviceType;
+    let number = station?.dialNumber;
+    let returnedNumber: string | undefined;
+    if (!station) {
+      const fields = response.data as Agent.ReloginSuccess['data'];
+      if (nonblank(fields.dn)) returnedNumber = fields.dn;
+      else if (nonblank(fields.dialNumber)) returnedNumber = fields.dialNumber;
+      mode = nonblank(fields.deviceType) ? fields.deviceType : undefined;
+      if (!mode) {
+        if (fields.isExtension === true) mode = LoginOption.EXTENSION;
+        else if (returnedNumber === `${WEB_RTC_PREFIX}${data.agentId}`) mode = LoginOption.BROWSER;
+        else if (returnedNumber && fields.isExtension === false) mode = LoginOption.AGENT_DN;
+        else mode = this.agentConfig.deviceType;
+      }
+      number =
+        returnedNumber || (this.agentConfig.deviceType === mode ? this.agentConfig.dn : undefined);
+    }
+    const complete =
+      Object.values(LoginOption).includes(mode as LoginOption) &&
+      nonblank(teamId) &&
+      (mode === LoginOption.BROWSER || nonblank(number));
+    if (!station) {
+      if (!complete) number = returnedNumber;
+      else if (mode === LoginOption.BROWSER) number = this.getDeviceId(mode, number);
+    }
     this.agentConfig.lastStateAuxCodeId = data.auxCodeId;
     this.agentConfig.lastStateChangeTimestamp = data.lastStateChangeTimestamp;
     this.agentConfig.lastIdleCodeChangeTimestamp = data.lastIdleCodeChangeTimestamp ?? undefined;
     this.agentConfig.isAgentLoggedIn = true;
     this.updateWellnessSession(sessionId);
-    this.agentConfig.currentTeamId = data.teamId;
-    let payload: Agent.UserStationLogin;
-    if (station) {
-      payload = {
-        ...station,
-        teamId: nonblank(data.teamId) ? data.teamId : station.teamId,
-      };
-    } else {
-      const fields = response.data as Agent.ReloginSuccess['data'];
-      let number: string | undefined;
-      if (nonblank(fields.dn)) number = fields.dn;
-      else if (nonblank(fields.dialNumber)) number = fields.dialNumber;
-      let mode = nonblank(fields.deviceType) ? fields.deviceType : undefined;
-      if (!mode) {
-        if (fields.isExtension === true) mode = LoginOption.EXTENSION;
-        else if (number === `${WEB_RTC_PREFIX}${data.agentId}`) mode = LoginOption.BROWSER;
-        else if (number && fields.isExtension === false) mode = LoginOption.AGENT_DN;
-        else mode = old?.deviceType;
-      }
-      const dialNumber = number || (old?.deviceType === mode ? old?.dialNumber : undefined);
-      if (
-        !Object.values(LoginOption).includes(mode as LoginOption) ||
-        !nonblank(data.teamId) ||
-        (mode !== LoginOption.BROWSER && !nonblank(dialNumber))
-      ) {
-        this.acceptedStation = undefined;
-        this.agentConfig.deviceType = mode as LoginOption;
-        this.agentConfig.dn = number;
-        this.agentConfig.defaultDn = number;
+    this.agentConfig.currentTeamId = teamId;
+    this.agentConfig.deviceType = mode as LoginOption;
+    this.agentConfig.dn = number;
+    this.agentConfig.defaultDn = number;
 
-        return;
-      }
-      payload = this.buildStationLoginPayload({
-        teamId: data.teamId,
-        loginOption: mode as LoginOption,
-        dialNumber,
-      });
-    }
-    this.agentConfig.currentTeamId = payload.teamId;
-    this.acceptedStation = payload;
-    this.agentConfig.deviceType = payload.deviceType as LoginOption;
-    this.agentConfig.dn = payload.dialNumber;
-    this.agentConfig.defaultDn = payload.dialNumber;
+    return complete;
   }
 
-  private buildStationLoginPayload(data: AgentLogin): Agent.UserStationLogin {
+  private buildStationLoginPayload(data?: AgentLogin): Agent.UserStationLogin | undefined {
+    if (!data) {
+      const profile = this.agentConfig;
+      if (
+        !profile?.isAgentLoggedIn ||
+        !profile.currentTeamId?.trim() ||
+        !Object.values(LoginOption).includes(profile.deviceType) ||
+        (profile.deviceType !== LoginOption.BROWSER && !profile.dn?.trim())
+      )
+        return undefined;
+      data = {
+        teamId: profile.currentTeamId,
+        loginOption: profile.deviceType,
+        dialNumber: profile.dn,
+      };
+    }
     const {loginOption, dialNumber, teamId} = data;
     const deviceId = this.getDeviceId(loginOption, dialNumber);
 
@@ -489,7 +513,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   private clearStationSession(): void {
-    this.clearAcceptedStation();
+    this.clearStationProfile();
     this.updateWellnessSession();
     this.services.connectionService.clearStationRecovery();
   }
@@ -662,13 +686,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.taskManager.setAnswerCallOnWebexService(this.answerCallOnWebexService);
       this.services.connectionService.configureRecovery({
         webex: this.$webex,
-        agent: this.services.agent,
+        reload: () => this.services.agent.reload(),
+        stationLogin: () => this.loginStation(this.buildStationLoginPayload(), true),
         metricsManager: this.metricsManager,
         getSession: () => ({
           orgId: this.agentConfig?.orgId,
           connectionConfig: this.getConnectionConfig(),
           isAgentLoggedIn: this.agentConfig?.isAgentLoggedIn,
-          station: this.acceptedStation,
           allowAutomatedRelogin: this.$config?.allowAutomatedRelogin ?? false,
           waitingForVoice:
             this.webCallingService.isBrowserVoiceRequired() &&
@@ -681,7 +705,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             this.taskManager.invalidateRegionalTasks();
           }
         },
-        applySession: this.applyRecoveredSession,
+        applySession: this.applyStationSession,
         makeAvailable: () =>
           this.setAgentState({
             state: AGENT_STATE_AVAILABLE,
@@ -999,7 +1023,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.taskManager.unregisterIncomingCallEvent();
       this.taskManager.invalidateRegionalTasks();
     }
-    this.clearAcceptedStation();
+    this.clearStationProfile();
     this.wellnessRegistrationGeneration += 1;
     this.wellbeingBreakIdleCode = undefined;
     LoggerProxy.log('Starting CC SDK registration', {
@@ -1451,28 +1475,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
 
       const payload = this.buildStationLoginPayload(data);
-      const loginResponse = await this.services.agent.stationLogin({data: payload});
-      this.rememberAcceptedStation(loginResponse, payload);
-
-      this.webCallingService.setLoginOption(data.loginOption);
-      this.webCallingService.setBrowserVoiceRequired(this.isBrowserVoiceRequired(data.loginOption));
-
-      if (this.isBrowserVoiceRequired(data.loginOption)) {
-        if (manual) this.webCallingService.ensureWebCallingLine();
-        else await this.webCallingService.registerWebCallingLine();
-      } else if (
-        this.agentConfig.webRtcEnabled &&
-        data.loginOption === LoginOption.BROWSER &&
-        this.isWebRTCRegistrationDisabled()
-      ) {
-        LoggerProxy.info(
-          'Skipping web calling line registration because disableWebRTCRegistration is enabled',
-          {
-            module: CC_FILE,
-            method: METHODS.STATION_LOGIN,
-          }
-        );
-      }
+      const loginResponse = await this.loginStation(payload, manual);
 
       const resp = await loginResponse;
       const {channelsMap, ...loginData} = resp.data;
@@ -1508,12 +1511,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       );
 
-      await this.ensureWxAppPostStationLogin();
       this.services.connectionService.publishRegionState({
         status: 'ready',
         reason: manual ? 'region-switch' : 'initial-login',
       });
-      if (manual) this.resumeRtd();
 
       return response;
     } catch (error) {
@@ -2706,11 +2707,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     let fallbackAttempted = false;
     try {
       let reLoginResponse: Agent.ReloginSuccess | Agent.StationLoginSuccess;
-      let station: Agent.UserStationLogin | undefined;
       try {
         reLoginResponse = await this.services.agent.reload();
       } catch (error) {
-        const payload = this.acceptedStation;
+        const payload = this.buildStationLoginPayload();
         if (
           !payload ||
           getStationRecoveryFailureCategory(normalizeRecoveryFailure(error)) !== 'fallback'
@@ -2718,21 +2718,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           throw error;
         fallbackAttempted = true;
         try {
-          reLoginResponse = await this.services.agent.stationLogin({data: payload});
-          station = payload;
+          reLoginResponse = await this.loginStation(payload, true);
         } catch (loginError) {
           if (getStationRecoveryFailureCategory(normalizeRecoveryFailure(loginError)) !== 'exists')
             throw loginError;
           reLoginResponse = await this.services.agent.reload();
         }
       }
-      this.rememberAcceptedStation(reLoginResponse, station);
+      if (reLoginResponse.data.type !== CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS)
+        await this.applyStationSession(reLoginResponse, undefined, fallbackAttempted);
 
       const {agentId} = reLoginResponse.data;
       const {lastStateChangeReason} = reLoginResponse.data as Agent.ReloginSuccess['data'];
-      const {deviceType, dn} = this.agentConfig;
-      if (Object.values(LoginOption).includes(deviceType))
-        await this.handleDeviceType(deviceType, dn, fallbackAttempted);
 
       if (lastStateChangeReason === 'agent-wss-disconnect') {
         LoggerProxy.log(
@@ -2755,7 +2752,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           );
         }
       }
-      await this.ensureWxAppPostStationLogin();
       this.services.connectionService.publishRegionState({
         status: 'ready',
         reason: initialRegistration ? 'initial-login' : 'region-switch',

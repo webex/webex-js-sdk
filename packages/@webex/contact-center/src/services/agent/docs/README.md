@@ -318,7 +318,7 @@ The agent service uses a factory pattern: `routingAgent` is a pure AQM factory. 
 
 The factory initiates authenticated HTTP requests and supplies `CC_EVENTS` success/failure binds to AqmReqs. The services root builds it once as `services.agent` (`src/services/index.ts`); the factory holds no state.
 
-ContactCenter validates and enriches public inputs, starts metrics, delegates to the factory, performs browser-calling work when required, and maps backend notifications to application-facing events. `updateAgentProfile()` and private `silentRelogin()` remain ContactCenter methods. ConnectionService calls the same agent factory for regional reload and fallback; its configured ContactCenter callback applies each accepted session.
+ContactCenter validates and enriches public inputs, starts metrics, delegates to the factory, performs browser-calling work when required, and maps backend notifications to application-facing events. `updateAgentProfile()` and private `silentRelogin()` remain ContactCenter methods. ConnectionService uses configured reload and station-login callbacks; fallback reuses ContactCenter's private login flow and applies the session before returning its raw response.
 
 Stack: TypeScript 5.4 AQM request factory, REST initiation, WebSocket completion events, Jest 27.
 
@@ -481,9 +481,9 @@ sequenceDiagram
       opt lastStateChangeReason is agent-wss-disconnect
         CC->>CC: setAgentState Available (aux code 0)
       end
-    else missing station with an accepted login payload
+    else missing station with current Profile station details
       Agent-->>CC: relogin failure
-      CC->>Agent: stationLogin(accepted payload)
+      CC->>Agent: stationLogin(payload built from Profile)
       Note over CC,Agent: A session-already-exists response permits one further reload
     else AGENT_NOT_FOUND without an accepted station
       Agent-->>CC: relogin failure
@@ -507,14 +507,15 @@ does not bypass suppression or regional recovery ownership. Separately, `connect
 socket is still connected; a disconnect or relogin failure rejects `cc.register()`. Ordinary
 monitoring starts after registration setup completes. Hosts await
 `register()` and `deregister()` and pause new station/task actions during recovery. ConnectionService
-owns the regional timer and bounded reload/fallback path. It calls the existing agent factory,
-then awaits ContactCenter's `applyRecoveredSession()` to update the profile, wellness session,
-browser calling and wxApp hooks before publishing the station outcome. `stationLoginRequired`
+owns the regional timer and bounded reload/fallback path. Its station-login callback shares the
+private `loginStation()` flow used by public login, including profile, calling, and wxApp updates.
+Reload responses use the shared `applyStationSession()` before publishing the station outcome. `stationLoginRequired`
 requires explicit station login. Evidence: `src/cc.ts`,
 `src/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts`.
 
-When reload reports a missing station and an accepted login payload is available, the SDK tries
-that payload once. A session-already-exists response permits one further reload. Failed fallback
+When reload reports a missing station and the Profile has complete station details, the SDK builds
+the login payload from its team, device type, and dial number and tries it once.
+A session-already-exists response permits one further reload. Failed fallback
 requests manual station login unless authentication failed.
 
 ### WebSocket-to-application event mapping
@@ -567,8 +568,8 @@ classDiagram
   class AqmReqs
   class WebSocketManager
   ContactCenter --> routingAgent : public agent operations / reload
-  ConnectionService --> routingAgent : regional reload and fallback
-  ConnectionService --> ContactCenter : apply accepted session callback
+  ConnectionService --> routingAgent : configured reload callback
+  ConnectionService --> ContactCenter : shared station login + accepted reload callbacks
   routingAgent --> AqmReqs : request factories
   AqmReqs --> WebSocketManager : correlated notifications
   ContactCenter --> ContactCenter : updateAgentProfile + silentRelogin ownership

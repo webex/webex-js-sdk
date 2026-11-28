@@ -177,7 +177,8 @@ Active calls and audio can be interrupted by a switch. Obtain replacement Tasks 
 existing Task events. If a pending WebRTC microphone request completes after its Task is retired,
 the SDK releases the granted tracks and rejects `accept()` with `STALE_TASK`. Fresh
 `FEATURE_ENABLEMENT` enables restored AI summary capabilities. Optional realtime services resume
-independently, after manual login if required for the previous station.
+independently after regional recovery, even when station login is still required. The SDK obtains
+their new subscription URLs; your app does not manage them.
 
 Clear the recovery display after confirmed station logout, when deregistration or replacement
 begins, and on primary multi-login. Station logout uses the normal request and notification flow.

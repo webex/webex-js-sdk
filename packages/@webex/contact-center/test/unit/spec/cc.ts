@@ -6422,10 +6422,11 @@ describe('regional recovery wiring', () => {
           if (rtdSubscribes > 1 && rtdReconnectFailure) {
             throw {statusCode: rtdReconnectFailure};
           }
+          const host = rtdSubscribes === 1 ? 'rtd.produs1.cisco.com' : 'rtd.produs2.cisco.com';
 
           return {
             statusCode: 200,
-            body: {webSocketUrl: 'wss://rtd.produs2.cisco.com/?signature=private'},
+            body: {webSocketUrl: `wss://${host}/?signature=private`},
           };
         }
         if (resource.endsWith('/v2/user/by-ci-user-id/agent/desktop-login')) {
@@ -6749,6 +6750,55 @@ describe('regional recovery wiring', () => {
       expect(state).toHaveBeenLastCalledWith(expect.objectContaining({status: 'ready'}));
       expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
     });
+  });
+
+  it('applies a fallback browser login once and preserves the existing Calling line', async () => {
+    await withRouting(async ({cc, requests, connectBackup, login}) => {
+      const calling = cc.webCallingService;
+      const line = {mobiusDeviceId: 'browser-line', deregister: jest.fn()};
+      const register = jest.spyOn(calling, 'registerWebCallingLine').mockImplementation(async () => {
+        calling['line'] = line;
+      });
+      await login(LoginOption.BROWSER);
+
+      const setLoginOption = jest.spyOn(calling, 'setLoginOption');
+      const setBrowserVoiceRequired = jest.spyOn(calling, 'setBrowserVoiceRequired');
+      const metrics = jest.spyOn(cc['metricsManager'], 'trackEvent');
+      cc.$config.enableWxBetterTogether = true;
+      const state = jest.fn();
+      cc.on('region:stateChange', state);
+      const backup = await connectBackup();
+      backup.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_FAILED, {reasonCode: 1038}));
+      await flush();
+
+      expect(requests.at(-1)).toMatchObject({
+        resource: '/v1/agents/login',
+        body: {teamId: 'team', deviceType: LoginOption.BROWSER, dialNumber: 'webrtc-agent'},
+      });
+      expect(state.mock.calls.some(([event]) => event.status === 'ready')).toBe(false);
+      expect(setLoginOption).not.toHaveBeenCalled();
+      expect(setBrowserVoiceRequired).not.toHaveBeenCalled();
+
+      backup.message({
+        ...agentFrame(CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS, {
+          deviceType: LoginOption.BROWSER,
+          dn: 'webrtc-agent',
+          isExtension: false,
+        }),
+        type: CC_EVENTS.AGENT_STATION_LOGIN,
+      });
+      await flush();
+
+      expect(setLoginOption.mock.calls).toEqual([[LoginOption.BROWSER]]);
+      expect(setBrowserVoiceRequired.mock.calls).toEqual([[true]]);
+      expect(
+        metrics.mock.calls.filter(([name]) => name === METRIC_EVENT_NAMES.WXAPP_SESSION_SKIPPED)
+      ).toHaveLength(1);
+      expect(register).toHaveBeenCalledTimes(1);
+      expect(line.deregister).not.toHaveBeenCalled();
+      expect(calling['line']).toBe(line);
+      expect(state).toHaveBeenLastCalledWith(expect.objectContaining({status: 'ready'}));
+    }, {browserVoice: true});
   });
 
   it.each(['succeeded', 'failed', 'cancelled', 'socket-closed', 'logout-in-flight'])(
@@ -7192,9 +7242,10 @@ describe('regional recovery wiring', () => {
         expect(state).toHaveBeenLastCalledWith(
           expect.objectContaining({status: 'stationLoginRequired', reason})
         );
-        expect(requests.slice(start).map(({resource}) => resource)).toEqual(
-          hasStation ? [SUBSCRIBE_API] : [SUBSCRIBE_API, 'v1/realtime/subscribe']
-        );
+        expect(requests.slice(start).map(({resource}) => resource)).toEqual([
+          SUBSCRIBE_API,
+          'v1/realtime/subscribe',
+        ]);
         await login();
         expect(state).toHaveBeenLastCalledWith(expect.objectContaining({status: 'ready'}));
         expect(requests.filter(({resource}) => resource === 'v1/realtime/subscribe')).toHaveLength(
@@ -7518,9 +7569,13 @@ describe('regional recovery wiring', () => {
     }, {rtdEnabled: true});
   });
 
-  it.each([undefined, 503])(
-    'recovers routing independently of RTD subscription failure %s',
-    async (rtdReconnectFailure) => {
+  it.each([
+    {title: 'station recovery succeeds'},
+    {title: 'RTD subscription fails', rtdReconnectFailure: 503},
+    {title: 'station recovery requires manual login', stationRestoreFailed: true},
+  ])(
+    'resumes RTD after regional recovery when $title',
+    async ({rtdReconnectFailure, stationRestoreFailed}) => {
       await withRouting(
         async ({cc, requests, sockets, currentRouting, startSwitch, advanceSwitch, login}) => {
           const oldRtd = sockets.find((socket) => socket.url.includes('rtd.'));
@@ -7534,9 +7589,20 @@ describe('regional recovery wiring', () => {
           const backup = currentRouting();
           backup.welcome();
           await flush();
-          backup.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS));
+          if (stationRestoreFailed) {
+            backup.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_FAILED, {reasonCode: 1038}));
+            await flush();
+            backup.message({
+              ...agentFrame(CC_EVENTS.AGENT_STATION_LOGIN_FAILED, {reasonCode: 9999}),
+              type: CC_EVENTS.AGENT_STATION_LOGIN,
+            });
+          } else backup.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS));
           await flush();
-          expect(state).toHaveBeenLastCalledWith(expect.objectContaining({status: 'ready'}));
+          expect(state).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+              status: stationRestoreFailed ? 'stationLoginRequired' : 'ready',
+            })
+          );
           expect(oldRtd.close).toHaveBeenCalledTimes(1);
           expect(
             requests.filter(({resource}) => resource === 'v1/realtime/subscribe')
@@ -7544,6 +7610,20 @@ describe('regional recovery wiring', () => {
           expect(sockets.filter((socket) => socket.url.includes('rtd.'))).toHaveLength(
             rtdReconnectFailure ? 1 : 2
           );
+          if (!rtdReconnectFailure) {
+            const restoredRtd = sockets.filter((socket) => socket.url.includes('rtd.')).at(-1);
+            expect(oldRtd.url).toBe('wss://rtd.produs1.cisco.com/?signature=private');
+            expect(restoredRtd.url).toBe('wss://rtd.produs2.cisco.com/?signature=private');
+            restoredRtd.welcome();
+            await flush();
+            expect(cc.services.rtdWebSocketManager.hasUsableSocket()).toBe(true);
+          }
+          if (stationRestoreFailed) {
+            await login();
+            expect(state).toHaveBeenLastCalledWith(expect.objectContaining({status: 'ready'}));
+            expect(requests.filter(({resource}) => resource === 'v1/realtime/subscribe'))
+              .toHaveLength(2);
+          }
         },
         {rtdEnabled: true, rtdReconnectFailure}
       );

@@ -348,8 +348,7 @@ export class ConnectionService extends EventEmitter {
         this.regionStateContext.autoAvailable = state.autoAvailable;
       }
       this.publishRegionState(state);
-      if (state.status === 'ready' || !this.recoveryOptions.getSession().isAgentLoggedIn)
-        this.recoveryOptions.onConnectionChange(true);
+      this.recoveryOptions.onConnectionChange(true);
       if (state.status === 'ready') this.requestAutoAvailable();
     } catch (error) {
       if (this.recovery !== recovery) return;
@@ -372,7 +371,6 @@ export class ConnectionService extends EventEmitter {
     if (!this.recoveryOptions.getSession().allowAutomatedRelogin)
       return {status: 'stationLoginRequired', reason: 'automatic-relogin-disabled'};
 
-    const payload = this.recoveryOptions.getSession().station;
     while (this.recovery === recovery && this.webSocketManager.hasUsableSocket()) {
       if (recovery.stage === 'reload' && recovery.reloads > STATION_RELOAD_RETRY_DELAYS_MS.length)
         recovery.stage = 'fallback';
@@ -387,12 +385,12 @@ export class ConnectionService extends EventEmitter {
         // Consume each one-shot stage before dispatch so a lost socket cannot repeat it.
         else recovery.stage = 'manual';
         if (stage === 'fallback') {
-          if (!payload) break;
           // eslint-disable-next-line no-await-in-loop -- At most one fallback dispatch.
-          response = await this.recoveryOptions.agent.stationLogin({data: payload});
+          response = await this.recoveryOptions.stationLogin();
+          if (!response) break;
         } else {
           // eslint-disable-next-line no-await-in-loop -- Bounded reload budget survives sockets.
-          response = await this.recoveryOptions.agent.reload();
+          response = await this.recoveryOptions.reload();
         }
       } catch (error) {
         if (this.recovery !== recovery || !this.webSocketManager.hasUsableSocket())
@@ -432,11 +430,9 @@ export class ConnectionService extends EventEmitter {
         if (this.recovery !== recovery || !this.webSocketManager.hasUsableSocket())
           throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
         this.recordRecoveryDiagnostic(diagnosticStage, 'succeeded', attempt, startedAt);
-        // eslint-disable-next-line no-await-in-loop -- Apply the accepted session before proceeding.
-        await this.recoveryOptions.applySession(
-          response,
-          stage === 'fallback' ? payload : undefined
-        );
+        if (stage !== 'fallback')
+          // eslint-disable-next-line no-await-in-loop -- Fallback login already applies its session.
+          await this.recoveryOptions.applySession(response as Agent.ReloginSuccess);
         const state: RegionRecoveryState = {status: 'ready', reason: 'region-switch'};
         if (
           response.data.type === CC_EVENTS.AGENT_RELOGIN_SUCCESS &&
