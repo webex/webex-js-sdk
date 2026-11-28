@@ -2,6 +2,14 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import {HttpStatusInterceptor} from '@webex/http-core';
 import {ServiceInterceptor, Services} from '@webex/webex-core';
 import {WebSocketManager} from '../../../../../../src/services/core/websocket/WebSocketManager';
+import {WebexSDK, SubscribeRequest} from '../../../../../../src/types';
+import {
+  RTD_SUBSCRIBE_API,
+  SUBSCRIBE_API,
+  WCC_API_GATEWAY,
+} from '../../../../../../src/services/constants';
+import {WEB_SOCKET_MANAGER_FILE} from '../../../../../../src/constants';
+import LoggerProxy from '../../../../../../src/logger-proxy';
 import {
   CLOSE_SOCKET_TIMEOUT,
   KEEPALIVE_WORKER_INTERVAL,
@@ -9,10 +17,6 @@ import {
   METHODS,
   WELCOME_TIMEOUT,
 } from '../../../../../../src/services/core/constants';
-import {WEB_SOCKET_MANAGER_FILE} from '../../../../../../src/constants';
-import LoggerProxy from '../../../../../../src/logger-proxy';
-import {SubscribeRequest, WebexSDK} from '../../../../../../src/types';
-import {RTD_SUBSCRIBE_API, SUBSCRIBE_API, WCC_API_GATEWAY} from '../../../../../../src/services/constants';
 import {createDeferred} from '../../../../fixtures/aiSummaryTestUtils';
 
 jest.mock('../../../../../../src/logger-proxy', () => ({
@@ -20,8 +24,8 @@ jest.mock('../../../../../../src/logger-proxy', () => ({
   default: {log: jest.fn(), error: jest.fn(), info: jest.fn(), warn: jest.fn()},
 }));
 
-class SocketDouble {
-  static instances: SocketDouble[] = [];
+class MockWebSocket {
+  static instances: MockWebSocket[] = [];
   readyState = 0;
   onopen: (() => void) | null = null;
   onerror: ((event?: unknown) => void) | null = null;
@@ -30,7 +34,7 @@ class SocketDouble {
   send = jest.fn();
   close = jest.fn(() => { this.readyState = 3; });
 
-  constructor(public url: string) { SocketDouble.instances.push(this); }
+  constructor(public url: string) { MockWebSocket.instances.push(this); }
   open() { this.readyState = 1; this.onopen?.(); }
   message(data: unknown) {
     this.onmessage?.({data: typeof data === 'string' ? data : JSON.stringify(data)});
@@ -40,22 +44,22 @@ class SocketDouble {
 
 const url = 'wss://routing.produs1.cisco.com/notifications?signature=private-sentinel';
 const otherUrl = 'wss://routing.prodeu2.ciscoccservice.com/notifications';
-const body: SubscribeRequest = {
-  force: true,
-  isKeepAliveEnabled: false,
-  clientType: 'WebexCCSDK',
-  allowMultiLogin: true,
-};
 const flush = async () => { for (let turn = 0; turn < 5; turn += 1) await Promise.resolve(); };
 
 describe('WebSocketManager subscription and connection', () => {
-  let manager: WebSocketManager;
-  let webex: WebexSDK;
+  let webSocketManager: WebSocketManager;
+  let mockWebex: WebexSDK;
   let request: jest.Mock;
   let workers: Array<{
     onmessage: ((event: any) => void) | null;
     postMessage: jest.Mock;
   }>;
+  const fakeSubscribeRequest: SubscribeRequest = {
+    force: true,
+    isKeepAliveEnabled: false,
+    clientType: 'WebexCCSDK',
+    allowMultiLogin: true,
+  };
   const originalSocket = global.WebSocket;
   const originalWorker = global.Worker;
   const originalBlob = global.Blob;
@@ -65,10 +69,10 @@ describe('WebSocketManager subscription and connection', () => {
   beforeEach(() => {
     jest.useFakeTimers('modern');
     jest.clearAllMocks();
-    SocketDouble.instances = [];
+    MockWebSocket.instances = [];
     workers = [];
     Object.defineProperty(global, 'navigator', {value: {onLine: true}, configurable: true});
-    global.WebSocket = SocketDouble as any;
+    global.WebSocket = MockWebSocket as any;
     global.Blob = class BlobDouble {} as any;
     global.Worker = jest.fn(() => {
       const worker = {onmessage: null, postMessage: jest.fn()};
@@ -77,16 +81,16 @@ describe('WebSocketManager subscription and connection', () => {
     }) as any;
     URL.createObjectURL = jest.fn(() => 'blob:socket-' + workers.length);
     request = jest.fn().mockResolvedValue({body: {webSocketUrl: url}});
-    webex = {
+    mockWebex = {
       request,
       credentials: {getOrgId: jest.fn(() => 'org')},
       internal: {services: {isIntegrationEnvironment: jest.fn(() => true)}},
     } as unknown as WebexSDK;
-    manager = new WebSocketManager({webex});
+    webSocketManager = new WebSocketManager({webex: mockWebex});
   });
 
   afterEach(() => {
-    manager.close(false);
+    webSocketManager.close(false);
     jest.clearAllTimers();
     jest.useRealTimers();
     jest.restoreAllMocks();
@@ -97,14 +101,14 @@ describe('WebSocketManager subscription and connection', () => {
     URL.createObjectURL = createUrl;
   });
 
-  const initialize = () => manager.initWebSocket({body, resource: SUBSCRIBE_API});
+  const initialize = () => webSocketManager.initWebSocket({body: fakeSubscribeRequest, resource: SUBSCRIBE_API});
   const start = async (connectionUrl = url) => {
     request.mockResolvedValueOnce({body: {webSocketUrl: connectionUrl}});
     const promise = initialize();
     promise.catch(() => undefined);
     await flush();
 
-    return {promise, socket: SocketDouble.instances.at(-1)!};
+    return {promise, socket: MockWebSocket.instances.at(-1)!};
   };
   const admit = async (connectionUrl = url) => {
     const result = await start(connectionUrl);
@@ -114,13 +118,13 @@ describe('WebSocketManager subscription and connection', () => {
 
     return result.socket;
   };
-  const expectReleased = (socket: SocketDouble, closeCalls = 1) => {
+  const expectReleased = (socket: MockWebSocket, closeCalls = 1) => {
     expect(socket.close).toHaveBeenCalledTimes(closeCalls);
     expect(socket.onopen).toBeNull();
     expect(socket.onmessage).toBeNull();
     expect(socket.onerror).toBeNull();
     expect(socket.onclose).toBeNull();
-    expect(manager.hasUsableSocket()).toBe(false);
+    expect(webSocketManager.hasUsableSocket()).toBe(false);
     expect(jest.getTimerCount()).toBe(0);
     expect(workers[0].onmessage).toBeNull();
     expect(workers[0].postMessage).toHaveBeenLastCalledWith({type: 'terminate'});
@@ -128,21 +132,21 @@ describe('WebSocketManager subscription and connection', () => {
 
   it('subscribes and waits for Welcome before admitting messages', async () => {
     const message = jest.fn();
-    manager.on('message', message);
+    webSocketManager.on('message', message);
     expect(global.Worker).toHaveBeenCalledTimes(1);
     expect(workers[0].postMessage).not.toHaveBeenCalled();
     const {promise, socket} = await start();
     expect(socket.url).toBe(url);
-    expect(manager.getUrl()).toBe(url);
+    expect(webSocketManager.getUrl()).toBe(url);
     expect(request).toHaveBeenCalledWith({
       service: WCC_API_GATEWAY,
       resource: SUBSCRIBE_API,
       method: 'POST',
-      body,
+      body: fakeSubscribeRequest,
       headers: {'X-ORGANIZATION-ID': 'org'},
       timeout: TIMEOUT_REQ,
     });
-    expect(manager.hasUsableSocket()).toBe(false);
+    expect(webSocketManager.hasUsableSocket()).toBe(false);
     expect(global.Worker).toHaveBeenCalledTimes(1);
     socket.open();
     expect(socket.send).toHaveBeenCalledWith(JSON.stringify({keepalive: 'true'}));
@@ -158,7 +162,7 @@ describe('WebSocketManager subscription and connection', () => {
 
     socket.message({type: 'Welcome', data: {agentId: 'agent'}});
     await expect(promise).resolves.toEqual({agentId: 'agent'});
-    expect(manager.hasUsableSocket()).toBe(true);
+    expect(webSocketManager.hasUsableSocket()).toBe(true);
     expect(jest.getTimerCount()).toBe(0);
     socket.message({type: 'server-event', data: {value: 2}});
     expect(message).toHaveBeenLastCalledWith(JSON.stringify({
@@ -171,15 +175,15 @@ describe('WebSocketManager subscription and connection', () => {
     {integration: true, orgId: undefined},
     {integration: undefined, orgId: 'org'},
   ])('omits the org header for integration=$integration org=$orgId', async ({integration, orgId}) => {
-    if (integration === undefined) Reflect.deleteProperty(webex, 'internal');
-    else (webex.internal.services.isIntegrationEnvironment as jest.Mock).mockReturnValue(integration);
-    (webex.credentials.getOrgId as jest.Mock).mockReturnValue(orgId);
+    if (integration === undefined) Reflect.deleteProperty(mockWebex, 'internal');
+    else (mockWebex.internal.services.isIntegrationEnvironment as jest.Mock).mockReturnValue(integration);
+    (mockWebex.credentials.getOrgId as jest.Mock).mockReturnValue(orgId);
     await admit();
     expect(request).toHaveBeenCalledWith({
       service: WCC_API_GATEWAY,
       resource: SUBSCRIBE_API,
       method: 'POST',
-      body,
+      body: fakeSubscribeRequest,
       headers: undefined,
       timeout: TIMEOUT_REQ,
     });
@@ -196,8 +200,8 @@ describe('WebSocketManager subscription and connection', () => {
     const newGateway = 'https://api.prodeu2.ciscoccservice.com';
     const setGateway = (defaultUrl: string) =>
       catalog.updateServiceUrls('postauth', [{name: WCC_API_GATEWAY, defaultUrl}]);
-    webex.internal.services = services;
-    const interceptor = new ServiceInterceptor({webex});
+    mockWebex.internal.services = services;
+    const interceptor = new ServiceInterceptor({webex: mockWebex});
     const requestUris: string[] = [];
     request.mockImplementation(async (options) => {
       const routed = await interceptor.onRequest(options);
@@ -206,18 +210,18 @@ describe('WebSocketManager subscription and connection', () => {
     });
 
     setGateway(oldGateway);
-    const first = manager.initWebSocket({body, resource: RTD_SUBSCRIBE_API});
+    const first = webSocketManager.initWebSocket({body: fakeSubscribeRequest, resource: RTD_SUBSCRIBE_API});
     await flush();
-    const oldSocket = SocketDouble.instances.at(-1)!;
+    const oldSocket = MockWebSocket.instances.at(-1)!;
     oldSocket.open();
     oldSocket.message({type: 'Welcome', data: {agentId: 'agent'}});
     await first;
-    manager.close(false);
+    webSocketManager.close(false);
 
     setGateway(newGateway);
-    const replacement = manager.initWebSocket({body, resource: RTD_SUBSCRIBE_API});
+    const replacement = webSocketManager.initWebSocket({body: fakeSubscribeRequest, resource: RTD_SUBSCRIBE_API});
     await flush();
-    const newSocket = SocketDouble.instances.at(-1)!;
+    const newSocket = MockWebSocket.instances.at(-1)!;
     newSocket.open();
     newSocket.message({type: 'Welcome', data: {agentId: 'agent'}});
     await replacement;
@@ -228,7 +232,7 @@ describe('WebSocketManager subscription and connection', () => {
     ]);
     expect(oldSocket.close).toHaveBeenCalledTimes(1);
     expect(newSocket.url).toBe(otherUrl);
-    expect(manager.hasUsableSocket()).toBe(true);
+    expect(webSocketManager.hasUsableSocket()).toBe(true);
   });
 
   it.each([401, 409, 503])('preserves a subscribe HTTP %s failure for its caller', async (statusCode) => {
@@ -241,7 +245,7 @@ describe('WebSocketManager subscription and connection', () => {
     request.mockRejectedValueOnce(failure);
     await expect(initialize()).rejects.toBe(failure);
     expect(request).toHaveBeenCalledTimes(1);
-    expect(SocketDouble.instances).toHaveLength(0);
+    expect(MockWebSocket.instances).toHaveLength(0);
     expect(jest.getTimerCount()).toBe(0);
   });
 
@@ -252,14 +256,14 @@ describe('WebSocketManager subscription and connection', () => {
     promise.catch(() => undefined);
     await flush();
     jest.advanceTimersByTime(19000);
-    expect(SocketDouble.instances).toHaveLength(0);
+    expect(MockWebSocket.instances).toHaveLength(0);
     expect(jest.getTimerCount()).toBe(0);
     subscribed.resolve({body: {webSocketUrl: url}});
     await flush();
-    const socket = SocketDouble.instances.at(-1)!;
+    const socket = MockWebSocket.instances.at(-1)!;
     socket.open();
     jest.advanceTimersByTime(WELCOME_TIMEOUT - 1);
-    expect(manager.hasUsableSocket()).toBe(false);
+    expect(webSocketManager.hasUsableSocket()).toBe(false);
     jest.advanceTimersByTime(1);
     await expect(promise).rejects.toThrow('Welcome deadline');
     expectReleased(socket);
@@ -275,7 +279,7 @@ describe('WebSocketManager subscription and connection', () => {
   ])('rejects an insecure or untrusted socket URL %s', async (connectionUrl) => {
     request.mockResolvedValueOnce({body: {webSocketUrl: connectionUrl}});
     await expect(initialize()).rejects.toThrow('not allow-listed');
-    expect(SocketDouble.instances).toHaveLength(0);
+    expect(MockWebSocket.instances).toHaveLength(0);
     expect(global.Worker).toHaveBeenCalledTimes(1);
     expect(jest.getTimerCount()).toBe(0);
   });
@@ -287,7 +291,7 @@ describe('WebSocketManager subscription and connection', () => {
     if (opened) socket.open();
     jest.advanceTimersByTime(WELCOME_TIMEOUT - 10001);
     await flush();
-    expect(manager.hasUsableSocket()).toBe(false);
+    expect(webSocketManager.hasUsableSocket()).toBe(false);
     jest.advanceTimersByTime(1);
     await expect(promise).rejects.toThrow('Welcome deadline');
     oldMessage({data: JSON.stringify({type: 'Welcome', data: {agentId: 'late'}})});
@@ -299,7 +303,7 @@ describe('WebSocketManager subscription and connection', () => {
     const {promise, socket} = await start();
     socket.open();
     const closed = jest.fn();
-    manager.on('socketClose', closed);
+    webSocketManager.on('socketClose', closed);
     if (event === 'close') socket.nativeClose();
     else socket.onerror?.();
     await expect(promise).rejects.toThrow(
@@ -316,7 +320,7 @@ describe('WebSocketManager subscription and connection', () => {
     const socket = await admit();
     Object.assign(navigator, {onLine: online});
     const closed = jest.fn();
-    manager.on('socketClose', closed);
+    webSocketManager.on('socketClose', closed);
     if (event === 'close') socket.nativeClose();
     else socket.onerror?.();
     expect(closed).toHaveBeenCalledTimes(1);
@@ -342,7 +346,7 @@ describe('WebSocketManager subscription and connection', () => {
     oldMessage({data: JSON.stringify({type: 'Welcome', data: {agentId: 'late'}})});
     oldClose();
     expect(second.close).not.toHaveBeenCalled();
-    expect(manager.hasUsableSocket()).toBe(true);
+    expect(webSocketManager.hasUsableSocket()).toBe(true);
 
     const previousWorkerMessage = workers[0].onmessage;
     workers[0].postMessage.mockClear();
@@ -363,16 +367,16 @@ describe('WebSocketManager subscription and connection', () => {
     const promise = initialize();
     const observed = expect(promise).rejects.toMatchObject({name: 'AbortError'});
     await flush();
-    expect(SocketDouble.instances).toHaveLength(0);
-    if (action === 'close') manager.close(false);
+    expect(MockWebSocket.instances).toHaveLength(0);
+    if (action === 'close') webSocketManager.close(false);
     else await admit(otherUrl);
     await observed;
     subscribed.resolve({body: {webSocketUrl: url}});
     await flush();
-    expect(SocketDouble.instances).toHaveLength(action === 'close' ? 0 : 1);
-    expect(manager.hasUsableSocket()).toBe(action === 'replace');
+    expect(MockWebSocket.instances).toHaveLength(action === 'close' ? 0 : 1);
+    expect(webSocketManager.hasUsableSocket()).toBe(action === 'replace');
     expect(jest.getTimerCount()).toBe(0);
-    if (action === 'replace') expect(manager.getUrl()).toBe(otherUrl);
+    if (action === 'replace') expect(webSocketManager.getUrl()).toBe(otherUrl);
   });
 
   it('rejects a closed connection before Welcome and stops its worker', async () => {
@@ -380,7 +384,7 @@ describe('WebSocketManager subscription and connection', () => {
     const observed = expect(promise).rejects.toMatchObject({name: 'AbortError'});
     socket.open();
     const oldWorkerMessage = workers[0].onmessage!;
-    manager.close(false);
+    webSocketManager.close(false);
     await observed;
     oldWorkerMessage({data: {type: 'keepalive'}});
     expect(socket.send).toHaveBeenCalledTimes(1);
@@ -390,11 +394,11 @@ describe('WebSocketManager subscription and connection', () => {
   it.each([true, false])('closes once with reconnect choice %s', async (reconnect) => {
     const socket = await admit();
     const closed = jest.fn();
-    manager.on('socketClose', closed);
-    manager.close(reconnect);
-    manager.close(reconnect);
+    webSocketManager.on('socketClose', closed);
+    webSocketManager.close(reconnect);
+    webSocketManager.close(reconnect);
     expect(closed.mock.calls).toEqual([[{shouldReconnect: reconnect}]]);
-    expect(manager.shouldReconnect).toBe(reconnect);
+    expect(webSocketManager.shouldReconnect).toBe(reconnect);
     expectReleased(socket);
   });
 
@@ -407,11 +411,11 @@ describe('WebSocketManager subscription and connection', () => {
     message({data: {type: 'keepalive'}});
     expect(socket.send).toHaveBeenCalledTimes(2);
     socket.readyState = 1;
-    manager.handleConnectionLost({isConnectionLost, isKeepAlive: false,
+    webSocketManager.handleConnectionLost({isConnectionLost, isKeepAlive: false,
       isSocketReconnected: false, isRestoreFailed: false});
     message({data: {type: 'closeSocket'}});
     expect(socket.close).toHaveBeenCalledTimes(isConnectionLost ? 1 : 0);
-    expect(manager.hasUsableSocket()).toBe(!isConnectionLost);
+    expect(webSocketManager.hasUsableSocket()).toBe(!isConnectionLost);
   });
 
   it('closes on multi-login before notifying listeners and keeps replacements independent', async () => {
@@ -419,9 +423,9 @@ describe('WebSocketManager subscription and connection', () => {
     const oldClose = socket.onclose!;
     const oldWorker = workers[0].onmessage!;
     let replacement: ReturnType<typeof start> | undefined;
-    manager.once('message', () => {
+    webSocketManager.once('message', () => {
       expect(socket.close).toHaveBeenCalledTimes(1);
-      expect(manager.shouldReconnect).toBe(false);
+      expect(webSocketManager.shouldReconnect).toBe(false);
       replacement = start(otherUrl);
     });
     socket.message({type: 'AGENT_MULTI_LOGIN'});
@@ -432,7 +436,7 @@ describe('WebSocketManager subscription and connection', () => {
     oldClose();
     oldWorker({data: {type: 'closeSocket'}});
     expect(next.socket.close).not.toHaveBeenCalled();
-    expect(manager.hasUsableSocket()).toBe(true);
+    expect(webSocketManager.hasUsableSocket()).toBe(true);
   });
 
   it('rejects a socket construction failure and clears the Welcome deadline', async () => {
@@ -445,7 +449,7 @@ describe('WebSocketManager subscription and connection', () => {
   it('keeps signed URLs out of socket-close diagnostics', async () => {
     const socket = await admit();
 
-    manager.close(false, url);
+    webSocketManager.close(false, url);
     expectReleased(socket);
     const calls = (LoggerProxy.log as jest.Mock).mock.calls;
     expect(calls).toContainEqual(['WebSocket connection closed', {

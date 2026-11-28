@@ -54,6 +54,7 @@ import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
+import type * as Agent from './services/agent/types';
 import {
   getErrorDetails,
   getStationRecoveryFailureCategory,
@@ -67,10 +68,9 @@ import {
   normalizeRegionSwitch,
   isRegionRecoveryError,
 } from './services/core/Utils';
-import type * as Agent from './services/agent/types';
 import type {RecoveryFailure} from './services/core/types';
 import type {MultiRegionSettings, SystemRegionSwitch} from './services/config/types';
-import {REFERENCE_SERVING_REGIONS, REGION_RECOVERY_ERROR_CODES} from './services/core/constants';
+import {REFERENCE_SERVING_REGIONS} from './services/core/constants';
 import {
   Profile,
   WelcomeEvent,
@@ -119,18 +119,6 @@ import type {
 const CC_EVENT_ALLOW_LIST = new Set<string>(Object.values(CC_EVENTS));
 const STATION_RELOAD_RETRY_DELAYS_MS = [2000, 4000, 8000];
 const REGION_RETRY_DELAYS_MS = [100000, 60000, 30000, 15000];
-
-const RECOVERY_DIAGNOSTIC_REASONS = new Set<string>([
-  ...Object.values(REGION_RECOVERY_ERROR_CODES),
-  'initial-login',
-  'region-switch',
-  'region-mismatch',
-  'not-eligible',
-  'session-restore-failed',
-  'automatic-relogin-disabled',
-  'authentication-failed',
-  'recovery-failed',
-]);
 
 /**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.
@@ -403,15 +391,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   ): Promise<void> {
     const data = response.data as Agent.ReloginSuccess['data'];
     const profile = this.agentConfig;
-    let mode = station?.deviceType || data.deviceType;
-    let number = station?.dialNumber || data.dn || data.dialNumber;
-    if (!mode) {
-      if (data.isExtension === true) mode = LoginOption.EXTENSION;
-      else if (number === `${WEB_RTC_PREFIX}${data.agentId}`) mode = LoginOption.BROWSER;
-      else if (number && data.isExtension === false) mode = LoginOption.AGENT_DN;
-      else mode = profile.deviceType;
+    let loginOption = (station?.deviceType || data.deviceType) as LoginOption;
+    let dialNumber = station?.dialNumber || data.dn || data.dialNumber;
+    if (!loginOption) {
+      if (data.isExtension === true) loginOption = LoginOption.EXTENSION;
+      else if (dialNumber === `${WEB_RTC_PREFIX}${data.agentId}`) loginOption = LoginOption.BROWSER;
+      else if (dialNumber && data.isExtension === false) loginOption = LoginOption.AGENT_DN;
+      else loginOption = profile.deviceType;
     }
-    if (!number && profile.deviceType === mode) number = profile.dn;
+    if (!dialNumber && profile.deviceType === loginOption) dialNumber = profile.dn;
     profile.lastStateAuxCodeId = data.auxCodeId;
     profile.lastStateChangeTimestamp = data.lastStateChangeTimestamp;
     profile.lastIdleCodeChangeTimestamp = data.lastIdleCodeChangeTimestamp ?? undefined;
@@ -419,21 +407,29 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.updateWellnessSession(data.agentSessionId);
     profile.currentTeamId = data.teamId || station?.teamId || profile.currentTeamId;
     this.saveStationLoginPreferences(
-      mode as LoginOption,
-      mode === LoginOption.BROWSER ? this.getDeviceId(mode, number) : number
+      loginOption,
+      loginOption === LoginOption.BROWSER ? this.getDeviceId(loginOption, dialNumber) : dialNumber
     );
 
-    const {deviceType, dn} = profile;
-    if (station && deviceType === LoginOption.BROWSER && !this.isBrowserVoiceRequired(deviceType)) {
-      this.webCallingService.setLoginOption(deviceType);
+    if (
+      station &&
+      loginOption === LoginOption.BROWSER &&
+      !this.isBrowserVoiceRequired(loginOption)
+    ) {
+      this.webCallingService.setLoginOption(loginOption);
       this.webCallingService.setBrowserVoiceRequired(false);
-      if (profile.webRtcEnabled && this.isWebRTCRegistrationDisabled())
+      if (profile.webRtcEnabled && this.isWebRTCRegistrationDisabled()) {
         LoggerProxy.info(
           'Skipping web calling line registration because disableWebRTCRegistration is enabled',
-          {module: CC_FILE, method: METHODS.STATION_LOGIN}
+          {
+            module: CC_FILE,
+            method: METHODS.STATION_LOGIN,
+          }
         );
-    } else if (Object.values(LoginOption).includes(deviceType))
-      await this.handleDeviceType(deviceType, dn, restoringRegion);
+      }
+    } else if (Object.values(LoginOption).includes(loginOption)) {
+      await this.handleDeviceType(loginOption, profile.dn, restoringRegion);
+    }
     await this.ensureWxAppPostStationLogin();
   }
 
@@ -2658,7 +2654,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       ...(Number.isFinite(failure?.reasonCode) ? {reasonCode: failure.reasonCode} : {}),
       ...(id ? {id} : {}),
       ...(trackingId ? {trackingId} : {}),
-      ...(RECOVERY_DIAGNOSTIC_REASONS.has(failure?.reason) ? {reason: failure.reason} : {}),
     };
     LoggerProxy.info('Region recovery', {
       module: CC_FILE,
