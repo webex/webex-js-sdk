@@ -175,21 +175,24 @@ export class Registration implements IRegistration {
   }
 
   private async resumeFailover(): Promise<boolean> {
+    let resumed = false;
     try {
-      const cachedState = localStorage.getItem(this.getFailoverCacheKey());
-      const failoverState = cachedState
-        ? (JSON.parse(cachedState) as FailoverCacheState)
-        : undefined;
-      if (failoverState && !this.isDeviceRegistered()) {
-        const currentTime = Math.floor(Date.now() / 1000);
-        const newElapsed =
-          failoverState.timeElapsed + (currentTime - failoverState.retryScheduledTime);
+      await this.mutex.runExclusive(async () => {
+        const cachedState = localStorage.getItem(this.getFailoverCacheKey());
+        const failoverState = cachedState
+          ? (JSON.parse(cachedState) as FailoverCacheState)
+          : undefined;
+        if (failoverState && !this.isDeviceRegistered()) {
+          const currentTime = Math.floor(Date.now() / 1000);
+          const newElapsed =
+            failoverState.timeElapsed + (currentTime - failoverState.retryScheduledTime);
 
-        this.clearFailoverState();
-        await this.startFailoverTimer(failoverState.attempt, newElapsed);
+          this.clearFailoverState();
+          await this.startFailoverTimer(failoverState.attempt, newElapsed);
 
-        return true;
-      }
+          resumed = true;
+        }
+      });
     } catch (error) {
       log.warn(`No failover state found in cache`, {
         file: REGISTRATION_FILE,
@@ -197,7 +200,7 @@ export class Registration implements IRegistration {
       });
     }
 
-    return false;
+    return resumed;
   }
 
   public getActiveMobiusUrl(): string {
@@ -1371,7 +1374,9 @@ export class Registration implements IRegistration {
 
                 if (!abort) {
                   /* In case of non-final error, re-attempt registration */
-                  await this.reconnectOnFailure(RECONNECT_ON_FAILURE_UTIL);
+                  await this.mutex.runExclusive(async () => {
+                    await this.reconnectOnFailure(RECONNECT_ON_FAILURE_UTIL);
+                  });
                 } else if (error.statusCode === 404) {
                   this.handle404KeepaliveFailure(KEEPALIVE_UTIL);
                 }

@@ -871,19 +871,21 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE,
       async (event?: CallSessionEvent) => {
         if (event && event.data.userSessions.userSessions) {
-          const sessionArr = event?.data.userSessions.userSessions;
+          const sessionArr = event.data.userSessions.userSessions;
 
-          if (sessionArr.length === 1) {
-            if (sessionArr[0].sessionType !== SessionType.WEBEX_CALLING) {
-              return;
-            }
+          if (!Array.isArray(sessionArr) || sessionArr.length === 0) {
+            return;
           }
 
-          for (let i = 0; i < sessionArr.length; i += 1) {
-            if (sessionArr[i].sessionType !== SessionType.WEBEX_CALLING) {
-              sessionArr.splice(i, 1);
-            }
+          const filtered = sessionArr.filter(
+            (s) => s.sessionType === SessionType.WEBEX_CALLING
+          );
+
+          if (filtered.length === 0) {
+            return;
           }
+
+          event.data.userSessions.userSessions = filtered;
           this.emit(CALLING_CLIENT_EVENT_KEYS.USER_SESSION_INFO, event as CallSessionEvent);
         }
       }

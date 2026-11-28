@@ -1339,7 +1339,7 @@ connector and `request(payload)` forwards to `webex.request`.
 |---|---|
 | `types.ts` | Shared type aliases (`CallId`, `CorrelationId`, `CallDetails`, `MobiusServers`, etc.), enums (`CALLING_BACKEND`, `HTTP_METHODS`, `SORT`, `ServiceIndicator`, `RegistrationStatus`), and complex interfaces (`IDeviceInfo`, `WebexRequestPayload`, `SCIMListResponse`) |
 | `constants.ts` | String constants for API paths, entitlement names, Webex API base URLs, status messages, and the Mobius WSS host allowlist |
-| `Utils.ts` | ~1,850 lines of utility functions: backend detection (`getCallingBackEnd`, `resolveCallingBackend`), XSI endpoint resolution, UUID inference, SCIM queries and filter escaping, voicemail list caching, RTP stats parsing, error handlers, log upload, Mobius URI filtering, service data validation, `waitForMsecs` |
+| `Utils.ts` | ~1,850 lines of utility functions: backend detection (`getCallingBackEnd`, `resolveCallingBackend`), XSI endpoint resolution, UUID inference, SCIM queries and filter escaping, network log-value sanitization (`sanitizeLogValue`), voicemail list caching, RTP stats parsing, error handlers, log upload, Mobius URI filtering, service data validation, `waitForMsecs` |
 | `callUtils.ts` | SDP and host IP helpers for call setup (`modifySdpForIPv4`, `getHostIps`, `discoverHostIps`) |
 | `index.ts` | Re-exports `Utils` and `callUtils` |
 | `testUtil.ts` | `getTestUtilsWebex()` — builds a mock Webex SDK instance; `flushPromises(count)`; fixtures for Mobius discovery, devices, and SCIM |
@@ -1488,6 +1488,8 @@ Input validation and output encoding:
 
 The allowlist is `webex.com`, `wbx2.com`, `webexapis.com`, and `cisco.com` (`src/common/constants.ts`);
 both layers share the `isMobiusWssHostAllowed` predicate, which accepts an exact match or a subdomain.
+
+- **Network log-value sanitization (AC-4 / CAI-8569):** `sanitizeLogValue(value: string, maxLen = 100): string` (`Utils.ts`) strips ASCII control characters (U+0000–U+001F) and truncates the result to a bounded maximum length before a caller- or network-controlled string is written to a log message or embedded in a typed error payload. It is applied to untrusted ICE candidate error fields (`url`, `errorText`, `address`, `port`) so those values cannot forge or inject additional log lines or leak unbounded sensitive content, while the sanitized value stays useful for diagnosis.
 
 Transport and headers:
 

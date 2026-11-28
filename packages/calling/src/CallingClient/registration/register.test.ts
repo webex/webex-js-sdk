@@ -1106,6 +1106,71 @@ describe('Registration Tests', () => {
     });
   });
 
+  describe('resumeFailover', () => {
+    const failoverKey = `wxc-failover-state.${webex.internal.device.userId}`;
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      setupRegistration(MockServiceData);
+      localStorage.clear();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      localStorage.clear();
+    });
+
+    it('clears failover cache before resuming', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      localStorage.setItem(
+        failoverKey,
+        JSON.stringify({attempt: 1, timeElapsed: 0, retryScheduledTime: now - 2, serverType: 'primary'})
+      );
+      const startFailoverSpy = jest.spyOn(reg as any, 'startFailoverTimer').mockResolvedValue(undefined);
+      jest.spyOn(reg as any, 'isDeviceRegistered').mockReturnValue(false);
+      const mutexSpy = jest.spyOn(reg.mutex, 'runExclusive');
+
+      const result = await (reg as any).resumeFailover();
+
+      expect(result).toBe(true);
+      expect(localStorage.getItem(failoverKey)).toBeNull();
+      expect(startFailoverSpy).toHaveBeenCalledTimes(1);
+      expect(mutexSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('concurrent resume does not double-start failover', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      localStorage.setItem(
+        failoverKey,
+        JSON.stringify({attempt: 2, timeElapsed: 5, retryScheduledTime: now - 1, serverType: 'primary'})
+      );
+      const startFailoverSpy = jest.spyOn(reg as any, 'startFailoverTimer').mockResolvedValue(undefined);
+      jest.spyOn(reg as any, 'isDeviceRegistered').mockReturnValue(false);
+      const mutexSpy = jest.spyOn(reg.mutex, 'runExclusive');
+
+      const [first, second] = await Promise.all([
+        (reg as any).resumeFailover(),
+        (reg as any).resumeFailover(),
+      ]);
+
+      expect(startFailoverSpy).toHaveBeenCalledTimes(1);
+      expect(mutexSpy).toHaveBeenCalledTimes(2);
+      const trueCount = [first, second].filter(Boolean).length;
+      expect(trueCount).toBe(1);
+    });
+
+    it('no cached state returns false', async () => {
+      const startFailoverSpy = jest.spyOn(reg as any, 'startFailoverTimer').mockResolvedValue(undefined);
+      const mutexSpy = jest.spyOn(reg.mutex, 'runExclusive');
+
+      const result = await (reg as any).resumeFailover();
+
+      expect(result).toBe(false);
+      expect(startFailoverSpy).not.toHaveBeenCalled();
+      expect(mutexSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('Registration failback tests', () => {
     let isPrimaryActiveSpy;
     beforeEach(async () => {
@@ -2501,6 +2566,82 @@ describe('Registration Tests', () => {
       ]);
 
       expect(setSocketEnabledSpy).toHaveBeenCalledWith(true);
+    });
+  });
+
+  describe('reconnectOnFailure', () => {
+    const RETRY_COUNT_THRESHOLD = 5;
+
+    const beforeEachSetupForKeepalive = async () => {
+      postRegistrationSpy.mockResolvedValueOnce(successPayload);
+      jest.useFakeTimers();
+      await reg.triggerRegistration();
+      expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
+      expect(reg.webWorker).toBeDefined();
+    };
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.clearAllMocks();
+      jest.useRealTimers();
+      reg.clearKeepaliveTimer();
+      reg.reconnectPending = false;
+    });
+
+    it('keepalive-failure reconnect runs under the mutex', async () => {
+      await beforeEachSetupForKeepalive();
+      lineEmitter.mockClear();
+
+      const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
+      const mutexSpy = jest.spyOn(reg.mutex, 'runExclusive');
+
+      const failureEvent = {
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: {statusCode: 503},
+          keepAliveRetryCount: RETRY_COUNT_THRESHOLD,
+        },
+      };
+
+      reg.webWorker.onmessage(failureEvent);
+      await flushPromises();
+
+      expect(reconnectSpy).toHaveBeenCalledWith(RECONNECT_ON_FAILURE_UTIL);
+      expect(mutexSpy).toHaveBeenCalled();
+
+      const mutexCallArgs = mutexSpy.mock.calls;
+      let reconnectCalledInsideMutex = false;
+      for (const [fn] of mutexCallArgs) {
+        reconnectSpy.mockClear();
+        await fn();
+        if (reconnectSpy.mock.calls.length > 0) {
+          reconnectCalledInsideMutex = true;
+        }
+      }
+      expect(reconnectCalledInsideMutex).toBe(true);
+    });
+
+    it('reconnect still defers with active calls', async () => {
+      await beforeEachSetupForKeepalive();
+      lineEmitter.mockClear();
+
+      jest.spyOn(reg.callManager, 'getActiveCalls').mockReturnValue({
+        'call-1': {} as ICall,
+      });
+
+      const failureEvent = {
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: {statusCode: 503},
+          keepAliveRetryCount: RETRY_COUNT_THRESHOLD,
+        },
+      };
+
+      reg.webWorker.onmessage(failureEvent);
+      await flushPromises();
+
+      expect(reg.reconnectPending).toBe(true);
+      expect(reg.isReconnectPending()).toBe(true);
     });
   });
 });

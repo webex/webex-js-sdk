@@ -729,6 +729,119 @@ describe('Call Tests', () => {
     );
   });
 
+  describe('handleIceCandidateError', () => {
+    const setupCallAndGetIceHandler = () => {
+      const mockStream = {
+        outputStream: {getAudioTracks: jest.fn().mockReturnValue([{}])},
+        on: jest.fn(),
+        getEffectByKind: jest.fn().mockReturnValue(undefined),
+      };
+      const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+      const call = createCall(
+        activeUrl,
+        webex,
+        CallDirection.OUTBOUND,
+        deviceId,
+        mockLineId,
+        deleteCallFromCollection,
+        defaultServiceIndicator,
+        dest
+      );
+      call.dial(localAudioStream);
+      const iceCandidateErrorHandler = (call['mediaConnection'].on as jest.Mock).mock.calls.find(
+        ([name]) => name === InternalMediaCoreModule.MediaConnectionEventNames.ICE_CANDIDATE_ERROR
+      )?.[1];
+      return {call, iceCandidateErrorHandler};
+    };
+
+    it('sanitizes newlines and control characters in ICE error logging', () => {
+      const warnSpy = jest.spyOn(log, 'warn');
+      const {iceCandidateErrorHandler} = setupCallAndGetIceHandler();
+
+      iceCandidateErrorHandler({
+        errorCode: 701,
+        errorText: 'STUN\nhost\x00lookup\rfailed',
+        url: 'stun:exam\nple.org:3478',
+      });
+
+      const warnMessage = warnSpy.mock.calls.find((args) =>
+        String(args[0]).includes('ICE candidate')
+      )?.[0] as string;
+      expect(warnMessage).toBeDefined();
+      // After sanitization, newlines must be stripped BEFORE JSON encoding,
+      // so neither literal newlines (\n) nor JSON-escaped newlines (\\n) appear.
+      expect(warnMessage).not.toMatch(/\n|\r/);
+      expect(warnMessage).not.toMatch(/\\n|\\r/);
+    });
+
+    it('bounds and preserves diagnostic ICE fields', () => {
+      const warnSpy = jest.spyOn(log, 'warn');
+      const {iceCandidateErrorHandler} = setupCallAndGetIceHandler();
+
+      const longUrl = 'stun:' + 'a'.repeat(500) + '.org:3478';
+      const longErrorText = 'x'.repeat(500);
+
+      iceCandidateErrorHandler({
+        errorCode: 701,
+        errorText: longErrorText,
+        url: longUrl,
+      });
+
+      const warnMessage = warnSpy.mock.calls.find((args) =>
+        String(args[0]).includes('ICE candidate')
+      )?.[0] as string;
+      expect(warnMessage).toBeDefined();
+      expect(warnMessage.length).toBeLessThan(longUrl.length + longErrorText.length);
+      expect(warnMessage).toContain('701');
+    });
+
+    it('sanitizes and bounds the ICE error port field', () => {
+      const warnSpy = jest.spyOn(log, 'warn');
+      const {iceCandidateErrorHandler} = setupCallAndGetIceHandler();
+
+      // The port originates from the network-controlled ICE error event and must be
+      // passed through sanitizeLogValue (control characters stripped, length bounded),
+      // consistent with the other untrusted ICE error fields.
+      iceCandidateErrorHandler({
+        errorCode: 701,
+        errorText: 'STUN host lookup failed',
+        url: 'stun:example.org:3478',
+        port: '34\n78\x00' + '9'.repeat(200),
+      });
+
+      const warnMessage = warnSpy.mock.calls.find((args) =>
+        String(args[0]).includes('ICE candidate')
+      )?.[0] as string;
+      expect(warnMessage).toBeDefined();
+      // Control characters stripped before JSON encoding.
+      expect(warnMessage).not.toMatch(/\n|\r/);
+      expect(warnMessage).not.toMatch(/\\n|\\r/);
+      // Sanitized port is present and length-bounded to the sanitizeLogValue maximum (100).
+      expect(warnMessage).toMatch(/"port":"3478/);
+      const portValue = JSON.parse(
+        warnMessage.replace('ICE candidate error occurred: ', '')
+      ).port as string;
+      expect(portValue.length).toBeLessThanOrEqual(100);
+    });
+
+    it('emits a null port when the ICE error event omits it', () => {
+      const warnSpy = jest.spyOn(log, 'warn');
+      const {iceCandidateErrorHandler} = setupCallAndGetIceHandler();
+
+      iceCandidateErrorHandler({
+        errorCode: 701,
+        errorText: 'STUN host lookup failed',
+        url: 'stun:example.org:3478',
+      });
+
+      const warnMessage = warnSpy.mock.calls.find((args) =>
+        String(args[0]).includes('ICE candidate')
+      )?.[0] as string;
+      expect(warnMessage).toBeDefined();
+      expect(warnMessage).toContain('"port":null');
+    });
+  });
+
   it('handles ROAP failure listener and submits media error metric', () => {
     const mockStream = {
       outputStream: {

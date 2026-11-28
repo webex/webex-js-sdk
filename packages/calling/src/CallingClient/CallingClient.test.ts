@@ -20,6 +20,7 @@ import {
   CallSessionEvent,
   MOBIUS_EVENT_KEYS,
   MOBIUS_SOCKET_DISCONNECT_REASON,
+  SessionType,
 } from '../Events/types';
 import log from '../Logger';
 import {CallingClient, createClient} from './CallingClient';
@@ -1276,6 +1277,76 @@ describe('CallingClient Tests', () => {
       const callSessionCallback = mockOn.mock.calls[0][1];
 
       callSessionCallback(MOCK_MULTIPLE_SESSIONS_EVENT);
+    });
+
+    it('rejects malformed userSessions payload', async () => {
+      const userSessionInfoSpy = jest.fn();
+      callingClient.on(CALLING_CLIENT_EVENT_KEYS.USER_SESSION_INFO, userSessionInfoSpy);
+
+      const callSessionCallback = mockOn.mock.calls[0][1];
+
+      await callSessionCallback({
+        id: 'id',
+        data: {userSessions: {userSessions: 'not-an-array', statusCode: 0}},
+        timestamp: 12345,
+        trackingId: 'tracking-id',
+      });
+      expect(userSessionInfoSpy).not.toHaveBeenCalled();
+    });
+
+    it('removes all non-WEBEX_CALLING sessions', (done) => {
+      expect.assertions(1);
+      callingClient.on(CALLING_CLIENT_EVENT_KEYS.USER_SESSION_INFO, (event: CallSessionEvent) => {
+        const sessions = event.data.userSessions.userSessions;
+        expect(
+          sessions.every((s) => s.sessionType === SessionType.WEBEX_CALLING)
+        ).toBe(true);
+        done();
+      });
+
+      const callSessionCallback = mockOn.mock.calls[0][1];
+      callSessionCallback({
+        id: 'id',
+        data: {
+          userSessions: {
+            userSessions: [
+              {sessionType: SessionType.SPARK},
+              {sessionType: SessionType.WEBEX_CALLING},
+              {sessionType: SessionType.SPARK},
+              {sessionType: SessionType.WEBEX_CALLING},
+            ],
+            statusCode: 0,
+          },
+          eventType: MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE,
+        },
+        timestamp: 12345,
+        trackingId: 'tracking-id',
+      });
+    });
+
+    it('emits for single WEBEX_CALLING session', (done) => {
+      expect.assertions(2);
+      callingClient.on(CALLING_CLIENT_EVENT_KEYS.USER_SESSION_INFO, (event: CallSessionEvent) => {
+        expect(event.data.userSessions.userSessions.length).toEqual(1);
+        expect(event.data.userSessions.userSessions[0].sessionType).toEqual(
+          SessionType.WEBEX_CALLING
+        );
+        done();
+      });
+
+      const callSessionCallback = mockOn.mock.calls[0][1];
+      callSessionCallback({
+        id: 'id',
+        data: {
+          userSessions: {
+            userSessions: [{sessionType: SessionType.WEBEX_CALLING}],
+            statusCode: 0,
+          },
+          eventType: MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE,
+        },
+        timestamp: 12345,
+        trackingId: 'tracking-id',
+      });
     });
   });
 
