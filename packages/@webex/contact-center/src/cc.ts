@@ -112,6 +112,7 @@ import type {
  * @ignore
  */
 const CC_EVENT_ALLOW_LIST = new Set<string>(Object.values(CC_EVENTS));
+const STATION_RELOAD_RETRY_DELAYS_MS = [2000, 4000, 8000];
 
 /**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.
@@ -336,6 +337,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /** Registration generation that owns the wellness idle-code cache and in-flight lookups. */
   private wellnessRegistrationGeneration = 0;
   private rtdPaused = true;
+  private stationRecovery?: {
+    trackingId: string;
+    stage: 'reload' | 'fallback' | 'post1035' | 'manual';
+    reloads: number;
+  };
+
+  private autoAvailable?: {requesting: boolean};
 
   private static getRegistrationErrorDetails(error: unknown) {
     const failure = normalizeRecoveryFailure(error);
@@ -364,6 +372,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /** Stops transports and clears registration state. */
   private terminateRegistration(): void {
+    this.stationRecovery = undefined;
+    this.cancelWaitingAutoAvailable();
     this.services.connectionService.resetRecovery();
     this.wellnessRegistrationGeneration += 1;
     this.clearStationProfile();
@@ -387,19 +397,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   private applyStationSession = async (
-    response: Agent.ReloginSuccess | Agent.StationLoginSuccess | Agent.StateChangeSuccess,
+    response: Agent.ReloginSuccess | Agent.StationLoginSuccess,
     payload?: Agent.UserStationLogin,
     restoringRegion = true
   ): Promise<void> => {
-    if (response.data.type === CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS) {
-      this.applyAvailableState(response as Agent.StateChangeSuccess);
-
-      return;
-    }
-    const complete = this.updateStationProfile(
-      response as Agent.ReloginSuccess | Agent.StationLoginSuccess,
-      payload
-    );
+    const complete = this.updateStationProfile(response, payload);
     const {deviceType, dn} = this.agentConfig;
     if (complete || !restoringRegion) {
       if (
@@ -513,9 +515,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   private clearStationSession(): void {
+    const cancelled = this.cancelAutoAvailable();
+    this.stationRecovery = undefined;
     this.clearStationProfile();
     this.updateWellnessSession();
     this.services.connectionService.clearStationRecovery();
+    if (cancelled) this.services.connectionService.publishRegionState(cancelled);
   }
 
   private updateWellnessSession(agentSessionId?: string): void {
@@ -685,33 +690,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       );
       this.taskManager.setAnswerCallOnWebexService(this.answerCallOnWebexService);
       this.services.connectionService.configureRecovery({
-        webex: this.$webex,
-        reload: () => this.services.agent.reload(),
-        stationLogin: () => this.loginStation(this.buildStationLoginPayload(), true),
-        metricsManager: this.metricsManager,
-        getSession: () => ({
+        getConnection: () => ({
           orgId: this.agentConfig?.orgId,
           connectionConfig: this.getConnectionConfig(),
-          isAgentLoggedIn: this.agentConfig?.isAgentLoggedIn,
-          allowAutomatedRelogin: this.$config?.allowAutomatedRelogin ?? false,
-          waitingForVoice:
-            this.webCallingService.isBrowserVoiceRequired() &&
-            !this.webCallingService.isVoiceReady(),
         }),
-        onConnectionChange: (connected) => {
-          if (connected) this.connectRtd();
-          else {
-            this.pauseRtd();
-            this.taskManager.invalidateRegionalTasks();
-          }
-        },
-        applySession: this.applyStationSession,
-        makeAvailable: () =>
-          this.setAgentState({
-            state: AGENT_STATE_AVAILABLE,
-            auxCodeId: AGENT_STATE_AVAILABLE_ID,
-            lastStateChangeReason: 'agent-wss-disconnect',
-          }) as Promise<Agent.StateChangeSuccess>,
+        recoverSession: () => this.silentRelogin('region-switch'),
+        onConnectionChange: this.handleRecoveryConnectionChange,
       });
       this.incomingTaskListener();
 
@@ -739,7 +723,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     // WebexPlugin exposes `trigger` at runtime, though it is missing from its TypeScript types.
     // @ts-ignore
     this.trigger(VOICE_CONNECTION_EVENTS.STATE_CHANGE, state);
-    this.services.connectionService.requestAutoAvailable();
+    this.requestAutoAvailable();
   };
 
   /**
@@ -1015,11 +999,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async register(): Promise<Profile> {
+    this.stationRecovery = undefined;
+    this.cancelWaitingAutoAvailable();
     this.services.connectionService.resetRecovery();
     this.pauseRtd();
     this.services.connectionService.stop();
     if (this.agentConfig?.agentId) {
-      this.services.webSocketManager.close(false, 'register');
       this.taskManager.unregisterIncomingCallEvent();
       this.taskManager.invalidateRegionalTasks();
     }
@@ -1146,6 +1131,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.services.rtdWebSocketManager.off('message', this.handleRTDWebsocketMessage);
       this.services.connectionService.off('connectionLost', this.handleConnectionLost);
       this.services.connectionService.off('regionStateChange', this.handleRegionStateChange);
+      this.services.connectionService.off('recoveryDiagnostic', this.handleRecoveryDiagnostic);
 
       const {publishError: wxAppPublishError} = await this.teardownWxAppLocalState({
         clearInitFlag: true,
@@ -1376,7 +1362,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (!this.services.webSocketManager.hasUsableSocket())
         throw new Error('WebSocket disconnected during registration');
       if (this.$config && this.$config.allowAutomatedRelogin) {
-        await this.silentRelogin(true);
+        await this.silentRelogin('initial-login');
       } else {
         LoggerProxy.log('Skipping silent relogin: allowAutomatedRelogin is disabled', {
           module: CC_FILE,
@@ -1670,8 +1656,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async setAgentState(data: StateChange): Promise<SetStateResponse> {
-    this.services.connectionService.cancelWaitingAutoAvailable();
-
     LoggerProxy.info('Setting agent state', {
       module: CC_FILE,
       method: METHODS.SET_AGENT_STATE,
@@ -2639,12 +2623,97 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.services.connectionService.on('connectionLost', this.handleConnectionLost);
     this.services.connectionService.off('regionStateChange', this.handleRegionStateChange);
     this.services.connectionService.on('regionStateChange', this.handleRegionStateChange);
+    this.services.connectionService.off('recoveryDiagnostic', this.handleRecoveryDiagnostic);
+    this.services.connectionService.on('recoveryDiagnostic', this.handleRecoveryDiagnostic);
   }
 
   private handleRegionStateChange = (state: RegionRecoveryState): void => {
+    if (
+      state.status === 'recovering' &&
+      state.reason === 'region-switch' &&
+      this.stationRecovery?.trackingId !== state.trackingId
+    )
+      this.stationRecovery = {trackingId: state.trackingId, stage: 'reload', reloads: 0};
+    else if (state.status !== 'recovering') this.stationRecovery = undefined;
+    if (
+      state.status === 'ready' &&
+      (state.autoAvailable === 'waitingForVoice' || state.autoAvailable === 'requesting') &&
+      !this.autoAvailable
+    )
+      this.autoAvailable = {requesting: false};
     // @ts-ignore
     this.trigger(REGION_RECOVERY_EVENTS.STATE_CHANGE, state);
   };
+
+  private handleRecoveryDiagnostic = (
+    metric: METRIC_EVENT_NAMES,
+    data: Record<string, string | number>
+  ): void => {
+    this.metricsManager.trackEvent(metric, data, ['operational']);
+  };
+
+  private handleRecoveryConnectionChange = (connected: boolean): void => {
+    if (connected) {
+      this.connectRtd();
+      this.requestAutoAvailable();
+    } else {
+      const cancelled = this.cancelAutoAvailable();
+      this.pauseRtd();
+      this.taskManager.invalidateRegionalTasks();
+      if (cancelled) this.services.connectionService.publishRegionState(cancelled);
+    }
+  };
+
+  private cancelWaitingAutoAvailable(): void {
+    const cancelled = this.cancelAutoAvailable();
+    if (cancelled) this.services.connectionService.publishRegionState(cancelled);
+  }
+
+  private cancelAutoAvailable(): RegionRecoveryState | undefined {
+    if (!this.autoAvailable) return undefined;
+    this.autoAvailable = undefined;
+    const previous = this.services.connectionService.regionState;
+
+    return previous?.status === 'ready' ? {...previous, autoAvailable: 'cancelled'} : undefined;
+  }
+
+  private async requestAutoAvailable(): Promise<void> {
+    const pending = this.autoAvailable;
+    if (
+      !pending ||
+      pending.requesting ||
+      (this.webCallingService.isBrowserVoiceRequired() && !this.webCallingService.isVoiceReady())
+    )
+      return;
+    const connection = this.services.connectionService;
+    pending.requesting = true;
+    connection.publishRegionState({
+      status: 'ready',
+      reason: 'region-switch',
+      autoAvailable: 'requesting',
+    });
+    const startedAt = Date.now();
+    let outcome: 'succeeded' | 'failed' = 'succeeded';
+    try {
+      const result = await this.setAgentState({
+        state: AGENT_STATE_AVAILABLE,
+        auxCodeId: AGENT_STATE_AVAILABLE_ID,
+        lastStateChangeReason: 'agent-wss-disconnect',
+      });
+      if (this.autoAvailable === pending)
+        this.applyAvailableState(result as Agent.StateChangeSuccess);
+    } catch {
+      outcome = 'failed';
+    }
+    if (this.autoAvailable !== pending) return;
+    this.autoAvailable = undefined;
+    connection.recordRecoveryDiagnostic('auto-available', outcome, 1, startedAt);
+    connection.publishRegionState({
+      status: 'ready',
+      reason: 'region-switch',
+      autoAvailable: outcome,
+    });
+  }
 
   /**
    * Returns the connection configuration
@@ -2667,6 +2736,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   private handleConnectionLost = async (msg: ConnectionLostDetails): Promise<void> => {
     if (msg.isConnectionLost) {
+      this.cancelWaitingAutoAvailable();
       // TODO: Emit an event saying connection is lost
       LoggerProxy.log('event=handleConnectionLost | Connection lost', {
         module: CC_FILE,
@@ -2694,44 +2764,151 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   };
 
-  /**
-   * Handles silent relogin after registration completion
-   * @private
-   */
-  private async silentRelogin(initialRegistration = false): Promise<void> {
+  private async restoreStationSession(
+    regional: boolean
+  ): Promise<Agent.ReloginSuccess | Agent.StationLoginSuccess | undefined> {
+    const recovery = regional ? this.stationRecovery : {stage: 'reload', reloads: 0};
+    if (!recovery) return undefined;
+    const manager = this.services.webSocketManager;
+    const connection = this.services.connectionService;
+    const maxReloads = regional ? STATION_RELOAD_RETRY_DELAYS_MS.length + 1 : 1;
+    while (
+      (!regional || this.stationRecovery === recovery) &&
+      (!regional || manager.hasUsableSocket())
+    ) {
+      if (recovery.stage === 'reload' && recovery.reloads >= maxReloads)
+        recovery.stage = 'fallback';
+      const stage = recovery.stage;
+      if (stage === 'manual') break;
+      const diagnosticStage = stage === 'fallback' ? 'fallback-login' : 'reload';
+      const attempt = stage === 'fallback' ? 1 : recovery.reloads + 1;
+      const startedAt = Date.now();
+      let response: Agent.ReloginSuccess | Agent.StationLoginSuccess;
+      try {
+        if (stage === 'reload') recovery.reloads += 1;
+        else recovery.stage = 'manual';
+        if (stage === 'fallback') {
+          // eslint-disable-next-line no-await-in-loop -- A fallback is dispatched at most once.
+          response = await this.loginStation(this.buildStationLoginPayload(), true);
+          if (!response) break;
+        } else {
+          // eslint-disable-next-line no-await-in-loop -- Reloads use a bounded serial budget.
+          response = await this.services.agent.reload();
+        }
+      } catch (error) {
+        if (regional && (this.stationRecovery !== recovery || !manager.hasUsableSocket()))
+          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+        const failure = normalizeRecoveryFailure(error);
+        const category = getStationRecoveryFailureCategory(failure);
+        if (
+          !regional &&
+          stage === 'reload' &&
+          (category !== 'fallback' || !this.buildStationLoginPayload())
+        )
+          throw error;
+        const retryDelay =
+          regional && stage === 'reload' && category === 'transient'
+            ? STATION_RELOAD_RETRY_DELAYS_MS[recovery.reloads - 1]
+            : undefined;
+        if (category === 'cancelled' || category === 'auth') {
+          if (regional)
+            connection.recordRecoveryDiagnostic(
+              diagnosticStage,
+              category === 'auth' ? 'failed' : 'cancelled',
+              attempt,
+              startedAt,
+              failure
+            );
+          throw error;
+        }
+        if (stage === 'fallback' && category === 'exists') recovery.stage = 'post1035';
+        else if (stage === 'reload') {
+          if (retryDelay === undefined) recovery.stage = 'fallback';
+        } else {
+          if (regional)
+            connection.recordRecoveryDiagnostic(
+              diagnosticStage,
+              'failed',
+              attempt,
+              startedAt,
+              failure
+            );
+          break;
+        }
+        if (regional)
+          connection.recordRecoveryDiagnostic(
+            diagnosticStage,
+            'retrying',
+            attempt,
+            startedAt,
+            failure
+          );
+        if (retryDelay !== undefined) {
+          // eslint-disable-next-line no-await-in-loop -- Station retries are serial.
+          await new Promise<void>((resolve) => {
+            setTimeout(resolve, retryDelay);
+          });
+        }
+      }
+      if (response) {
+        if (regional && (this.stationRecovery !== recovery || !manager.hasUsableSocket()))
+          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+        if (regional)
+          connection.recordRecoveryDiagnostic(diagnosticStage, 'succeeded', attempt, startedAt);
+        if (stage !== 'fallback')
+          // eslint-disable-next-line no-await-in-loop -- Fallback already applies its accepted session.
+          await this.applyStationSession(response, undefined, regional || stage === 'post1035');
+
+        return response;
+      }
+    }
+
+    return undefined;
+  }
+
+  /** Restores station state for registration, ordinary reconnect, or regional recovery. */
+  private async silentRelogin(
+    context: 'initial-login' | 'reconnect' | 'region-switch' = 'reconnect'
+  ): Promise<RegionRecoveryState> {
+    const regional = context === 'region-switch';
+    if (regional && !this.agentConfig?.isAgentLoggedIn)
+      return {status: 'stationLoginRequired', reason: 'region-switch'};
+    if (regional && !this.$config?.allowAutomatedRelogin)
+      return {status: 'stationLoginRequired', reason: 'automatic-relogin-disabled'};
     LoggerProxy.log('Starting silent relogin process', {
       module: CC_FILE,
       method: METHODS.SILENT_RELOGIN,
     });
 
-    let fallbackAttempted = false;
     try {
-      let reLoginResponse: Agent.ReloginSuccess | Agent.StationLoginSuccess;
-      try {
-        reLoginResponse = await this.services.agent.reload();
-      } catch (error) {
-        const payload = this.buildStationLoginPayload();
-        if (
-          !payload ||
-          getStationRecoveryFailureCategory(normalizeRecoveryFailure(error)) !== 'fallback'
-        )
-          throw error;
-        fallbackAttempted = true;
-        try {
-          reLoginResponse = await this.loginStation(payload, true);
-        } catch (loginError) {
-          if (getStationRecoveryFailureCategory(normalizeRecoveryFailure(loginError)) !== 'exists')
-            throw loginError;
-          reLoginResponse = await this.services.agent.reload();
-        }
+      const reLoginResponse = await this.restoreStationSession(regional);
+      if (!reLoginResponse) {
+        const state: RegionRecoveryState = {
+          status: 'stationLoginRequired',
+          reason: 'session-restore-failed',
+        };
+        if (!regional) this.services.connectionService.publishRegionState(state);
+
+        return state;
       }
-      if (reLoginResponse.data.type !== CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS)
-        await this.applyStationSession(reLoginResponse, undefined, fallbackAttempted);
 
       const {agentId} = reLoginResponse.data;
       const {lastStateChangeReason} = reLoginResponse.data as Agent.ReloginSuccess['data'];
+      const state: RegionRecoveryState = {
+        status: 'ready',
+        reason: context === 'initial-login' ? 'initial-login' : 'region-switch',
+      };
 
-      if (lastStateChangeReason === 'agent-wss-disconnect') {
+      if (
+        regional &&
+        reLoginResponse.data.type === CC_EVENTS.AGENT_RELOGIN_SUCCESS &&
+        lastStateChangeReason === 'agent-wss-disconnect'
+      ) {
+        state.autoAvailable =
+          this.webCallingService.isBrowserVoiceRequired() && !this.webCallingService.isVoiceReady()
+            ? 'waitingForVoice'
+            : 'requesting';
+      } else if (!regional && lastStateChangeReason === 'agent-wss-disconnect') {
         LoggerProxy.log(
           'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
           {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
@@ -2752,10 +2929,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           );
         }
       }
-      this.services.connectionService.publishRegionState({
-        status: 'ready',
-        reason: initialRegistration ? 'initial-login' : 'region-switch',
-      });
+      if (!regional) this.services.connectionService.publishRegionState(state);
 
       LoggerProxy.log(
         `Silent relogin process completed successfully with login Option: ${this.agentConfig.deviceType} teamId: ${reLoginResponse.data.teamId}`,
@@ -2765,18 +2939,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           trackingId: reLoginResponse.trackingId,
         }
       );
-    } catch (error) {
-      if (
-        fallbackAttempted &&
-        getStationRecoveryFailureCategory(normalizeRecoveryFailure(error)) !== 'auth'
-      ) {
-        this.services.connectionService.publishRegionState({
-          status: 'stationLoginRequired',
-          reason: 'session-restore-failed',
-        });
 
-        return;
-      }
+      return state;
+    } catch (error) {
+      if (regional) throw error;
       const {reason, error: detailedError} = getErrorDetails(
         error,
         METHODS.SILENT_RELOGIN,
@@ -2788,7 +2954,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           method: METHODS.SILENT_RELOGIN,
         });
 
-        return;
+        return {status: 'stationLoginRequired', reason: 'session-restore-failed'};
       }
       // Keep the structured HTTP classification across the public Error translation.
       const {status} = normalizeRecoveryFailure(error);

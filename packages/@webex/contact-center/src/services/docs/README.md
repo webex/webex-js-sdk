@@ -237,17 +237,17 @@ What Services creates in its constructor:
 | `agent` | `routingAgent(aqmReq)` | Agent operations factory |
 | `contact` | `routingContact(aqmReq)` | Task/contact operations factory |
 | `dialer` | `aqmDialer(aqmReq)` | Outbound dialing factory |
-| `connectionService` | `new ConnectionService({webSocketManager, subscribeRequest})` | WebSocket lifecycle management |
+| `connectionService` | `new ConnectionService({webex, webSocketManager, subscribeRequest})` | WebSocket lifecycle management |
 
 Understanding the instantiation order is essential — getting it wrong causes runtime errors. Services does not create `WebexRequest`, which is initialized by `cc.ts` before `Services.getInstance()`, nor `MetricsManager`, an independent singleton initialized by `cc.ts`. ContactCenter owns the broader READY-time graph: in its READY callback it creates WebCallingService, the three wxApp services, ApiAIAssistant, MetricsManager, TaskManager (through `TaskManager.getTaskManager`, receiving ApiAIAssistant, contact routing, calling, and both WebSocket managers, and then AnswerCallOnWebexService), EntryPoint, AddressBook, Queue, and UserPreference, in the order of the READY composition diagram. None of these collaborators is created by `register()`; registration attaches runtime listeners and connects the primary socket after READY initialization, and line registration is conditional on a `BROWSER` login with WebRTC enabled.
 
 Each WebSocketManager uses its existing subscribe-and-connect path for primary or RTD transport.
 The subscription has a 20-second HTTP timeout and adds the organization header required in INT.
 After composing the READY graph, ContactCenter calls `connectionService.configureRecovery` with
-the host, metrics, reload and shared station-login callbacks, plus `getSession`, `onConnectionChange`,
-`applySession`, and `makeAvailable`. ConnectionService owns regional timing, primary mismatch/U2C recovery,
-station retries, auto-Available, snapshots, and diagnostics. ContactCenter retains profile/device
-updates, task/RTD effects, and forwarding `regionStateChange` as the public recovery event.
+`getConnection`, `recoverSession`, and `onConnectionChange`. ConnectionService receives the host in
+its constructor and owns regional transport timing, primary mismatch/U2C recovery, snapshots, and
+diagnostics. ContactCenter owns station retries, deferred Available, profile/device updates, task/RTD
+effects, recovery metric submission, and forwarding `regionStateChange` as the public recovery event.
 
 AQM factory shape (`routingAgent`, `routingContact`, `aqmDialer`): agent and task operations use a
 factory pattern where each method is defined as a `routing.req()` call. Each entry returns a

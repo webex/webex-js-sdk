@@ -162,11 +162,10 @@ lifecycle operation. Requests already sent follow their usual completion or time
 Use the latest station state and Task objects before deciding whether to retry an action. Replaying
 a call control can duplicate an action the backend already received.
 
-On `ready`, keep manual state controls disabled while `autoAvailable` is `requesting`. The SDK is
-sending or awaiting an automatic state change, and an overlapping `setAgentState()` can receive the
-usual pending request error. Enable manual state controls when the automatic request settles. With
-`autoAvailable: 'waitingForVoice'`, manual state controls can remain available, subject to the normal
-voice readiness check when selecting Available. Task controls can resume on `ready` in either case.
+On `ready`, keep manual state controls disabled while `autoAvailable` is `waitingForVoice` or
+`requesting`. The SDK is waiting for browser voice or completing the automatic state change.
+Enable manual state controls after that action settles or is cancelled. Task controls can resume
+on `ready`, subject to the normal voice readiness checks.
 
 With `allowAutomatedRelogin` enabled, the SDK tries to restore the previous station, including an
 existing browser station. The app handles `stationLoginRequired` through its station sign-in flow,

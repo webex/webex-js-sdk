@@ -49,6 +49,7 @@ export default class Services {
     this.contact = routingContact(aqmReq);
     this.dialer = aqmDialer(aqmReq);
     this.connectionService = new ConnectionService({
+      webex,
       webSocketManager: this.webSocketManager,
       subscribeRequest: connectionConfig,
     });

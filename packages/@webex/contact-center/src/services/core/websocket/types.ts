@@ -1,35 +1,27 @@
 import {SubscribeRequest} from '../../../types';
 import type WebSocketManager from './WebSocketManager';
-import type {WebexSDK} from '../../../types';
-import type MetricsManager from '../../../metrics/MetricsManager';
-import type * as Agent from '../../agent/types';
+import type {RegionRecoveryState, WebexSDK} from '../../../types';
 
 /** Session and application operations used by connection recovery. */
 export type RecoveryOptions = {
-  webex: WebexSDK;
-  reload: () => Promise<Agent.ReloginSuccess>;
-  stationLogin: () => Promise<Agent.StationLoginSuccess | undefined>;
-  metricsManager: MetricsManager;
-  getSession: () => {
+  getConnection: () => {
     orgId?: string;
     connectionConfig: SubscribeRequest;
-    isAgentLoggedIn?: boolean;
-    allowAutomatedRelogin: boolean;
-    waitingForVoice: boolean;
   };
+  recoverSession: () => Promise<RegionRecoveryState>;
   onConnectionChange: (connected: boolean) => void;
-  applySession: (response: Agent.ReloginSuccess | Agent.StateChangeSuccess) => Promise<void>;
-  makeAvailable: () => Promise<Agent.StateChangeSuccess>;
 };
 
 /**
  * Options for initializing a connection service.
  * @typedef ConnectionServiceOptions
+ * @property {WebexSDK} webex - The Webex SDK instance.
  * @property {WebSocketManager} webSocketManager - The WebSocket manager instance.
  * @property {SubscribeRequest} subscribeRequest - The subscribe request payload.
  * @ignore
  */
 export type ConnectionServiceOptions = {
+  webex: WebexSDK;
   webSocketManager: WebSocketManager;
   subscribeRequest: SubscribeRequest;
 };

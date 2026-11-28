@@ -4811,7 +4811,8 @@ function showRegionRecoveryState(state) {
   const status = state?.status;
   regionRecoveryStatus.dataset.status = status ?? '';
   regionRecoveryStatus.textContent = regionRecoveryMessages[status] ?? '';
-  const stateActionsPaused = stationActionsPaused() || state?.autoAvailable === 'requesting';
+  const stateActionsPaused = stationActionsPaused() ||
+    ['waitingForVoice', 'requesting'].includes(state?.autoAvailable);
   idleCodesDropdown.disabled = stateActionsPaused;
   setAgentStateButton.disabled = stateActionsPaused;
   setRegionRecoveryDialog(status === 'recovering');

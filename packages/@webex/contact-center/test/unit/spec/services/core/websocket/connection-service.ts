@@ -1,7 +1,7 @@
 import {EventEmitter} from 'events';
 import {ConnectionService} from '../../../../../../src/services/core/websocket/connection-service';
 import type {WebSocketManager} from '../../../../../../src/services/core/websocket/WebSocketManager';
-import type {SubscribeRequest} from '../../../../../../src/types';
+import type {RegionRecoveryState, SubscribeRequest, WebexSDK} from '../../../../../../src/types';
 import {SUBSCRIBE_API} from '../../../../../../src/services/constants';
 import {createDeferred} from '../../../../fixtures/aiSummaryTestUtils';
 import LoggerProxy from '../../../../../../src/logger-proxy';
@@ -20,6 +20,7 @@ class SocketManagerDouble extends EventEmitter {
   });
   handleConnectionLost = jest.fn();
   hasUsableSocket = jest.fn(() => this.usable);
+  getUrl = jest.fn(() => 'wss://routing.produs2.cisco.com');
 }
 
 const subscribeRequest: SubscribeRequest = {
@@ -62,6 +63,7 @@ describe('ConnectionService', () => {
     Object.defineProperty(global, 'navigator', {value: {onLine: true}, configurable: true});
     manager = new SocketManagerDouble();
     service = new ConnectionService({
+      webex: {internal: {services: {updateServices: jest.fn()}}} as unknown as WebexSDK,
       webSocketManager: manager as unknown as WebSocketManager,
       subscribeRequest,
     });
@@ -92,6 +94,55 @@ describe('ConnectionService', () => {
     expect(events).toHaveBeenLastCalledWith(lost);
     expect(manager.handleConnectionLost).toHaveBeenLastCalledWith(lost);
     expect(manager.initWebSocket).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {title: 'the station is restored', outcome: {status: 'ready', reason: 'region-switch'}},
+    {
+      title: 'station login is required',
+      outcome: {status: 'stationLoginRequired', reason: 'session-restore-failed'},
+    },
+    {title: 'restoration rejects expired credentials', failure: {statusCode: 401}},
+  ])('awaits application recovery after Welcome when $title', async ({outcome, failure}) => {
+    const recovery = createDeferred<RegionRecoveryState>();
+    const recoverSession = jest.fn(() => recovery.promise);
+    const onConnectionChange = jest.fn();
+    jest.spyOn(Math, 'random').mockReturnValue(0);
+    service.configureRecovery({
+      getConnection: () => ({orgId: 'org', connectionConfig: subscribeRequest}),
+      recoverSession,
+      onConnectionChange,
+    });
+    service.setMultiRegionSettings({multiRegionEnabled: true, homeRegion: 'produs1'});
+    service.handleRegionSwitch({
+      type: 'SYSTEM_REGION_SWITCH',
+      orgId: 'org',
+      trackingId: 'region-switch',
+      data: {operation: 'FAILOVER', scope: 'ORG'},
+    });
+    await tick(100000);
+
+    expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
+    expect(recoverSession).toHaveBeenCalledTimes(1);
+    expect(service.regionState.status).toBe('recovering');
+    expect(onConnectionChange.mock.calls).toEqual([[false]]);
+
+    if (failure) recovery.reject(failure);
+    else recovery.resolve(outcome as RegionRecoveryState);
+    await flush();
+
+    expect(service.isRecovering).toBe(false);
+    if (failure) {
+      expect(failures.mock.calls).toEqual([[failure]]);
+      expect(service.regionState).toMatchObject({
+        status: 'unavailable',
+        reason: 'authentication-failed',
+      });
+      expect(onConnectionChange.mock.calls.some(([connected]) => connected)).toBe(false);
+    } else {
+      expect(service.regionState).toMatchObject(outcome);
+      expect(onConnectionChange.mock.calls).toEqual([[false], [true]]);
+    }
   });
 
   it('reuses subscribe-and-connect and waits for Welcome before reporting reconnection', async () => {

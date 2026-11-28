@@ -6801,7 +6801,7 @@ describe('regional recovery wiring', () => {
     }, {browserVoice: true});
   });
 
-  it.each(['succeeded', 'failed', 'cancelled', 'socket-closed', 'logout-in-flight'])(
+  it.each(['succeeded', 'failed', 'socket-closed', 'logout-in-flight'])(
     'handles automatic Available outcome %s after browser-station recovery',
     async (outcome) => {
       await withRouting(
@@ -6843,14 +6843,10 @@ describe('regional recovery wiring', () => {
 
             return;
           }
-          const manual = outcome === 'cancelled';
-          const stateChange = manual
-            ? cc.setAgentState({state: 'Idle', auxCodeId: 'idle'})
-            : undefined;
           calling['handleLineRegistered'](line);
           await flush();
           expect(stateRequests()).toHaveLength(1);
-          expect(stateRequests()[0].body).toMatchObject({state: manual ? 'Idle' : 'Available'});
+          expect(stateRequests()[0].body).toMatchObject({state: 'Available'});
           if (outcome === 'logout-in-flight') {
             expect(state).toHaveBeenLastCalledWith(
               expect.objectContaining({status: 'ready', autoAvailable: 'requesting'})
@@ -6882,14 +6878,13 @@ describe('regional recovery wiring', () => {
                 ? CC_EVENTS.AGENT_STATE_CHANGE_FAILED
                 : CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS,
               {
-                subStatus: manual ? 'Idle' : 'Available',
-                auxCodeId: manual ? 'idle' : '0',
+                subStatus: 'Available',
+                auxCodeId: '0',
                 ...(outcome === 'failed' ? {reasonCode: 9999} : {}),
               }
             ),
             type: CC_EVENTS.AGENT_STATE_CHANGE,
           });
-          await stateChange;
           await flush();
           expect(stateRequests()).toHaveLength(1);
           expect(state).toHaveBeenLastCalledWith(expect.objectContaining({autoAvailable: outcome}));

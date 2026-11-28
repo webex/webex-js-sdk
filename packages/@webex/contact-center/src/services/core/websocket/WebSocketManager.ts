@@ -87,7 +87,7 @@ export class WebSocketManager extends EventEmitter {
   }
 
   public hasUsableSocket(): boolean {
-    return !this.isSocketClosed && this.isWelcomeReceived && this.websocket?.readyState === 1;
+    return this.isWelcomeReceived && this.websocket?.readyState === 1;
   }
 
   close(shouldReconnect: boolean, reason = 'Unknown') {

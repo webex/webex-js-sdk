@@ -303,14 +303,14 @@ Preconditions for the wrappers:
 | AGENT-R-001 | routingAgent station login/logout must use the documented WCC endpoints (`POST /v1/agents/login`, `POST /v1/agents/logout`) and settle on their nested `CC_EVENTS` success/failure notifications. | The backend operation is asynchronous and HTTP acknowledgement is not final agent state. | `src/services/agent/index.ts` | `test/unit/spec/services/agent/index.ts`, `test/unit/spec/cc.ts` | The factory test asserts delegation to `req` only; endpoint and bind values are not asserted. | PRESENT |
 | AGENT-R-002 | State change must use PUT `/v1/agents/session/state` and preserve typed success/failure binds. | Agent availability drives routing eligibility and must not be inferred from request acknowledgement. | `src/services/agent/index.ts` | `test/unit/spec/services/agent/index.ts`, `test/unit/spec/cc.ts` | The PUT method and binds are not asserted by a unit test. | PRESENT |
 | AGENT-R-003 | Buddy-agent lookup must preserve its typed request and correlated response contract. | Consult/transfer selection depends on backend-filtered availability. | `src/services/agent/index.ts` | `test/unit/spec/services/agent/index.ts`, `test/unit/spec/cc.ts` | The `POST /v1/agents/buddyList` endpoint is not asserted by a unit test. | PRESENT |
-| AGENT-R-004 | The agent factory exposes `reload`. ContactCenter gates ordinary relogin; ConnectionService coordinates regional restoration using live session and policy supplied by ContactCenter. | The request factory should not duplicate connection policy or mutate the agent profile. | `src/cc.ts`, `src/services/core/websocket/connection-service.ts` | `test/unit/spec/cc.ts` | None. | PRESENT |
+| AGENT-R-004 | The agent factory exposes `reload`. ContactCenter owns ordinary and regional station restoration; ConnectionService awaits its recovery callback after reconnecting transport. | The request factory should not duplicate connection policy or mutate the agent profile. | `src/cc.ts`, `src/services/core/websocket/connection-service.ts` | `test/unit/spec/cc.ts` | None. | PRESENT |
 | AGENT-R-005 | Device/profile update is `ContactCenter.updateAgentProfile`: it calls `stationLogout` with reason 'User requested agent profile update', then `stationLogin` with the new `loginOption`, `dialNumber`, and `teamId`, and returns the login response typed `AgentDeviceTypeUpdateSuccess`; `routingAgent` has no `deviceUpdate` function. | The factory has no device-update request, so a device or team change reuses the logout and login flows with their metrics; calling a non-existent `routingAgent.deviceUpdate` would fail at runtime. | `src/cc.ts`, `src/services/agent/index.ts` | `test/unit/spec/cc.ts` | No test asserts that `routingAgent.deviceUpdate` is absent. | PRESENT |
 | AGENT-R-006 | BROWSER station login must send `dialNumber` and `deviceId` as `webrtc-{agentId}` on `POST /v1/agents/login`. EXTENSION and AGENT_DN continue to send the caller-supplied dial number for both fields. | QRM stores `agent.dn` from `dialNumber`. Legacy VPOP RTMS only treats a DN as WebRTC when it starts with `webrtc-`; a bare UUID gets a steering prefix and the agent invite fails with SIP 484. | `src/cc.ts` | `test/unit/spec/cc.ts` | Public `stationLogin({loginOption: 'BROWSER'})` input is unchanged; only the backend login payload is prefixed. | PRESENT |
 | AGENT-R-007 | An AGENT_DN station login whose dial number fails `isValidDialNumber` against the profile dial plan rejects with `INVALID_DIAL_NUMBER` before any request is sent. | The backend would otherwise register an unreachable DN; the reason maps to a field message for the login form. | `src/cc.ts` | `test/unit/spec/services/core/Utils.ts` | No `test/unit/spec/cc.ts` case drives the AGENT_DN rejection. | PRESENT |
 | AGENT-R-008 | `setAgentState` rejects a change to Available with `VOICE_CONNECTION_ERROR.NOT_READY` (type `SDK_VALIDATION_ERROR`) when browser voice is required and not ready; Idle and non-browser changes proceed. | An Available agent without a registered browser line would be offered calls it cannot answer. | `src/cc.ts` | `test/unit/spec/cc.ts` | None. | PRESENT |
 | AGENT-R-009 | `getBuddyAgents` sends `agentProfileId` from the profile, defaults `mediaType` to `telephony`, and, when `state` is omitted, filters on Available for `action: 'Transfer'` and sends no state for Consult. | A transfer needs an agent who can take the call now; a consult may target an Idle agent. | `src/cc.ts`, `src/types.ts` | `test/unit/spec/cc.ts` | None. | PRESENT |
 | AGENT-R-010 | Station login success and relogin success replace `channelsMap` with `mmProfile` counts per channel and add `notifsTrackingId`. | Applications receive capacity numbers instead of raw channel id lists. | `src/cc.ts`, `src/services/agent/types.ts` | `test/unit/spec/cc.ts` | None. | PRESENT |
-| AGENT-R-011 | Station recovery calls the existing AQM reload, station login, and state-change methods. Requests use the standard notification bindings and timeout. Session restoration applies the accepted backend data. Failure mapping retains status, reason, and tracking information. | ConnectionService owns regional retry order; ContactCenter applies accepted session, device and state changes. | `src/services/agent/index.ts`, `src/cc.ts`, `src/services/core/websocket/connection-service.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/agent/index.ts` | The CC wiring suite covers reload, station login fallback, and an ordinary state change on the replacement socket. | PRESENT |
+| AGENT-R-011 | Station recovery calls the existing AQM reload, station login, and state-change methods. Requests use the standard notification bindings and timeout. Session restoration applies the accepted backend data. Failure mapping retains status, reason, and tracking information. | ContactCenter owns station retry order and accepted session, device and state changes; ConnectionService owns transport retry order. | `src/services/agent/index.ts`, `src/cc.ts`, `src/services/core/websocket/connection-service.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/agent/index.ts` | The CC wiring suite covers reload, station login fallback, and an ordinary state change on the replacement socket. | PRESENT |
 
 ## Design overview
 
@@ -318,7 +318,7 @@ The agent service uses a factory pattern: `routingAgent` is a pure AQM factory. 
 
 The factory initiates authenticated HTTP requests and supplies `CC_EVENTS` success/failure binds to AqmReqs. The services root builds it once as `services.agent` (`src/services/index.ts`); the factory holds no state.
 
-ContactCenter validates and enriches public inputs, starts metrics, delegates to the factory, performs browser-calling work when required, and maps backend notifications to application-facing events. `updateAgentProfile()` and private `silentRelogin()` remain ContactCenter methods. ConnectionService uses configured reload and station-login callbacks; fallback reuses ContactCenter's private login flow and applies the session before returning its raw response.
+ContactCenter validates and enriches public inputs, starts metrics, delegates to the factory, performs browser-calling work when required, and maps backend notifications to application-facing events. `updateAgentProfile()` and private `silentRelogin()` remain ContactCenter methods. ConnectionService awaits ContactCenter's station-recovery callback; ordinary and regional restoration share the same private login and session-application flows.
 
 Stack: TypeScript 5.4 AQM request factory, REST initiation, WebSocket completion events, Jest 27.
 
@@ -349,7 +349,7 @@ Sequence coverage:
 | Station logout | `cc.stationLogout` → `logout` → `POST /v1/agents/logout`; resolves `StationLogoutResponse` | Station logout | Nested failure/timeout rejects and calling deregistration occurs only after success |
 | State change | `cc.setAgentState` → `stateChange` → `PUT /v1/agents/session/state`; resolves `SetStateResponse` | State change | Pre-request browser-voice rejection; failure notification or timeout returns a structured rejection |
 | Buddy agents | `cc.getBuddyAgents` → `buddyAgents` → `POST /v1/agents/buddyList`; resolves `BuddyAgentsResponse` | Buddy-agent lookup | Correlated retrieval failure/timeout rejects |
-| Reload | Ordinary reconnect or `cc.register()` → ContactCenter `silentRelogin`; regional recovery → ConnectionService; both call `reload` → `POST /v1/agents/reload` | Recovery reload | Ordinary `AGENT_NOT_FOUND` is silent; regional retries are bounded and can require station login |
+| Reload | Ordinary reconnect, `cc.register()`, or the regional recovery callback → ContactCenter station restoration → `reload` → `POST /v1/agents/reload` | Recovery reload | Ordinary `AGENT_NOT_FOUND` is silent; regional retries are bounded and can require station login |
 | Event mapping | WebSocket message → `handleWebsocketMessage` → `AGENT_EVENTS` emit | WebSocket-to-application event mapping | Types outside `CC_EVENTS` are not emitted |
 
 ### Station login
@@ -503,13 +503,13 @@ when `isConnectionLost` is false, `isSocketReconnected` is true, `allowAutomated
 ConnectionService stops ordinary monitoring during regional recovery and terminal failure. Explicit
 logout suppresses automatic restoration; enabling the config flag alone
 does not bypass suppression or regional recovery ownership. Separately, `connectWebsocket` during
-`cc.register()` calls `silentRelogin(true)` when `allowAutomatedRelogin` is enabled and the primary
+`cc.register()` restores the station when `allowAutomatedRelogin` is enabled and the primary
 socket is still connected; a disconnect or relogin failure rejects `cc.register()`. Ordinary
 monitoring starts after registration setup completes. Hosts await
 `register()` and `deregister()` and pause new station/task actions during recovery. ConnectionService
-owns the regional timer and bounded reload/fallback path. Its station-login callback shares the
-private `loginStation()` flow used by public login, including profile, calling, and wxApp updates.
-Reload responses use the shared `applyStationSession()` before publishing the station outcome. `stationLoginRequired`
+owns the regional connection timer and awaits ContactCenter's `recoverSession()` callback. ContactCenter
+owns the bounded reload/fallback path, sharing `loginStation()` and `applyStationSession()` with
+ordinary login and relogin. The callback returns the station outcome before it is published. `stationLoginRequired`
 requires explicit station login. Evidence: `src/cc.ts`,
 `src/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts`.
 
@@ -568,8 +568,7 @@ classDiagram
   class AqmReqs
   class WebSocketManager
   ContactCenter --> routingAgent : public agent operations / reload
-  ConnectionService --> routingAgent : configured reload callback
-  ConnectionService --> ContactCenter : shared station login + accepted reload callbacks
+  ConnectionService --> ContactCenter : recoverSession callback
   routingAgent --> AqmReqs : request factories
   AqmReqs --> WebSocketManager : correlated notifications
   ContactCenter --> ContactCenter : updateAgentProfile + silentRelogin ownership
@@ -582,7 +581,7 @@ classDiagram
 | `UC-1` Station login/logout | Application | validate public input in ContactCenter, initiate through routingAgent, settle from nested WebSocket notification | Invalid AGENT_DN dial number, failure notification, HTTP rejection, or timeout throws a detailed error | `src/cc.ts`, `src/services/agent/index.ts`, `test/unit/spec/services/agent/index.ts` |
 | `UC-2` State change | Application or silent relogin | PUT the state payload and return the correlated typed response | Browser voice not ready, failure notification, or timeout throws | `src/services/agent/index.ts`, `test/unit/spec/services/agent/index.ts` |
 | `UC-3` Buddy-agent query | Application selecting a consult or transfer target | retrieve backend-filtered candidates for consult/transfer | Retrieval failure or timeout throws | `src/services/agent/index.ts`, `test/unit/spec/services/agent/index.ts` |
-| `UC-4` Recovery reload | ConnectionService reconnect, regional switch or `cc.register()` | ContactCenter gates ordinary relogin; ConnectionService runs bounded regional reload/fallback and delegates accepted-session effects to ContactCenter | Ordinary `AGENT_NOT_FOUND` returns silently; regional exhaustion requests station login; authentication failure ends recovery | `src/cc.ts`, `src/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` |
+| `UC-4` Recovery reload | ConnectionService reconnect, regional switch or `cc.register()` | ConnectionService reconnects transport; ContactCenter runs bounded reload/fallback and applies accepted-session effects | Ordinary `AGENT_NOT_FOUND` returns silently; regional exhaustion requests station login; authentication failure ends recovery | `src/cc.ts`, `src/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` |
 | `UC-5` Device/profile update | Application | ContactCenter owns `updateAgentProfile`; the agent factory has no device-update method | A failing logout or login is tracked and rethrown | `src/cc.ts`, `test/unit/spec/cc.ts` |
 
 ### Cross-boundary use-case flow
