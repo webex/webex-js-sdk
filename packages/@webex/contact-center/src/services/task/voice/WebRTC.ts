@@ -1,6 +1,7 @@
 import {LocalMicrophoneStream, CALL_EVENT_KEYS} from '@webex/calling';
 import {CC_FILE} from '../../../constants';
-import {getErrorDetails} from '../../core/Utils';
+import {createRegionRecoveryError, getErrorDetails} from '../../core/Utils';
+import {REGION_RECOVERY_ERROR_CODES} from '../../core/constants';
 import routingContact from '../contact';
 import {
   TaskData,
@@ -20,6 +21,8 @@ import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 import LoggerProxy from '../../../logger-proxy';
 
 export default class WebRTC extends Voice implements IWebRTC {
+  private microphoneTracks = new Set<MediaStreamTrack>();
+  private regionallyInvalidated = false;
   private localAudioStream: LocalMicrophoneStream;
   private webCallingService: WebCallingService;
 
@@ -41,6 +44,15 @@ export default class WebRTC extends Voice implements IWebRTC {
     super(contact, data, mergedCallOptions, wrapupData, agentId, agentName, apiAIAssistant);
     this.webCallingService = webCallingService;
     this.registerWebCallListeners();
+  }
+
+  public invalidateForRegionRecovery(): void {
+    this.regionallyInvalidated = true;
+    super.invalidateForRegionRecovery();
+    this.unregisterWebCallListeners();
+    this.microphoneTracks.forEach((track) => track.stop());
+    this.microphoneTracks.clear();
+    this.localAudioStream = undefined;
   }
 
   private registerWebCallListeners() {
@@ -86,6 +98,12 @@ export default class WebRTC extends Voice implements IWebRTC {
 
       const constraints = {audio: true};
       const localStream = await navigator.mediaDevices.getUserMedia(constraints);
+      const tracks = localStream.getTracks();
+      if (this.regionallyInvalidated) {
+        tracks.forEach((track) => track.stop());
+        throw createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.STALE_TASK);
+      }
+      tracks.forEach((track) => this.microphoneTracks.add(track));
       const audioTrack = localStream.getAudioTracks()[0];
       this.localAudioStream = new LocalMicrophoneStream(new MediaStream([audioTrack]));
       this.webCallingService.answerCall(this.localAudioStream, this.data.interactionId);

@@ -14,6 +14,7 @@ import {
   UpdateUserPreferenceRequest,
 } from './services/config/types';
 import {PaginatedResponse, BaseSearchParams} from './utils/PageCache';
+import type {REGION_RECOVERY_ERROR_CODES} from './services/core/constants';
 
 /**
  * Generic type for converting a const enum object into a union type of its values.
@@ -22,6 +23,39 @@ import {PaginatedResponse, BaseSearchParams} from './utils/PageCache';
  * @ignore
  */
 type Enum<T extends Record<string, unknown>> = T[keyof T];
+
+/** Plain lifecycle-error reasons exposed by recovery operations. */
+export type RegionRecoveryErrorCode = Enum<typeof REGION_RECOVERY_ERROR_CODES>;
+
+/**
+ * Complete recovery snapshot. Replace the previous snapshot so omitted fields clear.
+ * `stationLoginRequired` hands off to the app's sign-in flow after SDK recovery ends.
+ * @public
+ */
+export type RegionRecoveryState = {
+  /**
+   * `ready` confirms backend station acceptance.
+   * Voice readiness, Available state and call continuity are independent.
+   */
+  status: 'recovering' | 'ready' | 'stationLoginRequired' | 'unavailable';
+  /** Cause of the current recovery snapshot. */
+  reason:
+    | 'initial-login'
+    | 'region-switch'
+    | 'region-mismatch'
+    | 'not-eligible'
+    | 'session-restore-failed'
+    | 'automatic-relogin-disabled'
+    | 'authentication-failed'
+    | 'recovery-failed';
+  trackingId?: string;
+  operation?: 'FAILOVER' | 'FAILBACK';
+  scope?: 'REGION' | 'ORG';
+  homeRegion?: string;
+  retryAfterMs?: number;
+  /** Outcome of the conditional automatic state action, separate from readiness. */
+  autoAvailable?: 'waitingForVoice' | 'requesting' | 'succeeded' | 'failed' | 'cancelled';
+};
 
 /**
  * HTTP methods supported by WebexRequest.
@@ -320,6 +354,8 @@ interface IWebexInternal {
     get: (service: string) => string;
     /** Wait for service catalog to be loaded */
     waitForCatalog: (service: string) => Promise<void>;
+    /** Refresh authenticated service routing from U2C. */
+    updateServices: (options: {forceRefresh: boolean}) => Promise<unknown>;
     /** Check if current environment is INT (integration) */
     isIntegrationEnvironment: () => boolean;
     /** Host catalog for service discovery */

@@ -76,6 +76,8 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
  * @readonly
  */
 export const METRIC_EVENT_NAMES = {
+  REGION_RECOVERY_SUCCESS: 'Region Recovery Success',
+  REGION_RECOVERY_FAILED: 'Region Recovery Failed',
   STATION_LOGIN_SUCCESS: 'Station Login Success',
   STATION_LOGIN_FAILED: 'Station Login Failed',
   STATION_LOGOUT_SUCCESS: 'Station Logout Success',

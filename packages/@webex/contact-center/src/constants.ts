@@ -5,6 +5,11 @@ import {
   VoiceMobiusSocketStatus,
 } from './types';
 
+export {REGION_RECOVERY_ERROR_CODES} from './services/core/constants';
+
+/** Complete region recovery snapshots emitted to the host. */
+export const REGION_RECOVERY_EVENTS = {STATE_CHANGE: 'region:stateChange'} as const;
+
 export const EVENT = 'event';
 export const READY = 'ready';
 export const TIMEOUT_DURATION = 20000; // 20 seconds timeout duration for webrtc registration
@@ -41,6 +46,7 @@ export const DEFAULT_VOICE_CONNECTION_STATE: Readonly<VoiceConnectionState> = Ob
 // METHOD NAMES
 export const METHODS = {
   REGISTER: 'register',
+  RECORD_RECOVERY_DIAGNOSTIC: 'recordRecoveryDiagnostic',
   DEREGISTER: 'deregister',
   GET_BUDDY_AGENTS: 'getBuddyAgents',
   CONNECT_WEBSOCKET: 'connectWebsocket',

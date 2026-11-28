@@ -264,15 +264,21 @@ button.btn-code {
   gap: 0.5rem;
 }
 
-#customer-drop-dialog {
+#customer-drop-dialog,
+#region-recovery-dialog {
   max-width: 28rem;
   border: 0;
   border-radius: 0.5rem;
   box-shadow: 0 0.5rem 2rem rgb(0 0 0 / 25%);
 }
 
-#customer-drop-dialog::backdrop {
+#customer-drop-dialog::backdrop,
+#region-recovery-dialog::backdrop {
   background: rgb(0 0 0 / 45%);
+}
+
+#region-recovery-dialog {
+  text-align: center;
 }
 
 .sr-only {

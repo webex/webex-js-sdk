@@ -139,6 +139,32 @@ describe('WebCallingService', () => {
     jest.useRealTimers();
   });
 
+  describe('ensureWebCallingLine', () => {
+    it('keeps the existing line during regional recovery', async () => {
+      setBrowserVoiceRequired();
+      registerLineImmediately();
+      await webRTCCalling.registerWebCallingLine();
+
+      webRTCCalling.ensureWebCallingLine();
+
+      expect(createClient).toHaveBeenCalledTimes(1);
+      expect(line.deregister).not.toHaveBeenCalled();
+    });
+
+    it('starts a missing browser line without waiting for registration', () => {
+      const register = jest
+        .spyOn(webRTCCalling, 'registerWebCallingLine')
+        .mockReturnValue(new Promise<void>(() => {}));
+
+      webRTCCalling.ensureWebCallingLine();
+      expect(register).not.toHaveBeenCalled();
+
+      setBrowserVoiceRequired();
+      expect(webRTCCalling.ensureWebCallingLine()).toBeUndefined();
+      expect(register).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('registerWebCallingLine', () => {
     it('should not require browser voice until local registration is enabled', () => {
       webRTCCalling.setLoginOption('BROWSER');

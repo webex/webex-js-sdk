@@ -1,6 +1,12 @@
 import * as Agent from '../agent/types';
 import {COLLABORATION_ACCESS} from './constants';
 
+/** @internal Validated organization settings for regional recovery. */
+export type MultiRegionSettings = {
+  multiRegionEnabled: boolean;
+  homeRegion?: string;
+};
+
 /**
  * Generic type for converting a const enum object into a union type of its values
  * @internal
@@ -208,6 +214,17 @@ export const CC_EVENTS = {
   ...CC_AGENT_EVENTS,
   ...CC_TASK_EVENTS,
 } as const;
+
+/** @internal Wire-only system events; never part of the public event catalogs. */
+export const SYSTEM_EVENTS = {SYSTEM_REGION_SWITCH: 'SYSTEM_REGION_SWITCH'} as const;
+
+/** @internal Region-switch envelope validated by ContactCenter before use. */
+export type SystemRegionSwitch = {
+  type: typeof SYSTEM_EVENTS.SYSTEM_REGION_SWITCH;
+  orgId: string;
+  trackingId: string;
+  data?: {operation?: 'FAILOVER' | 'FAILBACK'; scope?: 'REGION' | 'ORG'};
+};
 
 /** Public Contact Center browser voice event names. */
 export enum VOICE_CONNECTION_EVENTS {
@@ -625,6 +642,10 @@ export type OrgSettings = {
   campaignManagerEnabled: boolean;
   /** Number of AI Assistant licenses assigned to the organization */
   aiAssistantQuantity?: number | null;
+  /** Whether multi-region recovery is enabled for the organization. */
+  multiRegionEnabled?: boolean;
+  /** The region that normally serves the organization. */
+  homeRegion?: string;
 };
 
 /**
@@ -1018,6 +1039,8 @@ export type UserDesktopLoginResponse = {
  * @public
  */
 export type Profile = {
+  /** @internal Organization recovery settings consumed during registration. */
+  multiRegionSettings?: MultiRegionSettings;
   /** Microsoft Teams integration configuration */
   microsoftConfig?: {
     /** Whether to show user details in Teams */

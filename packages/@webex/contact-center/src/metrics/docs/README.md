@@ -68,7 +68,7 @@ Related context: [documentation index](../../../docs/index.md) ·
 | Evidence | What it establishes |
 | --- | --- |
 | `src/metrics/MetricsManager.ts` | The `MetricsManager` singleton: private constructor, `getInstance`, `resetInstance`, `setWebex` readiness wiring, the three pending queues, `timeEvent`, `cancelTimedEvent`, `addDurationIfTimed`, `preparePayload`, `spacesToUnderscore`, the `track*` methods, `setMetricsDisabled`, the `submittingEvents` lock, and the two AQM field helpers; its JSDoc is the recorded rationale |
-| `src/metrics/constants.ts` | The `METRIC_EVENT_NAMES` const object (121 names) and the derived `METRIC_EVENT_NAMES` type |
+| `src/metrics/constants.ts` | The `METRIC_EVENT_NAMES` const object (123 names) and the derived `METRIC_EVENT_NAMES` type |
 | `src/metrics/behavioral-events.ts` | `BehavioralEventTaxonomy`, the private `eventTaxonomyMap` (97 names), `getEventTaxonomy`, and the comment asking authors to add new metrics to the Cypher CC metrics wiki |
 | `src/constants.ts` | `PRODUCT_NAME` (`'wxcc_sdk'`), the behavioral product and the operational and business name prefix |
 | `src/services/core/GlobalTypes.ts` | The `Failure` type read by `getCommonTrackingFieldForAQMResponseFailed` |
@@ -196,12 +196,20 @@ metrics.trackEvent(METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS, {
 
 All event names are defined in `constants.ts` as `METRIC_EVENT_NAMES`. Events follow a `{Domain} {Action} {Success|Failed}` naming convention; the exceptions are `Agent RONA`, `Websocket Event Received`, `WxApp Session Skipped`, `WxApp Offer Participant Fields Missing`, `AI Assistant Wellness Action Accepted`, `AI Assistant Wellness Event Invalid`, and the `AI_SUMMARY_*` values, whose text starts with `Post Call Summary` or `Mid Call Summary`.
 
-`STATION_RELOGIN_*` report the silent relogin. `AI_ASSISTANT_WELLNESS_ACTION_*` record the direct wellness custom-event result, `AI_ASSISTANT_WELLNESS_EVENT_INVALID` a malformed or mismatched wellness notification that was ignored, and `WELLBEING_BREAK_IDLE_CODE_FETCH_*` the system wellness idle-code lookup result.
+ContactCenter's `recordRecoveryDiagnostic` normalizes connection/station recovery diagnostics and submits the mapped operational metric directly. Regional `reload` attempts produce `STATION_RELOGIN_*`: `succeeded` maps to `STATION_RELOGIN_SUCCESS`, while `retrying`, `terminal`, or `failed` maps to `STATION_RELOGIN_FAILED`. Ordinary `silentRelogin` emits no `STATION_RELOGIN_*` metric. Fallback station login has its own `fallback-login` diagnostic stage and does not produce this pair.
 
-This table contains all 121 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 97 mapped and 24 unmapped.
+The admission stage maps to `REGION_RECOVERY_FAILED` once for each current attempt that settles as `retrying` or `terminal`, so one recovery can emit multiple failures. `REGION_RECOVERY_SUCCESS` means ContactCenter awaited primary Welcome and completed its station-restoration attempt. That outcome can require manual station login, including after failed automatic restoration; success therefore does not guarantee station or calling readiness. Cancelled or superseded attempts do not emit a region failure.
+
+Both pairs use only `['operational']` submission. Their safe diagnostic payload contains `stage`, `outcome`, `attempt`, and finite nonnegative `elapsedMs`, with optional finite `status` / `reasonCode` and sanitized bounded `id` / `trackingId`. Raw errors, request/response bodies, headers, URLs, credentials, and station data are excluded. Each attempt measures its own elapsed time: admission timing starts when the attempt is scheduled and includes the scheduled wait and session restoration. Reload timing covers that reload attempt. Neither pair uses a shared `timeEvent` timer or `duration_ms`.
+
+`AI_ASSISTANT_WELLNESS_ACTION_*` record the direct wellness custom-event result, `AI_ASSISTANT_WELLNESS_EVENT_INVALID` a malformed or mismatched wellness notification that was ignored, and `WELLBEING_BREAK_IDLE_CODE_FETCH_*` the system wellness idle-code lookup result.
+
+This table contains all 123 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 97 mapped and 26 unmapped.
 
 | Constant | Emitted name | Behavioral taxonomy? |
 |---|---|---|
+| `REGION_RECOVERY_SUCCESS` | `Region Recovery Success` | no |
+| `REGION_RECOVERY_FAILED` | `Region Recovery Failed` | no |
 | `STATION_LOGIN_SUCCESS` | `Station Login Success` | yes |
 | `STATION_LOGIN_FAILED` | `Station Login Failed` | yes |
 | `STATION_LOGOUT_SUCCESS` | `Station Logout Success` | yes |
@@ -332,7 +340,7 @@ Special events (no success/failure pair):
 - `WEBSOCKET_EVENT_RECEIVED` — **no** behavioral taxonomy (not in `eventTaxonomyMap`)
 - `WXAPP_SESSION_SKIPPED` — has behavioral taxonomy (`wxcc_sdk.user.webex_together_session_init.ignore`)
 
-The 24 unmapped names are the eight original `AI_ASSISTANT_*` names, three Agent Wellness Break `AI_ASSISTANT_WELLNESS_*` names, two `WELLBEING_BREAK_IDLE_CODE_FETCH_*` names, eight `AI_SUMMARY_*` names, and three WebSocket names (`WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, and `WEBSOCKET_EVENT_RECEIVED`). Agent Wellness Break and AI summary metrics are intentionally operational-only.
+The 26 unmapped names are the two `REGION_RECOVERY_*` names, the eight original `AI_ASSISTANT_*` names, three Agent Wellness Break `AI_ASSISTANT_WELLNESS_*` names, two `WELLBEING_BREAK_IDLE_CODE_FETCH_*` names, eight `AI_SUMMARY_*` names, and three WebSocket names (`WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, and `WEBSOCKET_EVENT_RECEIVED`). Agent Wellness Break and AI summary metrics are intentionally operational-only.
 
 ### Webex Together behavioral taxonomy
 
@@ -406,6 +414,7 @@ Every Webex Together metric is tracked with `['operational', 'behavioral']`.
 | METRICS-R-009 | `preparePayload()` processes every event payload before submission: it removes empty/null/undefined fields (strips keys with `undefined`, `null`, `''`, any arrays, or empty objects), converts spaces to underscores (`spacesToUnderscore()` applied to all key names), and adds common metadata (appends `tabHidden: document.hidden` in browser environments, that is when `window` exists). | Backends reject or mis-index empty and nested values; `tabHidden` lets analysts separate background-tab activity. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | The `tabHidden` branch is not exercised because jest runs in the `node` environment. | PRESENT |
 | METRICS-R-010 | `trackEvent` defaults to `['behavioral']`, tracks each requested category in order, and logs `[MetricsManager] Invalid metric type:` followed by the category for an unknown category without throwing. | Callers choose the categories per event; a typo must not break the product call. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | None. | PRESENT |
 | METRICS-R-011 | `getCommonTrackingFieldForAQMResponse` and `getCommonTrackingFieldForAQMResponseFailed` return the fixed field sets listed under MetricsManager API, reading nested and flat AQM shapes. | AQM success and failure shapes differ; one helper per shape keeps correlation fields (`trackingId`, `notifTrackingId`) consistent across every metric. | `src/metrics/MetricsManager.ts`, `src/services/core/GlobalTypes.ts` | `test/unit/spec/metrics/MetricsManager.ts` | None. | PRESENT |
+| METRICS-R-012 | ContactCenter normalizes diagnostics and submits operational recovery and regional station-reload metrics at the completion points defined in the metric event catalog. Each attempt supplies its own elapsedMs. | Operators need attempt outcomes and duration without sensitive request or station data. | `src/metrics/constants.ts`, `src/services/core/websocket/connection-service.ts`, `src/cc.ts` | No dedicated recovery-metrics assertion. | Deployed telemetry remains unverified locally. | PRESENT |
 
 ## Design overview
 
@@ -636,7 +645,7 @@ MetricsManager holds three pending queues, running timing entries, a readiness f
 | ID | Invariant | WHY | Enforcement source | Test evidence |
 | --- | --- | --- | --- | --- |
 | `INV-001` | `timeEvent` and every tracking method return immediately while metrics are disabled. | Disablement must be comprehensive (METRICS-R-003). | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` |
-| `INV-002` | Only names present in `eventTaxonomyMap` receive behavioral taxonomy; 97 of 121 names are mapped and all 24 exceptions are explicitly catalogued as unmapped. | Undefined taxonomy must not be mistaken for a classified behavioral event (METRICS-R-002). | `src/metrics/behavioral-events.ts` | `test/unit/spec/metrics/behavioral-events.ts` |
+| `INV-002` | Only names present in `eventTaxonomyMap` receive behavioral taxonomy; 97 of 123 names are mapped and all 26 exceptions are explicitly catalogued as unmapped. | Undefined taxonomy must not be mistaken for a classified behavioral event (METRICS-R-002). | `src/metrics/behavioral-events.ts` | `test/unit/spec/metrics/behavioral-events.ts` |
 | `INV-003` | The `submittingEvents` lock prevents overlapping, concurrent `submitPendingEvents()` queue-drain executions; each `track*` call drains its own queue directly. | A ready callback and a direct track call must not submit the same queued event twice; each drain copies and empties the queue before submitting. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` |
 | `INV-004` | Authentication is inherited from the host Webex SDK's metrics client; MetricsManager owns no credentials, tokens, or authorization policy. | METRICS-R-005. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` |
 
@@ -696,7 +705,7 @@ Use `test/unit/spec/metrics/MetricsManager.ts` for readiness queues, timing/trac
 | Requirement or invariant | Test level | Positive evidence | Negative or boundary evidence | Gap |
 | --- | --- | --- | --- | --- |
 | `METRICS-R-001` | None (compile-time type check only) | None found (compile-time type check only) | None found | Add a catalog parity assertion if constants change. |
-| `METRICS-R-002`, `INV-002` | Unit | `test/unit/spec/metrics/behavioral-events.ts` | None found | Only 31 mapped names are asserted; add coverage for the 24 unmapped names. |
+| `METRICS-R-002`, `INV-002` | Unit | `test/unit/spec/metrics/behavioral-events.ts` | None found | Only 31 mapped names are asserted; add coverage for the 26 unmapped names. |
 | `METRICS-R-003`, `INV-001` | Unit | `test/unit/spec/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` disabled cases for each track method, timeEvent, and cancelTimedEvent | None. |
 | `METRICS-R-004` | Unit | `test/unit/spec/metrics/MetricsManager.ts` readiness and queue cases | `test/unit/spec/metrics/MetricsManager.ts` queue-without-webex case | None. |
 | `METRICS-R-005`, `INV-004` | Unit | `test/unit/spec/metrics/MetricsManager.ts` | None found | Authentication ownership is verified indirectly through the host metrics client. |
@@ -705,6 +714,7 @@ Use `test/unit/spec/metrics/MetricsManager.ts` for readiness queues, timing/trac
 | `METRICS-R-008`, `METRICS-R-010` | Unit | `test/unit/spec/metrics/MetricsManager.ts` three-category case | `test/unit/spec/metrics/MetricsManager.ts` invalid-type case | None. |
 | `METRICS-R-009` | Unit (partial) | `test/unit/spec/metrics/MetricsManager.ts` | None found | Empty-value stripping, key rewriting, and `tabHidden` are not asserted. |
 | `METRICS-R-011` | Unit | `test/unit/spec/metrics/MetricsManager.ts` nested and flat AQM cases | `test/unit/spec/metrics/MetricsManager.ts` missing-field cases | None. |
+| `METRICS-R-012` | Source inspection | `src/services/core/websocket/connection-service.ts` recovery diagnostics and `src/cc.ts` submission | No dedicated recovery-metrics assertion | Deployed telemetry remains separate. |
 | `INV-003` | Unit | `test/unit/spec/metrics/MetricsManager.ts` lock case | None found | None. |
 
 Run `yarn workspace @webex/contact-center build:src` and `yarn workspace @webex/contact-center test:unit` from the workspace root. On 2026-11-16 the two metrics test files passed 33 of 33 jest cases. A module specification is complete only when its public surface, invariants, failure modes, and test evidence agree with the implementation; this module stays Partial until a fresh coverage review and independent validation run.

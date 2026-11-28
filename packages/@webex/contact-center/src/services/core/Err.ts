@@ -6,7 +6,13 @@ import {Failure} from './GlobalTypes';
  * @ignore
  */
 
-export type ErrDetails = {status: number; type: string; trackingId: string};
+export type ErrDetails = {
+  status: number;
+  type: string;
+  trackingId: string;
+  reason?: string;
+  reasonCode?: number;
+};
 
 export type AgentErrorIds =
   | {'Service.aqm.agent.stationLogin': ErrDetails}
@@ -14,7 +20,7 @@ export type AgentErrorIds =
   | {'Service.aqm.agent.stateChange': Failure}
   | {'Service.aqm.agent.reload': Failure}
   | {'Service.aqm.agent.logout': Failure}
-  | {'Service.reqs.generic.failure': {trackingId: string}}
+  | {'Service.reqs.generic.failure': {trackingId: string; status?: number; msg?: unknown}}
   | {'Service.aqm.agent.BuddyAgentsRetrieveFailed': Failure};
 
 export type vteamType = 'inboundqueue' | 'inboundentrypoint' | string;
@@ -42,7 +48,7 @@ export type TaskErrorIds =
   | {'Service.aqm.dialer.acceptPreviewContact': Failure}
   | {'Service.aqm.dialer.skipPreviewContact': Failure}
   | {'Service.aqm.dialer.removePreviewContact': Failure}
-  | {'Service.reqs.generic.failure': {trackingId: string}};
+  | {'Service.reqs.generic.failure': {trackingId: string; status?: number; msg?: unknown}};
 
 export type ReqError =
   | 'Service.aqm.reqs.GenericRequestError'

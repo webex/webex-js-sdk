@@ -8,6 +8,9 @@ const TYPES_PATH = path.join(SRC_ROOT, 'types.ts');
 const CONFIG_TYPES_PATH = path.join(SRC_ROOT, 'services/config/types.ts');
 
 const EXPECTED_ROOT_EXPORTS = Object.freeze([
+  'REGION_RECOVERY_EVENTS',
+  'REGION_RECOVERY_ERROR_CODES',
+  'RegionRecoveryState',
   'AGENT_EVENTS',
   'AISummaryAction',
   'AISummary',
@@ -132,6 +135,9 @@ const EXPECTED_ROOT_EXPORTS = Object.freeze([
 ]);
 
 const INTERNAL_ROOT_EXPORTS = Object.freeze([
+  'RegionRecoveryErrorCode',
+  'SYSTEM_EVENTS',
+  'SystemRegionSwitch',
   'AIAssistantEventName',
   'AISummaryTimeoutCodeByInboundType',
   'AI_SUMMARY_DURATION_MS',
@@ -782,6 +788,33 @@ const resolveSymbol = (checker: ts.TypeChecker, symbol: ts.Symbol | undefined) =
 };
 
 describe('contact-center root public contract', () => {
+  it('exposes the recovery event and its state to typed consumers', () => {
+    const recovery = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__recovery_consumer.ts');
+    const program = createProgram({
+      [recovery]: `
+        import {REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES} from '../../../src';
+        import type {ContactCenter, IEventEmitter, Profile, RegionRecoveryState} from '../../../src';
+
+        declare const cc: ContactCenter & IEventEmitter;
+        const registration: Promise<Profile> = cc.register();
+        const event: 'region:stateChange' = REGION_RECOVERY_EVENTS.STATE_CHANGE;
+        const interrupted: 'RECOVERY_INTERRUPTED' = REGION_RECOVERY_ERROR_CODES.RECOVERY_INTERRUPTED;
+
+        cc.on(event, (state: RegionRecoveryState) => {
+          const retryAfterMs: number | undefined = state.retryAfterMs;
+          if (state.status === 'unavailable') return interrupted;
+          return retryAfterMs;
+        });
+      `,
+    });
+
+    expect(
+      getDiagnosticsForFiles(program, [recovery]).map(({messageText}) =>
+        ts.flattenDiagnosticMessageText(messageText, '\n')
+      )
+    ).toEqual([]);
+  });
+
   it('preserves the literal root barrel export list and omits package internals', () => {
     const program = createProgram();
     const exportNames = getRootExportNames(program);

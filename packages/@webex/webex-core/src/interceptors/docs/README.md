@@ -214,7 +214,7 @@ keys below are read by the interceptors themselves.
 | `INT-006` | Otherwise `requiresCredentials` awaits `services.waitForService({name, url})` and is true only if the resolved URL maps to a catalog service; a rejection is logged at `warn` and yields false | A request whose service has not loaded yet must wait for the catalog rather than go out unauthenticated; a failure must not block the request | `src/interceptors/auth.js` | `test/unit/spec/interceptors/auth.js` | The failure branch is exercised only indirectly | Present |
 | `INT-007` | On a 401, unless `options.shouldRefreshAccessToken === false`, `AuthInterceptor` deletes `authorization` from `reason.options.headers`, calls `credentials.refresh()` when `canRefresh`, then replays | A stale token should be replaced once without surfacing the 401 | `src/interceptors/auth.js` | `test/unit/spec/interceptors/auth.js`, `test/integration/spec/unit-browser/auth.js` | none | Present |
 | `INT-008` | A non-refreshable 401, a non-401 error, or an opted-out request re-rejects the original reason | Callers must see the server's error when no recovery is possible | `src/interceptors/auth.js` | `test/unit/spec/interceptors/auth.js` | none | Present |
-| `INT-009` | `replay` increments `options.replayCount` and rejects with `Error('Failed after N replay attempts')` once the count exceeds `config.maxAuthenticationReplays`; otherwise it calls `webex.request(options)` | Bounds the refresh-and-retry loop | `src/interceptors/auth.js`, `src/config.js` | none found | Gap: the over-limit branch is not asserted; see the second-401 pitfall | Present |
+| `INT-009` | `replay` increments `options.replayCount` and rejects with `Error('Failed after N replay attempts')` once the count exceeds `config.maxAuthenticationReplays`, retaining the HTTP status that triggered replay. Otherwise it calls `webex.request(options)` | Bounds the refresh-and-retry loop | `src/interceptors/auth.js`, `src/config.js` | `test/unit/spec/interceptors/auth.js` | None | Present |
 | `INT-010` | `CatalogUrlInterceptor` passes a request that has `options.service` and no URI or URL, and a request with no URL at all | A service-addressed request is resolved to a URL later in the chain, by the services interceptor | `src/interceptors/catalog-url.js` | `test/unit/spec/interceptors/catalog-url.js` | none | Present |
 | `INT-011` | `CatalogUrlInterceptor` passes a URL that `services.getServiceFromUrl` recognizes, or one that `isAllowedDomainUrl` accepts when `validateDomains` is on and allowed domains exist, and otherwise rejects with `Request blocked: URL not in service catalog or allowed domains: <url>.` | Blocks request-forgery through attacker-supplied URLs, for example ones injected from server messages | `src/interceptors/catalog-url.js` | `test/unit/spec/interceptors/catalog-url.js` | none | Present |
 | `INT-012` | `CatalogUrlInterceptor` allows the request and logs a `warn` when the services plugin is not mounted | The catalog cannot be consulted, and failing closed would break startup | `src/interceptors/catalog-url.js` | `test/unit/spec/interceptors/catalog-url.js` | The `warn` call is not asserted | Present |
@@ -367,7 +367,7 @@ sequenceDiagram
     C-->>A: refreshed
     A->>A: replayCount incremented
     alt replayCount above maxAuthenticationReplays
-      A-->>A: reject Failed after N replay attempts
+      A-->>A: reject Failed after N replay attempts with statusCode 401
     else
       A->>W: request(options), entire chain re-runs
       W-->>A: response or rejection becomes the result
@@ -486,7 +486,7 @@ registered ahead of it (see Pitfalls).
 | --- | --- | --- | --- | --- |
 | `INV-001` | When `validateCatalogUrls` is on, no request with a URL leaves the chain unless the catalog or allowed domains vouch for it | The SDK must not be steerable to attacker hosts | `src/interceptors/catalog-url.js`, `src/webex-core.js` | `test/unit/spec/interceptors/catalog-url.js` |
 | `INV-002` | Caller-header-wins rule of `INT-001`, `INT-023`, `INT-028`, and `INT-030`: a caller-provided header is never overwritten and a falsy value removes it | Caller intent wins, and a header present with no value would force a CORS preflight | `src/interceptors/auth.js`, `src/interceptors/webex-tracking-id.js`, `src/interceptors/webex-user-agent.js`, `src/interceptors/redirect.js` | `test/unit/spec/interceptors/auth.js`, `test/unit/spec/interceptors/webex-tracking-id.js`, `test/unit/spec/interceptors/webex-user-agent.js` |
-| `INV-003` | Replays never exceed `maxAuthenticationReplays` and redirects never exceed their configured ceilings | Prevents unbounded loops | `src/interceptors/auth.js`, `src/interceptors/redirect.js` | `test/unit/spec/interceptors/redirect.js` |
+| `INV-003` | Replays never exceed `maxAuthenticationReplays` and redirects never exceed their configured ceilings | Prevents unbounded loops | `src/interceptors/auth.js`, `src/interceptors/redirect.js` | `test/unit/spec/interceptors/auth.js`, `test/unit/spec/interceptors/redirect.js` |
 | `INV-004` | A 451 always clears credentials | A legally embargoed session must not persist tokens | `src/interceptors/embargo.js` | `test/unit/spec/interceptors/embargo.js` |
 | `INV-005` | The pre-join App API redirect carries no authorization header | The token must not be sent to the redirected site for an unauthenticated pre-join | `src/interceptors/redirect.js` | `test/unit/spec/interceptors/redirect.js` |
 
@@ -526,7 +526,7 @@ registered ahead of it (see Pitfalls).
 | --- | --- | --- | --- | --- |
 | URL not in catalog or allowed domains (opt-in) | Rejection `Request blocked: URL not in service catalog or allowed domains: <url>.` | Treat as a configuration or tampering error | Add the host to allowed domains | `src/interceptors/catalog-url.js`, `test/unit/spec/interceptors/catalog-url.js` |
 | Identity API inside a recorded 429 window | Rejection `API rate limited <uri>` | Wait and retry | Window of 60 s to 3600 s; see Pitfalls on whether it can be recorded | `src/interceptors/rate-limit.js` |
-| 401 and replay exhausted | Rejection `Failed after N replay attempts`, a plain `Error` rather than an HTTP error | Re-authenticate | None | `src/interceptors/auth.js` |
+| 401 and replay exhausted | `Error('Failed after N replay attempts')` with `statusCode: 401` | Re-authenticate | None | `src/interceptors/auth.js` |
 | 401 and not refreshable | The original HTTP error | Re-authenticate | None | `src/interceptors/auth.js`, `test/unit/spec/interceptors/auth.js` |
 | Redirect ceiling exceeded | Rejection `Maximum redirects exceeded`, a plain `Error` | Treat as a service fault | None | `src/interceptors/redirect.js`, `test/unit/spec/interceptors/redirect.js` |
 | 451 | The original error, after credentials and device are cleared | Treat the session as ended | Sign in again | `src/interceptors/embargo.js`, `test/unit/spec/interceptors/embargo.js` |
@@ -622,7 +622,7 @@ this module; the package declares its entry points in `package.json`.
 | --- | --- | --- | --- | --- |
 | `INT-001` to `INT-006` | Unit | `test/unit/spec/interceptors/auth.js` | `test/unit/spec/interceptors/auth.js` (falsy header, no services, unknown URI, addAuthHeader false, non-allowed domain) | The `waitForService` failure branch is not asserted directly |
 | `INT-007`, `INT-008` | Unit + Integration | `test/unit/spec/interceptors/auth.js`, `test/integration/spec/unit-browser/auth.js` (refresh and replay count) | `test/unit/spec/interceptors/auth.js` (not refreshable, shouldRefreshAccessToken false) | Integration tier needs provisioned users |
-| `INT-009` | None | none found | none found | The over-limit rejection is unasserted |
+| `INT-009` | Unit | `test/unit/spec/interceptors/auth.js` | retains the 401 status when authentication replay is exhausted | Terminal status remains available to callers. |
 | `INT-010` to `INT-012` | Unit | `test/unit/spec/interceptors/catalog-url.js` | `test/unit/spec/interceptors/catalog-url.js` (malicious and look-alike hosts, missing services) | The `warn` log is not asserted |
 | `INT-013` | Unit (parent, `MOD-025`) | `test/unit/spec/webex-core.js` | `test/unit/spec/webex-core.js` (truthy non-boolean) | none |
 | `INT-014` | Unit | `test/unit/spec/interceptors/default-options.js` | `test/unit/spec/interceptors/default-options.js` (undefined config, no override) | none |
@@ -646,7 +646,7 @@ this module; the package declares its entry points in `package.json`.
 | `INT-033` | Unit (parent, `MOD-023`) | `test/unit/spec/webex-core.js` | `test/unit/spec/webex-core.js` (custom set, empty set) | Request-versus-response ordering is checked through list contents, not by driving a request |
 | `INV-001` | Unit | `test/unit/spec/interceptors/catalog-url.js` | `test/unit/spec/webex-core.js` (opt-in gate, parent) | The enforcement is split across two files; no test drives a real request through the gate |
 | `INV-002` | Unit | `test/unit/spec/interceptors/auth.js`, `test/unit/spec/interceptors/webex-tracking-id.js`, `test/unit/spec/interceptors/webex-user-agent.js` | none found | No test for `cisco-no-http-redirect` caller precedence; falsy-header deletion is untested for tracking id |
-| `INV-003` | Unit | `test/unit/spec/interceptors/redirect.js` | `test/unit/spec/interceptors/redirect.js` (ceiling) | The auth replay ceiling is unasserted (`INT-009`) and a skipped counter disables the redirect ceiling |
+| `INV-003` | Unit | `test/unit/spec/interceptors/auth.js`, `test/unit/spec/interceptors/redirect.js` | Authentication replay and redirect ceilings | A skipped counter disables the redirect ceiling |
 | `INV-004` | Unit | `test/unit/spec/interceptors/embargo.js` | `test/unit/spec/interceptors/embargo.js` (non-451) | none |
 
 Unit tests for this module run under Jest through the package's `test:unit` script

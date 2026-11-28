@@ -3,6 +3,7 @@ import LoggerProxy from '../../../../../src/logger-proxy';
 import WebexRequest from '../../../../../src/services/core/WebexRequest';
 import {LoginOption, WebexRequestPayload} from '../../../../../src/types';
 import {Failure} from '../../../../../src/services/core/GlobalTypes';
+import {REGION_RECOVERY_ERROR_CODES} from '../../../../../src/services/core/constants';
 
 // Mock dependencies
 jest.mock('../../../../../src/logger-proxy', () => ({
@@ -43,6 +44,186 @@ jest.mock('../../../../../src/services/core/Err', () => {
 describe('Utils', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it.each([
+    ['missing org ID', {trackingId: 'switch-1'}],
+    ['missing tracking ID', {orgId: 'org-1'}],
+    ['blank org ID', {orgId: ' ', trackingId: 'switch-1'}],
+    ['blank tracking ID', {orgId: 'org-1', trackingId: ' '}],
+  ])('ignores a regional switch with a %s', (_label, message) => {
+    expect(Utils.normalizeRegionSwitch(message)).toBeUndefined();
+  });
+
+  it.each([
+    [undefined, {}],
+    [{operation: 'UNKNOWN', scope: 'UNKNOWN'}, {}],
+    [{operation: 'FAILBACK', scope: 'REGION'}, {operation: 'FAILBACK', scope: 'REGION'}],
+  ])('keeps supported region-switch metadata %#', (data, expected) => {
+    expect(Utils.normalizeRegionSwitch({orgId: ' org-1 ', trackingId: ' switch-1 ', data})).toEqual({
+      type: 'SYSTEM_REGION_SWITCH',
+      orgId: 'org-1',
+      trackingId: 'switch-1',
+      data: expected,
+    });
+  });
+
+  describe('lifecycle recovery errors', () => {
+    it.each(Object.values(REGION_RECOVERY_ERROR_CODES))(
+      'preserves the %s error and its data during error translation',
+      (reason) => {
+        const error = Utils.createRegionRecoveryError(reason);
+        const data = Object.assign(error.data, {loginOption: 'BROWSER', fieldName: 'safe'});
+        expect(Object.getPrototypeOf(error)).toBe(Error.prototype);
+        expect(error.message).toBe(reason);
+        expect(Utils.isRegionRecoveryError(error)).toBe(true);
+        expect(Utils.getErrorDetails(error, 'stationLogin', 'test')).toEqual({error, reason});
+        expect(Utils.getErrorDetails(error, 'silentRelogin', 'test').error).toBe(error);
+        expect(error.data).toBe(data);
+        expect(data).toEqual({reason, loginOption: 'BROWSER', fieldName: 'safe'});
+        expect(LoggerProxy.error).not.toHaveBeenCalled();
+        expect(WebexRequest.getInstance).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each([
+      null, new Error('STALE_TASK'),
+      Object.assign(new Error('UNKNOWN'), {data: {reason: 'UNKNOWN'}}),
+      Object.assign(new Error('STALE_TASK'), {data: 'STALE_TASK'}),
+      {name: 'Error', message: 'STALE_TASK', data: {reason: 'STALE_TASK'}},
+    ])(
+      'rejects non-lifecycle shape %#',
+      (candidate) => expect(Utils.isRegionRecoveryError(candidate)).toBe(false)
+    );
+
+    it('keeps plain Error backend translation and never derives HTTP status from its message', () => {
+      const error = new Error('API call failed with 503');
+      expect(Utils.normalizeRecoveryFailure(error)).toEqual({});
+      const result = Utils.getErrorDetails(error, 'reload', 'test');
+      expect(result.error).not.toBe(error);
+      expect(result.reason).toBe('Error while performing reload');
+      expect(LoggerProxy.error).toHaveBeenCalledTimes(1);
+      expect(WebexRequest.getInstance).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('station recovery failures', () => {
+    it.each([
+      [{reasonCode: 9999, status: 429}, 'transient'],
+      [{reasonCode: 9999, status: 502}, 'transient'],
+      [{reasonCode: 9999, status: 503}, 'transient'],
+      [{reasonCode: 9999, reason: 'AGENT_NOT_FOUND'}, 'fallback'],
+      [{reasonCode: 9999, reason: 'AGENT_DN_NOT_REGISTERED'}, 'fallback'],
+      [{reasonCode: 9999, reason: 'AGENT_SESSION_ALREADY_EXISTS'}, 'exists'],
+      [{reasonCode: 9999, reason: 'INTERNAL_ERROR'}, 'transient'],
+      [{id: 'Service.aqm.reqs.Timeout'}, 'transient'],
+      [{id: 'Service.aqm.reqs.TimeoutEvent'}, 'transient'],
+      [{reasonCode: 1038, reason: 'INTERNAL_ERROR', status: 503}, 'fallback'],
+      [{reasonCode: 1041}, 'fallback'],
+      [{reasonCode: 9999, status: 400}, 'other'],
+      [{reasonCode: 1037, reason: 'AGENT_NOT_FOUND'}, 'transient'],
+      [{reasonCode: 1035, reason: 'AGENT_NOT_FOUND'}, 'exists'],
+      [{reasonCode: 1037, status: 401}, 'auth'],
+      [{reasonCode: 1035, status: 403}, 'auth'],
+    ])('classifies a recovery failure using the matching priority: %j', (failure, category) => {
+      expect(Utils.getStationRecoveryFailureCategory(failure)).toBe(category);
+    });
+  });
+
+  describe('recovery failure normalization', () => {
+    it('ignores a missing or malformed response', () => {
+      expect(Utils.normalizeRecoveryFailure(null)).toEqual({});
+      expect(Utils.getSubscriptionMismatchReason(null)).toBeUndefined();
+    });
+
+    it.each([
+      [{statusCode: 429}, 429],
+      [{status: 502}, 502],
+      [{response: {statusCode: 503}}, 503],
+      [{response: {status: 408}}, 408],
+      [{details: {status: 403}}, 403],
+      [{statusCode: NaN, status: 401, response: {statusCode: 503}}, 401],
+      [{statusCode: '503', response: {status: 502}}, 502],
+      [Object.assign(new Error('503'), {statusCode: 429}), 429],
+    ])('retains structured Webex status %#', (error, status) => {
+      expect(Utils.normalizeRecoveryFailure(error)).toEqual({status});
+    });
+
+    it.each([
+      [9999, 'AGENT_NOT_FOUND', 'Service.aqm.reqs.Timeout', 429],
+      ['1035', 'AGENT_SESSION_ALREADY_EXISTS', 'Service.aqm.reqs.TimeoutEvent', 503],
+    ])('preserves status, reason codes and timeout identifiers together %#', (reasonCode, reason, id, status) => {
+      const failure = {statusCode: status, id, details: {data: {reasonCode, reason, trackingId: 'nested-id'}}};
+      expect(Utils.normalizeRecoveryFailure(failure)).toEqual({status, id, reasonCode: Number(reasonCode), reason, trackingId: 'nested-id'});
+      expect(failure.details.data.reasonCode).toBe(reasonCode);
+    });
+
+    it.each([
+      [{body: {data: {reason: 'body-data', reasonCode: '1037'}}}, 'body-data', 1037],
+      [{response: {body: {error: {reason: 'body-error', reasonCode: 1038}}}}, 'body-error', 1038],
+      [{response: {data: {reason: 'response-data', reasonCode: 1041}}}, 'response-data', 1041],
+      [{details: {msg: {reason: 'details-msg', reasonCode: 1035}}}, 'details-msg', 1035],
+      [{details: {reason: 'details', reasonCode: 1037}}, 'details', 1037],
+      [{data: {reason: 'safe-data', reasonCode: '1038'}}, 'safe-data', 1038],
+    ])('reads only known structured envelopes %#', (error, reason, reasonCode) => {
+      expect(Utils.normalizeRecoveryFailure(error)).toEqual({reason, reasonCode});
+    });
+
+    it.each([NaN, 1.5, '-1037', '1037oops', {}])(
+      'rejects invalid reason codes %#',
+      (reasonCode) => expect(Utils.normalizeRecoveryFailure({data: {reasonCode}})).toEqual({})
+    );
+
+    it('keeps envelope precedence, scalar fields and sanitized bounded tracking', () => {
+      expect(Utils.normalizeRecoveryFailure({
+        statusCode: 409, status: 500, response: {status: 401, body: {reason: 'ignored'}},
+        body: {data: {reason: 'ignored-body', reasonCode: 1041}},
+        details: {data: {reason: ' chosen ', reasonCode: '1037', trackingId: 'nested\r\nid'}, reason: 'ignored-details'},
+        data: {reason: 'ignored-safe', reasonCode: 1035},
+        id: 'Service.aqm.reqs.Timeout', options: {headers: {authorization: 'secret'}},
+      })).toEqual({status: 409, reason: 'chosen', reasonCode: 1037, trackingId: 'nestedid', id: 'Service.aqm.reqs.Timeout'});
+      expect(Utils.normalizeRecoveryFailure({headers: {TrAcKiNgId: 'x'.repeat(250)}})).toEqual({trackingId: 'x'.repeat(200)});
+      expect(Utils.normalizeRecoveryFailure({response: {headers: {TRACKINGID: 'response-id'}}})).toEqual({trackingId: 'response-id'});
+      expect(Utils.normalizeRecoveryFailure({cause: {statusCode: 503}, message: '401', body: {arbitrary: {reason: 'hidden'}}})).toEqual({});
+    });
+  });
+
+  describe('subscription mismatch precedence', () => {
+    const reasons = ['REGION_MISMATCH_REGION_FAILOVER', 'REGION_MISMATCH_ORG_OVERRIDE', 'REGION_MISMATCH_ORG_OVERRIDE_SUPERSEDED', 'REGION_MISMATCH_NO_OVERRIDE'];
+
+    it('uses body errors only when a higher-priority reason is absent', () => {
+      const reason = reasons[0];
+      expect(Utils.getSubscriptionMismatchReason({statusCode: 409, headers: {'x-wxcc-region-reason': 'UNKNOWN'}, body: {reason}})).toBeUndefined();
+      expect(Utils.getSubscriptionMismatchReason({statusCode: 409, body: {reason: ' ', error: {reason: ` ${reason} `}}})).toBe(reason);
+      expect(Utils.getSubscriptionMismatchReason({statusCode: 409, body: {reason: 'UNKNOWN', error: {reason}}})).toBeUndefined();
+    });
+
+    it('requires an exact mismatch reason even when the body contains a recognized reason', () => {
+      const reason = reasons[0];
+      expect(Utils.getSubscriptionMismatchReason({response: {status: 409,
+        headers: {'X-WxCC-Region-Reason': reason.replace('REGION', 'Region')},
+        body: {error: {reason}}}})).toBeUndefined();
+    });
+
+    it.each(reasons)('recognizes the exact 409 reason %s', (reason) => {
+      expect(Utils.getSubscriptionMismatchReason({statusCode: 409, headers: {'X-WxCC-Region-Reason': ` ${reason} `}})).toBe(reason);
+      expect(Utils.getSubscriptionMismatchReason({response: {status: 409, body: {error: {reason}}}})).toBe(reason);
+    });
+
+    it.each([
+      [{statusCode: 503, body: {reason: reasons[0]}}],
+      [{statusCode: 409, body: {reason: 'region_mismatch_region_failover'}}],
+      [{statusCode: 409, body: {reason: 'REGION_MISMATCH_ORG_NOT_ELIGIBLE'}}],
+      [{statusCode: 409}],
+      [new Error('409 REGION_MISMATCH_REGION_FAILOVER')],
+    ])('does not promote a non-mismatch %#', (error) => {
+      expect(Utils.getSubscriptionMismatchReason(error)).toBeUndefined();
+    });
+
+    it('skips blank headers and prefers response headers over the body', () => {
+      expect(Utils.getSubscriptionMismatchReason({status: 409, headers: {'x-wxcc-region-reason': ' '}, body: {reason: reasons[1], error: {reason: reasons[0]}}})).toBe(reasons[1]);
+      expect(Utils.getSubscriptionMismatchReason({response: {status: 409, headers: {'X-WXCC-REGION-REASON': reasons[2]}, body: {reason: reasons[0]}}})).toBe(reasons[2]);
+    });
   });
 
   // Skip getCommonErrorDetails tests as it's a private function
@@ -192,6 +373,18 @@ describe('Utils', () => {
   });
 
   describe('createErrDetailsObject', () => {
+    it('preserves HTTP status and reads recovery codes from the original backend body', () => {
+      const body = {error: {reason: 'INTERNAL_ERROR', reasonCode: '1037'}};
+      const result = Utils.createErrDetailsObject({statusCode: 503, headers: {trackingid: 'request-id'}, body});
+      expect(result.data).toEqual({status: 503, trackingId: 'request-id', msg: body});
+      expect(result.data.msg).toBe(body);
+      expect(Utils.normalizeRecoveryFailure({details: result.data})).toEqual({
+        status: 503,
+        reason: 'INTERNAL_ERROR',
+        reasonCode: 1037,
+        trackingId: 'request-id',
+      });
+    });
     it('should create error details object with correct parameters', () => {
       const errObj: WebexRequestPayload = {
         headers: {trackingid: 'test-tracking-id'},

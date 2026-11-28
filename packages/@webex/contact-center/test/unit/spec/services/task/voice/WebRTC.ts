@@ -82,13 +82,48 @@ describe('WebRTC Task', () => {
 
   it('accept() obtains media and answers call', async () => {
     const fakeTrack = {} as any;
-    const fakeStream = {getAudioTracks: () => [fakeTrack]} as any;
+    const fakeStream = {getTracks: () => [fakeTrack], getAudioTracks: () => [fakeTrack]} as any;
     jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockResolvedValue(fakeStream);
     await webRtc.accept();
     expect(answerSpy).toHaveBeenCalled();
     const [[streamArg, interactionIdArg]] = webCallingService.answerCall.mock.calls;
     expect(streamArg).toBeInstanceOf(LocalMicrophoneStream);
     expect(interactionIdArg).toBe(taskData.interactionId);
+  });
+
+  it('releases the microphone and remote media listener when the task is retired', async () => {
+    const track = {stop: jest.fn()};
+    const stream = {getTracks: () => [track], getAudioTracks: () => [track]} as any;
+    jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockResolvedValue(stream);
+    const onMedia = jest.fn();
+    webRtc.on(TASK_EVENTS.TASK_MEDIA, onMedia);
+    await webRtc.accept();
+
+    webRtc.invalidateForRegionRecovery();
+    webCallingService.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, {});
+
+    expect(track.stop).toHaveBeenCalledTimes(1);
+    expect(offSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.REMOTE_MEDIA, webRtc['handleRemoteMedia']);
+    expect(onMedia).not.toHaveBeenCalled();
+  });
+
+  it('releases a microphone granted after retirement without answering a replacement call', async () => {
+    const track = {stop: jest.fn()};
+    let allowMicrophone: (stream: MediaStream) => void;
+    jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockReturnValue(
+      new Promise<MediaStream>((resolve) => {
+        allowMicrophone = resolve;
+      })
+    );
+    answerSpy.mockClear();
+
+    const answer = webRtc.accept();
+    webRtc.invalidateForRegionRecovery();
+    allowMicrophone({getTracks: () => [track]} as unknown as MediaStream);
+
+    await expect(answer).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
+    expect(track.stop).toHaveBeenCalledTimes(1);
+    expect(answerSpy).not.toHaveBeenCalled();
   });
 
   it('decline() calls declineCall and unregisters listeners', async () => {

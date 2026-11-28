@@ -13,6 +13,7 @@ import Task from '../../../../../src/services/task/Task';
 import * as contact from '../../../../../src/services/task/contact';
 import {TASK_EVENTS} from '../../../../../src/services/task/types';
 import {TaskEvent, TaskState} from '../../../../../src/services/task/state-machine';
+import Voice from '../../../../../src/services/task/voice/Voice';
 import WebRTC from '../../../../../src/services/task/voice/WebRTC';
 import WebCallingService from '../../../../../src/services/WebCallingService';
 import config from '../../../../../src/config';
@@ -523,6 +524,7 @@ describe('TaskManager', () => {
       webSocketManagerMock as any,
       rtdWebSocketManagerMock as any
     );
+    taskManager.registerIncomingCallEvent();
     taskManager.taskCollection[taskId] = createStateMachineTask(taskDataMock);
     (taskManager as any).setupTaskListeners?.(taskManager.taskCollection[taskId]);
     taskManager.call = mockCall;
@@ -2831,6 +2833,27 @@ describe('TaskManager', () => {
 
     expect(allTasks).toHaveProperty(taskId1, mockTask1);
     expect(allTasks).toHaveProperty(taskId2, mockTask2);
+  });
+
+  it('retires old tasks and hydrates fresh tasks through the same socket listener', () => {
+    const oldTask = new Voice(contactMock, taskDataMock);
+    taskManager.taskCollection[taskId] = oldTask;
+    const retire = jest.spyOn(oldTask, 'invalidateForRegionRecovery');
+    const stop = jest.spyOn(oldTask.stateMachineService, 'stop');
+
+    taskManager.invalidateRegionalTasks();
+
+    expect(retire).toHaveBeenCalledTimes(1);
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(taskManager.getAllTasks()).toEqual({});
+    expect(webCallingService.cleanUpCall).toHaveBeenCalledTimes(1);
+
+    expect(webCallingService.listenerCount(LINE_EVENTS.INCOMING_CALL)).toBe(1);
+    expect(webSocketManagerMock.listenerCount('message')).toBe(1);
+    webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
+
+    expect(taskManager.getTask(taskId)).toBeDefined();
+    expect(taskManager.getTask(taskId)).not.toBe(oldTask);
   });
 
   it('test call listeners being switched off on call end', () => {

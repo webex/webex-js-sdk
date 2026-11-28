@@ -1,3 +1,17 @@
+/** Plain lifecycle-error reasons shared by recovery consumers. */
+export const REGION_RECOVERY_ERROR_CODES = {
+  RECOVERY_INTERRUPTED: 'RECOVERY_INTERRUPTED',
+  STALE_TASK: 'STALE_TASK',
+} as const;
+
+/** Subscribe conflicts that require a service-catalog refresh. */
+export const SUBSCRIPTION_MISMATCH_REASONS = [
+  'REGION_MISMATCH_REGION_FAILOVER',
+  'REGION_MISMATCH_ORG_OVERRIDE',
+  'REGION_MISMATCH_ORG_OVERRIDE_SUPERSEDED',
+  'REGION_MISMATCH_NO_OVERRIDE',
+] as const;
+
 /**
  * Interval in milliseconds for sending keepalive pings to the worker.
  * @ignore

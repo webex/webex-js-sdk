@@ -170,6 +170,40 @@ describe('ApiAIAssistant', () => {
     );
   });
 
+  it('keeps a new RTD request when the previous session request fails late', async () => {
+    let rejectOldRequest: (error: Error) => void;
+    (mockWebex.request as jest.Mock)
+      .mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectOldRequest = reject;
+          })
+      )
+      .mockResolvedValueOnce({body: {accepted: true}});
+    const options = {
+      correlationId: 'conversation-1',
+      rtdEventType: 'POST_CALL_SUMMARY',
+      timeoutMs: 15000,
+      createTimeoutError: () => new Error('TIMEOUT'),
+      agentId: 'agent-1',
+      interactionId: 'interaction-1',
+      eventType: 'CTI_EVENT' as any,
+      eventName: 'GET_POST_CALL_SUMMARY' as any,
+    };
+    const oldRequest = apiAIAssistant.requestAndWaitForRtd(options);
+    await Promise.resolve();
+    apiAIAssistant.clearAllRtdRequests();
+    await expect(oldRequest).rejects.toThrow('RTD request cleared');
+
+    const newRequest = apiAIAssistant.requestAndWaitForRtd(options);
+    rejectOldRequest(new Error('HTTP_FAILED'));
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(apiAIAssistant.resolveFromRtdEvent('POST_CALL_SUMMARY', 'conversation-1', {})).toBe(
+      'resolved'
+    );
+    await expect(newRequest).resolves.toEqual({});
+  });
+
 
   it('should send transcript start event successfully', async () => {
     (mockWebex.request as jest.Mock).mockResolvedValue({body: {ok: true}});

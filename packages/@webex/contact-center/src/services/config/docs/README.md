@@ -78,7 +78,7 @@ missing or contradictory evidence blocks promotion.
 | `src/services/config/constants.ts` | `endPointMap`, `DEFAULT_PAGE` (0), `DEFAULT_PAGE_SIZE` (100), `DEFAULT_AUXCODE_ATTRIBUTES`, `WELLBEING_BREAK_IDLE_CODE`, `WELLNESS_BREAK_REMINDERS_ENABLED`, `COLLABORATION_ACCESS`, `METHODS` |
 | `src/services/config/types.ts` | `CC_TASK_EVENTS` (66 keys), `CC_AGENT_EVENTS` (19 keys), `CC_EVENTS`, `VOICE_CONNECTION_EVENTS`, `Profile`, and the response types (catalog source of `contact-center-cc-events`) |
 | `src/services/index.ts` | `Services` constructs one `AgentConfigService` as `services.config` |
-| `src/cc.ts` | Consumers: `connectWebsocket` stores `getAgentConfig` as `this.agentConfig`; `getWellbeingBreakIdleCode` and `getOutdialAniEntries` wrap the service; `CC_EVENT_ALLOW_LIST` filters re-emitted WebSocket event names |
+| `src/cc.ts` | Consumers: `connectWebsocket` consumes the optional recovery settings from the Profile returned by `getAgentConfig`; `getWellbeingBreakIdleCode` and `getOutdialAniEntries` wrap the service; `CC_EVENT_ALLOW_LIST` filters re-emitted WebSocket event names |
 | `src/index.ts`, `src/webex.js` | Public re-export of `CC_EVENTS`, `CC_AGENT_EVENTS`, `CC_TASK_EVENTS`, `VOICE_CONNECTION_EVENTS`, `IDLE_CODE`, `WRAP_UP_CODE`, and the config types; `Webex.CC_AGENT_EVENTS` |
 | `src/services/core/WebexRequest.ts` | The singleton HTTP wrapper over `webex.request` used by every method |
 | `src/services/core/websocket/WebSocketManager.ts` | Resolves registration on the `CC_EVENTS.WELCOME` message |
@@ -169,7 +169,7 @@ Types used by the config service, all defined in [`types.ts`](../types.ts):
 
 | Type | Description |
 | ---- | ----------- |
-| `Profile` | Final aggregated agent config returned by `getAgentConfig()` |
+| `Profile` | Aggregated agent profile returned by `getAgentConfig()`, with optional internal `multiRegionSettings` |
 | `OrgDesktopLoginResponse` | Response from `getOrgDesktopLoginConfig()`; sections in Protocol and wire format |
 | `UserDesktopLoginResponse` | Response from `getUserDesktopLoginConfig()` — `user` and `agentProfile` sections (fields in Protocol and wire format) |
 | `AgentResponse` | `user` section of the user aggregate — agent metadata, `dbId`, `siteId`, `agentProfileId` |
@@ -177,7 +177,7 @@ Types used by the config service, all defined in [`types.ts`](../types.ts):
 | `TeamList` | Team record from API — `id`, `name`, `teamType`, `siteId`, `multiMediaProfileId` |
 | `ListTeamsResponse` | Paginated wrapper around `TeamList[]` with `meta` for pagination |
 | `OrgInfo` | Organization info — `tenantId`, timezone |
-| `OrgSettings` | Org feature flags — `webRtcEnabled`, `maskSensitiveData` |
+| `OrgSettings` | Organization feature flags, licenses, and optional multi-region settings |
 | `TenantData` | Tenant-level config — inactivity timeout, `forceDefaultDn`, `outdialEnabled` |
 | `SiteInfo` | Site config — `id`, `name`, `multimediaProfileId` |
 | `OrgUrlMappings` | Keyed external URL mappings — `ACQUEON_API_URL`, `ACQUEON_CONSOLE_URL` |
@@ -199,7 +199,7 @@ Types used by the config service, all defined in [`types.ts`](../types.ts):
 | ---------- | ------------------ | ---------------- |
 | WebexRequest (`src/services/core/WebexRequest.ts`, [core service](../../core/docs/README.md)) | Singleton taken in the constructor; every method calls `request({service: WCC_API_GATEWAY, resource, method: GET})` | A rejection is logged and rethrown by the calling method |
 | WCC organization/profile/team/site/tenant APIs (contract `wxcc-api-gateway`, service name `wcc-api-gateway`) | Desktop-login aggregates, teams, auxiliary codes, site, dial plan, multimedia profile, and outdial ANI resources | Non-200 responses become `Error('API call failed with {statusCode}')`, except in `getOutdialAniEntries` |
-| ContactCenter registration flow (`src/cc.ts`) | Supplies `orgId` from credentials and `agentId` from the Welcome event, and stores the resolved profile | A `getAgentConfig` rejection propagates into registration |
+| ContactCenter registration flow (`src/cc.ts`) | Supplies `orgId` from credentials and `agentId` from the Welcome event, and stores the resolved Profile and optional regional eligibility | A `getAgentConfig` rejection propagates into registration |
 | Backend notification names (contract `wxcc-websocket-notifications`) | `CC_AGENT_EVENTS` and `CC_TASK_EVENTS` mirror the WebSocket message `type` strings | A backend type missing from the constants is not re-emitted by `src/cc.ts` |
 | `LoggerProxy` (`src/logger-proxy.ts`) | Info, log, and error lines with `module: CONFIG_FILE_NAME` | None |
 | `LOST_CONNECTION_RECOVERY_TIMEOUT` (`src/services/core/constants.ts`) | Default for `Profile.lostConnectionRecoveryTimeout` when the tenant value is falsy | None |
@@ -220,6 +220,7 @@ Types used by the config service, all defined in [`types.ts`](../types.ts):
 | CONFIG-R-010 | `getOutdialAniEntries(orgId, params)` adds only the provided `page`, `pageSize`, `search`, `filter`, and `attributes` query parameters, resolves `response.body?.data`, and rethrows a request rejection; it does not check `statusCode`. | `cc.getOutdialAniEntries` is the public caller-ID lookup and records the result count in metrics. | `src/services/config/index.ts`, `src/cc.ts` | `test/unit/spec/services/config/index.ts` | A resolved non-200 response yields `undefined`, not an error (asserted by the 404 and 500 cases). | Present |
 | CONFIG-R-011 | `parseAgentConfigs` keeps active aux codes of each `workTypeCode` from the full pool as `Entity` values, appends the synthetic idle code `{id: '0', name: 'Available'}`, and sets `defaultWrapupCode` to the default wrap-up code id or an empty string. | The desktop-login aggregate does not carry per-agent restriction lists, so the whole pool applies (JSDoc of `getFilterAuxCodes`). | `src/services/config/Util.ts` | `test/unit/spec/services/config/Util.ts` | None. | Present |
 | CONFIG-R-012 | When `dialPlanEnabled` is true, `Profile.dialPlan` is `{type: 'adhocDial', dialPlanEntity}` built from every active plan; otherwise it is `undefined` and no dial-plan request is made. | The aggregate does not carry the per-profile `dialPlans` selection, so all active plans apply (JSDoc of `getFilteredDialplanEntries`). | `src/services/config/Util.ts`, `src/services/config/index.ts` | `test/unit/spec/services/config/Util.ts`, `test/unit/spec/services/config/index.ts` | None. | Present |
+| CONFIG-R-013 | Internal `getAgentConfig()` resolves `Profile`. The optional `Profile.multiRegionSettings` carries the boolean `organizationSetting.multiRegionEnabled` and a trimmed, lowercase `organizationSetting.homeRegion` from the existing `GET organization/{orgId}/desktop-login` response. A missing or malformed flag leaves settings absent. | The registration aggregate provides eligibility in the existing request. | `src/services/config/index.ts`, `src/services/config/types.ts`, `src/cc.ts` | `test/unit/spec/services/config/index.ts`, `test/unit/spec/cc.ts` | Registration consumes the internal field before storing and returning the Profile. | PRESENT |
 
 ## Design overview
 
@@ -232,7 +233,14 @@ The AgentProfile is the central configuration object required for an agent to op
 // Inside cc.ts → connectWebsocket(), after WebSocket connection is established:
 const agentId = data.agentId;
 const orgId = this.$webex.credentials.getOrgId();
-this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
+const profile = await this.services.config.getAgentConfig(orgId, agentId);
+const {multiRegionSettings} = profile;
+delete profile.multiRegionSettings;
+profile.orgId = orgId;
+this.agentConfig = profile;
+this.multiRegionSettings = multiRegionSettings;
+// After Mercury and optional station relogin complete:
+this.services.connectionService.reset();
 ```
 
 Stack: TypeScript 5.4 REST client, Promise-based parallel aggregation, Jest 27.
@@ -275,6 +283,7 @@ Main method that aggregates all configuration data into the AgentProfile.
 5. `Promise.all` the five remaining promises
 6. Resolve `multimediaProfileId` from the team value, falling back to the site value
 7. Parse and combine all data (`parseAgentConfigs`)
+8. Attach the optional recovery settings from the organization desktop-login response.
 
 The following diagram shows how `getAgentConfig` orchestrates six API calls and combines their results into the AgentProfile via `parseAgentConfigs()`:
 
@@ -301,7 +310,7 @@ sequenceDiagram
     Cfg->>Cfg: multimediaProfileId = team value, else site value
     Cfg->>Util: parseAgentConfigs(orgConfig, userData, agentProfileData, ...)
     Util-->>Cfg: Profile including aiFeature
-    Cfg-->>CC: Profile
+    Cfg-->>CC: Profile with optional internal recovery settings
   else any fails
     Cfg-->>CC: throw; no partial Profile
   end
@@ -422,7 +431,7 @@ All Config operations are authenticated REST calls through WebexRequest. Importa
 
 | Message or frame | Version | Producer or serializer | Consumer or parser | Compatibility and ordering rule |
 | ---------------- | ------- | ---------------------- | ------------------ | ------------------------------- |
-| Organization desktop-login aggregate: `endPointMap.orgDesktopLogin(orgId)` builds `organization/{orgId}/desktop-login`; response `OrgDesktopLoginResponse` | — | Contact Center API gateway | `getOrgDesktopLoginConfig`, `parseAgentConfigs` | Key fields: `organization`: `tenantId`, `timezone`. `organizationSetting`: `webRtcEnabled`, `maskSensitiveData`, `campaignManagerEnabled`, `aiAssistantQuantity`. `tenantConfiguration`: `outdialEnabled`, `forceDefaultDn`, `privacyShieldVisible`, `timeoutDesktopInactivityEnabled`. Optional `urlMappings`, `aiFeature`, `microsoftConfig`, `webexConfig`. All organization-, tenant- and feature-scoped configuration in one call |
+| Organization desktop-login aggregate: `endPointMap.orgDesktopLogin(orgId)` builds `organization/{orgId}/desktop-login`; response `OrgDesktopLoginResponse` | — | Contact Center API gateway | `getOrgDesktopLoginConfig`, `getAgentConfig`, `parseAgentConfigs` | Key fields: `organization`: `tenantId`, `timezone`. `organizationSetting`: `webRtcEnabled`, `maskSensitiveData`, `campaignManagerEnabled`, `aiAssistantQuantity`. `tenantConfiguration`: `outdialEnabled`, `forceDefaultDn`, `privacyShieldVisible`, `timeoutDesktopInactivityEnabled`. Optional `urlMappings`, `aiFeature`, `microsoftConfig`, `webexConfig`. Optional regional fields are `organizationSetting.multiRegionEnabled` and `organizationSetting.homeRegion`. |
 | User desktop-login aggregate: `endPointMap.userDesktopLogin(orgId, ciUserId)` builds `organization/{orgId}/v2/user/by-ci-user-id/{ciUserId}/desktop-login`; response `UserDesktopLoginResponse` | v2 | Contact Center API gateway | `getUserDesktopLoginConfig`, `getAgentConfig`, `parseAgentConfigs` | Key fields: `user`: `ciUserId`, `id`, `dbId`, `firstName`, `lastName`, `email`, `agentProfileId`, `siteId`. `agentProfile`: `dialPlanEnabled`, `accessWrapUpCode`, `accessIdleCode`, `loginVoiceOptions`, `viewableStatistics`. Agent identity, team-filter id, site reference, and desktop settings in one call |
 | Teams: `endPointMap.listTeams(orgId, page, pageSize, userDbId)` builds `organization/{orgId}/v2/team?page={page}&pageSize={pageSize}&agentView=true&filter=userId=={userDbId}`; response `ListTeamsResponse` of `TeamList` records | v2 | Contact Center API gateway | `getListOfTeams`, `getAllTeams` | The wire field is `userId` but the value is the user's database id (`user.dbId`); `meta.totalPages` drives pagination; channel capacities belong to `MultimediaProfileResponse` |
 | Auxiliary codes: `endPointMap.listAuxCodes(orgId, page, pageSize, filter, attributes)` builds `organization/{orgId}/v2/auxiliary-code?page={page}&pageSize={pageSize}`, then `&filter=id=in=({filter})` only when filter has length, then `&attributes={attributes}&desktopProfileFilter=true`; response `ListAuxCodesResponse` | v2 | Contact Center API gateway | `getListOfAuxCodes`, `getAllAuxCodes`, `getFilterAuxCodes` | `getAgentConfig` requests `DEFAULT_AUXCODE_ATTRIBUTES`: `id`, `isSystemCode`, `name`, `defaultCode`, `workTypeCode`, `active` |
@@ -524,6 +533,7 @@ try {
 | `CONFIG-R-008` | Unit | `test/unit/spec/cc.ts` (known type emitted), `test/unit/spec/index.ts` (exports) | `test/unit/spec/cc.ts` (unknown type not emitted) | None |
 | `CONFIG-R-010` | Unit | `test/unit/spec/services/config/index.ts` (minimal, full, partial parameters) | `test/unit/spec/services/config/index.ts` (rejection, 404, 500, missing body) | None |
 | `CONFIG-R-011`, `CONFIG-R-012` | Unit | `test/unit/spec/services/config/Util.ts` (aux codes, dial plan) | `test/unit/spec/services/config/Util.ts` (no default code, dial planning disabled) | None |
+| `CONFIG-R-013` | Unit | `test/unit/spec/services/config/index.ts` checks both boolean values and region normalization on the existing desktop-login request. | The same cases cover absent and malformed flags and blank or non-string home-region values. `test/unit/spec/cc.ts` covers an ordinary reconnect while profile fetching is pending. | None |
 
 Run `yarn workspace @webex/contact-center test:unit` from the workspace root. A module specification is complete only when its public surface,
 invariants, failure modes, and test evidence agree with the implementation; coverage is pending a fresh

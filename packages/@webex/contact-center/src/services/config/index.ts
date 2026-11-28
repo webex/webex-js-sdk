@@ -106,6 +106,16 @@ export default class AgentConfigService {
         method: METHODS.GET_AGENT_CONFIG,
       });
 
+      const {multiRegionEnabled, homeRegion} = orgConfig.organizationSetting;
+      if (typeof multiRegionEnabled === 'boolean') {
+        const normalizedHomeRegion =
+          typeof homeRegion === 'string' ? homeRegion.trim().toLowerCase() : undefined;
+        response.multiRegionSettings = {
+          multiRegionEnabled,
+          ...(normalizedHomeRegion ? {homeRegion: normalizedHomeRegion} : {}),
+        };
+      }
+
       return response;
     } catch (error) {
       LoggerProxy.error(`getAgentConfig call failed with ${error}`, {

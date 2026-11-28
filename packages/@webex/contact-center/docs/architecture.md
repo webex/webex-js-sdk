@@ -134,8 +134,9 @@ The collaborators in the composition tree are built once, on the Webex READY eve
 | Host application | `webex.cc` | In-process method calls and plugin events | Agent, task, data, and diagnostics operations | Promises reject with the errors described in the owning module spec; `register()` uploads logs on failure |
 | `ContactCenter` | Services agent and dialer factories | AqmReqs: HTTP request, then a matched WebSocket notification | Station login, logout, state change, buddy agents, outdial, campaign preview | Settles on the success or failure notification or on the 20000 ms `TIMEOUT_REQ` default (`src/services/core/constants.ts`) |
 | `ContactCenter` data services | Contact Center API gateway | WebexRequest HTTP | Address book, entry points, queues, user preferences, AI assistant | HTTP errors propagate after metrics and logging |
-| ConnectionService | `ContactCenter` | `connectionLost` event | Socket loss and reconnect | On reconnect, `silentRelogin()` runs when `allowAutomatedRelogin` is true |
-| WebSocketManager (primary and RTD) | ContactCenter, TaskManager, AqmReqs | `message` events | Realtime routing and AQM request completion | Unknown message types are ignored |
+| ConnectionService | `ContactCenter` | `connectionLost`, `reconnectFailed`, and `subscriptionMismatch` | Ordinary reconnect and transport failures | ContactCenter handles station restoration and publishes application recovery outcomes |
+| ContactCenter | ConnectionService | Awaited `connect()` | Subscribe/Welcome and one recognized 409 catalogue refresh | ContactCenter restores the station after transport returns; ordinary reconnect events use the same station path |
+| WebSocketManager (primary and RTD) | ContactCenter, TaskManager, AqmReqs | `message` events | Realtime routing and AQM request completion | The manager forwards frames after Welcome; ContactCenter ignores unknown event types |
 | TaskManager | Task instances and `ContactCenter` | Task events | Task offer, hydrate, merge, and lifecycle | Malformed or unknown messages are ignored |
 
 ## Dependency topology
@@ -164,13 +165,14 @@ the owning module specification linked in the Owner column.
 | Surface | Type | Owner | Consumers | Compatibility policy | Source |
 | ------- | ---- | ----- | --------- | -------------------- | ------ |
 | `contact-center-sdk` — npm package @webex/contact-center: `webex.cc` (`ContactCenter`, implementing `IContactCenter`) with station login, agent state, browser voice state (`getVoiceConnectionState`), buddy agents, queue and entry-point lists, campaign preview, Better Together, and wellness methods; `routingAgent`, `Task`, `AddressBook`, `ApiAIAssistant`, `UserPreference`, `getDefaultUIControls`, the event enums, and the public types | SDK, published | [`src`](../src/docs/README.md); data services in [`src/services`](../src/services/docs/README.md); consult and transfer defaults in [ADR-0002](adr/0002-consult-transfer-list-policy.md) | Agent desktop applications, the Contact Center sample, widgets | Public, semver: removals, renames, payload reinterpretation, or semantic breaks need a major version | `package.json` |
+| `contact-center-region-recovery` — `REGION_RECOVERY_EVENTS`, `REGION_RECOVERY_ERROR_CODES`, and complete `RegionRecoveryState` snapshots on `region:stateChange` with optional organization-provided `homeRegion`. | Event, published | [`src`](../src/docs/README.md) | Applications and `src/services/core` | Additive snapshot and error-reason contract | `src/index.ts`, `src/types.ts` |
 | `contact-center-cc-events` — `CC_EVENTS`, `CC_AGENT_EVENTS` (including `WELLNESS_BREAK`), `CC_TASK_EVENTS`, `VOICE_CONNECTION_EVENTS` (`voice:connectionStateChange`) | Event, published | [`src/services/config`](../src/services/config/docs/README.md); emission by ContactCenter in [`src`](../src/docs/README.md) | Applications; AqmReqs, ContactCenter, and TaskManager | Additive; values equal backend message names | `src/services/config/types.ts` |
 | `contact-center-agent-events` — `AGENT_EVENTS` (`agent:*`) and agent request and response types | Event, published | [`src/services/agent`](../src/services/agent/docs/README.md) | Applications | Additive constants | `src/services/agent/types.ts` |
 | `contact-center-task-events` — `TASK_EVENTS` (`task:*`, including `task:hydrate`, `task:wrapup`, `task:midCallSummaryReceived`, `task:wxapp-mute-state-updated`), `TaskData`, `TaskResponse`, and task payload types | Event, published | [`src/services/task`](../src/services/task/docs/README.md) | Applications holding `ITask` objects | Additive constants; semantic extensions keep existing event names | `src/services/task/types.ts` |
 | `contact-center-task-state-machine` — state machine factory, `TaskState`, `TaskEvent`, guards, actions, UI-control computer | SDK, internal (only `getDefaultUIControls` is re-exported) | [`src/services/task/state-machine`](../src/services/task/state-machine/docs/README.md) | Task and TaskManager | Internal; `TaskUIControls` fields are public and additive | `src/services/task/state-machine/index.ts` |
 | `contact-center-services` — Services composition root and request factories | SDK, internal | [`src/services`](../src/services/docs/README.md) | ContactCenter, TaskManager | Internal | `src/services/index.ts` |
-| `contact-center-core-transport` — AqmReqs, WebexRequest, WebSocketManager, ConnectionService, error helpers | SDK, internal | [`src/services/core`](../src/services/core/docs/README.md) | Services, ContactCenter, TaskManager | Internal | `src/services/core/aqm-reqs.ts` |
-| `contact-center-metrics` — `METRIC_EVENT_NAMES` and the MetricsManager submission API | Event, internal | [`src/metrics`](../src/metrics/docs/README.md) | Every module that tracks events | Internal; names reach the Webex metrics backend | `src/metrics/constants.ts` |
+| `contact-center-core-transport` — AqmReqs, WebexRequest, WebSocketManager, ConnectionService, and error helpers. Owns AQM event matching and timeout, WebSocket subscription/connect and cleanup, Welcome deadlines, ordinary reconnect timing, and ordinary transport recovery. ContactCenter owns regional orchestration, snapshots, station retry policy, deferred Available, accepted profile/device changes, and task/RTD effects. | SDK, internal | [`src/services/core`](../src/services/core/docs/README.md) | Services, ContactCenter, TaskManager | Internal | `src/services/core/aqm-reqs.ts` |
+| `contact-center-metrics` — `METRIC_EVENT_NAMES` and the MetricsManager submission API, including regional recovery outcomes. | Event, internal | [`src/metrics`](../src/metrics/docs/README.md) | Every module that tracks events | Internal; names reach the Webex metrics backend | `src/metrics/constants.ts` |
 | `contact-center-page-cache` — PageCache and pagination types and defaults | SDK, internal | [`src/utils`](../src/utils/docs/README.md) | AddressBook, Queue; EntryPoint reads its defaults | Internal | `src/utils/PageCache.ts` |
 | `wxcc-api-gateway` — Contact Center REST API through `webex.request` service `wcc-api-gateway` | HTTP, external | Contact Center backend | Services, Config, data services | Owned by the backend; the package owns no route | Webex Contact Center API gateway (external) |
 | `wxcc-websocket-notifications` — Contact Center notification WebSocket, primary and RTD | Event, external | Contact Center backend | Core, ContactCenter, TaskManager | Owned by the backend; names mirrored in `CC_EVENTS` | Webex Contact Center notification WebSocket (external) |
@@ -189,11 +191,14 @@ No OpenAPI/AsyncAPI/proto schema was found in scope; exact SDK and event contrac
 
 - ContactCenter retains agent profile, task collections, WebSocket/reconnect flags, metrics queues/timers, page-cache entries, and task actors in memory.
 - Remote systems remain authoritative for agent/task/configuration records.
+- Task forwarding and the incoming Calling hook follow SDK registration, with cleanup on failure,
+  replacement, and teardown.
 
 | State or slice | Owner | Transition triggers | Persistence or reset boundary |
 | -------------- | ----- | ------------------- | ----------------------------- |
-| Agent profile (`agentConfig`) and active station session | `ContactCenter` (`src/cc.ts`) | `register()`, station login, logout, silent relogin | Memory; cleared by `deregister()` |
+| Agent profile (`agentConfig`) and active station session | `ContactCenter` (`src/cc.ts`) | `register()`, station login, logout, silent relogin | Memory; accepted station fields supply fallback login when omitted by reload; cleared by `deregister()` |
 | Task collection | TaskManager (`src/services/task/TaskManager.ts`) | Contact notifications, hydration, task removal | Memory; one XState actor per task |
+| Regional recovery, entitlement, and last published station snapshot | ContactCenter (`src/cc.ts`) | ContactCenter reads entitlement from the organization desktop-login aggregate, awaits transport and station restoration, and publishes switch/restore/terminal snapshots. | Each registration starts with unknown eligibility and clears recovery state on teardown. |
 | Voice connection state | WebCallingService (`src/services/WebCallingService.ts`) | Line registration and Mobius socket events | Memory; reset on line deregistration |
 | Pending metrics events | MetricsManager (`src/metrics/MetricsManager.ts`) | `trackEvent`, the metrics ready signal | Memory; cleared when metrics are disabled |
 | Cached pages | PageCache (`src/utils/PageCache.ts`) | `cachePage`, expiry on read | Memory; five-minute TTL |
@@ -217,7 +222,7 @@ Package compatibility and event-loop safety are primary: published exports/types
 |---|---|---|
 | Unit coverage | 85% branches/functions/lines/statements | package Jest configuration |
 | Operation duration/success/failure | no local numeric SLO routed | MetricsManager event taxonomy |
-| Connection recovery | explicit 8s disconnect, 5s retry, configured restore timeout (50s `LOST_CONNECTION_RECOVERY_TIMEOUT` default) | Core constants/ConnectionService |
+| Connection recovery | Ordinary 8s loss detection, 5s retry slots, and a 50s watchdog. ContactCenter owns regional retry pacing. | Core constants/ConnectionService |
 
 <!-- Include if: repository resources call, import, or exchange events with one another. [condition-id: repo.components_interact] -->
 
@@ -299,6 +304,9 @@ Cache eligibility rules are in the [Utils spec](../src/utils/docs/README.md) and
 <!-- Include if: the repository publishes a package or consumer artifact. [condition-id: repo.published_package] -->
 
 ## Release and versioning
+
+The [regional recovery release checklist](getting-started.md#release-verification) covers live
+failover and failback drills.
 
 | Artifact | Publish target | Versioning rule | Deprecation window | Changelog or migration obligation |
 | -------- | -------------- | --------------- | ------------------ | --------------------------------- |

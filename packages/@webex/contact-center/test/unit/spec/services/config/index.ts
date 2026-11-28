@@ -703,6 +703,59 @@ describe('AgentConfigService', () => {
       );
     });
 
+    it.each([
+      {
+        scenario: 'enabled with a home region',
+        settings: {multiRegionEnabled: true, homeRegion: ' US1 '},
+        expected: {multiRegionEnabled: true, homeRegion: 'us1'},
+      },
+      {
+        scenario: 'disabled with a home region',
+        settings: {multiRegionEnabled: false, homeRegion: ' EU2 '},
+        expected: {multiRegionEnabled: false, homeRegion: 'eu2'},
+      },
+      {
+        scenario: 'enabled with a blank home region',
+        settings: {multiRegionEnabled: true, homeRegion: ' '},
+        expected: {multiRegionEnabled: true},
+      },
+      {
+        scenario: 'enabled with a non-string home region',
+        settings: {multiRegionEnabled: true, homeRegion: 123},
+        expected: {multiRegionEnabled: true},
+      },
+      {scenario: 'missing flag', settings: {homeRegion: 'US1'}, expected: undefined},
+      {
+        scenario: 'malformed flag',
+        settings: {multiRegionEnabled: 'true', homeRegion: 'US1'},
+        expected: undefined,
+      },
+    ])('reads multi-region settings solely from the organization aggregate: $scenario', async ({settings, expected}) => {
+      const getOrgDesktopLoginConfig = agentConfigService.getOrgDesktopLoginConfig;
+      stubConfigCalls();
+      agentConfigService.getOrgDesktopLoginConfig = getOrgDesktopLoginConfig;
+      (mockWebexRequest.request as jest.Mock).mockResolvedValue({
+        statusCode: 200,
+        body: {
+          ...mockOrgConfig,
+          multiRegionEnabled: true,
+          organizationSetting: {...mockOrgConfig.organizationSetting, ...settings},
+        },
+      });
+
+      const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
+
+      expect(result).toMatchObject({agentId: mockUser.ciUserId, webRtcEnabled: true});
+      if (expected) expect(result.multiRegionSettings).toStrictEqual(expected);
+      else expect(result).not.toHaveProperty('multiRegionSettings');
+      expect(mockWebexRequest.request).toHaveBeenCalledTimes(1);
+      expect(mockWebexRequest.request).toHaveBeenCalledWith({
+        service: mockWccAPIURL,
+        resource: `organization/${mockOrgId}/desktop-login`,
+        method: 'GET',
+      });
+    });
+
     it('should query teams by the user dbId and the site by the user siteId', async () => {
       stubConfigCalls();
 

@@ -29,6 +29,7 @@ import {
   isSecondaryEpDnAgent,
   shouldAutoAnswerTask,
 } from './TaskUtils';
+import type Task from './Task';
 import TaskFactory from './TaskFactory';
 import AnswerCallOnWebexService from '../AnswerCallOnWebexService';
 import {getWebexCallingDeviceDetailsForAgent} from './WebexCallingUtils';
@@ -110,7 +111,17 @@ export default class TaskManager extends EventEmitter {
     this.taskCollection = {};
     this.webRtcEnabled = false;
     this.registerTaskListeners();
-    this.registerIncomingCallEvent();
+  }
+
+  /** Retire the previous station's tasks before the new socket delivers task events. */
+  public invalidateRegionalTasks(): void {
+    for (const task of new Set(Object.values(this.taskCollection))) {
+      (task as Task).invalidateForRegionRecovery();
+      this.removeTaskFromCollection(task);
+    }
+    this.taskCollection = {};
+    this.call = undefined;
+    this.webCallingService.cleanUpCall();
   }
 
   public handleRealtimeWebsocketEvent(event: string) {

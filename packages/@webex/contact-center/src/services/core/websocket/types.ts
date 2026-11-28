@@ -1,14 +1,17 @@
 import {SubscribeRequest} from '../../../types';
 import type WebSocketManager from './WebSocketManager';
+import type {WebexSDK} from '../../../types';
 
 /**
  * Options for initializing a connection service.
  * @typedef ConnectionServiceOptions
+ * @property {WebexSDK} webex - The Webex SDK instance.
  * @property {WebSocketManager} webSocketManager - The WebSocket manager instance.
  * @property {SubscribeRequest} subscribeRequest - The subscribe request payload.
  * @ignore
  */
 export type ConnectionServiceOptions = {
+  webex: WebexSDK;
   webSocketManager: WebSocketManager;
   subscribeRequest: SubscribeRequest;
 };

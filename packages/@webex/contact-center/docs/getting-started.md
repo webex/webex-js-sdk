@@ -140,3 +140,83 @@ Expected result: all three commands exit zero and Jest prints no coverage thresh
 - Agent entry: [`AGENTS.md`](../AGENTS.md) · System shape: [package architecture](architecture.md) · Routing: [specification registry](specs/README.md)
 - Conventions: the coding patterns and rules in [`AGENTS.md`](../AGENTS.md), and the manifest-routed module specification for the target capability.
 - [Documentation index](index.md)
+
+## Multi-region recovery
+
+Subscribe to `REGION_RECOVERY_EVENTS.STATE_CHANGE` (`region:stateChange`) before calling `cc.register()`.
+Each frozen `RegionRecoveryState` is a complete snapshot. Replace the previous snapshot so omitted
+placement, retry and automatic-action fields clear. Import `REGION_RECOVERY_EVENTS`,
+`REGION_RECOVERY_ERROR_CODES` and the `RegionRecoveryState` type from `@webex/contact-center`.
+Use `RegionRecoveryState['status']` if your host needs the type of the status field.
+
+| Status | Host behavior |
+| --- | --- |
+| `recovering` | Show a loading indicator. Disable station login and profile changes, task and call controls, and agent-state controls. Pause background requests for those actions. |
+| `ready` | Hide the loading indicator. Resume task and agent actions for the accepted station, subject to the usual task and voice controls. |
+| `stationLoginRequired` | Hide the loading indicator and enable the app’s existing `stationLogin()` flow with `BROWSER`, `EXTENSION` or `AGENT_DN`. Keep other station actions paused until `ready`. |
+| `unavailable` | Show the terminal reason and keep station actions paused. Use the app’s sign-in flow for `authentication-failed`, or allow a fresh `register()` attempt after recovery stops. |
+
+The SDK handles reconnection and station restoration. Your app pauses its controls and background
+station actions until `ready`. Await `register()` and `deregister()` before starting another
+lifecycle operation. Requests already sent follow their usual completion or timeout path.
+Use the latest station state and Task objects before deciding whether to retry an action. Replaying
+a call control can duplicate an action the backend already received.
+
+On `ready`, keep manual state controls disabled while `autoAvailable` is `waitingForVoice` or
+`requesting`. The SDK is waiting for browser voice or completing the automatic state change.
+Enable manual state controls after that action settles or is cancelled. Task controls can resume
+on `ready`, subject to the normal voice readiness checks.
+
+With `allowAutomatedRelogin` enabled, the SDK tries to restore the previous station, including an
+existing browser station. The app handles `stationLoginRequired` through its station sign-in flow,
+including any device permissions or station details the agent needs to provide.
+
+A Welcome frame establishes transport. A successful station acknowledgment establishes readiness.
+Active calls and audio can be interrupted by a switch. Obtain replacement Tasks through the
+existing Task events. If a pending WebRTC microphone request completes after its Task is retired,
+the SDK releases the granted tracks and rejects `accept()` with `STALE_TASK`. Fresh
+`FEATURE_ENABLEMENT` enables restored AI summary capabilities. Optional realtime services resume
+independently after regional recovery, even when station login is still required. The SDK obtains
+their new subscription URLs; your app does not manage them.
+
+Clear the recovery display after confirmed station logout, when deregistration or replacement
+begins, and on primary multi-login. Station logout uses the normal request and notification flow.
+Only a confirmed logout clears the accepted station. The SDK stays registered for ordinary socket
+reconnect. Attach essential listeners before registration and remove them at teardown.
+
+## Automatic service discovery recovery
+
+When the primary subscribe request returns a recognized region-mismatch `409`, the SDK calls the
+existing Webex service-discovery API with `updateServices({forceRefresh: true})` and retries subscribe
+once. The refreshed catalog supplies the gateway for the new request, and the subscribe response
+supplies the WebSocket URL. The existing Welcome, session reload and station-login fallback then
+complete recovery. The original `register()` promise stays pending during this retry.
+
+Your app keeps displaying recovery until `ready` or an action-required state arrives. A second
+recognized mismatch after discovery refresh ends in `unavailable` with reason `region-mismatch`.
+Authentication failures use `authentication-failed`. An unrelated `409` keeps its ordinary retry
+behavior.
+
+The [Contact Center sample](../../../../docs/samples/contact-center/app.js) displays recovery in a
+loading dialog and enables its existing Register button after `unavailable`.
+
+## Recovery accessibility guidance
+
+Announce recovery and action-required states in a screen reader status region. Keep manual login,
+state actions and logout accessible from the keyboard.
+
+## Multi-region recovery rollout and rollback
+
+A compatible SDK release and backend entitlement are both required. During registration, the SDK
+reads `organizationSetting.multiRegionEnabled` from the existing organization desktop-login
+response. Literal `true` enables recovery and literal `false` disables it. Missing or invalid
+values leave eligibility unknown and preserve ordinary registration. Register again to pick up
+entitlement changes. Roll back through SDK release and backend entitlement management.
+
+### Release verification
+
+- Verify the deployed desktop-login entitlement and ordinary station login and reconnect.
+- Run failover and failback for DN, Extension, and Browser stations.
+- For each drill, record the home and serving regions, station outcome, and new-call, RTD, and voice
+  results. For browser runs, capture the order and identifiers of the Calling offer and Task hydration.
+  Link sanitized captures with deployment versions and timestamps in the release record.

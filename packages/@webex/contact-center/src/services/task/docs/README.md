@@ -496,6 +496,18 @@ TaskManager maintains a map of active tasks, `taskCollection: Record<TaskId, ITa
 object can be reachable under an old and a new key while it is re-keyed; `updateTaskData` removes every
 alias other than the new `interactionId`, and removal deletes all aliases.
 
+On a region switch, TaskManager retires the old tasks, stops their actors and timers, and releases
+WebRTC microphone tracks. The replacement socket uses the same TaskManager listeners to hydrate
+fresh tasks. Applications pause task controls during recovery and read the current tasks when the
+station is ready. ContactCenter clears pending AI summaries when it pauses the old RTD subscription.
+If microphone permission is granted after the old Task is retired, WebRTC releases the granted
+tracks and rejects the pending `accept()` with `STALE_TASK` before answering a call.
+
+The incoming Calling hook follows SDK registration: ContactCenter calls `registerIncomingCallEvent()`
+after accepting the profile and removes it when registration fails, is replaced, or ends. TaskManager
+construction installs its primary-message pipeline once; regional Task retirement reuses those
+listeners and does not register another incoming Calling hook.
+
 TaskManager uses a staged pipeline in `registerTaskListeners()`. For each primary WebSocket `message`:
 parse the JSON and drop keepalives (`parseWebSocketMessage`, which also runs `normalizeTaskData`); build
 the event context, which resolves the task, adjusts the payload, and maps the CC event to a `TaskEvent`

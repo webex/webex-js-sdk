@@ -308,7 +308,9 @@ export class ApiAIAssistant {
         )
       )
       .catch((error) => {
-        this.removeRtdRequest(options.rtdEventType, options.correlationId);
+        if (this.pendingRtdRequests.get(key) === request) {
+          this.removeRtdRequest(options.rtdEventType, options.correlationId);
+        }
         throw error;
       });
 

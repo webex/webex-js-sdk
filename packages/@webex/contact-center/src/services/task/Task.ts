@@ -651,6 +651,12 @@ export default abstract class Task extends EventEmitter implements ITask {
     }
   }
 
+  /** @internal Stops updates from the old station's task actor. */
+  public invalidateForRegionRecovery(): void {
+    // Keep the stopped actor available to commands already waiting for a reply.
+    this.stateMachineService?.stop();
+  }
+
   private static extractTaskDataFromEvent(event?: TaskEventPayload): TaskData | undefined {
     if (!event || typeof event !== 'object') {
       return undefined;

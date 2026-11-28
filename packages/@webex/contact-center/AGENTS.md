@@ -652,27 +652,9 @@ reference; a `.bind(this)` at registration creates a reference that `off()` cann
 listener-cleanup defects are recorded in
 [Pitfalls and constraints](src/docs/README.md#pitfalls-and-constraints).
 
-Internal services listen to each other: the constructor's `this.$webex.once(READY, ...)` block
-registers the `TaskManager` listeners (`incomingTaskListener()`), `register()` registers the WebSocket
-`message` listener and, through `setupEventListeners()`, the `connectionLost` listener, and
-`deregister()` removes them. Always clean up resources: every `on()` must have a corresponding `off()`
-in the deregister/cleanup path, and an open socket is closed only after checking `isSocketClosed`:
-
-```typescript
-public async deregister(): Promise<void> {
-  // Remove event listeners
-  this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
-  this.services.webSocketManager.off('message', this.handleWebsocketMessage);
-
-  // Close connections
-  if (!this.services.webSocketManager.isSocketClosed) {
-    this.services.webSocketManager.close(false, 'Unregistering the SDK');
-  }
-
-  // Clear state
-  this.agentConfig = null;
-}
-```
+`register()` attaches the task, WebSocket `message`, and `connectionLost` listeners. Pair each
+`on()` with an `off()` using the same callback. On deregistration, close both socket managers with
+`shouldReconnect: false` to end socket connections. See [Deregister](src/docs/README.md#deregister).
 
 Applications subscribe on the `cc` object or on task instances. Always use named callbacks so `.off()`
 can reference the same function:
@@ -744,6 +726,13 @@ await this.services.config.getAgentConfig(orgId, agentId);
 `TaskManager` and `MetricsManager` singletons, and the single-file services inside its
 `this.$webex.once(READY, ...)` block; non-AQM services are instantiated directly in `cc.ts`. Details:
 [`src/services/docs/README.md`](src/services/docs/README.md).
+
+`ConnectionService` owns subscribe/connect, recognized primary 409/U2C refresh, and ordinary socket
+reconnect timing. It reports `connectionLost`, `reconnectFailed`, and `subscriptionMismatch` events.
+ContactCenter handles region-switch messages, entitlement, switch deduplication, regional retry timing,
+and public recovery snapshots. Its recovery sequence awaits `connectionService.connect()`, restores
+the station using the existing login/relogin methods, then publishes the outcome and resumes RTD.
+Keep station retry budgets, deferred Available, and profile/device/task effects in `src/cc.ts`.
 
 Agent/contact services use factory pattern: an AQM service is a function of `AqmReqs` that returns
 `routing.req` (or `routing.reqEmpty`) request definitions. The real `stateChange` in

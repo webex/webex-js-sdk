@@ -8,6 +8,15 @@ import {
 import * as Err from './Err';
 import {Msg} from './GlobalTypes';
 
+/** Selected structured diagnostics; retained for module declaration consumers, not root-exported. */
+export type RecoveryFailure = {
+  status?: number;
+  reason?: string;
+  reasonCode?: number;
+  trackingId?: string;
+  id?: string;
+};
+
 export type Pending = {
   check: (msg: Msg) => boolean;
   handle: (msg: Msg) => void;

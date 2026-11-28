@@ -385,6 +385,24 @@ export default class WebCallingService extends EventEmitter {
     }
   }
 
+  /** Keep the existing Calling line during regional recovery and start a missing browser line. */
+  public ensureWebCallingLine(): void {
+    if (
+      !this.browserVoiceRequired ||
+      this.line ||
+      this.voiceConnectionState.lineStatus === VoiceLineStatus.CONNECTING
+    ) {
+      return;
+    }
+
+    this.registerWebCallingLine().catch(() => {
+      LoggerProxy.error('Failed to register browser Calling line during regional recovery', {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: METHODS.REGISTER_WEB_CALLING_LINE,
+      });
+    });
+  }
+
   /**
    * Registers the WebCalling line for receiving calls
    * Sets up event listeners for line events and initializes the calling client

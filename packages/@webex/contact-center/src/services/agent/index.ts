@@ -1,5 +1,5 @@
 import * as Err from '../core/Err';
-import {createErrDetailsObject as err} from '../core/Utils';
+import {createErrDetailsObject as err, normalizeRecoveryFailure} from '../core/Utils';
 import * as Agent from './types';
 import AqmReqs from '../core/aqm-reqs';
 import {HTTP_METHODS} from '../../types';
@@ -71,11 +71,15 @@ export default function routingAgent(routing: AqmReqs) {
       url: '/v1/agents/login',
       host: WCC_API_GATEWAY,
       data: p.data,
-      err: /* istanbul ignore next */ (e: any) => {
+      err: (e: any) => {
+        const failure = normalizeRecoveryFailure(e);
+
         return new Err.Details('Service.aqm.agent.stationLogin', {
-          status: e.response?.status ?? 0,
+          status: failure.status ?? 0,
           type: e.response?.data?.errorType,
-          trackingId: e.response?.headers?.trackingid?.split('_')[1],
+          trackingId: failure.trackingId ?? '',
+          ...(failure.reason ? {reason: failure.reason} : {}),
+          ...(failure.reasonCode !== undefined ? {reasonCode: failure.reasonCode} : {}),
         });
       },
       notifSuccess: {

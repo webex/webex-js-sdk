@@ -1,6 +1,8 @@
 import * as Err from './Err';
 import {LoginOption, WebexRequestPayload} from '../../types';
 import {Failure, AugmentedError} from './GlobalTypes';
+import type {RecoveryFailure} from './types';
+import type {RegionRecoveryErrorCode} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import WebexRequest from './WebexRequest';
 import {
@@ -13,12 +15,43 @@ import {
   Interaction,
   InteractionParticipant,
 } from '../task/types';
-import {PARTICIPANT_TYPES, STATE_CONSULT} from './constants';
-import {DialPlan} from '../config/types';
+import {
+  PARTICIPANT_TYPES,
+  REGION_RECOVERY_ERROR_CODES,
+  STATE_CONSULT,
+  SUBSCRIPTION_MISMATCH_REASONS,
+} from './constants';
+import {SYSTEM_EVENTS, type DialPlan, type SystemRegionSwitch} from '../config/types';
 
 /** Returns whether a value is a non-null object with string keys. */
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
+
+/** @internal Validates the fields of a system region-switch notification. */
+export const normalizeRegionSwitch = (
+  payload: Record<string, unknown>
+): SystemRegionSwitch | undefined => {
+  if (
+    typeof payload.orgId !== 'string' ||
+    !payload.orgId.trim() ||
+    typeof payload.trackingId !== 'string' ||
+    !payload.trackingId.trim()
+  )
+    return undefined;
+  const data = payload.data as SystemRegionSwitch['data'];
+
+  return {
+    type: SYSTEM_EVENTS.SYSTEM_REGION_SWITCH,
+    orgId: payload.orgId.trim(),
+    trackingId: payload.trackingId.trim(),
+    data: {
+      ...(data?.operation === 'FAILOVER' || data?.operation === 'FAILBACK'
+        ? {operation: data.operation}
+        : {}),
+      ...(data?.scope === 'REGION' || data?.scope === 'ORG' ? {scope: data.scope} : {}),
+    },
+  };
+};
 
 const MAX_SANITIZED_OBSERVABILITY_VALUE_LENGTH = 200;
 
@@ -39,6 +72,108 @@ export const sanitizeForObservability = (value: unknown): string => {
   return value.replace(/[\x00-\x1f\x7f]/g, '').slice(0, MAX_SANITIZED_OBSERVABILITY_VALUE_LENGTH);
 };
 
+/** Looks up a known HTTP header case-insensitively without copying any other headers. */
+const getHeader = (headers: Record<string, unknown>, name: string): unknown =>
+  Object.entries(headers ?? {}).find(([key]) => key.toLowerCase() === name)?.[1];
+
+/**
+ * Selects structured classification candidates without deciding recovery policy.
+ * No raw response, URL, cause, request options or Error message escapes this boundary.
+ */
+export const normalizeRecoveryFailure = (error: any): RecoveryFailure => {
+  const source = error ?? {};
+  const {response, details} = source;
+  const body = source.body ?? response?.body ?? response?.data ?? details?.msg;
+  const data = details?.data ?? body?.data ?? body?.error ?? body;
+  const status = [
+    source.statusCode,
+    source.status,
+    response?.statusCode,
+    response?.status,
+    details?.status,
+    source.data?.status,
+  ].find(Number.isFinite);
+  const reasonCode = [data?.reasonCode, details?.reasonCode, source.data?.reasonCode]
+    .map((code) => (typeof code === 'string' && /^\d+$/.test(code) ? Number(code) : code))
+    .find(Number.isInteger);
+  const reason = [data?.reason, details?.reason, source.data?.reason]
+    .find((value): value is string => typeof value === 'string' && !!value.trim())
+    ?.trim();
+  const trackingId = [
+    data?.trackingId,
+    details?.trackingId,
+    getHeader(source.headers, 'trackingid'),
+    getHeader(response?.headers, 'trackingid'),
+    source.data?.trackingId,
+  ]
+    .find((value): value is string => typeof value === 'string' && !!value.trim())
+    ?.trim();
+  const id = typeof source.id === 'string' ? source.id.trim() : undefined;
+
+  return {
+    ...(status !== undefined ? {status} : {}),
+    ...(reasonCode !== undefined ? {reasonCode} : {}),
+    ...(reason ? {reason} : {}),
+    ...(trackingId ? {trackingId: sanitizeForObservability(trackingId)} : {}),
+    ...(id ? {id: sanitizeForObservability(id)} : {}),
+  };
+};
+
+/** @internal */
+export function getStationRecoveryFailureCategory(
+  failure: RecoveryFailure
+): 'auth' | 'transient' | 'fallback' | 'exists' | 'other' {
+  if (failure.status === 401 || failure.status === 403) return 'auth';
+  const codes = {1037: 'transient', 1038: 'fallback', 1041: 'fallback', 1035: 'exists'} as const;
+  if (codes[failure.reasonCode]) return codes[failure.reasonCode];
+  if (['AGENT_NOT_FOUND', 'AGENT_DN_NOT_REGISTERED'].includes(failure.reason)) return 'fallback';
+  if (failure.reason === 'AGENT_SESSION_ALREADY_EXISTS') return 'exists';
+  if (failure.reason === 'INTERNAL_ERROR') return 'transient';
+  if (
+    ['Service.aqm.reqs.Timeout', 'Service.aqm.reqs.TimeoutEvent'].includes(failure.id) ||
+    [429, 502, 503].includes(failure.status)
+  )
+    return 'transient';
+
+  return 'other';
+}
+
+/** Recognizes only the exact region mismatch reasons on a subscribe HTTP 409. */
+export const getSubscriptionMismatchReason = (error: any): string | undefined => {
+  if (normalizeRecoveryFailure(error).status !== 409) {
+    return undefined;
+  }
+
+  const {response} = error;
+  const body = error.body ?? response?.body ?? response?.data;
+  const reason = [
+    getHeader(error.headers, 'x-wxcc-region-reason'),
+    getHeader(response?.headers, 'x-wxcc-region-reason'),
+    body?.reason,
+    body?.error?.reason,
+  ]
+    .find((value): value is string => typeof value === 'string' && !!value.trim())
+    ?.trim();
+
+  return SUBSCRIPTION_MISMATCH_REASONS.find((candidate) => candidate === reason);
+};
+
+/** Creates a lifecycle error with a reason usable by applications. */
+export const createRegionRecoveryError = (
+  reason: RegionRecoveryErrorCode
+): AugmentedError & {data: {reason: RegionRecoveryErrorCode}} => {
+  return Object.assign(new Error(reason), {data: {reason}});
+};
+
+/** Recognizes SDK lifecycle errors and narrows their required reason. */
+export const isRegionRecoveryError = (
+  error: unknown
+): error is AugmentedError & {data: {reason: RegionRecoveryErrorCode}} => {
+  const reason = (error as AugmentedError)?.data?.reason;
+
+  return error instanceof Error && Object.values(REGION_RECOVERY_ERROR_CODES).includes(reason);
+};
+
 /**
  * Extracts common error details from a Webex request payload.
  *
@@ -48,9 +183,12 @@ export const sanitizeForObservability = (value: unknown): string => {
  * @ignore
  */
 const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
+  const {status} = normalizeRecoveryFailure(errObj);
+
   return {
     trackingId: errObj?.headers?.trackingid || errObj?.headers?.TrackingID,
     msg: errObj?.body,
+    ...(status !== undefined ? {status} : {}),
   };
 };
 
@@ -195,6 +333,10 @@ export const getStationLoginErrorData = (failure: Failure, loginOption: LoginOpt
  * @ignore
  */
 export const getErrorDetails = (error: any, methodName: string, moduleName: string) => {
+  if (isRegionRecoveryError(error)) {
+    return {error, reason: error.data.reason};
+  }
+
   let errData = {message: '', fieldName: ''};
 
   const failure = error.details as Failure;

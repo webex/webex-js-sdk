@@ -185,10 +185,12 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
+      "characterization_baseline": "test/unit/spec/cc.ts",
       "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
-          "contact-center-sdk"
+          "contact-center-sdk",
+          "contact-center-region-recovery"
         ],
         "requires": [
           "webex-core-plugin-runtime",
@@ -379,6 +381,7 @@
       "path": "src/services/config",
       "canonical_spec": "src/services/config/docs/README.md",
       "coverage_status": "Partial",
+      "characterization_baseline": "test/unit/spec/services/config/index.ts",
       "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
@@ -436,7 +439,8 @@
           "webex-core-plugin-runtime",
           "wxcc-api-gateway",
           "wxcc-websocket-notifications",
-          "webex-internal-support"
+          "webex-internal-support",
+          "contact-center-region-recovery"
         ]
       },
       "section_profile": {
@@ -666,14 +670,14 @@
         "publication": "internal",
         "source_kind": "repository-path",
         "source": "src/services/core/aqm-reqs.ts",
-        "summary": "AqmReqs request/notification correlation, WebexRequest HTTP calls, WebSocketManager and ConnectionService socket lifecycle, and the shared error and utility helpers. Specified in src/services/core/docs/README.md."
+        "summary": "AqmReqs request/notification correlation, WebexRequest HTTP calls, WebSocketManager socket lifecycle, ConnectionService subscribe/connect, ordinary reconnect, recognized primary 409/U2C refresh, and shared error helpers. ContactCenter awaits transport and owns regional timing, station restoration, public snapshots, and recovery diagnostics; ConnectionService reports transport events without an application callback. Specified in src/services/core/docs/README.md."
       },
       "contact-center-metrics": {
         "kind": "event",
         "publication": "internal",
         "source_kind": "repository-path",
         "source": "src/metrics/constants.ts",
-        "summary": "METRIC_EVENT_NAMES and the MetricsManager behavioral, operational, and business event submission API. Specified in src/metrics/docs/README.md."
+        "summary": "METRIC_EVENT_NAMES and the MetricsManager behavioral, operational, and business event submission API. Specified in src/metrics/docs/README.md. Adds REGION_RECOVERY_SUCCESS ('Region Recovery Success') and REGION_RECOVERY_FAILED ('Region Recovery Failed') with elapsedMs measured for each attempt; the region pair never uses shared timers or duration_ms."
       },
       "contact-center-page-cache": {
         "kind": "sdk",
@@ -737,6 +741,13 @@
         "source_kind": "external",
         "source": "xstate 5.24.0 (npm dependency)",
         "summary": "Actor and state-machine runtime behind the task state machine."
+      },
+      "contact-center-region-recovery": {
+        "kind": "event",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "src/types.ts",
+        "summary": "The package root exports REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES and the RegionRecoveryState type. The region:stateChange event carries complete snapshots with optional homeRegion from organization settings; recovery errors expose their code in Error.data.reason. Entitlement comes from the existing organization desktop-login response. A recognized primary subscribe region mismatch refreshes U2C and retries subscribe once within the SDK. Station retries are bounded per recovery call and reuse accepted Profile details omitted by reload; Available restoration waits for required browser voice and clears its pending flag before dispatch. Specified in src/docs/README.md."
       }
     }
   },
