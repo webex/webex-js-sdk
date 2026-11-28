@@ -557,7 +557,7 @@ classDiagram
 `handleConnectionLost`, and the flags `shouldReconnect` and `isSocketClosed`; `register`, `connect`,
 and `webSocketOnCloseHandler` are private.
 
-- `initWebSocket({body, resource})`: `register()` → POST `resource` on `wcc-api-gateway` → validate and store the WebSocket URL; `connect()` → Create WebSocket → Setup handlers (onopen, onmessage, onclose, onerror)
+- `initWebSocket({body, resource})`: `register()` → POST `resource` on `wcc-api-gateway` → validate and store the WebSocket URL; `connect()` → Create WebSocket → `setupWebSocketHandlers(reject)` attaches the existing onopen, onmessage, onclose, and onerror handlers
 - `websocket.onopen`: Send initial keepalive ping; Wire `keepaliveWorker.onmessage` handler; **Start keepalive worker** via `postMessage({type: 'start', intervalDuration: KEEPALIVE_WORKER_INTERVAL, isSocketClosed, closeSocketTimeout: CLOSE_SOCKET_TIMEOUT})`
 - `websocket.onmessage`: emits `message` with the raw string, resolves the pending welcome promise on `Welcome`, and closes without reconnect on `AGENT_MULTI_LOGIN`
 - `close(shouldReconnect, reason = 'Unknown')`: acts only while the socket is open and `shouldReconnect` is still true; stores the new `shouldReconnect`, closes the socket, and terminates the worker
