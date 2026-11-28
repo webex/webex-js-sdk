@@ -524,6 +524,7 @@ describe('TaskManager', () => {
       webSocketManagerMock as any,
       rtdWebSocketManagerMock as any
     );
+    taskManager.registerIncomingCallEvent();
     taskManager.taskCollection[taskId] = createStateMachineTask(taskDataMock);
     (taskManager as any).setupTaskListeners?.(taskManager.taskCollection[taskId]);
     taskManager.call = mockCall;
@@ -2847,7 +2848,6 @@ describe('TaskManager', () => {
     expect(taskManager.getAllTasks()).toEqual({});
     expect(webCallingService.cleanUpCall).toHaveBeenCalledTimes(1);
 
-    taskManager.registerIncomingCallEvent();
     expect(webCallingService.listenerCount(LINE_EVENTS.INCOMING_CALL)).toBe(1);
     expect(webSocketManagerMock.listenerCount('message')).toBe(1);
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));

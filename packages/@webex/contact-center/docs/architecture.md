@@ -191,6 +191,8 @@ No OpenAPI/AsyncAPI/proto schema was found in scope; exact SDK and event contrac
 
 - ContactCenter retains agent profile, task collections, WebSocket/reconnect flags, metrics queues/timers, page-cache entries, and task actors in memory.
 - Remote systems remain authoritative for agent/task/configuration records.
+- Task forwarding and the incoming Calling hook follow SDK registration, with cleanup on failure,
+  replacement, and teardown.
 
 | State or slice | Owner | Transition triggers | Persistence or reset boundary |
 | -------------- | ----- | ------------------- | ----------------------------- |

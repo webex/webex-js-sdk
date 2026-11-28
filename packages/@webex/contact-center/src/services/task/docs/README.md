@@ -503,6 +503,11 @@ station is ready. ContactCenter clears pending AI summaries when it pauses the o
 If microphone permission is granted after the old Task is retired, WebRTC releases the granted
 tracks and rejects the pending `accept()` with `STALE_TASK` before answering a call.
 
+The incoming Calling hook follows SDK registration: ContactCenter calls `registerIncomingCallEvent()`
+after accepting the profile and removes it when registration fails, is replaced, or ends. TaskManager
+construction installs its primary-message pipeline once; regional Task retirement reuses those
+listeners and does not register another incoming Calling hook.
+
 TaskManager uses a staged pipeline in `registerTaskListeners()`. For each primary WebSocket `message`:
 parse the JSON and drop keepalives (`parseWebSocketMessage`, which also runs `normalizeTaskData`); build
 the event context, which resolves the task, adjusts the payload, and maps the CC event to a `TaskEvent`

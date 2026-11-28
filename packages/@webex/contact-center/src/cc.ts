@@ -394,7 +394,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.services.connectionService.stop();
     this.pauseRtd('registrationEnded');
     this.services.webSocketManager.close(false, 'registrationEnded');
-    this.taskManager.unregisterIncomingCallEvent();
+    this.removeEventListeners();
     this.taskManager.invalidateRegionalTasks();
   }
 
@@ -670,7 +670,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.services.rtdWebSocketManager
       );
       this.taskManager.setAnswerCallOnWebexService(this.answerCallOnWebexService);
-      this.incomingTaskListener();
 
       // Initialize API instances
       // will have future function for indivdual fetch etc so better be in an object
@@ -912,14 +911,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private incomingTaskListener() {
-    this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
-    this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
-    this.taskManager.off(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
-    this.taskManager.off(TASK_EVENTS.TASK_MERGED, this.handleTaskMerged);
-    this.taskManager.off(
-      TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
-      this.handleCampaignPreviewReservation
-    );
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
     this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
     this.taskManager.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
@@ -972,7 +963,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.pauseRtd();
     this.services.connectionService.stop();
     if (this.agentConfig?.agentId) {
-      this.taskManager.unregisterIncomingCallEvent();
+      this.removeEventListeners();
       this.taskManager.invalidateRegionalTasks();
     }
     this.clearStationProfile();
@@ -988,9 +979,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
       ]);
       this.setupEventListeners();
-      this.incomingTaskListener();
-      this.services.webSocketManager.off('message', this.handleWebsocketMessage);
-      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       const resp = await this.connectWebsocket();
       // Ensure 'dn' is always populated from 'defaultDn'
@@ -1019,6 +1007,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.services.connectionService.stop();
       this.services.webSocketManager.close(false, 'registrationFailed');
       this.pauseRtd();
+      this.removeEventListeners();
       if (this.regionState?.status === 'recovering') this.handleReconnectFailed(error);
       this.multiRegionSettings = undefined;
       if (isRegionRecoveryError(error)) throw error;
@@ -1084,20 +1073,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       ]);
 
       this.taskManager.clearAISummaryState();
-      this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
-      this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
-      this.taskManager.off(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
-      this.taskManager.off(
-        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
-        this.handleCampaignPreviewReservation
-      );
-      this.taskManager.unregisterIncomingCallEvent();
-
-      this.services.webSocketManager.off('message', this.handleWebsocketMessage);
-      this.services.rtdWebSocketManager.off('message', this.handleRTDWebsocketMessage);
-      this.services.connectionService.off('connectionLost', this.handleConnectionLost);
-      this.services.connectionService.off('subscriptionMismatch', this.handleSubscriptionMismatch);
-      this.services.connectionService.off('reconnectFailed', this.handleReconnectFailed);
 
       const {publishError: wxAppPublishError} = await this.teardownWxAppLocalState({
         clearInitFlag: true,
@@ -2574,12 +2549,27 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private setupEventListeners() {
-    this.services.connectionService.off('connectionLost', this.handleConnectionLost);
     this.services.connectionService.on('connectionLost', this.handleConnectionLost);
-    this.services.connectionService.off('subscriptionMismatch', this.handleSubscriptionMismatch);
     this.services.connectionService.on('subscriptionMismatch', this.handleSubscriptionMismatch);
-    this.services.connectionService.off('reconnectFailed', this.handleReconnectFailed);
     this.services.connectionService.on('reconnectFailed', this.handleReconnectFailed);
+    this.services.webSocketManager.on('message', this.handleWebsocketMessage);
+    this.incomingTaskListener();
+  }
+
+  private removeEventListeners(): void {
+    this.services.connectionService.off('connectionLost', this.handleConnectionLost);
+    this.services.connectionService.off('subscriptionMismatch', this.handleSubscriptionMismatch);
+    this.services.connectionService.off('reconnectFailed', this.handleReconnectFailed);
+    this.services.webSocketManager.off('message', this.handleWebsocketMessage);
+    this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+    this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+    this.taskManager.off(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
+    this.taskManager.off(TASK_EVENTS.TASK_MERGED, this.handleTaskMerged);
+    this.taskManager.off(
+      TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+      this.handleCampaignPreviewReservation
+    );
+    this.taskManager.unregisterIncomingCallEvent();
   }
 
   private prepareRegionRecovery(): void {

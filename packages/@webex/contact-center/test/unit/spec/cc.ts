@@ -1,5 +1,6 @@
 import 'jsdom-global/register';
 import EventEmitter from 'events';
+import {LINE_EVENTS} from '@webex/calling';
 import {
   AIAssistantEventName,
   AIAssistantEventType,
@@ -706,7 +707,6 @@ describe('webex.cc', () => {
       expect(setupEventListenersSpy).toHaveBeenCalled();
       expect(webex.cc.services.connectionService.connect).toHaveBeenCalledWith();
 
-      // SPARK-626777 tracks moving listener cleanup into the future de-register API.
       expect(mockTaskManager.on).toHaveBeenCalledWith(
         TASK_EVENTS.TASK_INCOMING,
         expect.any(Function)
@@ -1934,7 +1934,6 @@ describe('webex.cc', () => {
 
   describe('stationLogin', () => {
     it('should login successfully with LoginOption.BROWSER and webrtc enabled', async () => {
-      const mockTask = {};
       const options = {
         teamId: 'teamId',
         loginOption: LoginOption.BROWSER,
@@ -2023,17 +2022,7 @@ describe('webex.cc', () => {
       expect(result).toEqual(responseMock);
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.BROWSER);
 
-      const onSpy = jest.spyOn(mockTaskManager, 'on');
-      const emitSpy = jest.spyOn(webex.cc, 'trigger');
       const ccEmitSpy = jest.spyOn(webex.cc, 'emit');
-      const incomingCallCb = onSpy.mock.calls[0][1];
-
-      expect(onSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, incomingCallCb);
-
-      incomingCallCb(mockTask);
-
-      expect(emitSpy).toHaveBeenCalledTimes(1);
-      expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, mockTask);
       // Verify websocket message handling
       const messageCallback = webex.cc['handleWebsocketMessage'];
       const agentStateChangeEventData = {
@@ -6545,6 +6534,58 @@ describe('regional recovery wiring', () => {
       jest.useRealTimers();
     }
   };
+
+  it('owns listeners across registration failure, replacement, and deregistration', async () => {
+    await withRouting(async ({cc, currentRouting, setSubscribeFailure}) => {
+      const taskEvents = [
+        TASK_EVENTS.TASK_INCOMING,
+        TASK_EVENTS.TASK_HYDRATE,
+        TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
+        TASK_EVENTS.TASK_MERGED,
+        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+      ];
+      const received: string[] = [];
+      taskEvents.forEach((event) => cc.on(event, () => received.push(event)));
+      const emitTasks = () => taskEvents.forEach((event) => cc.taskManager.emit(event, {}));
+      const incomingCalls = () => cc.webCallingService.listenerCount(LINE_EVENTS.INCOMING_CALL);
+      const register = async () => {
+        const registration = cc.register();
+        await flush();
+        currentRouting().welcome();
+        await registration;
+        await flush();
+        expect(incomingCalls()).toBe(1);
+      };
+
+      expect(incomingCalls()).toBe(0);
+      await expect(cc.register()).rejects.toMatchObject({statusCode: 503});
+      emitTasks();
+      expect(received).toEqual([]);
+      expect(incomingCalls()).toBe(0);
+
+      await cc.deregister();
+      emitTasks();
+      expect(received).toEqual([]);
+
+      setSubscribeFailure();
+      await register();
+      emitTasks();
+      expect(received).toEqual(taskEvents);
+
+      await register();
+      emitTasks();
+      expect(received).toEqual([...taskEvents, ...taskEvents]);
+
+      await cc.deregister();
+      emitTasks();
+      expect(received).toEqual([...taskEvents, ...taskEvents]);
+      expect(incomingCalls()).toBe(0);
+
+      await register();
+      emitTasks();
+      expect(received).toEqual([...taskEvents, ...taskEvents, ...taskEvents]);
+    }, {autoRegister: false, initialSubscribeFailure: {statusCode: 503}});
+  });
 
   it.each([
     {title: 'an extension station after page refresh', browserVoice: false},

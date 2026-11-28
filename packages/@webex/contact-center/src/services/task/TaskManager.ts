@@ -111,7 +111,6 @@ export default class TaskManager extends EventEmitter {
     this.taskCollection = {};
     this.webRtcEnabled = false;
     this.registerTaskListeners();
-    this.registerIncomingCallEvent();
   }
 
   /** Retire the previous station's tasks before the new socket delivers task events. */
@@ -286,8 +285,6 @@ export default class TaskManager extends EventEmitter {
   };
 
   public registerIncomingCallEvent() {
-    const listeners = this.webCallingService.listeners(LINE_EVENTS.INCOMING_CALL);
-    if (listeners.includes(this.handleIncomingWebCall)) return;
     this.webCallingService.on(LINE_EVENTS.INCOMING_CALL, this.handleIncomingWebCall);
   }
 
