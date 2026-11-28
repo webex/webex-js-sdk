@@ -297,17 +297,20 @@ sequenceDiagram
 sequenceDiagram
   participant App
   participant CC as ContactCenter
+  participant CS as ConnectionService
   participant WS as Primary WebSocketManager
   participant Cfg as AgentConfigService
   participant Agent as Services.agent
   participant Metrics
   App->>CC: register()
-  CC->>CC: new registration generation; clear idle-code cache
+  CC->>CC: terminateRegistration(): stop prior transports/listeners and clear registration state
   CC->>Metrics: time register success/failure
   CC->>CC: setupEventListeners(); listen for WS messages
-  CC->>WS: initWebSocket({body, resource: SUBSCRIBE_API})
+  CC->>CS: connect()
+  CS->>WS: initWebSocket({body, resource: SUBSCRIBE_API})
   WS->>WS: Subscribe and connect the returned URL
-  WS-->>CC: Welcome data containing agentId
+  WS-->>CS: Welcome data containing agentId
+  CS-->>CC: Welcome data containing agentId
   CC->>Cfg: getAgentConfig(orgId, agentId)
   alt profile fetched
     Cfg-->>CC: Profile with optional internal recovery settings

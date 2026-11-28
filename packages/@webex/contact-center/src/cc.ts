@@ -362,7 +362,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /** Stops transports and clears registration state. */
   private terminateRegistration(): void {
     this.cancelAutoAvailable();
-    this.resetRegionRecovery();
+    this.clearRegionRecovery();
+    this.lastSwitchTrackingId = undefined;
+    this.multiRegionSettings = undefined;
+    this.regionState = undefined;
     this.wellnessRegistrationGeneration += 1;
     this.clearStationProfile();
     this.wellbeingBreakIdleCode = undefined;
@@ -370,7 +373,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.pauseRtd('registrationEnded');
     this.services.webSocketManager.close(false, 'registrationEnded');
     this.removeEventListeners();
-    this.taskManager.invalidateRegionalTasks();
+    if (this.agentConfig?.agentId) this.taskManager.invalidateRegionalTasks();
   }
 
   private async stationLoginInternal(
@@ -452,18 +455,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.agentConfig.defaultDn = dialNumber;
       this.agentConfig.dn = dialNumber;
     }
-  }
-
-  private handleRemoteStationLogout(event: Record<string, any>): void {
-    const {data} = event;
-    if (
-      data?.type === CC_EVENTS.AGENT_LOGOUT_SUCCESS &&
-      this.currentAgentSessionId &&
-      data.agentSessionId === this.currentAgentSessionId &&
-      data.orgId === this.agentConfig?.orgId &&
-      data.agentId === this.agentConfig?.agentId
-    )
-      this.clearStationSession();
   }
 
   private clearStationSession(): void {
@@ -833,41 +824,39 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
      * Extend this condition when additional AI RTD features are introduced.
      * Wellness break notifications also arrive on this websocket.
      */
+    if (!this.rtdPaused) return;
     if (
-      !this.rtdPaused ||
-      !(
-        this.agentConfig?.aiFeature?.realtimeTranscripts?.enable ||
-        this.agentConfig?.aiFeature?.suggestedResponses?.enable ||
-        this.agentConfig?.aiFeature?.generatedSummaries?.wrapUpSummariesEnabled === true ||
-        this.agentConfig?.aiFeature?.generatedSummaries?.consultTransferSummariesEnabled === true ||
-        this.agentConfig?.isWellnessBreakEnabled
-      )
-    )
-      return;
-    this.rtdPaused = false;
-    LoggerProxy.info('Connecting to RTD websocket', {
-      module: CC_FILE,
-      method: METHODS.CONNECT_WEBSOCKET,
-    });
-    const manager = this.services.rtdWebSocketManager;
-    manager.on('message', this.handleRTDWebsocketMessage);
-    manager
-      .initWebSocket({
-        body: this.getConnectionConfig(),
-        resource: RTD_SUBSCRIBE_API,
-      })
-      .then(() => {
-        LoggerProxy.log('RTD websocket connected successfully', {
-          module: CC_FILE,
-          method: METHODS.CONNECT_WEBSOCKET,
-        });
-      })
-      .catch((error) => {
-        LoggerProxy.error(`Error connecting to RTD websocket ${error}`, {
-          module: CC_FILE,
-          method: METHODS.CONNECT_WEBSOCKET,
-        });
+      this.agentConfig.aiFeature?.realtimeTranscripts?.enable ||
+      this.agentConfig.aiFeature?.suggestedResponses?.enable ||
+      this.agentConfig.aiFeature?.generatedSummaries?.wrapUpSummariesEnabled === true ||
+      this.agentConfig.aiFeature?.generatedSummaries?.consultTransferSummariesEnabled === true ||
+      this.agentConfig.isWellnessBreakEnabled
+    ) {
+      this.rtdPaused = false;
+      LoggerProxy.info('Connecting to RTD websocket', {
+        module: CC_FILE,
+        method: METHODS.CONNECT_WEBSOCKET,
       });
+
+      this.services.rtdWebSocketManager.on('message', this.handleRTDWebsocketMessage);
+      this.services.rtdWebSocketManager
+        .initWebSocket({
+          body: this.getConnectionConfig(),
+          resource: RTD_SUBSCRIBE_API,
+        })
+        .then(() => {
+          LoggerProxy.log('RTD websocket connected successfully', {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
+          });
+        })
+        .catch((error) => {
+          LoggerProxy.error(`Error connecting to RTD websocket ${error}`, {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
+          });
+        });
+    }
   }
 
   private handleRTDWebsocketMessage = (event: string) => {
@@ -938,17 +927,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async register(): Promise<Profile> {
-    this.cancelAutoAvailable();
-    this.resetRegionRecovery();
-    this.pauseRtd();
-    this.services.connectionService.stop();
-    if (this.agentConfig?.agentId) {
-      this.removeEventListeners();
-      this.taskManager.invalidateRegionalTasks();
-    }
-    this.clearStationProfile();
-    this.wellnessRegistrationGeneration += 1;
-    this.wellbeingBreakIdleCode = undefined;
+    this.terminateRegistration();
     LoggerProxy.log('Starting CC SDK registration', {
       module: CC_FILE,
       method: METHODS.REGISTER,
@@ -959,6 +938,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
       ]);
       this.setupEventListeners();
+      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       const resp = await this.connectWebsocket();
       // Ensure 'dn' is always populated from 'defaultDn'
@@ -1742,7 +1722,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return;
     }
     if (eventData.type === CC_EVENTS.AGENT_MULTI_LOGIN) this.terminateRegistration();
-    this.handleRemoteStationLogout(eventData);
+    if (
+      eventData.data?.type === CC_EVENTS.AGENT_LOGOUT_SUCCESS &&
+      this.currentAgentSessionId &&
+      eventData.data.agentSessionId === this.currentAgentSessionId &&
+      eventData.data.orgId === this.agentConfig?.orgId &&
+      eventData.data.agentId === this.agentConfig?.agentId
+    )
+      this.clearStationSession();
     // Re-emit all the events related to agent except keep-alives. Only event names present in
     // the typed CC_EVENTS allow-list are emitted; unknown/server-injected types are ignored.
     if (
@@ -2521,7 +2508,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.services.connectionService.on('connectionLost', this.handleConnectionLost);
     this.services.connectionService.on('subscriptionMismatch', this.handleSubscriptionMismatch);
     this.services.connectionService.on('reconnectFailed', this.handleReconnectFailed);
-    this.services.webSocketManager.on('message', this.handleWebsocketMessage);
     this.incomingTaskListener();
   }
 
@@ -2555,31 +2541,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private handleReconnectFailed = (error: unknown): void => {
     const failure = normalizeRecoveryFailure(error);
     if (failure.reason === 'RECOVERY_INTERRUPTED') return;
-    if (getSubscriptionMismatchReason(error)) this.finishRegionRecovery('region-mismatch');
-    else if (failure.status === 401 || failure.status === 403)
-      this.finishRegionRecovery('authentication-failed');
-    else if (this.regionState?.status === 'recovering')
-      this.finishRegionRecovery('recovery-failed');
-  };
-
-  private clearRegionRecovery(): void {
-    clearTimeout(this.regionRecoveryTimer);
-    this.regionRecoveryTimer = undefined;
-  }
-
-  private resetRegionRecovery(): void {
-    this.clearRegionRecovery();
-    this.lastSwitchTrackingId = undefined;
-    this.multiRegionSettings = undefined;
-    this.regionState = undefined;
-  }
-
-  private finishRegionRecovery(reason: RegionRecoveryState['reason']): void {
+    let reason: RegionRecoveryState['reason'];
+    if (getSubscriptionMismatchReason(error)) reason = 'region-mismatch';
+    else if (failure.status === 401 || failure.status === 403) reason = 'authentication-failed';
+    else if (this.regionState?.status === 'recovering') reason = 'recovery-failed';
+    else return;
     this.clearRegionRecovery();
     this.services.connectionService.stop();
     this.services.webSocketManager.close(false, 'recoveryFailed');
     this.prepareRegionRecovery();
     this.publishRegionState({status: 'unavailable', reason, autoAvailable: undefined});
+  };
+
+  private clearRegionRecovery(): void {
+    clearTimeout(this.regionRecoveryTimer);
+    this.regionRecoveryTimer = undefined;
   }
 
   private publishRegionState(state: RegionRecoveryState): void {
