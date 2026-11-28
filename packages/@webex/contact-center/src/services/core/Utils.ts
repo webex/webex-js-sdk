@@ -38,17 +38,17 @@ export const normalizeRegionSwitch = (
     !payload.trackingId.trim()
   )
     return undefined;
-  const data = isRecord(payload.data) ? payload.data : {};
+  const data = payload.data as SystemRegionSwitch['data'];
 
   return {
     type: SYSTEM_EVENTS.SYSTEM_REGION_SWITCH,
     orgId: payload.orgId.trim(),
     trackingId: payload.trackingId.trim(),
     data: {
-      ...(data.operation === 'FAILOVER' || data.operation === 'FAILBACK'
+      ...(data?.operation === 'FAILOVER' || data?.operation === 'FAILBACK'
         ? {operation: data.operation}
         : {}),
-      ...(data.scope === 'REGION' || data.scope === 'ORG' ? {scope: data.scope} : {}),
+      ...(data?.scope === 'REGION' || data?.scope === 'ORG' ? {scope: data.scope} : {}),
     },
   };
 };
@@ -79,66 +79,41 @@ export const normalizeRecoveryDiagnosticId = (value: unknown): string | undefine
   return /^[A-Za-z0-9_.:-]{1,200}$/.test(id) ? id : undefined;
 };
 
-/** Retains structured objects only, never arrays or speculative nested envelopes. */
-const asRecord = (value: unknown): Record<string, unknown> | undefined =>
-  isRecord(value) && !Array.isArray(value) ? value : undefined;
-
 /** Reads the first nonblank string without interpreting backend reason text. */
 const firstNonblankString = (...values: unknown[]): string | undefined =>
   values.find((value): value is string => typeof value === 'string' && !!value.trim())?.trim();
 
-/** Reads only numeric HTTP status fields; Error messages are never status evidence. */
-const firstFiniteNumber = (...values: unknown[]): number | undefined =>
-  values.find((value): value is number => typeof value === 'number' && Number.isFinite(value));
-
-/** Accepts integer reason codes and digit-only wire encodings of them. */
-const normalizeReasonCode = (value: unknown): number | undefined => {
-  const numeric = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
-
-  return typeof numeric === 'number' && Number.isInteger(numeric) ? numeric : undefined;
-};
-
 /** Looks up a known HTTP header case-insensitively without copying any other headers. */
-const getHeader = (headers: unknown, name: string): unknown => {
-  const record = asRecord(headers);
-  const key = record && Object.keys(record).find((candidate) => candidate.toLowerCase() === name);
-
-  return key ? record[key] : undefined;
-};
+const getHeader = (headers: Record<string, unknown>, name: string): unknown =>
+  Object.entries(headers ?? {}).find(([key]) => key.toLowerCase() === name)?.[1];
 
 /**
  * Selects structured classification candidates without deciding recovery policy.
  * No raw response, URL, cause, request options or Error message escapes this boundary.
  */
-export const normalizeRecoveryFailure = (error: unknown): RecoveryFailure => {
-  const source = asRecord(error) ?? {};
-  const response = asRecord(source.response);
-  const details = asRecord(source.details);
-  const safeData = asRecord(source.data);
-  const body =
-    asRecord(source.body) ??
-    asRecord(response?.body) ??
-    asRecord(response?.data) ??
-    asRecord(details?.msg);
-  const data = asRecord(details?.data) ?? asRecord(body?.data) ?? asRecord(body?.error) ?? body;
-  const status = firstFiniteNumber(
+export const normalizeRecoveryFailure = (error: any): RecoveryFailure => {
+  const source = error ?? {};
+  const {response, details} = source;
+  const body = source.body ?? response?.body ?? response?.data ?? details?.msg;
+  const data = details?.data ?? body?.data ?? body?.error ?? body;
+  const status = [
     source.statusCode,
     source.status,
     response?.statusCode,
     response?.status,
     details?.status,
-    safeData?.status
-  );
-  const reasonCode = [data?.reasonCode, details?.reasonCode, safeData?.reasonCode]
-    .map(normalizeReasonCode)
-    .find((value) => value !== undefined);
-  const reason = firstNonblankString(data?.reason, details?.reason, safeData?.reason);
+    source.data?.status,
+  ].find(Number.isFinite);
+  const reasonCode = [data?.reasonCode, details?.reasonCode, source.data?.reasonCode]
+    .map((code) => (typeof code === 'string' && /^\d+$/.test(code) ? Number(code) : code))
+    .find(Number.isInteger);
+  const reason = firstNonblankString(data?.reason, details?.reason, source.data?.reason);
   const trackingId = firstNonblankString(
     data?.trackingId,
     details?.trackingId,
     getHeader(source.headers, 'trackingid'),
     getHeader(response?.headers, 'trackingid'),
-    safeData?.trackingId
+    source.data?.trackingId
   );
   const id = firstNonblankString(source.id);
 
@@ -171,19 +146,18 @@ export function getStationRecoveryFailureCategory(
 }
 
 /** Recognizes only the exact region mismatch reasons on a subscribe HTTP 409. */
-export const getSubscriptionMismatchReason = (error: unknown): string | undefined => {
-  const source = asRecord(error);
-  if (!source || normalizeRecoveryFailure(source).status !== 409) {
+export const getSubscriptionMismatchReason = (error: any): string | undefined => {
+  if (normalizeRecoveryFailure(error).status !== 409) {
     return undefined;
   }
 
-  const response = asRecord(source.response);
-  const body = asRecord(source.body) ?? asRecord(response?.body) ?? asRecord(response?.data);
+  const {response} = error;
+  const body = error.body ?? response?.body ?? response?.data;
   const reason = firstNonblankString(
-    getHeader(source.headers, 'x-wxcc-region-reason'),
+    getHeader(error.headers, 'x-wxcc-region-reason'),
     getHeader(response?.headers, 'x-wxcc-region-reason'),
     body?.reason,
-    asRecord(body?.error)?.reason
+    body?.error?.reason
   );
 
   return SUBSCRIPTION_MISMATCH_REASONS.find((candidate) => candidate === reason);
@@ -200,10 +174,9 @@ export const createRegionRecoveryError = (
 export const isRegionRecoveryError = (
   error: unknown
 ): error is AugmentedError & {data: {reason: RegionRecoveryErrorCode}} => {
-  if (!(error instanceof Error) || !('data' in error) || !isRecord(error.data)) return false;
-  const {reason} = error.data;
+  const reason = (error as AugmentedError)?.data?.reason;
 
-  return Object.values(REGION_RECOVERY_ERROR_CODES).some((code) => code === reason);
+  return error instanceof Error && Object.values(REGION_RECOVERY_ERROR_CODES).includes(reason);
 };
 
 /**

@@ -670,6 +670,10 @@ Source: [`keepalive.worker.js`](../websocket/keepalive.worker.js) — a Web Work
 
 Generic HTTP errors retain the status, tracking ID, and original body in `details.msg`. Recovery
 reads the backend reason and reason code from that body without copying them into the wrapper.
+`normalizeRecoveryFailure` adapts Webex HTTP, Axios, and AQM errors into `RecoveryFailure` at this
+boundary. It validates numeric status and reason-code values once; ContactCenter uses the typed
+result without repeating those checks. Region-switch identity and recognized subscribe-409 reasons
+are checked where the remote message or response enters the recovery flow.
 
 `Failure` in [GlobalTypes.ts](../GlobalTypes.ts) is a specific `Msg<T>` for failure responses whose
 `data` holds `agentId`, `trackingId`, `reasonCode`, `orgId`, and `reason`; `AugmentedError` is an

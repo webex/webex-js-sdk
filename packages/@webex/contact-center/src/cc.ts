@@ -443,7 +443,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           }
         );
       }
-    } else if (Object.values(LoginOption).includes(loginOption)) {
+    } else if (loginOption) {
       await this.handleDeviceType(loginOption, profile.dn, restoringRegion);
     }
     await this.ensureWxAppPostStationLogin();
@@ -2606,8 +2606,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       outcome,
       attempt,
       elapsedMs,
-      ...(Number.isFinite(failure?.status) ? {status: failure.status} : {}),
-      ...(Number.isFinite(failure?.reasonCode) ? {reasonCode: failure.reasonCode} : {}),
+      ...(failure?.status !== undefined ? {status: failure.status} : {}),
+      ...(failure?.reasonCode !== undefined ? {reasonCode: failure.reasonCode} : {}),
       ...(id ? {id} : {}),
       ...(trackingId ? {trackingId} : {}),
     };
@@ -2794,9 +2794,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const profile = this.agentConfig;
     const canRestoreStation = Boolean(
       profile?.isAgentLoggedIn &&
-        profile.currentTeamId?.trim() &&
-        Object.values(LoginOption).includes(profile.deviceType) &&
-        (profile.deviceType === LoginOption.BROWSER || profile.dn?.trim())
+        profile.currentTeamId &&
+        profile.deviceType &&
+        (profile.deviceType === LoginOption.BROWSER || profile.dn)
     );
     let stage: 'reload' | 'fallback' | 'post1035' = 'reload';
     let reloads = 0;
