@@ -6783,6 +6783,46 @@ describe('regional recovery wiring', () => {
     });
   });
 
+  it.each([LoginOption.EXTENSION, LoginOption.BROWSER])(
+    'reuses the accepted %s profile when reload omits station details',
+    async (loginOption) => {
+      await withRouting(async ({cc, requests, currentRouting, connectBackup, startSwitch, advanceSwitch, login}) => {
+        await login(loginOption);
+        const dialNumber = loginOption === LoginOption.BROWSER ? 'webrtc-agent' : '1234';
+        const backup = await connectBackup();
+        backup.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS, {
+          teamId: undefined,
+          deviceType: undefined,
+          dn: undefined,
+          dialNumber: undefined,
+          isExtension: undefined,
+        }));
+        await flush();
+        expect(cc.agentConfig).toMatchObject({
+          currentTeamId: 'team', deviceType: loginOption, dn: dialNumber,
+        });
+
+        startSwitch('FAILBACK');
+        await advanceSwitch();
+        const restored = currentRouting();
+        restored.welcome();
+        await flush();
+        restored.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_FAILED, {reasonCode: 1038}));
+        await flush();
+        expect(requests.at(-1)).toMatchObject({
+          resource: '/v1/agents/login',
+          body: {teamId: 'team', deviceType: loginOption, dialNumber},
+        });
+        restored.message({
+          ...agentFrame(CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS),
+          type: CC_EVENTS.AGENT_STATION_LOGIN,
+        });
+        await flush();
+        expect(cc.services.connectionService.regionState).toMatchObject({status: 'ready'});
+      });
+    }
+  );
+
   it('resumes ordinary reconnect after regional station recovery completes', async () => {
     await withRouting(async ({cc, requests, currentRouting, connectBackup, login}) => {
       await login();

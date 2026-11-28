@@ -747,7 +747,7 @@
         "publication": "published",
         "source_kind": "repository-path",
         "source": "src/types.ts",
-        "summary": "The package root exports REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES and the RegionRecoveryState type. The region:stateChange event carries complete snapshots and recovery errors expose their code in Error.data.reason. Entitlement comes from the existing organization desktop-login response. A recognized primary subscribe region mismatch refreshes U2C and retries subscribe once within the SDK. Station retries are bounded per recovery call; Available restoration waits for required browser voice and clears its pending flag before dispatch. Specified in src/docs/README.md."
+        "summary": "The package root exports REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES and the RegionRecoveryState type. The region:stateChange event carries complete snapshots and recovery errors expose their code in Error.data.reason. Entitlement comes from the existing organization desktop-login response. A recognized primary subscribe region mismatch refreshes U2C and retries subscribe once within the SDK. Station retries are bounded per recovery call and reuse accepted Profile details omitted by reload; Available restoration waits for required browser voice and clears its pending flag before dispatch. Specified in src/docs/README.md."
       }
     }
   },

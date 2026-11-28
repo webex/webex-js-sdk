@@ -194,7 +194,7 @@ No OpenAPI/AsyncAPI/proto schema was found in scope; exact SDK and event contrac
 
 | State or slice | Owner | Transition triggers | Persistence or reset boundary |
 | -------------- | ----- | ------------------- | ----------------------------- |
-| Agent profile (`agentConfig`) and active station session | `ContactCenter` (`src/cc.ts`) | `register()`, station login, logout, silent relogin | Memory; cleared by `deregister()` |
+| Agent profile (`agentConfig`) and active station session | `ContactCenter` (`src/cc.ts`) | `register()`, station login, logout, silent relogin | Memory; accepted station fields supply fallback login when omitted by reload; cleared by `deregister()` |
 | Task collection | TaskManager (`src/services/task/TaskManager.ts`) | Contact notifications, hydration, task removal | Memory; one XState actor per task |
 | Regional recovery, entitlement, and last published station snapshot | ConnectionService (`src/services/core/websocket/connection-service.ts`) | ContactCenter supplies entitlement from the organization desktop-login aggregate. Switch, restore, and terminal outcomes update the snapshot; ContactCenter forwards it publicly. | Each registration starts with unknown eligibility and clears recovery state on teardown. |
 | Voice connection state | WebCallingService (`src/services/WebCallingService.ts`) | Line registration and Mobius socket events | Memory; reset on line deregistration |

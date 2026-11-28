@@ -363,6 +363,8 @@ when ConnectionService reports a region change. Hosts pause new station actions 
 ContactCenter owns station reload retries, fallback login, and existing-session recovery. Each
 station-recovery call has its own bounded retry budget, as in Desktop. Public station
 login and recovery fallback share the private `loginStation()` flow and `applyStationSession()`.
+The accepted Profile holds the station team, device type, and dial number; reload updates returned
+values and retains omitted station details for a later fallback login.
 ConnectionService awaits `recoverSession()` before resuming ordinary monitoring and publishing its
 `ready` or `stationLoginRequired` result. ContactCenter forwards the event and resumes RTD for either
 outcome. A recognized primary subscribe mismatch refreshes U2C and retries subscribe once inside

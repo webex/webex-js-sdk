@@ -392,63 +392,38 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     station?: Agent.UserStationLogin,
     restoringRegion = true
   ): Promise<void> {
-    const data = response.data;
-    const nonblank = (value: unknown): value is string =>
-      typeof value === 'string' && Boolean(value.trim());
-    const sessionId = nonblank(data.agentSessionId) ? data.agentSessionId : undefined;
-    const teamId = station && !nonblank(data.teamId) ? station.teamId : data.teamId;
-    let mode = station?.deviceType;
-    let number = station?.dialNumber;
-    let returnedNumber: string | undefined;
-    if (!station) {
-      const fields = response.data as Agent.ReloginSuccess['data'];
-      if (nonblank(fields.dn)) returnedNumber = fields.dn;
-      else if (nonblank(fields.dialNumber)) returnedNumber = fields.dialNumber;
-      mode = nonblank(fields.deviceType) ? fields.deviceType : undefined;
-      if (!mode) {
-        if (fields.isExtension === true) mode = LoginOption.EXTENSION;
-        else if (returnedNumber === `${WEB_RTC_PREFIX}${data.agentId}`) mode = LoginOption.BROWSER;
-        else if (returnedNumber && fields.isExtension === false) mode = LoginOption.AGENT_DN;
-        else mode = this.agentConfig.deviceType;
-      }
-      number =
-        returnedNumber || (this.agentConfig.deviceType === mode ? this.agentConfig.dn : undefined);
+    const data = response.data as Agent.ReloginSuccess['data'];
+    const profile = this.agentConfig;
+    let mode = station?.deviceType || data.deviceType;
+    let number = station?.dialNumber || data.dn || data.dialNumber;
+    if (!mode) {
+      if (data.isExtension === true) mode = LoginOption.EXTENSION;
+      else if (number === `${WEB_RTC_PREFIX}${data.agentId}`) mode = LoginOption.BROWSER;
+      else if (number && data.isExtension === false) mode = LoginOption.AGENT_DN;
+      else mode = profile.deviceType;
     }
-    const complete =
-      Object.values(LoginOption).includes(mode as LoginOption) &&
-      nonblank(teamId) &&
-      (mode === LoginOption.BROWSER || nonblank(number));
-    if (!station) {
-      if (!complete) number = returnedNumber;
-      else if (mode === LoginOption.BROWSER) number = this.getDeviceId(mode, number);
-    }
-    this.agentConfig.lastStateAuxCodeId = data.auxCodeId;
-    this.agentConfig.lastStateChangeTimestamp = data.lastStateChangeTimestamp;
-    this.agentConfig.lastIdleCodeChangeTimestamp = data.lastIdleCodeChangeTimestamp ?? undefined;
-    this.agentConfig.isAgentLoggedIn = true;
-    this.updateWellnessSession(sessionId);
-    this.agentConfig.currentTeamId = teamId;
-    this.agentConfig.deviceType = mode as LoginOption;
-    this.agentConfig.dn = number;
-    this.agentConfig.defaultDn = number;
+    if (!number && profile.deviceType === mode) number = profile.dn;
+    profile.lastStateAuxCodeId = data.auxCodeId;
+    profile.lastStateChangeTimestamp = data.lastStateChangeTimestamp;
+    profile.lastIdleCodeChangeTimestamp = data.lastIdleCodeChangeTimestamp ?? undefined;
+    profile.isAgentLoggedIn = true;
+    this.updateWellnessSession(data.agentSessionId);
+    profile.currentTeamId = data.teamId || station?.teamId || profile.currentTeamId;
+    profile.deviceType = mode as LoginOption;
+    profile.dn = mode === LoginOption.BROWSER ? this.getDeviceId(mode, number) : number;
+    profile.defaultDn = profile.dn;
 
-    const {deviceType, dn} = this.agentConfig;
-    if (complete || !restoringRegion) {
-      if (
-        station &&
-        deviceType === LoginOption.BROWSER &&
-        !this.isBrowserVoiceRequired(deviceType)
-      ) {
-        this.webCallingService.setLoginOption(deviceType);
-        this.webCallingService.setBrowserVoiceRequired(false);
-        if (this.agentConfig.webRtcEnabled && this.isWebRTCRegistrationDisabled())
-          LoggerProxy.info(
-            'Skipping web calling line registration because disableWebRTCRegistration is enabled',
-            {module: CC_FILE, method: METHODS.STATION_LOGIN}
-          );
-      } else if (Object.values(LoginOption).includes(deviceType))
-        await this.handleDeviceType(deviceType, dn, restoringRegion);
-    }
+    const {deviceType, dn} = profile;
+    if (station && deviceType === LoginOption.BROWSER && !this.isBrowserVoiceRequired(deviceType)) {
+      this.webCallingService.setLoginOption(deviceType);
+      this.webCallingService.setBrowserVoiceRequired(false);
+      if (profile.webRtcEnabled && this.isWebRTCRegistrationDisabled())
+        LoggerProxy.info(
+          'Skipping web calling line registration because disableWebRTCRegistration is enabled',
+          {module: CC_FILE, method: METHODS.STATION_LOGIN}
+        );
+    } else if (Object.values(LoginOption).includes(deviceType))
+      await this.handleDeviceType(deviceType, dn, restoringRegion);
     await this.ensureWxAppPostStationLogin();
   }
 
@@ -1435,10 +1410,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       }
 
-      const payload = this.buildStationLoginPayload(data);
-      const loginResponse = await this.loginStation(payload, manual);
-
-      const resp = await loginResponse;
+      const resp = await this.loginStation(this.buildStationLoginPayload(data), manual);
       const {channelsMap, ...loginData} = resp.data;
       const response = {
         ...loginData,
@@ -1697,13 +1669,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const {error: detailedError} = getErrorDetails(error, METHODS.SET_AGENT_STATE, CC_FILE);
       throw detailedError;
     }
-  }
-
-  private applyAvailableState(response: StateChangeSuccess): void {
-    this.agentConfig.lastStateAuxCodeId = AGENT_STATE_AVAILABLE_ID;
-    this.agentConfig.lastStateChangeTimestamp = response.data.lastStateChangeTimestamp;
-    this.agentConfig.lastIdleCodeChangeTimestamp =
-      response.data.lastIdleCodeChangeTimestamp ?? undefined;
   }
 
   /**
@@ -2650,12 +2615,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const startedAt = Date.now();
     let outcome: 'succeeded' | 'failed' = 'succeeded';
     try {
-      const result = await this.setAgentState({
+      const result = (await this.setAgentState({
         state: AGENT_STATE_AVAILABLE,
         auxCodeId: AGENT_STATE_AVAILABLE_ID,
         lastStateChangeReason: 'agent-wss-disconnect',
-      });
-      this.applyAvailableState(result as StateChangeSuccess);
+      })) as StateChangeSuccess;
+      this.agentConfig.lastStateAuxCodeId = AGENT_STATE_AVAILABLE_ID;
+      this.agentConfig.lastStateChangeTimestamp = result.data.lastStateChangeTimestamp;
+      this.agentConfig.lastIdleCodeChangeTimestamp =
+        result.data.lastIdleCodeChangeTimestamp ?? undefined;
     } catch {
       outcome = 'failed';
     }
