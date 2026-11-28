@@ -93,7 +93,7 @@ Related context: [documentation index](../../../../docs/index.md) ·
 ## Purpose and boundary
 
 - Purpose: Manage agent lifecycle including login, logout, state changes, and buddy agent queries.
-- Responsibility: Agent owns the `routingAgent(AqmReqs)` request factory for station login, station logout, agent-state change, buddy-agent lookup, and agent-session reload. ContactCenter exposes application-facing methods/events and applies profile/device updates. ConnectionService coordinates regional recovery using those existing operations.
+- Responsibility: Agent owns the `routingAgent(AqmReqs)` request factory for station login, station logout, agent-state change, buddy-agent lookup, and agent-session reload. ContactCenter owns station restoration, application-facing methods/events, and profile/device updates. ConnectionService reconnects transport and awaits ContactCenter's restoration result.
 - In scope: Own AQM request definitions for station login/logout, state change, buddy-agent queries, and reload, the routing payload and notification types, and `AGENT_EVENTS`.
 - Out of scope: Device/profile update and automated relogin orchestration belong to ContactCenter. Request correlation, timeouts, and the socket belong to AqmReqs and the core module.
 - Consumers: the services root (`services.agent`), ContactCenter, and applications that import `routingAgent` or `AGENT_EVENTS` from the package.

@@ -344,7 +344,7 @@ sequenceDiagram
   S->>S: primary WS + RTD WS + AqmReqs + config/agent/contact/dialer + ConnectionService
   CC->>CC: create calling + wxApp services + AI assistant + metrics
   CC->>TM: getTaskManager(AI, contact, calling, primary WS, RTD WS)
-  CC->>S: connectionService.configureRecovery(dependencies and session hooks)
+  CC->>S: connectionService.configureRecovery({getConnection, recoverSession, onConnectionChange})
   CC->>CC: create data services + UserPreference
 ```
 

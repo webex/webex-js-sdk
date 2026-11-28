@@ -71,7 +71,7 @@ Related context: [documentation index](../../../../docs/index.md) ·
 | `src/services/core/aqm-reqs.ts` | `AqmReqs`: `req`, `reqEmpty`, bind keys, pending maps, duplicate rejection, HTTP failure masking, timeout, and redaction |
 | `src/services/core/types.ts` | `Req`, `Conf`, `ConfEmpty`, `Res`, `ResEmpty`, `CbRes`, `Pending`, `Timeout`, and the RTD request types |
 | `src/services/core/websocket/WebSocketManager.ts` | Subscribe registration, the `wss` allow-list check, socket handlers, keepalive worker wiring, welcome resolution, multi-login close, and `message`/`socketClose` events |
-| `src/services/core/websocket/connection-service.ts` | Ordinary liveness/reconnect, regional pacing, primary mismatch/U2C recovery, station retries, auto-Available, snapshots, and diagnostics; ContactCenter supplies session effects |
+| `src/services/core/websocket/connection-service.ts` | Ordinary liveness/reconnect, regional pacing, primary mismatch/U2C recovery, snapshots, and diagnostics; awaits ContactCenter's station restoration |
 | `src/services/core/websocket/keepalive.worker.js` | The worker script, its `start`/`terminate` inputs, and its `keepalive`/`closeSocket` outputs |
 | `src/services/core/websocket/types.ts` | `ConnectionServiceOptions`, `ConnectionLostDetails`, `ConnectionProp`, `RecoveryOptions` |
 | `src/services/core/constants.ts` | Timer values, `ALLOWED_ROUTING_NOTIFS_DOMAINS`, participant constants, and method-name constants |
@@ -220,7 +220,7 @@ Core separates four responsibilities:
 1. `WebexRequest` wraps the authenticated host request API and service-catalog routing.
 2. `WebSocketManager` subscribes, validates the returned URL against the `wss` and `ALLOWED_ROUTING_NOTIFS_DOMAINS` rules, connects the socket, owns the keepalive worker, and emits raw messages/socket lifecycle events.
 3. `AqmReqs` registers bind matchers on the primary WebSocket, sends HTTP through WebexRequest, and settles requests only from matching notifications, HTTP failure, or timeout.
-4. `ConnectionService` observes message/socket liveness, emits connection-state details, and retries socket initialization. ContactCenter listens to those details and owns optional silent relogin.
+4. `ConnectionService` owns ordinary and regional transport recovery and emits connection-state details. ContactCenter owns station restoration; regional recovery awaits its result.
 
 Component instantiation order (`Services` constructor in `src/services/index.ts`, after the plugin
 has called `WebexRequest.getInstance({webex})` in `src/cc.ts`):
@@ -228,7 +228,7 @@ has called `WebexRequest.getInstance({webex})` in `src/cc.ts`):
 1. **WebSocketManager** ([WebSocketManager.ts](../websocket/WebSocketManager.ts)) - Creates one keepalive worker and reuses it across socket connections through the existing `start`/`terminate` messages. The RTD manager has its own socket and worker.
 2. **AqmReqs** ([src/services/core/aqm-reqs.ts](../aqm-reqs.ts)) - Initialized with WebSocketManager reference
 3. **Service layers** (agent, contact, dialer) - Created with AqmReqs reference; config is created without it
-4. **ConnectionService** ([connection-service.ts](../websocket/connection-service.ts)) - Constructed with the primary manager and subscribe request; `reset()` restarts monitoring after a stopped lifecycle.
+4. **ConnectionService** ([connection-service.ts](../websocket/connection-service.ts)) - Constructed with Webex, the primary manager, and subscribe request; `reset()` restarts monitoring after a stopped lifecycle.
 
 The AQM (Agent Queue Manager) layer provides a request/response pattern over HTTP + WebSocket. Services like **routing** and **contact** use `AqmReqs` to define API methods that:
 
@@ -448,8 +448,11 @@ sequenceDiagram
       CS-->>CC: connectionLost with isSocketReconnected
     else Subscription failure
       WS-->>CS: Original error
-      CS->>CS: Apply retry or terminal policy
-      CS-->>CC: reconnectFailed(error)
+      alt Terminal failure
+        CS-->>CC: reconnectFailed(error) and unavailable snapshot
+      else Retryable failure
+        CS->>CS: Wait for the next retry slot
+      end
     end
   else Eligible regional switch
     CC->>CS: handleRegionSwitch(event)
@@ -531,7 +534,7 @@ actions using `region:stateChange`.
 | `UC-1` Authenticated REST | Any service | Pass the service key and request options to the host and return its response or rejection unchanged. | Rejection passes through unchanged | `src/services/core/WebexRequest.ts`, `test/unit/spec/services/core/WebexRequest.ts` |
 | `UC-2` Subscribe/connect | ConnectionService for primary, ContactCenter for RTD | Call `initWebSocket({body, resource})` to subscribe and await Welcome. | HTTP failure, URL rejection, socket error/early close, timeout, explicit close, or supersession reject the owning step; primary mismatch/U2C policy belongs to ConnectionService | `src/services/core/websocket/WebSocketManager.ts`, `src/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` |
 | `UC-3` AQM correlation | Agent, contact, and dialer factories | Send HTTP but settle on matching notification/failure/timeout. | Duplicate pending, HTTP failure, failure bind, timeout | `src/services/core/aqm-reqs.ts`, `test/unit/spec/services/core/aqm-reqs.ts` |
-| `UC-4` Reconnect | `ConnectionService` | Retry socket initialization, await ContactCenter station restoration, and emit recovery snapshots. | Offline retries; restore failure stops ordinary reconnect; regional retries use their own pacing | `src/services/core/websocket/connection-service.ts`, `test/unit/spec/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` |
+| `UC-4` Reconnect | `ConnectionService` | Retry socket initialization. Ordinary recovery emits connection details; regional recovery awaits ContactCenter station restoration and publishes its outcome. | Offline retries; restore failure stops ordinary reconnect; regional retries use their own pacing | `src/services/core/websocket/connection-service.ts`, `test/unit/spec/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` |
 | `UC-5` Error normalization | Agent, config, and task code | Convert a caught error into an `Error` with `data`, log it, and upload logs | Silent-relogin `AGENT_NOT_FOUND` is not logged | `src/services/core/Utils.ts`, `test/unit/spec/services/core/Utils.ts` |
 | `UC-6` Diagnostics upload | Error helpers and the plugin | `uploadLogs({correlationId})` returns the feedback and tracking ids | Failure tracked and rethrown | `src/services/core/WebexRequest.ts`, `test/unit/spec/services/core/WebexRequest.ts` |
 

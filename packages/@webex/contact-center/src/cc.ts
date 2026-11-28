@@ -52,7 +52,7 @@ import {AGENT, RTD_SUBSCRIBE_API, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
-import {StateChange, Logout, AGENT_EVENTS} from './services/agent/types';
+import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
 import {
   getErrorDetails,
   getStationRecoveryFailureCategory,
@@ -66,9 +66,9 @@ import {
   isRegionRecoveryError,
 } from './services/core/Utils';
 import type * as Agent from './services/agent/types';
-import type {WelcomeEvent} from './services/config/types';
 import {
   Profile,
+  WelcomeEvent,
   CC_EVENTS,
   VOICE_CONNECTION_EVENTS,
   OutdialAniEntriesResponse,
@@ -346,17 +346,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private autoAvailable?: {requesting: boolean};
 
   private static getRegistrationErrorDetails(error: unknown) {
-    const failure = normalizeRecoveryFailure(error);
-    const id = normalizeRecoveryDiagnosticId(failure.id);
-    const trackingId =
-      normalizeRecoveryDiagnosticId(failure.trackingId) ??
-      normalizeRecoveryDiagnosticId(isRecord(error) ? error.trackingId : undefined);
+    const {status, reasonCode, id, trackingId} = normalizeRecoveryFailure(error);
 
     return {
-      ...(Number.isFinite(failure.status) ? {status: failure.status} : {}),
-      ...(Number.isFinite(failure.reasonCode) ? {reasonCode: failure.reasonCode} : {}),
-      ...(id ? {id} : {}),
-      ...(trackingId ? {trackingId} : {}),
+      status,
+      reasonCode,
+      id: normalizeRecoveryDiagnosticId(id),
+      trackingId:
+        normalizeRecoveryDiagnosticId(trackingId) ??
+        normalizeRecoveryDiagnosticId(isRecord(error) ? error.trackingId : undefined),
     };
   }
 
@@ -396,36 +394,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     return response;
   }
 
-  private applyStationSession = async (
+  private async applyStationSession(
     response: Agent.ReloginSuccess | Agent.StationLoginSuccess,
-    payload?: Agent.UserStationLogin,
+    station?: Agent.UserStationLogin,
     restoringRegion = true
-  ): Promise<void> => {
-    const complete = this.updateStationProfile(response, payload);
-    const {deviceType, dn} = this.agentConfig;
-    if (complete || !restoringRegion) {
-      if (
-        payload &&
-        deviceType === LoginOption.BROWSER &&
-        !this.isBrowserVoiceRequired(deviceType)
-      ) {
-        this.webCallingService.setLoginOption(deviceType);
-        this.webCallingService.setBrowserVoiceRequired(false);
-        if (this.agentConfig.webRtcEnabled && this.isWebRTCRegistrationDisabled())
-          LoggerProxy.info(
-            'Skipping web calling line registration because disableWebRTCRegistration is enabled',
-            {module: CC_FILE, method: METHODS.STATION_LOGIN}
-          );
-      } else if (Object.values(LoginOption).includes(deviceType))
-        await this.handleDeviceType(deviceType, dn, restoringRegion);
-    }
-    await this.ensureWxAppPostStationLogin();
-  };
-
-  private updateStationProfile(
-    response: Agent.ReloginSuccess | Agent.StationLoginSuccess,
-    station?: Agent.UserStationLogin
-  ): boolean {
+  ): Promise<void> {
     const data = response.data;
     const nonblank = (value: unknown): value is string =>
       typeof value === 'string' && Boolean(value.trim());
@@ -466,7 +439,24 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.agentConfig.dn = number;
     this.agentConfig.defaultDn = number;
 
-    return complete;
+    const {deviceType, dn} = this.agentConfig;
+    if (complete || !restoringRegion) {
+      if (
+        station &&
+        deviceType === LoginOption.BROWSER &&
+        !this.isBrowserVoiceRequired(deviceType)
+      ) {
+        this.webCallingService.setLoginOption(deviceType);
+        this.webCallingService.setBrowserVoiceRequired(false);
+        if (this.agentConfig.webRtcEnabled && this.isWebRTCRegistrationDisabled())
+          LoggerProxy.info(
+            'Skipping web calling line registration because disableWebRTCRegistration is enabled',
+            {module: CC_FILE, method: METHODS.STATION_LOGIN}
+          );
+      } else if (Object.values(LoginOption).includes(deviceType))
+        await this.handleDeviceType(deviceType, dn, restoringRegion);
+    }
+    await this.ensureWxAppPostStationLogin();
   }
 
   private buildStationLoginPayload(data?: AgentLogin): Agent.UserStationLogin | undefined {
@@ -897,30 +887,25 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return;
     this.rtdPaused = false;
     const manager = this.services.rtdWebSocketManager;
-    const startedAt = Date.now();
     manager.on('message', this.handleRTDWebsocketMessage);
     manager
       .initWebSocket({
         body: this.getConnectionConfig(),
         resource: RTD_SUBSCRIBE_API,
       })
-      .then(
-        () =>
-          this.services.connectionService.recordRecoveryDiagnostic(
-            'rtd',
-            'succeeded',
-            1,
-            startedAt
-          ),
-        (error) =>
-          this.services.connectionService.recordRecoveryDiagnostic(
-            'rtd',
-            'failed',
-            1,
-            startedAt,
-            normalizeRecoveryFailure(error)
-          )
-      );
+      .then(() => {
+        LoggerProxy.log('RTD websocket connected successfully', {
+          module: CC_FILE,
+          method: METHODS.CONNECT_WEBSOCKET,
+        });
+      })
+      .catch((error) => {
+        LoggerProxy.error('Error connecting to RTD websocket', {
+          module: CC_FILE,
+          method: METHODS.CONNECT_WEBSOCKET,
+          data: ContactCenter.getRegistrationErrorDetails(error),
+        });
+      });
   }
 
   private handleRTDWebsocketMessage = (event: string) => {
@@ -1724,7 +1709,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
-  private applyAvailableState(response: Agent.StateChangeSuccess): void {
+  private applyAvailableState(response: StateChangeSuccess): void {
     this.agentConfig.lastStateAuxCodeId = AGENT_STATE_AVAILABLE_ID;
     this.agentConfig.lastStateChangeTimestamp = response.data.lastStateChangeTimestamp;
     this.agentConfig.lastIdleCodeChangeTimestamp =
@@ -1915,6 +1900,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     switch (eventData.data.type) {
       case CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS: {
         const {channelsMap, ...loginData} = eventData.data;
+        this.updateWellnessSession(loginData.agentSessionId);
         if (!this.services.connectionService.isRecovering) {
           this.webCallingService.setLoginOption(loginData.deviceType as LoginOption);
           if (
@@ -1926,10 +1912,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         const stationLoginData = {
           ...loginData,
           mmProfile: {
-            chat: channelsMap?.chat?.length,
-            email: channelsMap?.email?.length,
-            social: channelsMap?.social?.length,
-            telephony: channelsMap?.telephony?.length,
+            chat: channelsMap.chat?.length,
+            email: channelsMap.email?.length,
+            social: channelsMap.social?.length,
+            telephony: channelsMap.telephony?.length,
           },
           notifsTrackingId: eventData.trackingId,
         };
@@ -1939,13 +1925,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
       case CC_EVENTS.AGENT_RELOGIN_SUCCESS: {
         const {channelsMap, ...loginData} = eventData.data;
+        this.updateWellnessSession(loginData.agentSessionId);
         const stationReLoginData = {
           ...loginData,
           mmProfile: {
-            chat: channelsMap?.chat?.length,
-            email: channelsMap?.email?.length,
-            social: channelsMap?.social?.length,
-            telephony: channelsMap?.telephony?.length,
+            chat: channelsMap.chat?.length,
+            email: channelsMap.email?.length,
+            social: channelsMap.social?.length,
+            telephony: channelsMap.telephony?.length,
           },
           notifsTrackingId: eventData.trackingId,
         };
@@ -2700,8 +2687,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         auxCodeId: AGENT_STATE_AVAILABLE_ID,
         lastStateChangeReason: 'agent-wss-disconnect',
       });
-      if (this.autoAvailable === pending)
-        this.applyAvailableState(result as Agent.StateChangeSuccess);
+      if (this.autoAvailable === pending) this.applyAvailableState(result as StateChangeSuccess);
     } catch {
       outcome = 'failed';
     }
@@ -2920,7 +2906,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           agentId,
         };
         try {
-          const result = (await this.setAgentState(stateChangeData)) as Agent.StateChangeSuccess;
+          const result = (await this.setAgentState(stateChangeData)) as StateChangeSuccess;
           this.applyAvailableState(result);
         } catch (error) {
           LoggerProxy.error(
@@ -2983,15 +2969,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.agentConfig.deviceType = deviceType;
     switch (deviceType) {
       case LoginOption.BROWSER:
-        // Ordinary relogin replaces the line even when the profile does not require browser voice.
-        if (
-          this.isWebRTCRegistrationDisabled() ||
-          (restoringRegion && !this.isBrowserVoiceRequired(deviceType))
-        ) {
+        if (restoringRegion) {
+          if (this.isBrowserVoiceRequired(deviceType))
+            this.webCallingService.ensureWebCallingLine();
+          break;
+        }
+        if (this.isWebRTCRegistrationDisabled()) {
           LoggerProxy.info(
-            this.isWebRTCRegistrationDisabled()
-              ? 'Skipping web calling line registration because disableWebRTCRegistration is enabled'
-              : 'Skipping web calling line registration because browser voice is not required',
+            'Skipping web calling line registration because disableWebRTCRegistration is enabled',
             {
               module: CC_FILE,
               method: METHODS.HANDLE_DEVICE_TYPE,
@@ -2999,17 +2984,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           );
           break;
         }
-        if (restoringRegion) this.webCallingService.ensureWebCallingLine();
-        else {
-          try {
-            await this.webCallingService.registerWebCallingLine();
-          } catch (error) {
-            LoggerProxy.error(`Error registering web calling line: ${error}`, {
-              module: CC_FILE,
-              method: METHODS.HANDLE_DEVICE_TYPE,
-            });
-            throw error;
-          }
+        try {
+          await this.webCallingService.registerWebCallingLine();
+        } catch (error) {
+          LoggerProxy.error(`Error registering web calling line: ${error}`, {
+            module: CC_FILE,
+            method: METHODS.HANDLE_DEVICE_TYPE,
+          });
+          throw error;
         }
         break;
       case LoginOption.AGENT_DN:

@@ -94,7 +94,6 @@ jest.mock('../../../src/services', () => ({
       },
       webSocketManager: {
         initWebSocket: jest.fn(),
-        getUrl: jest.fn(() => 'wss://routing.produs1.cisco.com'),
         on: jest.fn(),
         off: jest.fn(),
         close: jest.fn(),
@@ -296,15 +295,12 @@ global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
 class EventEmitterDouble extends EventEmitter {
   public isSocketClosed = false;
   public initWebSocket = jest.fn().mockResolvedValue({});
-  public getUrl = jest.fn(() => 'wss://routing.produs1.cisco.com');
   public close = jest.fn(() => {
     this.isSocketClosed = true;
   });
   public mapCallToTask = jest.fn();
   public cleanUpCall = jest.fn();
   public hasUsableSocket = jest.fn(() => true);
-  public reset = jest.fn();
-  public stop = jest.fn();
 
   public on = jest.fn((eventName: string | symbol, listener: (...args: unknown[]) => void) => {
     super.on(eventName, listener);
@@ -416,7 +412,6 @@ describe('webex.cc', () => {
 
     mockWebSocketManager = {
       initWebSocket: jest.fn(),
-      getUrl: jest.fn(() => 'wss://routing.produs1.cisco.com'),
       hasUsableSocket: jest.fn(() => true),
       on: jest.fn(),
       off: jest.fn(),
@@ -466,7 +461,6 @@ describe('webex.cc', () => {
       webSocketManager: mockWebSocketManager,
       rtdWebSocketManager: {
         initWebSocket: jest.fn().mockResolvedValue({}),
-        hasUsableSocket: jest.fn(() => true),
         on: jest.fn(),
         off: jest.fn(),
         close: jest.fn(),
@@ -7459,7 +7453,7 @@ describe('regional recovery wiring', () => {
     }, {autoRegister: false, browserVoice: true, rtdEnabled: true});
   });
 
-  it('does not resume a pending regional subscription after deregister', async () => {
+  it('clears the scheduled regional retry on deregister', async () => {
     await withRouting(async ({cc, requests, startSwitch, advanceSwitch}) => {
       startSwitch('FAILOVER');
       await cc.deregister();

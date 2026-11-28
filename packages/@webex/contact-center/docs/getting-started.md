@@ -216,12 +216,7 @@ entitlement changes. Roll back through SDK release and backend entitlement manag
 ### Release verification
 
 - Verify the deployed desktop-login entitlement and ordinary station login and reconnect.
+- Run failover and failback for DN, Extension, and Browser stations.
 - For each drill, record the home and serving regions, station outcome, and new-call, RTD, and voice
   results. For browser runs, capture the order and identifiers of the Calling offer and Task hydration.
   Link sanitized captures with deployment versions and timestamps in the release record.
-
-| Login mode | Failover | Failback |
-| --- | --- | --- |
-| DN | Pending | Pending |
-| Extension | Pending | Pending |
-| Browser | Pending | Pending |

@@ -381,7 +381,7 @@ sequenceDiagram
   CS-->>CC: connectionLost(details)
   CC->>CC: handleConnectionLost(details)
   alt details.isConnectionLost
-    CC->>CC: log only
+    CC->>CC: Cancel pending automatic Available and log loss
   else eligible ordinary reconnect
     CC->>CC: silentRelogin()
     CC->>Agent: reload()
@@ -566,7 +566,7 @@ accessors; the other collaborators are constructed per plugin instance at READY.
 | `UC-1` | Host application | Host bootstrap: after host READY, initialize the complete collaborator graph exactly once. | Invalid plugin configuration throws in the READY handler | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | `UC-2` | Host application | Register: attach listeners and establish the primary WebSocket subscription before returning Profile. | Failure is measured, logs upload, and the error is rethrown | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | `UC-3` | Host application or widget | Delegate SDK operations: validate/map public inputs, call the owning collaborator, track metrics, and return or emit typed results. | Detailed errors from `getErrorDetails` | `src/cc.ts`, `src/index.ts`, `test/unit/spec/cc.ts` |
-| `UC-4` | ConnectionService | Reconnect ordinary transport and await ContactCenter station restoration before publishing the regional outcome. | ContactCenter owns station policy; ConnectionService owns transport retry and terminal recovery. | `src/cc.ts`, `src/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` |
+| `UC-4` | ConnectionService | Report ordinary reconnection to ContactCenter for optional relogin; await ContactCenter station restoration before publishing a regional outcome. | ContactCenter owns station policy; ConnectionService owns transport retry and terminal recovery. | `src/cc.ts`, `src/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` |
 | `UC-5` | Host application | Deregister: remove the same listener identities, shut down applicable host/WebSocket resources, and clear in-memory profile state. | Cleanup errors are rethrown; listener identity gaps in Pitfalls and constraints | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | `UC-6` | Host application and agent | Wellness lifecycle: consume an agent/org-scoped offer regardless of its notification session metadata, report a user action using the active local session, resolve the system idle code, and demonstrate legacy Idle/Available transitions. | Disabled or incomplete context rejects before transport | `src/cc.ts`, `src/services/ApiAiAssistant.ts`, `src/services/config/index.ts`, `test/unit/spec/cc.ts` |
 
