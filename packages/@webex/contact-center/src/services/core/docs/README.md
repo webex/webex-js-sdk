@@ -595,8 +595,8 @@ Stop clears pending work and listeners.
 
 Regional attempts wait 100, 60, 30, then 15 seconds, with up to 50% added jitter; later attempts
 retain the 15-second base. ContactCenter's station reload retries use plain waits of 2, 4, and 8 seconds
-and check socket readiness before continuing. The budget follows the switch tracking ID across socket
-replacements, permits one station-login fallback, and allows one further reload after a session-already-exists response.
+and check socket readiness before continuing. Each station-recovery call starts a fresh budget,
+permits one station-login fallback, and allows one further reload after a session-already-exists response.
 `resetRecovery()` clears scheduled
 regional attempts and recovery state separately from the ordinary `stop()` method.
 

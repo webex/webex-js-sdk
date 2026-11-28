@@ -360,8 +360,8 @@ snapshots. ContactCenter supplies connection details and the `recoverSession()` 
 READY initialization; it pauses RTD and retires failed-region Tasks
 when ConnectionService reports a region change. Hosts pause new station actions during recovery.
 
-ContactCenter owns station reload retries, fallback login, and existing-session recovery. The retry
-budget is tied to the switch tracking ID so a replacement socket does not reset it. Public station
+ContactCenter owns station reload retries, fallback login, and existing-session recovery. Each
+station-recovery call has its own bounded retry budget, as in Desktop. Public station
 login and recovery fallback share the private `loginStation()` flow and `applyStationSession()`.
 ConnectionService awaits `recoverSession()` before resuming ordinary monitoring and publishing its
 `ready` or `stationLoginRequired` result. ContactCenter forwards the event and resumes RTD for either
@@ -370,8 +370,9 @@ ConnectionService.
 
 Station reload, login, and agent-state requests retain the existing AQM matching and timeout.
 ContactCenter schedules Auto-Available after required browser voice is ready and invokes the existing
-`setAgentState()` (CONTACT_CENTER-R-015). It applies the accepted response while the automatic request
-is current. A confirmed station logout after recovery retains the recovered socket.
+`setAgentState()` (CONTACT_CENTER-R-015). Initial reload, ordinary reconnect, and regional recovery
+share this path. The pending flag is cleared before sending the request, and the accepted response
+updates the profile. A confirmed station logout after recovery retains the recovered socket.
 
 ```mermaid
 sequenceDiagram
@@ -595,7 +596,7 @@ ContactCenter retains in-memory `agentConfig`, collaborator references and event
 | `wellbeingBreakIdleCode`, `wellnessRegistrationGeneration` | `ContactCenter` | undefined, 0 | A lookup fills the cache; each `register()` and `deregister()` increments the generation | The cache is cleared on every register, profile fetch, and deregister |
 | `multiRegionSettings` and the last accepted switch tracking ID | ConnectionService | Unknown eligibility, no tracking ID | Accepted registration config and validated switch | Registration reset clears both; each accepted switch replaces the previous tracking ID. |
 | Active recovery and the last published region snapshot | ConnectionService | No active recovery or snapshot | Eligible switch, restore, mismatch, terminal failure or teardown | Completing recovery clears its work object and returns the socket to ordinary monitoring. ContactCenter forwards the ready, manual-login or terminal snapshot. Registration teardown clears it. |
-| Station retry budget and pending Available action | ContactCenter | None | Accepted region switch and qualifying reload | The budget survives socket replacement for the same tracking ID. Socket loss, logout, or session replacement clears pending Available. |
+| Station retry budget and pending Available flag | ContactCenter | Fresh budget per recovery call; no pending Available | Station recovery and qualifying reload | A replacement socket starts a fresh recovery call. Socket loss, logout, or session replacement clears waiting Available; dispatch clears the flag. |
 | `$config.enableWxBetterTogether` | `ContactCenter` | From init config | Rolled back to false when an enabled post-login hook fails | Cleared by `deregister()` |
 | wxApp ownership flags and retry timer | `ContactCenter` | false, none | Set when wxApp opened Mercury or registered the device; timer set on a failed false publish | Cleared on release and teardown |
 | Voice connection snapshot | `WebCallingService` | `DEFAULT_VOICE_CONNECTION_STATE` (`not-required`) | Line and Mobius socket events | Reset on line deregistration at station logout; `getVoiceConnectionState()` returns the default when no service exists |

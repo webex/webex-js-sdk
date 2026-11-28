@@ -4056,6 +4056,7 @@ describe('webex.cc', () => {
     it('should perform silent relogin and set agent state to available', async () => {
       const mockReLoginResponse = {
         data: {
+          type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
           auxCodeId: 'auxCodeId',
           agentId: 'agentId',
           lastStateChangeReason: 'agent-wss-disconnect',
@@ -4079,6 +4080,9 @@ describe('webex.cc', () => {
         data: {lastStateChangeTimestamp: 1234, lastIdleCodeChangeTimestamp: 12345},
       } as unknown as SetStateResponse);
       jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
+      webex.cc.services.connectionService.publishRegionState.mockImplementation((state) => {
+        webex.cc.services.connectionService.regionState = state;
+      });
 
       const registerWebCallingLineSpy = jest.spyOn(
         webex.cc.webCallingService,
@@ -4093,10 +4097,6 @@ describe('webex.cc', () => {
         method: 'silentRelogin',
       });
       expect(LoggerProxy.log).toHaveBeenCalledWith(
-        'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
-        {module: CC_FILE, method: 'silentRelogin'}
-      );
-      expect(LoggerProxy.log).toHaveBeenCalledWith(
         `Silent relogin process completed successfully with login Option: ${mockReLoginResponse.data.deviceType} teamId: ${mockReLoginResponse.data.teamId}`,
         {
           module: CC_FILE,
@@ -4107,7 +4107,6 @@ describe('webex.cc', () => {
         state: 'Available',
         auxCodeId: '0', // even if get auxcodeId from relogin response, it should be 0 for available state
         lastStateChangeReason: 'agent-wss-disconnect',
-        agentId: 'agentId',
       });
       expect(webex.cc.agentConfig.isAgentLoggedIn).toBe(true);
       expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe('0');
@@ -6621,6 +6620,75 @@ describe('regional recovery wiring', () => {
     }, {autoRegister: false, browserVoice, rtdEnabled: true});
   });
 
+  it.each(['initial-login', 'reconnect'])(
+    'defers automatic Available until browser voice is ready after %s', async (context) => {
+      await withRouting(async ({cc, requests, currentRouting}) => {
+        cc.$config.allowAutomatedRelogin = true;
+        const state = jest.fn();
+        cc.on('region:stateChange', state);
+        const calling = cc.webCallingService;
+        const line = {mobiusDeviceId: 'browser-line', deregister: jest.fn()};
+        jest.spyOn(calling, 'registerWebCallingLine').mockImplementation(async () => {
+          calling['line'] = line;
+          calling['handleMobiusSocketDisconnected']({reason: 'transient'});
+          calling['handleLineRegistered'](line);
+        });
+        const registration = cc.register();
+        await flush();
+        let primary = currentRouting();
+        primary.welcome();
+        await flush();
+        const browserStation = {
+          deviceType: LoginOption.BROWSER,
+          dn: `${WEB_RTC_PREFIX}agent`,
+          isExtension: false,
+        };
+        primary.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS, {
+          ...browserStation,
+          lastStateChangeReason: context === 'initial-login' ? 'agent-wss-disconnect' : 'initial',
+        }));
+        await registration;
+        await flush();
+        if (context === 'reconnect') {
+          primary.lose();
+          jest.advanceTimersByTime(5000);
+          await flush();
+          primary = currentRouting();
+          primary.welcome();
+          await flush();
+          primary.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS, {
+            ...browserStation,
+            lastStateChangeReason: 'agent-wss-disconnect',
+          }));
+          await flush();
+        }
+
+        const stateRequests = () =>
+          requests.filter(({resource}) => resource === '/v1/agents/session/state');
+        expect(stateRequests()).toHaveLength(0);
+        expect(state).toHaveBeenLastCalledWith(
+          expect.objectContaining({status: 'ready', autoAvailable: 'waitingForVoice'})
+        );
+        calling['handleMobiusSocketConnected']();
+        await flush();
+        calling['handleLineRegistered'](line);
+        await flush();
+        expect(stateRequests()).toHaveLength(1);
+        primary.message({
+          ...agentFrame(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, {
+            subStatus: 'Available', auxCodeId: '0',
+          }),
+          type: CC_EVENTS.AGENT_STATE_CHANGE,
+        });
+        await flush();
+        expect(cc.agentConfig.lastStateAuxCodeId).toBe('0');
+        expect(state).toHaveBeenLastCalledWith(
+          expect.objectContaining({status: 'ready', autoAvailable: 'succeeded'})
+        );
+      }, {autoRegister: false, browserVoice: true});
+    }
+  );
+
   it('uses newly subscribed routing sockets for failover, failback, and ordinary AQM requests', async () => {
     await withRouting(async ({cc, requests, currentRouting, startSwitch, advanceSwitch, login}) => {
       await login();
@@ -6795,7 +6863,7 @@ describe('regional recovery wiring', () => {
     }, {browserVoice: true});
   });
 
-  it.each(['succeeded', 'failed', 'socket-closed', 'logout-in-flight'])(
+  it.each(['succeeded', 'failed', 'socket-closed', 'logout'])(
     'handles automatic Available outcome %s after browser-station recovery',
     async (outcome) => {
       await withRouting(
@@ -6826,8 +6894,17 @@ describe('regional recovery wiring', () => {
             requests.filter(({resource}) => resource === '/v1/agents/session/state');
           expect(stateRequests()).toHaveLength(0);
 
-          if (outcome === 'socket-closed') {
-            backup.lose();
+          if (outcome === 'socket-closed' || outcome === 'logout') {
+            if (outcome === 'socket-closed') backup.lose();
+            else {
+              const logout = cc.stationLogout({logoutReason: 'User requested'});
+              await flush();
+              backup.message({
+                ...agentFrame(CC_EVENTS.AGENT_LOGOUT_SUCCESS),
+                type: CC_EVENTS.AGENT_LOGOUT,
+              });
+              await logout;
+            }
             calling['handleLineRegistered'](line);
             await flush();
             expect(stateRequests()).toHaveLength(0);
@@ -6841,31 +6918,6 @@ describe('regional recovery wiring', () => {
           await flush();
           expect(stateRequests()).toHaveLength(1);
           expect(stateRequests()[0].body).toMatchObject({state: 'Available'});
-          if (outcome === 'logout-in-flight') {
-            expect(state).toHaveBeenLastCalledWith(
-              expect.objectContaining({status: 'ready', autoAvailable: 'requesting'})
-            );
-            const logout = cc.stationLogout({logoutReason: 'User requested'});
-            await flush();
-            backup.message({
-              ...agentFrame(CC_EVENTS.AGENT_LOGOUT_SUCCESS),
-              type: CC_EVENTS.AGENT_LOGOUT,
-            });
-            await logout;
-            await flush();
-            backup.message({
-              ...agentFrame(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS),
-              type: CC_EVENTS.AGENT_STATE_CHANGE,
-            });
-            await flush();
-            expect(state).toHaveBeenLastCalledWith(
-              expect.objectContaining({autoAvailable: 'cancelled'})
-            );
-            expect(stateRequests()).toHaveLength(1);
-            expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
-
-            return;
-          }
           backup.message({
             ...agentFrame(
               outcome === 'failed'
@@ -6949,39 +7001,54 @@ describe('regional recovery wiring', () => {
     });
   });
 
-  it('waits for the current reload to settle after socket loss before retrying the region', async () => {
-    await withRouting(async ({cc, requests, currentRouting, connectBackup, login}) => {
-      await login();
-      const state = jest.fn();
-      cc.on('region:stateChange', state);
-      const backup = await connectBackup();
-      const subscriptions = () => requests.filter(({resource}) => resource === SUBSCRIBE_API);
-      const reloads = () => requests.filter(({resource}) => resource === '/v1/agents/reload');
-      expect(subscriptions()).toHaveLength(2);
-      expect(reloads()).toHaveLength(1);
-      backup.lose();
+  it.each(['reload', 'fallback'])(
+    'starts a fresh station recovery after socket loss during %s',
+    async (stage) => {
+      await withRouting(async ({cc, requests, currentRouting, connectBackup, login}) => {
+        await login();
+        const state = jest.fn();
+        cc.on('region:stateChange', state);
+        const backup = await connectBackup();
+        const subscriptions = () => requests.filter(({resource}) => resource === SUBSCRIBE_API);
+        const reloads = () => requests.filter(({resource}) => resource === '/v1/agents/reload');
+        expect(subscriptions()).toHaveLength(2);
+        expect(reloads()).toHaveLength(1);
+        if (stage === 'fallback') {
+          backup.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_FAILED, {reasonCode: 1038}));
+          await flush();
+          expect(requests.at(-1).resource).toBe('/v1/agents/login');
+        }
+        backup.lose();
 
-      jest.advanceTimersByTime(19999);
-      await flush();
-      expect(subscriptions()).toHaveLength(2);
-      expect(reloads()).toHaveLength(1);
-      jest.advanceTimersByTime(1);
-      await flush();
-      expect(state).toHaveBeenLastCalledWith(
-        expect.objectContaining({status: 'recovering', retryAfterMs: 63000})
-      );
-      jest.advanceTimersByTime(63000);
-      await flush();
-      expect(subscriptions()).toHaveLength(3);
-      const replacement = currentRouting();
-      replacement.welcome();
-      await flush();
-      expect(reloads()).toHaveLength(2);
-      replacement.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS));
-      await flush();
-      expect(state).toHaveBeenLastCalledWith(expect.objectContaining({status: 'ready'}));
-    });
-  });
+        jest.advanceTimersByTime(19999);
+        await flush();
+        expect(subscriptions()).toHaveLength(2);
+        expect(reloads()).toHaveLength(1);
+        jest.advanceTimersByTime(1);
+        await flush();
+        expect(state).toHaveBeenLastCalledWith(
+          expect.objectContaining({status: 'recovering', retryAfterMs: 63000})
+        );
+        jest.advanceTimersByTime(63000);
+        await flush();
+        expect(subscriptions()).toHaveLength(3);
+        const replacement = currentRouting();
+        replacement.welcome();
+        await flush();
+        expect(reloads()).toHaveLength(2);
+        for (const [index, delay] of [2000, 4000, 8000].entries()) {
+          replacement.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_FAILED, {reasonCode: 1037}));
+          await flush();
+          jest.advanceTimersByTime(delay);
+          await flush();
+          expect(reloads()).toHaveLength(index + 3);
+        }
+        replacement.message(agentFrame(CC_EVENTS.AGENT_RELOGIN_SUCCESS));
+        await flush();
+        expect(state).toHaveBeenLastCalledWith(expect.objectContaining({status: 'ready'}));
+      });
+    }
+  );
 
   it('refreshes U2C after a regional subscribe conflict and restores the accepted station', async () => {
     await withRouting(
