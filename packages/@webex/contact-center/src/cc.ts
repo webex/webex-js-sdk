@@ -52,6 +52,7 @@ import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
+import type * as Agent from './services/agent/types';
 import {
   getErrorDetails,
   isRecord,
@@ -325,6 +326,65 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /** Registration generation that owns the wellness idle-code cache and in-flight lookups. */
   private wellnessRegistrationGeneration = 0;
+
+  private async stationLoginInternal(data: AgentLogin): Promise<Agent.StationLoginSuccess> {
+    const deviceId = this.getDeviceId(data.loginOption, data.dialNumber);
+    const payload: Agent.UserStationLogin = {
+      // BROWSER DN must be webrtc-{agentId} so VPOP/RTMS do not treat a bare UUID as PSTN.
+      dialNumber: data.loginOption === LoginOption.BROWSER ? deviceId : data.dialNumber,
+      teamId: data.teamId,
+      deviceType: data.loginOption,
+      isExtension: data.loginOption === LoginOption.EXTENSION,
+      deviceId,
+      roles: [AGENT],
+      teamName: EMPTY_STRING,
+      siteId: EMPTY_STRING,
+      usesOtherDN: false,
+      auxCodeId: EMPTY_STRING,
+    };
+    const response = await this.services.agent.stationLogin({data: payload});
+    await this.handleStationLoginSuccess(response, payload);
+
+    return response;
+  }
+
+  private async handleStationLoginSuccess(
+    response: Agent.StationLoginSuccess,
+    station: Agent.UserStationLogin
+  ): Promise<void> {
+    const loginOption = station.deviceType as LoginOption;
+    this.webCallingService.setLoginOption(loginOption);
+    this.webCallingService.setBrowserVoiceRequired(this.isBrowserVoiceRequired(loginOption));
+
+    if (this.isBrowserVoiceRequired(loginOption)) {
+      await this.webCallingService.registerWebCallingLine();
+    } else if (
+      this.agentConfig.webRtcEnabled &&
+      loginOption === LoginOption.BROWSER &&
+      this.isWebRTCRegistrationDisabled()
+    ) {
+      LoggerProxy.info(
+        'Skipping web calling line registration because disableWebRTCRegistration is enabled',
+        {
+          module: CC_FILE,
+          method: METHODS.STATION_LOGIN,
+        }
+      );
+    }
+    this.updateWellnessSession(response.data.agentSessionId);
+    this.agentConfig.currentTeamId = response.data.teamId;
+    this.saveStationLoginPreferences(loginOption, station.dialNumber);
+  }
+
+  private saveStationLoginPreferences(loginOption: LoginOption, dialNumber?: string): void {
+    if (this.agentConfig) {
+      this.agentConfig.deviceType = loginOption;
+      if (loginOption === LoginOption.AGENT_DN || loginOption === LoginOption.EXTENSION) {
+        this.agentConfig.defaultDn = dialNumber;
+        this.agentConfig.dn = dialNumber;
+      }
+    }
+  }
 
   private updateWellnessSession(agentSessionId?: string): void {
     this.currentAgentSessionId = agentSessionId;
@@ -666,6 +726,45 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
 
     return true;
+  }
+
+  private initializeRTDWebSocket(): void {
+    /**
+     * RTD websocket currently supports realtime transcripts and suggested responses.
+     * Extend this condition when additional AI RTD features are introduced.
+     * Wellness break notifications also arrive on this websocket.
+     */
+    if (
+      this.agentConfig.aiFeature?.realtimeTranscripts?.enable ||
+      this.agentConfig.aiFeature?.suggestedResponses?.enable ||
+      this.agentConfig.aiFeature?.generatedSummaries?.wrapUpSummariesEnabled === true ||
+      this.agentConfig.aiFeature?.generatedSummaries?.consultTransferSummariesEnabled === true ||
+      this.agentConfig.isWellnessBreakEnabled
+    ) {
+      LoggerProxy.info('Connecting to RTD websocket', {
+        module: CC_FILE,
+        method: METHODS.CONNECT_WEBSOCKET,
+      });
+
+      this.services.rtdWebSocketManager
+        .initWebSocket({
+          body: this.getConnectionConfig(),
+          resource: RTD_SUBSCRIBE_API,
+        })
+        .then(() => {
+          LoggerProxy.log('RTD websocket connected successfully', {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
+          });
+          this.services.rtdWebSocketManager.on('message', this.handleRTDWebsocketMessage);
+        })
+        .catch((error) => {
+          LoggerProxy.error(`Error connecting to RTD websocket ${error}`, {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
+          });
+        });
+    }
   }
 
   private handleRTDWebsocketMessage = (event: string) => {
@@ -1058,42 +1157,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.wellbeingBreakIdleCode = undefined;
       this.updateWellnessSession();
 
-      /**
-       * RTD websocket currently supports realtime transcripts and suggested responses.
-       * Extend this condition when additional AI RTD features are introduced.
-       * Wellness break notifications also arrive on this websocket.
-       */
-      if (
-        this.agentConfig.aiFeature?.realtimeTranscripts?.enable ||
-        this.agentConfig.aiFeature?.suggestedResponses?.enable ||
-        this.agentConfig.aiFeature?.generatedSummaries?.wrapUpSummariesEnabled === true ||
-        this.agentConfig.aiFeature?.generatedSummaries?.consultTransferSummariesEnabled === true ||
-        this.agentConfig.isWellnessBreakEnabled
-      ) {
-        LoggerProxy.info('Connecting to RTD websocket', {
-          module: CC_FILE,
-          method: METHODS.CONNECT_WEBSOCKET,
-        });
-
-        this.services.rtdWebSocketManager
-          .initWebSocket({
-            body: this.getConnectionConfig(),
-            resource: RTD_SUBSCRIBE_API,
-          })
-          .then(() => {
-            LoggerProxy.log('RTD websocket connected successfully', {
-              module: CC_FILE,
-              method: METHODS.CONNECT_WEBSOCKET,
-            });
-            this.services.rtdWebSocketManager.on('message', this.handleRTDWebsocketMessage);
-          })
-          .catch((error) => {
-            LoggerProxy.error(`Error connecting to RTD websocket ${error}`, {
-              module: CC_FILE,
-              method: METHODS.CONNECT_WEBSOCKET,
-            });
-          });
-      }
+      this.initializeRTDWebSocket();
 
       if (
         this.agentConfig.loginVoiceOptions.some((loginOption) =>
@@ -1205,46 +1269,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       }
 
-      const deviceId = this.getDeviceId(data.loginOption, data.dialNumber);
-      const loginResponse = await this.services.agent.stationLogin({
-        data: {
-          // BROWSER DN must be webrtc-{agentId} so VPOP/RTMS do not treat a bare UUID as PSTN.
-          dialNumber: data.loginOption === LoginOption.BROWSER ? deviceId : data.dialNumber,
-          teamId: data.teamId,
-          deviceType: data.loginOption,
-          isExtension: data.loginOption === LoginOption.EXTENSION,
-          deviceId,
-          roles: [AGENT],
-          teamName: EMPTY_STRING,
-          siteId: EMPTY_STRING,
-          usesOtherDN: false,
-          auxCodeId: EMPTY_STRING,
-        },
-      });
-
-      this.webCallingService.setLoginOption(data.loginOption);
-      this.webCallingService.setBrowserVoiceRequired(this.isBrowserVoiceRequired(data.loginOption));
-
-      if (this.isBrowserVoiceRequired(data.loginOption)) {
-        await this.webCallingService.registerWebCallingLine();
-      } else if (
-        this.agentConfig.webRtcEnabled &&
-        data.loginOption === LoginOption.BROWSER &&
-        this.isWebRTCRegistrationDisabled()
-      ) {
-        LoggerProxy.info(
-          'Skipping web calling line registration because disableWebRTCRegistration is enabled',
-          {
-            module: CC_FILE,
-            method: METHODS.STATION_LOGIN,
-          }
-        );
-      }
-
-      const resp = await loginResponse;
+      const resp = await this.stationLoginInternal(data);
       const {channelsMap, ...loginData} = resp.data;
-      this.updateWellnessSession(resp.data.agentSessionId);
-      this.agentConfig.currentTeamId = resp.data.teamId;
       const response = {
         ...loginData,
         mmProfile: {
@@ -1256,16 +1282,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         notifsTrackingId: resp.trackingId,
       };
 
-      if (this.agentConfig) {
-        this.agentConfig.deviceType = data.loginOption;
-        if (
-          data.loginOption === LoginOption.AGENT_DN ||
-          data.loginOption === LoginOption.EXTENSION
-        ) {
-          this.agentConfig.defaultDn = data.dialNumber;
-          this.agentConfig.dn = data.dialNumber;
-        }
-      }
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
         {

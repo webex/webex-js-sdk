@@ -369,6 +369,10 @@ sequenceDiagram
 
 ### Station login, logout, and agent state
 
+`stationLoginInternal()` constructs and sends the request, then calls `handleStationLoginSuccess()` for
+Calling setup and station preferences. `saveStationLoginPreferences()` saves the accepted device/dial-number
+details, and `initializeRTDWebSocket()` owns RTD setup.
+
 ```mermaid
 sequenceDiagram
   participant App

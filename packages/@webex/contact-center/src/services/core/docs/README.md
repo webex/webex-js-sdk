@@ -153,7 +153,7 @@ contract `contact-center-core-transport` (internal SDK contract, canonical sourc
 | `contact-center-core-transport`: `AqmReqs` (`req`, `reqEmpty`) and the `Req` configuration | Agent, contact, and dialer factories | Internal; additive config fields only, every in-package caller updated in the same change | `src/services/core/aqm-reqs.ts`, `src/services/core/types.ts` |
 | `contact-center-core-transport`: `WebexRequest.getInstance`, `request`, `uploadLogs` | `src/cc.ts`, config and other services, the error helpers | Internal; `request` returns or rejects with the host result unchanged | `src/services/core/WebexRequest.ts` |
 | `contact-center-core-transport`: `WebSocketManager` (`initWebSocket`, `close`, `handleConnectionLost`, `shouldReconnect`, `isSocketClosed`, events `message` and `socketClose`) | `Services`, `src/cc.ts`, `TaskManager`, `AqmReqs`, `ConnectionService` | Internal; event names are string literals that listeners depend on | `src/services/core/websocket/WebSocketManager.ts` |
-| `contact-center-core-transport`: `ConnectionService` (`setConnectionProp`, event `connectionLost` with `ConnectionLostDetails`) | `src/cc.ts` | Internal; ContactCenter reads `isConnectionLost` and `isSocketReconnected` | `src/services/core/websocket/connection-service.ts`, `src/services/core/websocket/types.ts` |
+| `contact-center-core-transport`: `ConnectionService` (`connect`, `setConnectionProp`, event `connectionLost` with `ConnectionLostDetails`) | `src/cc.ts` | Internal; ContactCenter reads `isConnectionLost` and `isSocketReconnected` | `src/services/core/websocket/connection-service.ts`, `src/services/core/websocket/types.ts` |
 | `contact-center-core-transport`: error and utility helpers, `Err` classes, `Msg`, `Failure`, `AugmentedError` | Agent, config, task, and plugin code | Internal; error `message` and `data` shapes are observed by callers | `src/services/core/Utils.ts`, `src/services/core/Err.ts`, `src/services/core/GlobalTypes.ts` |
 
 | Event | Data | Description |
@@ -557,7 +557,7 @@ classDiagram
 `handleConnectionLost`, and the flags `shouldReconnect` and `isSocketClosed`; `register`, `connect`,
 and `webSocketOnCloseHandler` are private.
 
-- `initWebSocket({body, resource})`: `register()` → POST `resource` on `wcc-api-gateway` → validate and store the WebSocket URL; `connect()` → Create WebSocket → Setup handlers (onopen, onmessage, onclose, onerror)
+- `initWebSocket({body, resource})`: `register()` → POST `resource` on `wcc-api-gateway` → validate and store the WebSocket URL; `connect()` → Create WebSocket → `setupWebSocketHandlers(reject)` attaches the existing onopen, onmessage, onclose, and onerror handlers
 - `websocket.onopen`: Send initial keepalive ping; Wire `keepaliveWorker.onmessage` handler; **Start keepalive worker** via `postMessage({type: 'start', intervalDuration: KEEPALIVE_WORKER_INTERVAL, isSocketClosed, closeSocketTimeout: CLOSE_SOCKET_TIMEOUT})`
 - `websocket.onmessage`: emits `message` with the raw string, resolves the pending welcome promise on `Welcome`, and closes without reconnect on `AGENT_MULTI_LOGIN`
 - `close(shouldReconnect, reason = 'Unknown')`: acts only while the socket is open and `shouldReconnect` is still true; stores the new `shouldReconnect`, closes the socket, and terminates the worker
@@ -586,7 +586,11 @@ The constructor takes `ConnectionServiceOptions` `{webSocketManager, subscribeRe
 | `webSocketManager`    | `WebSocketManager`               | Core WebSocket dependency used for event subscription and re-initialization.                                 |
 | `subscribeRequest`    | `SubscribeRequest`               | Cached subscribe payload reused during reconnect (`initWebSocket`).                                          |
 
-The only public method in the following list is `setConnectionProp`. The remaining methods are private implementation details documented for ownership and maintenance; they are not public API contracts.
+`connect(): Promise<WelcomeResponse>` delegates to `WebSocketManager.initWebSocket()` with the cached
+subscribe payload and `SUBSCRIBE_API`. The existing reconnect handler reuses this method.
+
+`connect` and `setConnectionProp` are public methods on this internal service. The remaining methods
+are private implementation details documented for ownership and maintenance.
 
 1. `setConnectionProp(prop: ConnectionProp): void` (public)
    - **Purpose**: Updates connection-level runtime settings used by timers (mainly recovery timeout behavior).
