@@ -734,7 +734,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     return true;
   }
 
-  private connectRTDWebsocket(): void {
+  private initializeRTDWebSocket(): void {
     /**
      * RTD websocket currently supports realtime transcripts and suggested responses.
      * Extend this condition when additional AI RTD features are introduced.
@@ -1163,7 +1163,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.wellbeingBreakIdleCode = undefined;
       this.updateWellnessSession();
 
-      this.connectRTDWebsocket();
+      this.initializeRTDWebSocket();
 
       if (
         this.agentConfig.loginVoiceOptions.some((loginOption) =>
