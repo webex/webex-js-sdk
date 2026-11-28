@@ -327,14 +327,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /** Registration generation that owns the wellness idle-code cache and in-flight lookups. */
   private wellnessRegistrationGeneration = 0;
 
-  private async loginStation(payload: Agent.UserStationLogin): Promise<Agent.StationLoginSuccess> {
+  private async stationLoginInternal(
+    payload: Agent.UserStationLogin
+  ): Promise<Agent.StationLoginSuccess> {
     const response = await this.services.agent.stationLogin({data: payload});
-    await this.completeStationLogin(response, payload);
+    await this.handleStationLoginSuccess(response, payload);
 
     return response;
   }
 
-  private async completeStationLogin(
+  private async handleStationLoginSuccess(
     response: Agent.StationLoginSuccess,
     station: Agent.UserStationLogin
   ): Promise<void> {
@@ -732,7 +734,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     return true;
   }
 
-  private connectRtd(): void {
+  private connectRTDWebsocket(): void {
     /**
      * RTD websocket currently supports realtime transcripts and suggested responses.
      * Extend this condition when additional AI RTD features are introduced.
@@ -1161,7 +1163,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.wellbeingBreakIdleCode = undefined;
       this.updateWellnessSession();
 
-      this.connectRtd();
+      this.connectRTDWebsocket();
 
       if (
         this.agentConfig.loginVoiceOptions.some((loginOption) =>
@@ -1273,7 +1275,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       }
 
-      const resp = await this.loginStation(this.buildStationLoginPayload(data));
+      const resp = await this.stationLoginInternal(this.buildStationLoginPayload(data));
       const {channelsMap, ...loginData} = resp.data;
       const response = {
         ...loginData,
