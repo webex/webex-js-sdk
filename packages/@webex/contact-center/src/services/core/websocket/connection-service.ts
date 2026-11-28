@@ -1,4 +1,5 @@
 import {EventEmitter} from 'events';
+import type {WelcomeResponse} from '../../config/types';
 import {WebSocketManager} from './WebSocketManager';
 import LoggerProxy from '../../../logger-proxy';
 import {ConnectionServiceOptions, ConnectionLostDetails, ConnectionProp} from './types';
@@ -42,9 +43,16 @@ export class ConnectionService extends EventEmitter {
     this.setupEventListeners();
   }
 
+  public connect(): Promise<WelcomeResponse> {
+    return this.webSocketManager.initWebSocket({
+      body: this.subscribeRequest,
+      resource: SUBSCRIBE_API,
+    });
+  }
+
   private setupEventListeners() {
-    this.webSocketManager.on('message', this.onPing.bind(this));
-    this.webSocketManager.on('socketClose', this.onSocketClose.bind(this));
+    this.webSocketManager.on('message', this.onPing);
+    this.webSocketManager.on('socketClose', this.onSocketClose);
   }
 
   private dispatchConnectionEvent(socketReconnected = false): void {
@@ -91,6 +99,14 @@ export class ConnectionService extends EventEmitter {
     this.connectionProp = prop;
   }
 
+  private startConnectionTimers(): void {
+    this.reconnectingTimer = setTimeout(this.handleConnectionLost, this.wsDisconnectAllowed);
+    this.restoreTimer = setTimeout(
+      this.handleRestoreFailed,
+      this.connectionProp && this.connectionProp.lostConnectionRecoveryTimeout
+    );
+  }
+
   private onPing = (event: unknown): void => {
     let parsedEvent: unknown;
     try {
@@ -130,11 +146,7 @@ export class ConnectionService extends EventEmitter {
       this.dispatchConnectionEvent(true);
     }
 
-    this.reconnectingTimer = setTimeout(this.handleConnectionLost, this.wsDisconnectAllowed);
-    this.restoreTimer = setTimeout(
-      this.handleRestoreFailed,
-      this.connectionProp && this.connectionProp.lostConnectionRecoveryTimeout
-    );
+    this.startConnectionTimers();
   };
 
   private handleSocketClose = async (): Promise<void> => {
@@ -144,10 +156,7 @@ export class ConnectionService extends EventEmitter {
     });
     const onlineStatus = navigator.onLine;
     if (onlineStatus) {
-      await this.webSocketManager.initWebSocket({
-        body: this.subscribeRequest,
-        resource: SUBSCRIBE_API,
-      });
+      await this.connect();
       await this.clearTimerOnRestoreFailed();
       this.isSocketReconnected = true;
     } else {
@@ -158,8 +167,6 @@ export class ConnectionService extends EventEmitter {
   private onSocketClose = (): void => {
     this.clearTimerOnRestoreFailed();
 
-    this.reconnectInterval = setInterval(async () => {
-      await this.handleSocketClose();
-    }, CONNECTIVITY_CHECK_INTERVAL);
+    this.reconnectInterval = setInterval(this.handleSocketClose, CONNECTIVITY_CHECK_INTERVAL);
   };
 }
