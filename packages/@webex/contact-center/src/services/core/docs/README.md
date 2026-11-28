@@ -496,6 +496,8 @@ classDiagram
 
 ### WebSocketManager members
 
+`connect()` constructs the socket; `setupWebSocketHandlers()` attaches its socket and keepalive handlers.
+
 `hasUsableSocket()` requires an open socket with an accepted Welcome. `getUrl()` returns the
 subscribed URL for ConnectionService's serving-region state. Explicit close rejects a pending subscription or
 Welcome wait; a late subscription reply cannot open that closed attempt. See CORE-R-002 and CORE-R-016.

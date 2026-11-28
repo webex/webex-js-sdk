@@ -162,6 +162,10 @@ export class WebSocketManager extends EventEmitter {
       method: METHODS.CONNECT,
     });
     this.websocket = new WebSocket(this.url);
+    this.setupWebSocketHandlers();
+  }
+
+  private setupWebSocketHandlers(): void {
     const websocket = this.websocket;
 
     this.websocket.onopen = () => {
