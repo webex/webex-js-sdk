@@ -369,6 +369,10 @@ sequenceDiagram
 
 ### Station login, logout, and agent state
 
+`loginStation()` sends the request and calls `completeStationLogin()` for Calling setup and station
+preferences. `buildStationLoginPayload()` constructs the request, `saveStationLoginPreferences()` saves
+the accepted device/dial-number details, and `connectRtd()` owns RTD setup.
+
 ```mermaid
 sequenceDiagram
   participant App
