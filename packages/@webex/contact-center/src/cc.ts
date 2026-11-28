@@ -699,7 +699,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             !this.webCallingService.isVoiceReady(),
         }),
         onConnectionChange: (connected) => {
-          if (connected) this.resumeRtd();
+          if (connected) this.connectRtd();
           else {
             this.pauseRtd();
             this.taskManager.invalidateRegionalTasks();
@@ -890,16 +890,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     return true;
   }
 
-  private shouldSubscribeRtd(): boolean {
-    return Boolean(
-      this.agentConfig?.aiFeature?.realtimeTranscripts?.enable ||
-        this.agentConfig?.aiFeature?.suggestedResponses?.enable ||
-        this.agentConfig?.aiFeature?.generatedSummaries?.wrapUpSummariesEnabled === true ||
-        this.agentConfig?.aiFeature?.generatedSummaries?.consultTransferSummariesEnabled === true ||
-        this.agentConfig?.isWellnessBreakEnabled
-    );
-  }
-
   private pauseRtd(reason?: string): void {
     const wasSubscribed = !this.rtdPaused;
     this.rtdPaused = true;
@@ -909,8 +899,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (wasSubscribed) this.taskManager.clearAISummaryState();
   }
 
-  private resumeRtd(): void {
-    if (!this.rtdPaused || !this.shouldSubscribeRtd()) return;
+  private connectRtd(): void {
+    if (
+      !this.rtdPaused ||
+      !(
+        this.agentConfig?.aiFeature?.realtimeTranscripts?.enable ||
+        this.agentConfig?.aiFeature?.suggestedResponses?.enable ||
+        this.agentConfig?.aiFeature?.generatedSummaries?.wrapUpSummariesEnabled === true ||
+        this.agentConfig?.aiFeature?.generatedSummaries?.consultTransferSummariesEnabled === true ||
+        this.agentConfig?.isWellnessBreakEnabled
+      )
+    )
+      return;
     this.rtdPaused = false;
     const manager = this.services.rtdWebSocketManager;
     const startedAt = Date.now();
@@ -1394,7 +1394,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           reason: 'region-mismatch',
         });
       }
-      this.resumeRtd();
+      this.connectRtd();
 
       return this.agentConfig;
     } catch (error) {
