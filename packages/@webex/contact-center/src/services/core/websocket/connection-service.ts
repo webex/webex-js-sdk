@@ -121,6 +121,14 @@ export class ConnectionService extends EventEmitter {
     this.connectionProp = prop;
   }
 
+  private startConnectionTimers(): void {
+    this.reconnectingTimer = setTimeout(this.handleConnectionLost, this.wsDisconnectAllowed);
+    this.restoreTimer = setTimeout(
+      this.handleRestoreFailed,
+      this.connectionProp && this.connectionProp.lostConnectionRecoveryTimeout
+    );
+  }
+
   public reset(socketReconnected = false): void {
     this.stop();
     this.isStopped = false;
@@ -128,11 +136,7 @@ export class ConnectionService extends EventEmitter {
     this.updateConnectionData();
     this.setupEventListeners();
     if (this.webSocketManager.hasUsableSocket()) {
-      this.reconnectingTimer = setTimeout(this.handleConnectionLost, this.wsDisconnectAllowed);
-      this.restoreTimer = setTimeout(
-        this.handleRestoreFailed,
-        this.connectionProp && this.connectionProp.lostConnectionRecoveryTimeout
-      );
+      this.startConnectionTimers();
       if (socketReconnected) this.dispatchConnectionEvent(true);
     } else this.onSocketClose();
   }
@@ -186,11 +190,7 @@ export class ConnectionService extends EventEmitter {
       this.dispatchConnectionEvent();
     }
 
-    this.reconnectingTimer = setTimeout(this.handleConnectionLost, this.wsDisconnectAllowed);
-    this.restoreTimer = setTimeout(
-      this.handleRestoreFailed,
-      this.connectionProp && this.connectionProp.lostConnectionRecoveryTimeout
-    );
+    this.startConnectionTimers();
   };
 
   private handleSocketClose = async (): Promise<void> => {
